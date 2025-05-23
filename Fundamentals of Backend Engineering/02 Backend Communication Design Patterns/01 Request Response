@@ -1,0 +1,38 @@
+# Request Response Model
+
+* Client send a Request
+* Server parses the Request
+  * The cost of parse a request isn't cheap
+  * Parsing is the process of identifying where each request begins and ends, which is essential for the server to understand what constitutes a request, since the data arrives as a continuous stream.
+* Server process the Request
+  * Serialization belongs to this step, which transforms the incoming data into a format that is understandable by server's programming language.
+    * this is costly. Parsing XML is much more expensive than parsing JSON, which in turn is more costly than parsing Protocol Buffers.
+* Server sends a Response
+* Client parses the Response and consume
+
+## Where it is used?
+
+* Web, HTTP, DNS, SSH
+  * DNS typically uses UDP. The client sends a DNS resolution request, which includes a query ID. The server responds with another UDP packet containing the result and the same query ID.
+    * Since UDP is connectionless and doesn't guarantee order, the client can send multiple requests simultaneously and must use the query ID to match responses to requests.
+* RPC: remote produce call
+  * it became popular because it abstracted local and remote methods, allowing both to be executed in the same way. However it adds uncertainty because the remote methods are still slow, and as we don't need to know that it was remote, it becomes harder to understand the cause of the slowness.
+
+* SQL and Database Protocols
+* APIs (REST/SOAP/GraphQL)
+  * SOAP is old, but if your system already uses it and you aren't struggling with its deficiencies, you don't need to change it! Don't try to prematurely optimize things that don't need to be optimized.
+  * GraphQL is very popular, and its main idea is bundling many requests into one, so you won't be making multiple requests, as it happens when working with REST.
+    * With GraphQL, the communication between the backend and database still involves multiple requests. Considering the data requirements strategically, it can - if configured correctly - refrain from making some of the requests that the tactical REST would make.
+
+
+## Anatomy of a Request / Response
+
+A request structure is defined by both client and server, they have a boundary defined by a protocol and message format. The work of caring about this is normally done for us.
+
+```
+GET /HTTP/1.1
+Headers
+<CRLF>
+Body
+```
+
