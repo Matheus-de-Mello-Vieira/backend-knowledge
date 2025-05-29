@@ -46,7 +46,7 @@ function updateJob(jobId, prg) {
     jobs[jobId] = prg
     console.log(`updated ${jobId} to ${prg}`)
     if (prg == 100) return;
-    this.setTimeout(() => updateJob(jobId, prg+10), 3000)
+    setTimeout(() => updateJob(jobId, prg+10), 3000)
 }
 ```
 
