@@ -19,7 +19,7 @@ The short pooling is made of many requests-responses.
   * Good for long running requests
   * Client can disconnect
 * Cons
-  * Too chatty: Imagine many clients, each one making hundreds of polls — a huge number of requests that can easily congest the network. In addition, most of those requests are useless because statistically, it's far more likely that a job isn't done than that it is.
+  * Too chatty: Imagine many clients, each one making hundreds of polls — a huge number of requests that not only can easily congest the network, but are also mostly useless because statistically it's far more likely that a job isn't done than that it is.
   * wasted backend resources
 
 ## Demo
