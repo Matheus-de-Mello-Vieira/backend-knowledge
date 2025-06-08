@@ -30,7 +30,7 @@
 * **Layer 3 - Network**: IP
   * Here there is no 'transport' concept, even the port isn't important.
   * This layer only cares about the routing and cares only about the IP addresses.
-  * Here we send packates
+  * Here we send packets
 * **Layer 2 - Data link**: Frames, Mac address Ethernet
   * Close to the medium, for example send a frame to a router that have a specific Mac address.
   *  Here we send frames
