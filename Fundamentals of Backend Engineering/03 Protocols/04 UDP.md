@@ -81,10 +81,10 @@ graph TD
   * $2^{16} = 65536$
   * it is a hard limit for the number of connections
 * UDP Header is 8 bytes only (IPv4)
-  * [0, 1] bytes: sourceport
-  * [2, 3] bytes: destination port
-  * [4,5] bytes: length
-  * [6, 7] bytes: checksum
+  * Bytes 0–1: Source Port
+  * Bytes 2–3: Destination Port
+  * Bytes 4–5: Length
+  * Bytes 6–7: Checksum
 
 # Pros and Cons
 
@@ -176,52 +176,39 @@ int main(int argc, char **argv) {
 
   * used by the OS when receive a datagram to point all the information in memory.
   * is not created until you actually create a socket
-
 * `buffer` is used to receive messages
-
 * `socket(AF_INET, SOCK_DGRAM, 0);` creates a socket and returns its file descriptor. Each parameter has a specific meaning
 
   * `AF_INET`: Address Family - IPv4.
 
     * If you want IPv6, uses`AF_INET6`)
-
-  * `SOCK_DGRAM`:  Type of socket - Datagram
-
-    * This tells the socket to use UDP
+* `SOCK_DGRAM`:  Type of socket - Datagram
+  
+  * This tells the socket to use UDP
     * If you wanted TCP, you would use `SOCK_STREAM`.
-
   * `0`: Protocol, where `0` is default protocol for the given type and family.
 
     * For `AF_INET` + `SOCK_DGRAM`, the default is UDP.
-    * For `AF_INET` + `SOCK_STREAM`, the default is TCP.
-
-    * 
-
+  * For `AF_INET` + `SOCK_STREAM`, the default is TCP.
 * `struct sockaddr_in myaddr, remoteAddr;` declares two variables `myaddr` and `remoteAddr`, both of type `sockaddr_in`
-
 * ` socket(AF_INET, SOCK_DGRAM, 0);` 
-
 * `memset(&myaddr, '\0', sizeof(myaddr));` initializes the entire `myaddr` structure by setting all its bytes to zero. Doing it we ensure:
 
   * All integer fields (like `sin_family`, `sin_port`, `sin_addr.s_addr`) are zeroed.
   * Any padding bytes within the struct are also set to zero.
   * This line is a common best practice when working with low-level networking in C, ensuring the struct is in a known, clean state before setting specific fields.
-
 * `htons(port)` converts the port number from host byte order to network byte order 
 
   * stands for Host TO Network Short.
   * Different systems use different byte orders internally (some little-endian, some big-endian). Network protocols always use big-endian, so the conversion ensures compatibility.
     * big-endian: most significant byte first (MSB first).
     * little-endian:  least significant byte first (LSB first).
-
 * `inet_addr("127.0.0.1");` converts the string "127.0.0.1" into the hexadecimal IP address `0x7F000001`, so the computer can understand.
-
 * `bind(sockfd, (struct sockaddr *)&myaddr, sizeof(myaddr));`: This line is binding your socket (sockfd) to a specific IP address and port number, so your program can receive data at that address.
 
   * `bind`: A system call that associates a socket with a local address (IP + port).
     * It prepares the socket to accept incoming data (UDP) or connections (TCP).
   * `(struct sockaddr *)&myaddr`: Since `bind()` expects a pointer to a `struct sockaddr`, we cast the more specific `struct sockaddr_in` to match the expected type. 
-
 * `recvfrom(sockfd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addr_size);` receives the message
 
   * `recvfrom` eads a message from a socket (like read()), and also tells you who sent it — the sender’s IP and port.
