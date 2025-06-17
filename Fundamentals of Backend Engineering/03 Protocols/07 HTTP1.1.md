@@ -52,4 +52,4 @@ Add the option of use the same connection for multiple requests.
     * it makes the servers hold responses to maintain the correct order. It jeopardize the whole propose
     * if there a backend's proxy, we can't ensure that it will keep the same order of request as we sent.
   * You can build a request ID system
-* Proxying & Multi-homed website
+* Proxying & Multi-homed websites
