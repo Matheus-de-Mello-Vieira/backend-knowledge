@@ -92,7 +92,7 @@ The server have a pair of public and private keys for handshake, and the client 
 * The client send a "hello" to the server
 * The server send the public key
   * the public key is wrapped on a certificate
-    * it avoid any hacker to intercept it and send their own public key
+    * it avoid any attacker to intercept it and send their own public key
 
 * The client uses the public key to encrypt the symmetric key, and send it to server
   * actually, it is the info need to generate the symmetric key, not the symmetric key itself.
@@ -127,7 +127,7 @@ Uses the Diffie-Hellman algorithm
 
 1) The client sends the public key and the combination of its private key and the public key.
    * the public key is wrapped on a certificate
-     * it avoid any hacker to intercept it and send their own public key
+     * it avoid any attacker to intercept it and send their own public key
 2) The server combine the sent combination with its private key and get the symmetric key.
 3) The server sent the combination of its private key and the public key.
 4) So the client combine the sent combination with its private key and get the symmetric key.
