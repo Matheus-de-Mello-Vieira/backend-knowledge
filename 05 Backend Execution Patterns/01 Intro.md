@@ -1,0 +1,1 @@
+Previously we talked about how backend communicates with clients, now we will talk about how backend works internally.
