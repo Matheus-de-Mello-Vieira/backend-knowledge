@@ -9,6 +9,9 @@ One Request, a very very long response
 * It is still a request but an unending response
 * Client parses the streams data looking for this events
 * Works with request/response (HTTP)
+* It works better with HTTP2
+  * So the client can send multiple requests inside the same connection. 
+
 
 ## Pros and Cons
 
