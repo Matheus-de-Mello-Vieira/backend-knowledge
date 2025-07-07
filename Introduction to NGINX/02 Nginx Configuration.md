@@ -2,33 +2,127 @@
 
 ## Basics
 
+### Nginx as webserver
+
 ```nginx
 http {
-
-     upstream nodebackend {
-          server nodeapp1:8080;
-          server nodeapp2:8080;
-          server nodeapp3:8080;
-     }
-
-
-     server {
-          listen 8080;
-          location / {
-               proxy_pass http://nodebackend;
-          }
-     }
+	server {
+        listen 8080;
+        root my/site/path;
+        
+        location /images {
+            root my/site1; # will search all my/site1/images
+        }
+        location ~ .jpg$ {
+            return 403;
+        }
+    }
 }
 
 events {}
 ```
 
+* `http` block directive specifies that I want a layer 7 webserver, here I can have many `servers`
+* `server`:  block directive that makes nginx listen at a given port.
+  * `listen` specifies the port that nginx will read from
+  * `root` specifies the path where the nginx will expose as static web server.
+  * You can serve different folders, based on the url path, using `location`
+    * if can be a path, that will append to the `root` directive
+    * if can also be a regex
+    * Some url path can match multiple location, so there is a priority:
+      1. Exact match (`=`)
+         - It first checks for an exact match: `location = /something`.
+         - If there is an exact match, Nginx uses it immediately.
+         - No further checking is done.
+      2. Longest prefix match
+          - If there is no exact match, Nginx looks for all prefix matches (like `location /path`).
+          - It picks the longest (most specific) matching prefix.
+          - This prefix match is considered the "best match" so far.
+
+      3. Regex locations (`~`, `~*`)
+          - After finding the best prefix match, Nginx checks all regex locations in the order they appear in the config.
+          - If any regex location matches the request URI, it overrides the prefix match.
+            - Regex locations are an extra filter applied after prefix matching.
+            - So regex locations have higher priority than prefix matches if they match, but they don’t just blindly override all prefix matches.
+          - The first matching regex wins.
+          - If no regex location matches, the best prefix match is used.
+
 * The `events` block configures how Nginx handles connections at a low level — specifically things related to event-driven concurrency
+
   * it is is required (syntactically) but it doesn’t have to *contain* anything if you don’t want to change any defaults.
+
   * it allows as to control things like:
     * **worker_connections** — maximum simultaneous connections per worker.
     * **multi_accept** — whether to accept multiple connections at once.
     * **use** — which event method to use (epoll, kqueue, etc.).
+
+
+
+### Nginx as a L7 Proxy
+
+```nginx
+http {
+    upstream nodebackend {
+        ip_hash;
+        server nodeapp1:8080;
+        server nodeapp2:8080;
+        server nodeapp3:8080;
+    }
+
+    server {
+        listen 8080;
+            location / {
+                proxy_pass http://nodebackend;
+        }
+    }
+}
+
+events {}
+```
+
+* the upstream allows you define many servers
+  * you can specify the load balance algorithm:
+    * by default it uses Round Robi, that requests are distributed to servers in a cyclical order. The first request goes to `nodeapp1`, the second goes to `nodeapp2`, etc.
+    * `ip_hash` The server to which a request is sent is determined from the client IP address.
+      * In this case, either the first three octets of the IPv4 address or the whole IPv6 address is used to calculate the hash value.
+      * The method guarantees that requests from the same address get to the same server unless it is not available.
+
+We can do reverse proxying to many different servers by a L7 criteria.
+
+```nginx
+http {
+    upstream app1backend {
+        server nodeapp1:8080;
+        server nodeapp2:8080;
+    }
+    
+    upstream app2backend {
+        server nodeapp3:8080;
+        server nodeapp4:8080;
+    }
+
+    server {
+        listen 8080;
+        location api1/ {
+            proxy_pass http://app1backend;
+        }
+        
+        location api2/ {
+            proxy_pass http://app2backend;
+        }
+        
+        location /admin {
+            return 403; # Forbidden
+        }
+    }
+}
+
+events {}
+```
+
+
+
+<hr>
 
 ## Timeouts
 
@@ -177,3 +271,4 @@ sequenceDiagram
 * sets a timeout during which a idle keep-alive connection to an upstream server will stay open.
 * it is good to set something about 60s
   * if your server is busy, the connection won't be idle for 60s
+
