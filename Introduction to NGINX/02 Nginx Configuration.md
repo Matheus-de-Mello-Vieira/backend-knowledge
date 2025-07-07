@@ -1,10 +1,42 @@
-# NGINX timeouts
+# NGINX Configuration
+
+## Basics
+
+```nginx
+http {
+
+     upstream nodebackend {
+          server nodeapp1:8080;
+          server nodeapp2:8080;
+          server nodeapp3:8080;
+     }
+
+
+     server {
+          listen 8080;
+          location / {
+               proxy_pass http://nodebackend;
+          }
+     }
+}
+
+events {}
+```
+
+* The `events` block configures how Nginx handles connections at a low level — specifically things related to event-driven concurrency
+  * it is is required (syntactically) but it doesn’t have to *contain* anything if you don’t want to change any defaults.
+  * it allows as to control things like:
+    * **worker_connections** — maximum simultaneous connections per worker.
+    * **multi_accept** — whether to accept multiple connections at once.
+    * **use** — which event method to use (epoll, kqueue, etc.).
+
+## Timeouts
 
 Timeouts are very critical to control at any reverse proxy, because you don't want one connection using all your resources.
 
-## Frontend Timeouts
+### Frontend Timeouts
 
-### client_header_timeout
+#### client_header_timeout
 
 Defines a timeout for reading client request header.
 
@@ -12,14 +44,14 @@ Defines a timeout for reading client request header.
 * Default 60s.
 * It is important, because there is a attack called Slowlorris, it is a denial-of-service attack program which allows an attacker to overwhelm a targeted server by opening and maintaining many simultaneous HTTP connections between the attacker and the target. For instance, many clients send byte-by-byte content.
 
-### client_body_timeout
+#### client_body_timeout
 
 Defines a timeout for reading client request body.
 
 * The timeout is set only for a period between two successive read operations, not for the transmission of the whole request body.
 * it can be use to improve the security, because if you know that the clients lies on a very large band-width network, we can infer that a slow client is a attacker.
 
-### send_timeout
+#### send_timeout
 
 Sets a timeout for transmitting a response to the client
 
@@ -28,7 +60,7 @@ Sets a timeout for transmitting a response to the client
 * default 60s
 * it prevent malicious, or the request isn't good for the  backend. 
 
-### keepalive_timeout
+#### keepalive_timeout
 
 The first parameter sets a timeout during which a keep-alive client idle connection will stay open on the server side.
 
@@ -37,7 +69,7 @@ The first parameter sets a timeout during which a keep-alive client idle connect
   * it is a header that you send to the client.
 * default 75 seconds.
 
-### lingering_timeout
+#### lingering_timeout
 
 When `ligering_close` is in effect, this directive specifies the maximum waiting time for more client data to arrive.
 * it sets a timer for the client gracefully close the connection. 
@@ -67,15 +99,15 @@ sequenceDiagram
 
 
 
-### resolver_timeout
+#### resolver_timeout
 
 sets a timeout for name resolution of backend
 
 * timeout 30 seconds
 
-## Backend Timeouts
+### Backend Timeouts
 
-### proxy_connect_timeout
+#### proxy_connect_timeout
 
 Defines a timeout for establishing a connection with a proxied server.
 
@@ -84,7 +116,7 @@ Defines a timeout for establishing a connection with a proxied server.
   * put a too high timeout, the nginx will take too much time and too much resources to ask if a dead backend is alive.
   * put  a too low timeout, the nginx will drop connections unduly, mainly because backend is overwhelmed.
 
-### proxy_send_timeout
+#### proxy_send_timeout
 
 Sets a timeout for transmitting a request to the proxied server.
 
@@ -92,7 +124,7 @@ Sets a timeout for transmitting a request to the proxied server.
 * If the proxied server does not receive anything within this time, the connection is closes.
 * it is more important than `send_timeout`, because each second used to this connection could be used to server other clients.
 
-### proxy_read_timeout
+#### proxy_read_timeout
 
 Defines a timeout for reading a response from the proxied server.
 
@@ -100,7 +132,7 @@ Defines a timeout for reading a response from the proxied server.
 * If the proxied server does not transmit anything within this time, the connection is closed. 
 * `send_timeout` may trigger before or after
 
-### proxy_next_upstream_timeout
+#### proxy_next_upstream_timeout
 
 * Limits the time during which a requests can be passed to the next server.
   * The 0 value turns off this limitation. Default 0.
@@ -140,7 +172,7 @@ sequenceDiagram
     Note over Nginx: If total time exceeds 10s at any step<br>Nginx stops retrying and returns 502/504 to client.
 ```
 
-### keepalive_timeout_backend
+#### keepalive_timeout_backend
 
 * sets a timeout during which a idle keep-alive connection to an upstream server will stay open.
 * it is good to set something about 60s
