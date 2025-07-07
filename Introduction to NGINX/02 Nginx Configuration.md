@@ -87,7 +87,7 @@ events {}
       * In this case, either the first three octets of the IPv4 address or the whole IPv6 address is used to calculate the hash value.
       * The method guarantees that requests from the same address get to the same server unless it is not available.
 
-We can do reverse proxying to many different servers by a L7 criteria.
+We can do reverse proxying to many different servers by a L7 criteria:
 
 ```nginx
 http {
@@ -120,6 +120,63 @@ http {
 events {}
 ```
 
+### Nginx as a L4 Proxy
+
+```nginx
+stream {
+    upstream nodebackend {
+        server nodeapp1:8080;
+        server nodeapp2:8080;
+        server nodeapp3:8080;
+    }
+
+    server {
+        listen 8080;
+        proxy_pass nodebackend;
+    }
+}
+
+events {}
+```
+
+Messages from the same client TCP connection  will always be forward to the same backend TCP connection.
+
+### Enable TLS on NGINX
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name my.beautiful.domain;
+
+    ssl_certificate path/to/certificate/fullchain.pem;
+    ssl_certificate_key path/to/certificate/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+}
+```
+
+Use the latest TLS (current: `TLSv1.3`) 
+
+* To check if your site is using, go to https://www.checktls.com/
+
+### HTTP2
+
+Simply add `http2` after `ssl`
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name my.beautiful.domain;
+
+    ssl_certificate path/to/certificate/fullchain.pem;
+    ssl_certificate_key path/to/certificate/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+}
+```
+
 
 
 <hr>
@@ -150,7 +207,7 @@ Defines a timeout for reading client request body.
 Sets a timeout for transmitting a response to the client
 
 * The timeout is set only between two successive write operations, not for the transmission of the whole response.
-* If the client does not receive anything within this time, the connection is closes. is set only between two successive write operations, not for the transmission of the whole r
+* If the client does not receive anything within this time, the connection is closes. is set only between two successive write operations, not for the transmission of the whole.
 * default 60s
 * it prevent malicious, or the request isn't good for the  backend. 
 
