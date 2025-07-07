@@ -54,7 +54,7 @@ Nginx can operate in L4 or L7.
 
 * TLS termination is someone on the middle of connection pass its own keys, pretending to be the server or client.
   * Layer 7
-  * Nginx can do it, for example NGINX has TLS (e.g. HTTPs) and backend is not (http).
+  * Nginx can do it, for example Nginx has TLS (e.g. HTTPs) and backend is not (http).
     * Nginx terminates TLS and decrypts and send unenctypted.
   * Nginx is TLS and backend is also TLS 
     * recommended at the cloud, because you share the same machines with many other people, so can exists a security fault on your private net.
@@ -65,3 +65,17 @@ Nginx can operate in L4 or L7.
   * Layer 4
   * more secure, NGINX doesn't need the backend certificate.
 
+## Internal Architecture
+
+* Nginx uses worker process
+  * Nginx spins up a worker process per hardware thread on auto-mode, that is default
+  * the kernel sit right behind on worker process
+  * the nginx tries to accept the connections as fast as possible. So one worker become its reader. [see more](../../Fundamentals of Backend Engineering/05 Backend Execution Patterns/05 Architecture.md)
+    
+    * you choose "Multiple Threads Multiple Acceptors Architecture" or "Multiple Threads with Socket Sharding"
+      * until version 1.9.1, the default is the first one, otherwise it is the second one.
+  * the workers will read the connection.
+  * Ideally, each worker need to stay on the CPU maximum possible.
+  * the worker takes a action, for example read a content from disk or read from upstream backend
+    * at this time, the worker can exit from the CPU, because it is only waiting.
+  * each worker can have thousands of clients.
