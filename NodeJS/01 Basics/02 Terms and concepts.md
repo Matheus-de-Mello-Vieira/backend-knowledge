@@ -72,7 +72,7 @@ JavaScript Runtime is an environment which provides all the necessary components
 
 ## Node.JS
 
-Node.JS is an open-source, cross-platform Javascript runtime environment
+Node.JS is an open-source, cross-platform JavaScript runtime environment
 * It is not a language, it is not a framework
 * Capable of executing JavaScript code outside a browser
 * It can execute not only the standard ECMAScript language but also new features that are made available through C++ bindings using the V8 engine
