@@ -11,10 +11,19 @@ A module is an encapsulated and reusable chunk of code that has its own context
 
 Modules that we create in our application
 
+There is two module system: CommonJS and ES Modules.
+
 ### CommonJS
 
 CommonJS is a standard that states how a module should be structured and shared.
+
 * Node.js adopted CommonJS when it started out, and it's what you will see in codebases.
+* Each file is treated as a module
+* Variable, functions, classes, etc. are not accessible to other files by default
+* Explicity tell the module system which parts of you code should be exported via `module.exports` or `export`
+* To import code into a file, use the `require()` function
+
+Examples:
 
 * on `./index.js`
     ```javascript
@@ -164,7 +173,7 @@ Superman
 
 ##### First pattern
 
-* `add.js`
+* `./add.js`
     ```javascript
     const add = (a, b) => {
         return a + b;
@@ -172,7 +181,7 @@ Superman
     
     module.exports = add;
     ```
-* `index.js`
+* `./index.js`
     ```javascript
 	const add = require("./math")
 	console.log(add(2,3))
@@ -181,20 +190,20 @@ Superman
 
 ##### Second pattern
 
-* `add.js`
+* `./add.js`
     ```javascript
     module.exports = (a, b) => {
         return a + b;
     }
     ```
-* `index.js`
+* `./index.js`
     ```javascript
     const add = require("./math")
     console.log(add(2,3))
     ```
 
 ##### Third Pattern
-* `add.js`
+* `./add.js`
     ```javascript
     const add = (a, b) => {
         return a + b;
@@ -217,7 +226,7 @@ Superman
         };
         ```
 
-* `index.js`
+* `./index.js`
 
     ```javascript
     const math = require("./math")
@@ -235,7 +244,8 @@ Superman
 
 ##### Fourth pattern
 
-* `add.js`
+* `./add.js`
+  
     ```javascript
      module.exports.add = (a, b) => {
         return a + b;
@@ -245,7 +255,7 @@ Superman
         return a - b;
     };
     ```
-* `index.js`
+* `./index.js`
 
     ```javascript
     const math = require("./math")
@@ -270,8 +280,8 @@ It is the most recommended.
 Example
 
 
-* `add.js`
-    
+* `./add.js`
+  
     ```javascript
     exports.add = (a, b) => {
         return a + b;
@@ -281,7 +291,7 @@ Example
         return a - b;
     };
     ```
-* `index.js`
+* `./index.js`
 
     ```javascript
     const math = require("./math")
@@ -296,3 +306,145 @@ Example
       console.log(add(2,3))
       console.log(subtract(2,3))
       ```
+
+### ES Modules
+
+* Reason of existence:
+  * At the time Node.Js was created, there was no built-in module system in JavaScript
+  * Node.Js defaulted to CommonJS as its module system.
+  * As of ES2015, JavaScript does have a standardized module system as part of the language itself.
+  * That module system is called EcmaScript Modules or ES Modules or ESM for short.
+* Node.Js 14 and above support ES Modules.
+* Instead of `module.exports`, we use the `export` keyword
+* The `export` can be default of named
+* We import the exported variables or functions using the `import` keyword.
+  * If it is default export, we can assign any name while importing: `import math from "./math-esm.mjs"`
+  * If it is named export, the import name must be the same: `import { add, subtract } from  "./math-esm.mjs"`
+
+
+#### First pattern
+
+* `./math-esm.mjs`
+
+  ```javascript
+  const add = (a, b) => {
+      return a + b;
+  }
+  
+  export default add;
+  ```
+
+* `./index.mjs`
+
+  ```javascript
+  import add from "./math-esm.mjs"
+  
+  console.log(add(5, 3))
+  ```
+
+#### Second pattern
+* `./math-esm.mjs`
+  ```javascript
+  export default (a, b) => {
+      return a + b;
+  }
+  ```
+
+* `./index.mjs`
+  
+  ```javascript
+  import add from "./math-esm.mjs"
+  
+  console.log(add(5, 3))
+  ```
+  
+#### Third Pattern
+* `./math-esm.mjs`
+    ```javascript
+    const add = (a, b) => {
+        return a + b;
+    };
+    
+    const subtract = (a, b) => {
+        return a - b;
+    };
+    
+    export default {
+        add, subtract
+    };
+    ```
+    
+    * The last part is same of:
+        ```javascript
+        export default {
+            add: add,
+            subtract: subtract
+        };
+        ```
+
+* `./index.js`
+
+    ```javascript
+    import math from "./math-esm.mjs"
+    console.log(math.add(2,3))
+    console.log(math.subtract(2,3))
+    ```
+#### Forth Pattern
+* `./math-esm.mjs`
+    ```javascript
+    export const add = (a, b) => {
+        return a + b;
+    };
+    
+    export const subtract = (a, b) => {
+        return a - b;
+    };
+    ```
+* `./index.js`
+
+    ```javascript
+    import * as math from "./math-esm.mjs"
+    console.log(math.add(2,3))
+    console.log(math.subtract(2,3))
+    ```
+    * The same of:
+    
+      ```javascript
+      import { add, subtract } from  "./math-esm.mjs"
+      console.log(add(2,3))
+      console.log(subtract(2,3))
+      ```
+
+## Importing JSON
+
+* JSON stands for JavaScript Object Notation
+* A data interchange format commonly used with web severs.
+
+Example:
+
+* `./data.json`
+
+  ```json
+  {
+      "name": "Bruce Wayne",
+      "address": {
+          "street": "Wayne Manor",
+          "city": "Gotham"
+      }
+  }
+  ```
+
+* `./index.js`
+
+  ```javascript
+  const data = require("./data.json")
+  
+  console.log(data)
+  console.log(data.name)
+  ```
+
+  * you can also use `const data = require("./data")`,  but JavaScript will first look for `data.js`, and if that’s not found, it will then look for `data.json`.
+
+## Watch mode
+
+It allows the node restart automatically when a file in changed, to do it, `node --watch index.js`.
