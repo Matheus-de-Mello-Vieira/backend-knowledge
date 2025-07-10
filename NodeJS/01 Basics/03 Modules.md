@@ -415,7 +415,7 @@ Example
       console.log(subtract(2,3))
       ```
 
-## Importing JSON
+### Importing JSON
 
 * JSON stands for JavaScript Object Notation
 * A data interchange format commonly used with web severs.
@@ -445,6 +445,219 @@ Example:
 
   * you can also use `const data = require("./data")`,  but JavaScript will first look for `data.js`, and if that’s not found, it will then look for `data.json`.
 
-## Watch mode
+### Watch mode
 
 It allows the node restart automatically when a file in changed, to do it, `node --watch index.js`.
+
+## Built-in Modules
+
+* Modules that Node.Js ships with
+* Also referred to be core modules
+* Import the module before you can use it
+  * example: `require("node:path")`
+    * the `node` is optional, but it brings advantages:
+      * makes it perfectly clear that the import is a Node.Js built-in module.
+      * makes the import identifier a valid absolute URL.
+      * Avoid conflicts for future Node.JS built-in modules.
+
+### Path Module
+
+The Path module provides utilities for working with file and directory paths
+
+* `path.basename(filepath: string)` will get the last part of directory
+
+  * Given `./src/index.js`
+      ```javascript
+      const path = require("node:path")
+  	
+      console.log(path.basename(__filename))
+      console.log(path.basename(__dirname))
+      ```
+  	it will print:
+  	
+  	```
+  	index.js
+  	src
+  	```
+
+* `path.extname(filepath: string)` get the extension of the file
+* `path.parse(filepath: string)` will return a object with:
+  * root
+  * dir
+  * base
+  * ext
+  * name 
+* `path.format(file: object)` do the inverse of `path.parse`
+  * path.format(path.parse(obj)) == 
+* `path.isAbsolute(filepath: string)`
+* `path.join(folderName1: string, folderName2: string, ..., folderNameN: string)` concat strings, with the system's directory separator between the parts.
+  * it also normalizes the parts, so:
+    * if some part have a separator, even of different OS, prepended or appended, it will won't influence that result.
+      * `path.join("/folder1", "//folder2", "index.html")` results in `/folder1/folder2/index.html`
+        * as you could noticed, it doesn't applies to the prepended separator of the first part
+    * you can use relative search, for example:
+      * `path.join("folder1", "folder2", "../index.html")` will result in `folder1/index.hml`
+* `path.resolve(folderName1: string, folderName2: string, ..., folderNameN: string)` gets the absolute path of `path.join(folderName1, folderName2, ..., folderNameN)`
+  * if you prepended the first part with `/`, the `path.resolve` and `path.join` does the same thing.
+
+### Events Module
+
+The events module allows us to work with events in Node.Js
+
+* An event is an action or an occurrence that has happened in our application that we can respond to.
+* Using the events module, we can dispatch our own custom events and respond to those custom events in a non-blocking manner.
+
+Given `./index.js`
+
+```javascript
+const EventEmitter = require("node:events")
+
+const emitter = new EventEmitter()
+
+emitter.on("order-pizza", (size, topping) => {
+    console.log(`Order received! Baking ${size} a pizza with ${topping}`)
+})
+
+emitter.on("order-pizza", (size) => {
+    if (size === "large") {
+        console.log("Serving complimentary drink")
+    }
+})
+
+emitter.emit("order-pizza", "large", "mushroom")
+```
+
+Then, on the terminal:
+
+```bash
+.$ node index.js
+Order received! Baking large a pizza with mushroom
+Serving complimentary drink
+```
+
+#### Extending Events Module
+
+Most of asynchronous built-in modules, like `fs`, `streams` and `http` extends event module.
+
+* doing it you can reduce the coupling between your classes.
+
+Example:
+
+* `pizza-shop.js`
+
+  ```javascript
+  const EventEmitter = require("node:events")
+  
+  class PizzaShop extends EventEmitter{
+      constructor () {
+          super();
+          this.orderNumber = 0;
+      }
+  
+      order (size, topping) {
+          this.orderNumber++;
+          this.emit("order", size, topping)
+      }
+  
+      displayOrderNumber() {
+          console.log(`Current order number: ${this.orderNumber}`)
+      }
+  }
+  
+  module.exports = PizzaShop
+
+* `drink-machine.js`
+    ```javascript
+    class DrinkMachine {
+        serveDrink(size) {
+            if(size == "large") {
+                console.log("Serviing complimentary drink")
+            }
+        }
+    }
+    
+    module.exports = DrinkMachine;
+    ```
+
+* `index.js`
+
+  ```javascript
+  const PizzaShop = require("./pizza-shop")
+  const DrinkMachine = require("./drink-machine")
+  
+  const pizzaShop = new PizzaShop();
+  const drinkMachine = new DrinkMachine();
+  
+  pizzaShop.on("order", (size, topping) => {
+      console.log(`Order received! Baking ${size} a pizza with ${topping}`)
+      drinkMachine.serveDrink(size)
+  })
+  
+  pizzaShop.order("large", "mushrooms")
+  pizzaShop.displayOrderNumber()
+  ```
+
+### fs Module
+
+The file system (fs) module allows you to work with the file system on your computer
+
+* read:
+
+  * thread-blocking
+
+    * `./file.txt`
+      ```javascript
+      Hello World
+      ```
+
+    * `index.js`
+
+      ```javascript
+      const fs = require("node:fs")
+      
+      const fileContents = fs.readFileSync("./file.txt", "utf-8")
+      
+      console.log(fileContents)
+      ```
+    
+  * non-thread-blocking
+  
+    * `index.js`
+  
+      ```javascript
+      const fs = require("node:fs")
+      
+      fs.readFile("./file.txt", "utf-8", (error, data) => {
+          if (error) {
+              console.log(error)
+          } else {
+              console.log(data)
+          }
+      })
+      ```
+
+* write
+  * thread-blocking
+    * `index.js`
+
+      ```javascript
+      const fs = require("node:fs")
+      
+      fs.writeFileSync("./greet.txt", "Hello world!")
+      ```
+  
+  * non-thread-blocking
+  
+    * `index.js`
+  
+      ```javascript
+      const fs = require("node:fs")
+      
+      fs.writeFile("./greet.txt", "Hello world!", (error) => {
+          if (error) {
+              console.log(error)
+          }
+      })
+      ```
+  
+      
