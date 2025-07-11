@@ -1,3 +1,5 @@
+
+
 # Modules
 
 A module is an encapsulated and reusable chunk of code that has its own context
@@ -660,4 +662,230 @@ The file system (fs) module allows you to work with the file system on your comp
       })
       ```
   
+
+#### Streams
+
+You can work with data in chunks instead of waiting for the entire data to be available.
+
+```javascript
+const fs = require("node:fs")
+
+const readableStream = fs.createReadStream("./source.txt", { encoding: "utf-8" })
+const writeableStream = fs.createWriteStream("./destination.txt")
+
+readableStream.on("data", (chunk) => { 
+    console.log(chunk)
+    writeableStream.write(chunk)
+})
+```
+
+* or, alternatively
+
+  ```javascript
+  readableStream.pipe(writeableStream)
+  ```
+
+It allows having multiple steps of streams, for example compression:
+
+```javascript
+const fs = require("node:fs")
+const zlib = require("node:zlib")
+
+const gzip = zlib.createGzip()
+
+const readableStream = fs.createReadStream("./source.txt", { encoding: "utf-8" })
+const writeableStream = fs.createWriteStream("./destination.txt.gz")
+
+readableStream.pipe(gzip).pipe(writeableStream)
+```
+
+
+
+### Promise
+
+A better way to handle asynchronous codes
+
+* it slower that callback, but it is a lot more legible. 
+
+Example:
+
+* `.then`/`.catch`
+  
+    ```javascript
+    const fs = require("node:fs/promises")
+    
+    fs.readFile("file.txt", "utf-8")
+        .then(data => console.log(data))
+        .catch((error) => console.log(error))
+    ```
+    
+* `async` / `await`
+    ```javascript
+    const fs = require("node:fs/promises")
+    
+    async function readFile() {
+        try {
+            const data = await fs.readFile("file.txt", "utf-8")
+            console.log(data)
+        } catch (err) {
+            console.log(err)
+        }
+    }
+    
+    readFile()
+    ```
+
+### HTTP
+
+Basic example
+
+* on `index.js`:
+    ```javascript
+    const http = require("node:http")
+    
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, {"Content-Type": "text/plain"})
+        res.end("Hello World\n")
+    })
+    
+    server.listen(3000, () => {
+        console.log("Server running on port 3000")
+    })
+    ```
+
+* on terminal:
+    ```bash
+    $ node index.js
+    Server running on port 3000
+    ```
+
+* on another terminal
+    ```bash
+    $ curl http://localhost:3000
+    Hello World
+    ```
+
+Beyond plain text, you can send:
+
+* JSON
+
+  * `index.html`
+    
+      ```javascript
+      const server = http.createServer((req, res) => {
+          const superHero = {
+              firstName: "Bruce",
+              lastName: "Wayne"
+          }
+          res.writeHead(200, {"Content-Type": "application/json"})
+          res.end(JSON.stringify(superHero))
+      })
+      ```
+  
+* HTML
+    * 1 Harded coded 
+    
+        * `index.js`
+            ```javascript
+            const server = http.createServer((req, res) => {
+            	res.writeHead(200, {"Content-Type": "application/json"})
+            r	es.end("<h1>Hello World</h1>")
+            })
+            ```
+        
+    * 2 From File
       
+        * `index.html`
+          
+            ```html
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Node.JS Tutorial</title>
+            </head>
+            <body>
+                <h1>From index.html</h1>
+            </body>
+            </html>
+            ```
+            
+        * `index.js`
+          
+            ```javascript
+            const server = http.createServer((req, res) => {
+                res.writeHead(200, {"Content-Type": "text/html"})
+                const html = fs.readFileSync("./index.html", "utf-8")
+                res.end(html)
+            })
+            ```
+            
+            * Or, even better:
+            
+              ```javascript
+              const server = http.createServer((req, res) => {
+                  res.writeHead(200, {"Content-Type": "text/html"})
+                  fs.createReadStream("./index.html", { encoding: "utf-8" }).pipe(res)
+              })
+              ```
+    
+    * 3 From Template
+    
+      * `index.html`
+    
+        ```html
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Node.JS Tutorial</title>
+        </head>
+        <body>
+            <h1>From {{name}}, welcome to Node.JS</h1>
+        </body>
+        </html>
+        ```
+    
+      * `index.js`
+    
+        ```javascript
+        const server = http.createServer((req, res) => {
+            res.writeHead(200, {"Content-Type": "text/html"})
+            
+            const name = "Matheus"
+            let html = fs.readFileSync("./index.html", "utf-8")
+            html = html.replace("{{name}}", name)
+            res.end(html)
+        })
+        ```
+
+#### Routing
+
+Do it by:
+
+* `req.url`: like `/api`
+* `req.method`: like `GET`, `POST`, `PUT`, `DELETE`, etc
+
+```javascript
+const server = http.createServer((req, res) => {
+    if (req.url == "/") {
+        res.writeHead(200, { "Content-Type": "text/plain" })
+        res.end("Home page")
+    } else if (req.url === "/about") {
+        res.writeHead(200, { "Content-Type": "text/plain" })
+        res.end("About page")
+    } else if (req.url === "/api") {
+        res.writeHead(200, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({
+            firstName: "Bruce",
+            lastName: "Wayne"
+        }))
+    } else {
+        res.writeHead(404)
+        res.end("Page not found")
+    }
+})
+```
+
