@@ -31,14 +31,32 @@ sequenceDiagram
     participant ResourceServer as Resource Server (User Data API)
 
     User->>Client: Clicks "Login with Google"
+    activate Client
     Client->>User: Redirects to AuthServer with client_id + scopes
+    deactivate Client
+
+    activate User
     User->>AuthServer: Logs in and grants consent
-    AuthServer-->>User: Redirects back with authorization code
-    User->>Client: Sends authorization code (via redirect URL)
+    deactivate User
+
+    activate AuthServer
+    AuthServer-->>User: Redirect to Client with authorization code
+    deactivate AuthServer
+
+    activate User
+    User->>Client: Follows redirect with authorization code
+    deactivate User
+    Note over Client: Handles redirect and decides when/how to respond (e.g., HTML, redirect)
+
     Client->>AuthServer: Sends code + client_id + client_secret
+    activate AuthServer
     AuthServer-->>Client: Returns access token (and optionally refresh token)
+    deactivate AuthServer
+
     Client->>ResourceServer: Requests user data with access token
+    activate ResourceServer
     ResourceServer-->>Client: Sends user data
+    deactivate ResourceServer
 
 ```
 
