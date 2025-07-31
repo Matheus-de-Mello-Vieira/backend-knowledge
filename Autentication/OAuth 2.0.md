@@ -68,3 +68,4 @@ sequenceDiagram
 * The client should not trust the access token without validation.
 * For SPAs or mobile apps, other flows like Implicit Flow or PKCE are used, since they can't safely store the client secret.
 * There are many libraries and frameworks that handle the OAuth 2.0 flow for you—especially in popular languages like Node.js and Python—making integration with providers like Google or GitHub much simpler and more secure.
+* The authorization code is a [JWT](./JWT.md)

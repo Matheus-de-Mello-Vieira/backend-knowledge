@@ -22,6 +22,14 @@
 
 ## Version
 
+* Assumes that your API will be updated
+
+* Versioning is specially important when we don't control our clients
+
+  * you can't force version upgrade
+
+* Set version support policy (for example, minimum three years from the data of first realease).
+
 * Only natural number (positive integer)
 
 * could be prefixed with `v`
@@ -43,9 +51,11 @@
       * Forces clients to change base URLs when upgrading.
 
   * Query Parameter: `https://api.example.com/resource?version=1`
-  
+
+    * Not recommended
+
     * Pros
-  
+
       * Easy to implement and test.
       * Keeps the URI path clean.
 
@@ -56,14 +66,14 @@
       - Can be problematic with caching proxies.
 
       - Not considered RESTful by some purists.
-  
+
   * Header Parameter:
-  
+
     ```
     GET /resource
     Accept: application/vnd.example.v1+json
     ```
-  
+
     * Good when:
       * You need fine-grained control over representations.
       * Your clients are sophisticated or under your control (e.g., internal apps).
@@ -73,7 +83,7 @@
     * Cons
       * Harder to test/debug in browsers and CLI tools like curl.
       * Not always supported or handled well by intermediate systems (e.g., proxies, CDNs).
-  
+
   * Subdomain Versioning: `https://v1.api.example.com/resource`
     * Pros:
       * Clear separation, useful for large organizations.
@@ -81,7 +91,7 @@
     * Cons:
       * More complex DNS and routing configuration.
       * Uncommon; may confuse clients.
-  
+
 * Use URI Path Versioning for most public APIs
 
 ## Entity
