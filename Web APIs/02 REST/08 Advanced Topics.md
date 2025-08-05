@@ -5,6 +5,7 @@
   * for example, if the API response a User entity, who has orders, you should put pointers to the order
 * all the client needs up front is a single entry-point URL. Thereafter, the server’s responses include links (often via `rel` and `href` in JSON or XML) that describe what actions are valid next, depending on the current state of the resource
   * Client don't need have prior knowledge about other resources
+  * Server may change the URI without breaking the client.
   * it enables the client to navigate the API dynamically—without hardcoding every endpoint
 
 ```json

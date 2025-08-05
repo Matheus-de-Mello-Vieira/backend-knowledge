@@ -4,6 +4,12 @@ A protocol for access delegation
 
 OAuth 2.0 allows users to authorize a third-party application (your website) to access their data stored on a trusted provider (like Google, Facebook, or GitHub) without sharing their password.
 
+* Flexible Authorization framework
+* Uses different types of tokens
+* Describes 5 methods (grants) for acquiring access token
+* End user in control of their data (scope)
+* Application/Client needs a API key and secret
+
 ## Key Concepts:
 
 * **Resource Owner**: The user who owns the data.
@@ -28,7 +34,6 @@ sequenceDiagram
     participant User
     participant Client as Your Website (Client)
     participant AuthServer as Authorization Server (e.g., Google)
-    participant ResourceServer as Resource Server (User Data API)
 
     User->>Client: Clicks "Login with Google"
     activate Client
@@ -52,12 +57,6 @@ sequenceDiagram
     activate AuthServer
     AuthServer-->>Client: Returns access token (and optionally refresh token)
     deactivate AuthServer
-
-    Client->>ResourceServer: Requests user data with access token
-    activate ResourceServer
-    ResourceServer-->>Client: Sends user data
-    deactivate ResourceServer
-
 ```
 
 

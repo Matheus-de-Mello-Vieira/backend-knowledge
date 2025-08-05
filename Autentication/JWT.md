@@ -5,7 +5,13 @@
 
 ## Anatomy
 
-Is a the following three parts, concatenated with and Base64 encoded.
+A JWT token is
+
+```scss
+Base64UrlEncode(header) + "." + Base64UrlEncode(payload) + "." + Base64UrlEncode(signature)
+```
+
+Where:
 
 * **Header**: type of token (JWT) and signing algorithm
 
@@ -26,7 +32,8 @@ Is a the following three parts, concatenated with and Base64 encoded.
   }
   ```
   
-  * * You can include custom fields, but there is registered claims (optional standard ones) like:
+  * **registered claims**: Some optional fields are defined directly in the JWT RFC specification (RFC 7519), like:
+  
     * `iss` (issuer) Identifies who created and signed the token. It helps verify the token came from a trusted source.
     * `sub` (subject) Identifies the subject of the token — usually a user ID or username. It tells *who* the token is about.
     * `aud` (audience) Specifies the intended recipient(s) of the token. The app or service using the token should check this.
@@ -34,12 +41,44 @@ Is a the following three parts, concatenated with and Base64 encoded.
     * `iat` (issued at) Indicates when the token was created. Useful for determining token age.
     * `nbf`  (not before) Sets a time before which the token is not valid. The token becomes valid only after this time.
   
+  * **public claims**: There are a organization called IANA that keep a [public list](https://www.iana.org/assignments/jwt/jwt.xhtml#claims) of “reserved” claim names for things that are meant to have a universal, well-known meaning—across any system, company, or product.
+  
+    * It helps everyone define those public claims in the same way.
+    * everyone can suggest new public claims
+    * Some examples are:
+      * `name`: "Full name"
+      * `given_name`: "Given name(s) or first name(s)"
+      * `email`: "Preferred e-mail address"
+      * `email_verified`: "True if the e-mail address has been verified; otherwise false"
+  
+  * **private claims**: not standard
+  
+    * Be careful to don't collide on public or registred claims.
+  
+    *  If your JWT is being shared between multiple APIs, is strongly recommend prepend the keys with the domain
+  
+      ```javascript
+      {
+        "https://yourdomain.com/isAdmin": true,
+        "https://yourcompany.com/userTier": "gold"
+      }
+      ```
+  
+      ```json
+      {
+        "https://billing.mycompany.com/tier": "gold",
+        "https://support.mycompany.com/tier": "priority",
+        "https://content.mycompany.com/tier": "pro"
+      }
+      ```
+  
+      * It is recommended to use `https://` as suffix because many system (as OpenID Connect) uses it to work. Also it helps identify that it is  specific a domain and not a generic or reserved claim.
+  
 * **Signature**: Used to verify the token wasn’t altered. It's created by encoding the header and payload and signing it using a secret or private key.
 
   ```scss
   HMACSHA256(
-    base64UrlEncode(header) + "." +
-    base64UrlEncode(payload),
+    Base64UrlEncode(header) + "." + Base64UrlEncode(payload),
     secret
   )
   ```
