@@ -37,7 +37,19 @@
   * http://inspector.swagger.io/: It is like a postman, but allows you access the history and writes a documentation
 * Compatible with many API platforms
 * Demo
-  * https://petstore.swagger.io/
+  * https://petstore.swagger.io/4
+
+## Reusable Documentation Templates
+
+### Basic CRUD
+
+| Method     | Route                                           | `summary`                       | `description`                                                | `operationId`         |
+| ---------- | ----------------------------------------------- | ------------------------------- | ------------------------------------------------------------ | --------------------- |
+| **GET** | `/api/{entityPlural}` | List {EntityPlural} | Returns a subset of all {EntityPlural} available in the system, according to query parameters. | list{EntityPlural} |
+| **GET**    | `/api/{entityPlural}/{id}`                      | Get a {Entity} by ID            | Retrieves the full details of a specific {Entity} identified by its unique ID. | get{Entity}ById       |
+| **POST**   | `/api/{entityPlural}`                           | Create a new {Entity}           | Creates a new {Entity} using the data provided in the request body. | create{Entity}        |
+| **PUT**    | `/api/{entityPlural}/{id}`                      | Update a {Entity} by ID         | Updates an existing {Entity} identified by its unique ID with the provided data. | update{Entity}ById    |
+| **DELETE** | `/api/{entityPlural}/{id}`                      | Delete a {Entity} by ID         | Removes the specified {Entity} from the system by its unique ID. | delete{Entity}ById    |
 
 ## Format
 
@@ -335,8 +347,6 @@ paths:
           - 'write:pets'
           - 'read:pets'
 ````
-
-
 
 ## Specification file 
 

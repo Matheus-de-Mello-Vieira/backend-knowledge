@@ -349,7 +349,7 @@ They are low level, hardly you will need directly operate it.
   * The response body should be:
     * for `GET`: response the requested entity or entities.
     * for: `POST` response the requested entity or entities.
-
+      * despite it being the correct, most people frowns upon using `200` for POST. You can settle this polemic by using `201` and sending both body and `Location` header.
 * `201 Created` 
   * There request has been fulfilled, a new entity has been created
   * Response might contain `Location` header pointing to the entity
