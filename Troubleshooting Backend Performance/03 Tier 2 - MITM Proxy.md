@@ -68,6 +68,20 @@ In order to do it, you need to add the MTIM root certificate on your certificate
          *   Some even hard code the expected public key, in a technique called certificate pinning.
              *   ex.: the app of twitter.
 
+### Testing specific program
+
+Most Linux applications respect these variables:
+
+```bash
+http_proxy="http://127.0.0.1:8080" \
+https_proxy="http://127.0.0.1:8080" \
+ftp_proxy="http://127.0.0.1:8080" \
+no_proxy="localhost,127.0.0.1" \
+program-name
+```
+
+That way only `program-name` sees the proxy — not the rest of the system.
+
 ## as reverse proxy
 
 In order to intercepting between two services, we need to install the MITM as a reverse proxy
