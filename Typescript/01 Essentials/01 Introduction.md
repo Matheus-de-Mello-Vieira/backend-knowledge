@@ -31,7 +31,7 @@ console.log(add('2', 3));    // Output: "23"
 - `add('2', 3)` does not work as expected: outputs `"23"` instead of `5`.
 - JavaScript does not warn about this type mix-up.
 
-## How TypeScript Helps
+### How TypeScript Helps
 
 ```typescript
 function add(a: number, b: number): number {
@@ -45,3 +45,17 @@ add('2', 3);    // ERROR: Argument of type 'string' is not assignable to paramet
 - TypeScript enforces that both `a` and `b` must be numbers.
 - If you try `add('2', 3)`, TypeScript gives an error immediately.
 - Prevents bugs before running the code.
+
+## Instalation
+
+You can install typescript (locally or globally) using npm
+
+```bash
+npm install -g typescript
+```
+
+
+
+## Execution
+
+You can compile the typescript code into javascript using `tsc`
