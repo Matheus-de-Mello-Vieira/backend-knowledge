@@ -46,15 +46,45 @@ add('2', 3);    // ERROR: Argument of type 'string' is not assignable to paramet
 - If you try `add('2', 3)`, TypeScript gives an error immediately.
 - Prevents bugs before running the code.
 
-## Instalation
+## Installation
 
 You can install typescript (locally or globally) using npm
 
-```bash
+### Global install
+
+```
 npm install -g typescript
+tsc -v
 ```
 
+-   This makes `tsc` available everywhere on your system.
+-   Useful for quick experiments or compiling small scripts without setting up a project.
+-   But your global version can get out of sync with the version your project expects.
 
+### Local (per-project) install
+
+```
+npm install -D typescript
+```
+
+-   Adds TypeScript to your `devDependencies`.
+
+-   Ensures the whole team and your CI build use the same version.
+
+-   You run it via:
+
+    ```
+    npx tsc -v
+    ```
+
+    or through a build script in `package.json`.
+
+### Common Setup
+
+Many devs install both locally and globally:
+
+-   Install globally for convenience (`npm i -g typescript`), so you can run `tsc` quickly.
+-   Also install locally in each project (`npm i -D typescript`) to lock the version.
 
 ## Execution
 
