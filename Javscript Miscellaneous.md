@@ -1,4 +1,300 @@
-# Javascript Miscellaneous 
+# Javascript Miscellaneous
+
+## var, let and const
+
+When working with variables in JavaScript, you have three main ways to declare them: `var`, `let`, and `const`. While all three are used to create variables, they differ in how they behave with scope, re-declaration, hoisting, and re-assignment.
+
+Understanding these differences is important because choosing the right keyword can help you avoid bugs and make your code more predictable. Below, you’ll find a detailed explanation of how each one works, along with examples.
+
+### 1. `var`
+
+-   **Scope**: Function-scoped (or globally scoped if declared outside a function). It does not respect block scope (`{}`).
+
+-   **Re-declaration**: Allowed in the same scope.
+
+-   **Hoisting**: Variables declared with `var` are hoisted to the top of their scope and initialized with `undefined`.
+
+-   **Example**:
+
+    ```javascript
+    function testVar() {
+      if (true) {
+        var x = 10;
+      }
+      console.log(x); // 10 (accessible outside the block)
+    }
+    ```
+
+### 2. `let`
+
+-   **Scope**: Block-scoped (limited to `{}` where it is defined).
+
+-   **Re-declaration**: Not allowed in the same scope (but can be reassigned).
+
+-   **Hoisting**: Hoisted but not initialized → accessing before declaration gives a `ReferenceError` (this is called the Temporal Dead Zone).
+
+-   **Example**:
+
+    ```javascript
+    function testLet() {
+      if (true) {
+        let y = 20;
+        console.log(y); // 20
+      }
+      console.log(y); // ReferenceError (block-scoped)
+    }
+    ```
+
+### 3. `const`
+
+-   **Scope**: Block-scoped (like `let`).
+
+-   **Re-declaration**: Not allowed.
+
+-   **Re-assignment**: Not allowed → value must be assigned at declaration.
+
+-   **Hoisting**: Hoisted but not initialized (same behavior as `let`).
+
+-   **Mutability**: The variable binding is constant, but objects and arrays can still be mutated.
+
+-   **Example**:
+
+    ```javascript
+    const z = 30;
+    // z = 40; // Error: Assignment to constant variable
+    
+    const obj = { a: 1 };
+    obj.a = 2; // Allowed: object properties can change
+    ```
+
+### Best pratices
+
+1)   **Keep scope as small as possible**
+      Always declare variables in the narrowest scope where they are needed. This makes your code cleaner, easier to debug, and prevents unintended side effects.
+2)   **Prefer `const` by default**
+      Use `const` whenever possible. This makes your variables immutable by default, reducing the chance of accidental reassignments. It also makes your code easier to read since other developers know the value won’t change.
+3)   **Use `let` only when reassignment is needed**
+      If you know the variable will change its value (for example, in counters, loops, or reassignments), then `let` is the right choice. This gives flexibility while still keeping the safety of block scope.
+4)   **Avoid `var`**
+      `var` is considered legacy and should generally be avoided in modern code. Its function scope and hoisting behavior can lead to unexpected bugs, especially in larger projects. Stick to `let` and `const` instead.
+5)   **Be cautious with `const` and objects/arrays**
+      Remember that `const` only prevents reassignment of the variable itself, not changes to the contents of objects or arrays. If you need true immutability, consider using techniques like `Object.freeze()` or libraries designed for immutable data.
+
+## Spread Operator (...)
+
+### 1. **Expanding Arrays**
+
+You can use it to expand elements of an array where zero or more arguments are expected.
+
+```javascript
+const numbers = [1, 2, 3];
+console.log(...numbers); 
+// Output: 1 2 3
+```
+
+Example with functions:
+
+```javascript
+function sum(a, b, c) {
+  return a + b + c;
+}
+const nums = [5, 10, 15];
+console.log(sum(...nums)); 
+// Output: 30
+```
+
+------
+
+### 2. **Copying Arrays**
+
+Instead of `slice()`, you can create a shallow copy:
+
+```javascript
+const original = [1, 2, 3];
+const copy = [...original];
+copy.push(4);
+
+console.log(original); // [1, 2, 3]
+console.log(copy);     // [1, 2, 3, 4]
+```
+
+------
+
+### 3. **Merging Arrays**
+
+```javascript
+const a = [1, 2];
+const b = [3, 4];
+const merged = [...a, ...b];
+console.log(merged); // [1, 2, 3, 4]
+```
+
+------
+
+### 4. **Working with Strings**
+
+Since strings are iterable, spread works on them too:
+
+```javascript
+const word = "hello";
+const letters = [...word];
+console.log(letters); // ['h', 'e', 'l', 'l', 'o']
+```
+
+------
+
+### 5. **Objects**
+
+You can also use it for shallow copies and merging objects:
+
+```javascript
+const obj1 = { x: 1, y: 2 };
+const obj2 = { y: 3, z: 4 };
+
+const merged = { ...obj1, ...obj2 };
+console.log(merged); // { x: 1, y: 3, z: 4 }
+```
+
+*   If properties collide, later ones overwrite earlier ones.
+
+## Difference Between Spread and Rest (`...`)
+
+They look the same (`...`), but behave differently depending on context:
+
+-   **Spread**: expands values
+
+    ```javascript
+    const arr = [1, 2, 3];
+    console.log(Math.max(...arr)); // 3
+    ```
+
+-   **Rest**: collects values
+
+    ```javascript
+    function printAll(...args) {
+      console.log(args);
+    }
+    printAll(1, 2, 3); // [1, 2, 3]
+    ```
+
+## Array and Object Destructuring
+
+```javascript
+const hobbies = ['a', 'b']
+
+const [hobby1, hobby2] = hobbies;
+
+console.log(hobby1) // a
+console.log(hobby2) // b
+```
+
+*   You can extract less variables than the size of array
+
+    ```javascript
+    const hobbies = ['a', 'b', 'c']
+    
+    const [hobby1, hobby2] = hobbies;
+    
+    console.log(hobby1) // a
+    console.log(hobby2) // b
+    ```
+
+*   You can try extract more variables than the size of array, the surplus will be attributed `undefined`
+
+    ```javascript
+    const hobbies = ['a', 'b']
+    
+    const [hobby1, hobby2, hobby3] = hobbies;
+    
+    console.log(hobby1) // a
+    console.log(hobby2) // b
+    console.log(hobby3) // undefined
+    ```
+
+*   You can use rest parameter to get the rest as array
+
+    ```javascript
+    const hobbies = ['a', 'b', 'c', 'd', 'e']
+    
+    const [hobby1, hobby2, ...remainingHobbies] = hobbies;
+    
+    console.log(hobby1) // a 
+    console.log(hobby2) // b
+    console.log(remainingHobbies) // [ 'c', 'd', 'e' ]
+    ```
+
+You can deconstruction object too:
+
+```javascript
+const user = { id: 42, name: "Rafa", role: "admin" };
+
+// Basic
+const { id, name } = user;     // id=42, name="Rafa"
+
+// Rename on the fly
+const { role: userRole } = user; // userRole="admin"
+
+// With defaults (only used when value is === undefined)
+const { email = "n/a" } = user;  // email="n/a"
+```
+
+*   **Nested destructuring**: Grab properties inside properties in one go.
+
+    ```javascript
+    const settings = {
+      theme: { mode: "dark", contrast: "high" },
+      flags: { beta: true }
+    };
+    
+    const {
+      theme: { mode, contrast },
+      flags: { beta }
+    } = settings;
+    // mode="dark", contrast="high", beta=true
+    ```
+
+*   **Rest properties**: Collect “the rest” of the fields.
+
+    ```javascript
+    const { id, ...rest } = { id: 1, a: 2, b: 3 };
+    // id=1, rest={ a:2, b:3 }
+    ```
+
+*   **Function parameters**: Destructure right in the parameter list—great for options objects.
+
+    ```javascript
+    function createUser({ name, email = "n/a", role: r = "user" }) {
+      return `${name} <${email}> [${r}]`;
+    }
+    
+    createUser({ name: "Rafa", role: "admin" });
+    ```
+
+*   **Combining with arrays**: You can mix object + array destructuring when data gets nested.
+
+    ```javascript
+    const resp = {
+      meta: { page: 1 },
+      data: [{ id: 7, title: "Hello" }, { id: 8, title: "World" }]
+    };
+    
+    const {
+      meta: { page },
+      data: [first, second]
+    } = resp;
+    // page=1, first={id:7,...}, second={id:8,...}
+    
+    const { data: [{ title: firstTitle }] } = resp; // firstTitle="Hello"
+    ```
+
+*   **Computed property names (read, not set)**: You can destructure using a dynamic key (from another variable).
+
+    ```javascript
+    const key = "name";
+    const profile = { name: "Ada", age: 36 };
+    
+    const { [key]: displayName } = profile; // displayName="Ada"
+    ```
 
 ## Arrays and Memory in JavaScript
 

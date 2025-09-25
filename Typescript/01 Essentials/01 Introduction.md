@@ -89,3 +89,11 @@ Many devs install both locally and globally:
 ## Execution
 
 You can compile the typescript code into javascript using `tsc`
+
+# Naming Conventions
+
+-   `camelCase` → variables, functions, methods, properties
+-   `PascalCase` → classes, interfaces, types, enums
+-   `UPPER_SNAKE_CASE` → global constants
+-   `T, U, V (or descriptive)` → generics
+-   `kebab-case / camelCase` → file names

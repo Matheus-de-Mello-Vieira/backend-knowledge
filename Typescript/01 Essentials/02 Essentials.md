@@ -1,5 +1,51 @@
 # Essentials
 
+## Primitive types
+
+*   `number`:  for all numeric values (integers, floats, hex, binary, octal).
+   
+    ```typescript
+    let age: number = 25;
+    ```
+
+   1.  There is no dedicated integer type, but you can check if a number is a integer using `Number.isInteger`.
+   
+*   `string`: for textual data.
+
+    ```typescript
+    let name: string = "Alice";
+    ```
+
+*   `boolean`: for logical values (`true` or `false`).
+
+    ```typescript
+    let isActive: boolean = true;
+    ```
+
+*   `null`: represents an intentional absence of any value.
+
+    ```typescript
+    let emptyValue: null = null;
+    ```
+
+*   `undefined`:  indicates a variable that has been declared but not assigned.
+
+    ```typescript
+    let notAssigned: undefined = undefined;
+    ```
+
+*   `symbol`: used for unique and immutable identifiers.
+
+    ```typescript
+    let sym: symbol = Symbol("id");
+    ```
+
+*   `bigint`: for arbitrarily large integers.
+
+    ```typescript
+    let big: bigint = 9007199254740991n;
+    ```
+
 ## Variable declarations
 
 On typescript, you can optionally explicitly declare the type of variable.
