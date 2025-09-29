@@ -235,6 +235,14 @@ scores = {
 };
 ```
 
+*   It is the same of
+
+    ```typescript
+    let scores: { [probs: string]: number };
+    ```
+
+    
+
 #### With literal keys
 
 You can restrict the allowed keys:
@@ -470,7 +478,7 @@ let a: null;
 
 ## Forced "not null" (! mark)
 
-You can convice the typescript that a value isn't null (even if its type is null), by appending it a `!`.
+You can convince the typescript that a value isn't null (even if its type is null), by appending it a `!`.
 
 ```typescript
 const nullable = document.getElementById('user-name'); // HTMLElement | null
