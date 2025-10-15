@@ -108,7 +108,7 @@ class User {
 
   get fullName() {
     return this._firstName + " " + this.lastName;
-  }
+  }Q
 }
 
 const person = new User("Vieira");

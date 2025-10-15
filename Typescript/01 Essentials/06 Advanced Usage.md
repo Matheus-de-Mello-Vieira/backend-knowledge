@@ -212,7 +212,7 @@ So you can add multiple function signatures to the same function:
 
 ```typescript
 function getLength(val: string) : string;
-function getLength(val: any[]) : number
+function getLength(val: any[]) : number;
 function getLength(val: string | any[]) {
   if (typeof val === "string") {
     const numberOfWords = val.split(" ").length;
@@ -227,6 +227,26 @@ const numberOfItems = getLength([1, 2, 3])
 ```
 
 Now `numberOfWords` is deemed as `string`, and `numberOfItems` as `number`
+
+Some caveats:
+
+*   In a **class**, overload signatures must end with semicolons or they’re treated like property declarations (hence “value is never read”).
+
+    ```typescript
+    type PrimitiveParams = Record<string, string | number | boolean>;
+    
+    private toStringParams(): undefined;
+    private toStringParams(p: PrimitiveParams): Record<string, string>;
+    private toStringParams(
+      p?: PrimitiveParams
+    ): Record<string, string> | undefined {
+      return p
+        ? Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)]))
+        : undefined;
+    }
+    ```
+
+*   The implementation signature must return the union of all overload returns.
 
 ## Index Types
 

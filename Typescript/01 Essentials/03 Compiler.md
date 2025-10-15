@@ -124,3 +124,25 @@ npm install @types/node --save-dev
 
 *   Notice that you need only need dev dependencies, because it won't be used after the compilation
 
+You can use `ts-node` to compile + execute immediately.
+
+```bash
+npm install ts-node --save-dev
+```
+
+Now you need to run:
+
+```bash
+npx ts-node src/index.ts
+```
+
+Or configure the script on `package.json`:
+
+```javascript
+{
+  "scripts": {
+    "dev": "ts-node src/index.ts"
+  }
+}
+```
+

@@ -435,3 +435,33 @@ console.log(b ?? 'fallback'); // 0 (not fallback)
 let c = '';
 console.log(c ?? 'fallback'); // "" (not fallback)
 ```
+
+## Symbols
+
+*   A Symbol is a primitive type introduced in ES6 (ES2015).
+*   It’s used to create unique identifiers — values that are guaranteed never to clash with any other value.
+
+You create one like this:
+
+```javascript
+const a = Symbol('my-key');
+const b = Symbol('my-key');
+```
+
+Even though both have the same description `'my-key'`,
+
+*   they are different, unique values:
+
+    ```javascript
+    console.log(a === b); // false
+    ```
+
+## `typeof`
+
+You can identity the type of a variable using `typeof` at runtime
+
+```typescript
+const userName = "Max";
+
+console.log(typeof userName) // string
+```

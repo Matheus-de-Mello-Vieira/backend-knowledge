@@ -427,6 +427,35 @@ function logAndThrow(errorMessage: string): never {
 }
 ```
 
+### Async Functions
+
+In TypeScript, the return type of an async function is always wrapped in a `Promise<...>`.
+
+Example:
+
+```typescript
+async function fetchData(id: string): Promise<string> {
+  // The function must resolve to a string
+  return `Data for ${id}`;
+}
+```
+
+If you want to be more explicit:
+
+```typescript
+async function getUser(id: number): Promise<{ id: number; name: string }> {
+  return { id, name: "Alice" };
+}
+```
+
+If the function doesn’t return anything (just side effects):
+
+```typescript
+async function logMessage(msg: string): Promise<void> {
+  console.log(msg);
+}
+```
+
 ## Function as type
 
 You can be generic with:

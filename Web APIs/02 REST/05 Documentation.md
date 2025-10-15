@@ -43,13 +43,55 @@
 
 ### Basic CRUD
 
-| Method     | Route                                           | `summary`                       | `description`                                                | `operationId`         |
-| ---------- | ----------------------------------------------- | ------------------------------- | ------------------------------------------------------------ | --------------------- |
-| **GET** | `/api/{entityPlural}` | List {EntityPlural} | Returns a subset of all {EntityPlural} available in the system, according to query parameters. | list{EntityPlural} |
-| **GET**    | `/api/{entityPlural}/{id}`                      | Get a {Entity} by ID            | Retrieves the full details of a specific {Entity} identified by its unique ID. | get{Entity}ById       |
-| **POST**   | `/api/{entityPlural}`                           | Create a new {Entity}           | Creates a new {Entity} using the data provided in the request body. | create{Entity}        |
-| **PUT**    | `/api/{entityPlural}/{id}`                      | Update a {Entity} by ID         | Updates an existing {Entity} identified by its unique ID with the provided data. | update{Entity}ById    |
-| **DELETE** | `/api/{entityPlural}/{id}`                      | Delete a {Entity} by ID         | Removes the specified {Entity} from the system by its unique ID. | delete{Entity}ById    |
+| Method     | Route                                           | `summary`                       | `description`                                                | `operationId`         | `OK Response` description |
+| ----------- | ----------------------------------------------- | ------------------------------- | ------------------------------------------------------------ | --------------------- | -------------------------- |
+| **GET** | `/api/{entityPlural}` | List {EntityPlural} | Returns a subset of all {EntityPlural} available in the system, according to query parameters. | list{EntityPlural} | Returns a list of {EntityPlural} matching the query parameters. |
+| **GET**    | `/api/{entityPlural}/{id}`                      | Get a {Entity} by ID            | Retrieves the full details of a specific {Entity} identified by its unique ID. | get{Entity}ById       | Returns the requested {Entity} details. |
+| **POST**   | `/api/{entityPlural}`                           | Create a new {Entity}           | Creates a new {Entity} using the data provided in the request body. | create{Entity}        | Returns the newly created {Entity}. |
+| **PUT**    | `/api/{entityPlural}/{id}`                      | Update a {Entity} by ID         | Updates an existing {Entity} identified by its unique ID with the provided data. | update{Entity}ById    | Returns the updated {Entity}. |
+| **DELETE** | `/api/{entityPlural}/{id}`                      | Delete a {Entity} by ID         | Removes the specified {Entity} from the system by its unique ID. | delete{Entity}ById    | Indicates that the {Entity} was successfully deleted. |
+
+### Common Routes
+
+#### Authentication
+
+| Method     | Route              | `summary`                     | `description`                                                                 | `operationId`          | `OK Response` description |
+| ----------- | ----------------- | ----------------------------- | ----------------------------------------------------------------------------- | ---------------------- | -------------------------- |
+| **POST**    | `/auth/basic`     | Basic Authentication Login     | Authenticates a user using basic credentials (e.g., username and password) and returns an access token upon success. | basicAuthLogin         | Returns an access token and user information upon successful authentication. |
+| **GET**     | `/auth/saml`      | SAML Login Initiation          | Initiates the SAML single sign-on (SSO) flow by redirecting the user to the identity provider (IdP) for authentication. | samlLogin              | Redirects the user to the SAML identity provider for authentication. |
+| **POST**    | `/auth/callback`  | SAML Login Callback            | Handles the callback from the SAML identity provider, validating the response and establishing a session or returning an access token. | samlLoginCallback      | Returns an access token or establishes a session after successful SAML authentication. |
+| **POST**    | `/auth/logout`    | User Logout                    | Logs out the authenticated user by invalidating their session or token. | logoutUser             | Confirms that the user has been successfully logged out. |
+| **POST**    | `/auth/refresh`   | Refresh Access Token           | Issues a new access token using a valid refresh token, extending user session validity. | refreshAccessToken     | Returns a new access token and refresh token pair. |
+| **GET**     | `/auth/me`        | Get Current User Info          | Retrieves information about the currently authenticated user. | getCurrentUser         | Returns details of the currently authenticated user. |
+
+---
+
+#### System & Monitoring
+
+| Method     | Route         | `summary`            | `description`                                                         | `operationId`       | `OK Response` description |
+| ----------- | ------------- | -------------------- | --------------------------------------------------------------------- | ------------------- | -------------------------- |
+| **GET**     | `/health`     | Health Check         | Returns a simple status message indicating that the API is operational. | getHealthStatus     | Returns a message confirming that the API is operational. |
+| **GET**     | `/status`     | System Status        | Provides detailed system or service status, often used for monitoring or readiness probes. | getSystemStatus     | Returns detailed information about the system or service status. |
+| **GET**     | `/metrics`    | Metrics Endpoint     | Exposes application performance metrics, typically in Prometheus format. | getMetrics          | Returns application performance metrics data. |
+| **GET**     | `/version`    | API Version Info     | Returns metadata about the current API version and build details. | getApiVersion       | Returns API version and build metadata information. |
+
+---
+
+#### Configuration & Documentation
+
+| Method     | Route       | `summary`                | `description`                                                            | `operationId`     | `OK Response` description |
+| ----------- | ------------ | ------------------------ | ------------------------------------------------------------------------ | ----------------- | -------------------------- |
+| **GET**     | `/config`    | Public Configuration     | Returns configuration or environment details needed by the frontend (e.g., feature flags, endpoints). | getPublicConfig   | Returns public configuration details required by the frontend. |
+| **GET**     | `/docs`      | API Documentation        | Returns or redirects to the interactive API documentation (e.g., Swagger or Redoc UI). | getApiDocs        | Returns or redirects to the interactive API documentation interface. |
+
+---
+
+#### File Management
+
+| Method     | Route                     | `summary`        | `description`                                                             | `operationId`      | `OK Response` description |
+| ----------- | ------------------------- | ---------------- | ------------------------------------------------------------------------- | ------------------ | -------------------------- |
+| **POST**    | `/upload`                 | File Upload      | Uploads a file or binary data to the system, returning metadata or an access URL. | uploadFile         | Returns metadata and access information for the uploaded file. |
+| **GET**     | `/download/{fileId}`      | File Download    | Downloads a file previously uploaded, identified by its unique file ID. | downloadFile       | Returns the requested file content as a downloadable resource. |
 
 ## Format
 
