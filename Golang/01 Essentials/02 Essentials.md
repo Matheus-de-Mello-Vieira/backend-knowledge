@@ -132,7 +132,7 @@ All Go value types come with a so-called "null value" which is the value stored 
 -   `string` => `""` *(i.e., an empty string)*
 -   `bool` => `false`
 
-### `:=` operator
+###  short variable declaration (`:=`) 
 
 The code
 
@@ -148,7 +148,17 @@ var expectedReturnRate = 0.2;
 
 By convention, you should use this operator as often as possible.
 
-You can't assign type, so when using this operator, you need to trust on the i
+You can't assign type, so when using this operator, you need to trust on the inference.
+
+A short variable declaration (`:=`) declares new variables and may reassign existing ones, provided at least one variable on the left-hand side is new.
+
+*   So you can:
+
+    ```go
+    data, err := os.ReadFile("balance.txt")
+    ...
+    balance, err := strconv.ParseFloat(balanceText, 64)
+    ```
 
 ## Constant
 
@@ -209,6 +219,41 @@ fmt.Println("Future real value:", futureRealValue)
 ```
 
 But this function also has an **important limitation:** You can't (easily) fetch **multi-word input values**. Fetching text that consists of more than a single word is tricky with this function.
+
+To do it, you should:
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+)
+
+
+func main() {
+	fmt.Print("Text: ")
+	
+	reader := bufio.NewReader(os.Stdin)
+
+	text, err := reader.ReadString('\n')
+
+	if err != nil {
+		log.Fatal("Error", err)
+	}
+	
+	text = strings.TrimSuffix(text, "\n")
+	text = strings.TrimSuffix(text, "\r")
+	
+	log.Println(text)
+}
+```
+
+*   Where `reader.ReadString` will read the input until a `\n`
+*   `strings.TrimSuffix` will return "s without the provided trailing suffix string. If s doesn't end with suffix, s is returned unchanged."
 
 ### fmt.Printf
 
@@ -316,6 +361,23 @@ default:
     ...
 }
 ```
+
+#### `switch` for types
+
+````go
+func printSomething(value any) {
+	switch value.(type) {
+	case int:
+		fmt.Println("Integer:", value)
+	case float64:
+		fmt.Println("Float:", value)
+	case string:
+		fmt.Println(value)
+	default:
+		//...
+	}
+}
+````
 
 ### `for`, `break` and `continue`
 
@@ -594,7 +656,3 @@ about to panic...
 recovered from panic: PANIC!!!
 continues normally
 ```
-
-------
-
-Would you like me to make it more concise (e.g., for documentation or slides), or keep this full version with explanations?
