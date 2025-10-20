@@ -46,55 +46,6 @@ var productNames [4]string // 4 empty strings
     fmt.Println(productNames) // [A book   ]
     ```
 
-## Packing List values
-
-In Go, a function can take a **variadic parameter**, which means it can accept *zero or more* arguments of the same type.
-
-```go
-func sum(nums ...int) int {
-    total := 0
-    for _, n := range nums {
-        total += n
-    }
-    return total
-}
-```
-
-## Unpacking List Values
-
-```go
-numbers := []int{1, 2, 3}
-fmt.Println(sum(numbers...)) 
-```
-
-#### Works only with variadic functions
-
-This unpacking (`...`) **only works** for functions that declare their last parameter as variadic — like `func foo(args ...T)`.
-
-For example:
-
-```
-func printAll(args ...string) {
-    for _, s := range args {
-        fmt.Println(s)
-    }
-}
-
-names := []string{"Alice", "Bob", "Charlie"}
-printAll(names...) // ✅ works
-```
-
-But not:
-
-```
-func printTwo(a, b string) { fmt.Println(a, b) }
-
-args := []string{"hi", "there"}
-printTwo(args...) // ❌ ERROR
-```
-
-Go doesn’t support unpacking into *non-variadic fixed parameters*.
-
 ## `For` loops with arrays
 
 ```go

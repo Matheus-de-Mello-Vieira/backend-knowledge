@@ -429,6 +429,41 @@ func main() {
 }
 ```
 
+to read a file line-by-line in Go, you can use the `bufio` package along with `os.Open`. Here’s a simple and idiomatic example:
+
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "log"
+    "os"
+)
+
+func main() {
+    // Open the file
+    file, err := os.Open("prices.txt")
+    if err != nil {
+        log.Fatalf("Failed to open file: %v", err)
+    }
+    defer file.Close()
+
+    // Create a new scanner to read line by line
+    scanner := bufio.NewScanner(file)
+
+    for scanner.Scan() {
+        line := scanner.Text()
+        fmt.Println(line)
+    }
+
+    // Check for errors during scanning
+    if err := scanner.Err(); err != nil {
+        log.Fatalf("Error reading file: %v", err)
+    }
+}
+```
+
 ## Handling errors
 
 Functions don't crash the application, instead it should be returned by functions
@@ -480,179 +515,32 @@ func divide(a, b float64) (float64, error) {
 }
 ```
 
-Sure — here’s your text translated into **English**, keeping the technical meaning and style accurate and natural for Go developers:
+### Multiple erros
 
-------
-
-## Defer
-
--   Used to **delay the execution** of a function until the end of the current function.
-
--   Very useful for **resource cleanup** (files, connections, unlocks, etc).
-
--   Example:
-
-    ```go
-    func main() {
-        f, _ := os.Open("file.txt")
-        defer f.Close() // will be executed at the end of main()
-    
-        fmt.Println("do something...")
-    }
-    ```
-
-### Notes
-
-#### Execution order (LIFO)
-
--   Multiple `defer` calls are executed in **reverse order** of registration.
--   If order matters (e.g., releasing `RLock` before `Lock`), be explicit.
+It is common situations like:
 
 ```go
-mu.RLock()
-defer mu.RUnlock()
-mu.Lock()
-defer mu.Unlock()
-// execution order: Unlock() after RUnlock()
-```
+err := context.ShouldBindJSON(&event)
 
-#### Overhead in hot paths
-
-`defer` has become much cheaper in modern Go versions, but it’s **not free**.
-
-In performance-critical paths (tight loops, frequently called functions), it may be better to:
-
--   call `Unlock()/Close()` **explicitly** at the end of the block, or
-    -   `defer mu.Unlock()` is idiomatic and safe, but **holds the lock until the end of the function**.
-    -   If the critical section is small, prefer to limit its scope.
--   move non-critical work outside the loop.
-
-```go
-// critical path: avoid defer inside each iteration
-for i := 0; i < N; i++ {
-    mu.Lock()
-    // short work
-    mu.Unlock() // instead of defer mu.Unlock()
+if err != nil {
+    ...
+}
+...
+err1 := event.Save()
+if err1 != nil {
+    ...
 }
 ```
 
-#### Defer inside a loop
-
-Each iteration adds a new `defer` that **only runs at the end of the function**, which can cause:
-
--   holding resources longer than needed,
--   hitting system limits (too many open files, connections, etc.).
+To avoid create multiple `err` variables, as `err1`, you can:
 
 ```go
-// bad: everything is closed only at the end
-for _, name := range files {
-    f, _ := os.Open(name)
-    defer f.Close()
-    // ...
+if err := context.ShouldBindJSON(&event); err != nil {
+	...
 }
-
-// better: close per iteration
-for _, name := range files {
-    f, err := os.Open(name)
-    if err != nil { /* handle */; continue }
-    // use f
-    f.Close()
+...
+if err := event.Save(); err != nil {
+	...
 }
 ```
 
-#### Immediate evaluation of arguments
-
--   The arguments of `defer` are evaluated **when the defer is declared**, not when it executes.
-
-    ```go
-    // prints the value of x at the moment of the defer
-    x := 1
-    defer fmt.Println(x) // captures 1
-    x = 2
-    // output: 1
-    ```
-
--   For anonymous functions, the **variables are closed by reference**:
-
-    ```go
-    x := 1
-    defer func() { fmt.Println(x) }() // sees x=2
-    x = 2
-    // output: 2
-    ```
-
-#### WaitGroup: use `defer Done()` at the beginning of the goroutine
-
--   Helps avoid forgetting `Done()` in error/panic paths:
-
-    ```go
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        // work
-    }()
-    ```
-
-#### Memory/latency on function exit
-
--   Many `defer` calls accumulate and increase the work done at function exit (they all fire).
-     In functions that may register hundreds or thousands, reconsider the design.
-
-------
-
-## `recover` and `panic`
-
-### `panic`
-
--   Interrupts the normal flow of the program.
-
--   Unwinds the stack until it finds a `recover` (or terminates the program if none is found).
-
--   Simple example:
-
-    ```go
-    func main() {
-        panic("something went wrong")
-        fmt.Println("this will never be executed")
-    }
-    ```
-
-### `recover`
-
--   Only works **inside a deferred function**.
-
-    -   If you call `recover()` outside of a `defer`, it always returns `nil`.
-
--   Captures the value passed to `panic` and **prevents the program from crashing**.
-
--   you should `return error` for expected problems and `panic` only for truly unexpected or unrecoverable conditions.
-
--   Remember: `recover` only catches panics from the **same goroutine**.
-
--   Example:
-
-    ```go
-    func main() {
-        safe()
-        fmt.Println("continues normally")
-    }
-    
-    func safe() {
-        defer func() {
-            if r := recover(); r != nil {
-                fmt.Println("recovered from panic:", r)
-            }
-        }()
-    
-        fmt.Println("about to panic...")
-        panic("PANIC!!!")
-    }
-    ```
-
-Output:
-
-```
-about to panic...
-recovered from panic: PANIC!!!
-continues normally
-```
