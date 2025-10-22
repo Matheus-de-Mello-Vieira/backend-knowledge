@@ -71,6 +71,16 @@ func main() {
         principal, years, expectedReturnRate := 1000.0, 10.0, 0.2;
         ```
 
+### Single-Letter Variable Names in Go
+
+In Go, using short or even single-letter variable names is a common and idiomatic practice. This convention reflects Go’s philosophy of simplicity and brevity. Single-letter identifiers are typically used when the variable’s purpose is immediately clear from context and when the scope of use is small—such as within short loops, conditionals, or brief helper functions.
+
+Examples include common variables like `i` for loop counters, `r` for receivers, `b` for bytes or buffers, and `err` for errors. The Go standard library itself follows this approach extensively, promoting compact and readable code.
+
+However, clarity should always take precedence. Descriptive names are preferred when variables have a broader scope, persist across multiple lines, or when their role is not self-evident. Overusing short names can make code harder to read and maintain, especially in complex logic.
+
+In summary, single-letter variable names are appropriate in Go when they enhance conciseness without sacrificing clarity. The key is to balance brevity and readability according to context.
+
 ### **Basic Types**
 
 Go comes with a couple of built-in basic types:

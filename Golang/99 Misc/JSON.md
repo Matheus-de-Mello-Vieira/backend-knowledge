@@ -253,11 +253,11 @@ token, _ := decoder.Token()
 fmt.Printf("Start of array: %v\n", token)
 
 for decoder.More() {
-var todo Todo
-if err := decoder.Decode(&todo); err != nil {
-log.Fatal("Decode error", err)
-}
-fmt.Println(todo)
+	var todo Todo
+	if err := decoder.Decode(&todo); err != nil {
+		log.Fatal("Decode error", err)
+	}
+	fmt.Println(todo)
 }
 
 // Read the closing bracket ']'
