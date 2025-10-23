@@ -224,7 +224,11 @@ query {
 }
 ```
 
+## Input type
 
+An input type defines the shape of data that clients can send to the server — usually as arguments for mutations (and sometimes for queries).
+
+*   While **object types** describe the shape of data you *receive* from the server, **input types** describe the shape of data you *send* **to** the server.
 
 ##  On On the Order of Definitions in GraphQL Schemas
 
@@ -235,7 +239,37 @@ In GraphQL, the order of type definitions has no effect on execution.
 That said, adopting a consistent logical order makes schemas easier for humans to read and maintain.
  A common and clear structure is:
 
-1.  **Scalars and Enums** – basic reusable value types.
-2.  **Interfaces** – shared contracts that other types implement.
-3.  **Object Types** – the main domain entities of your API.
-4.  **Root Types** – `Query`, `Mutation`, and `Subscription`, which act as entry points for client operations.
+1. **Scalars and Enums**  
+   
+   *   Define any custom scalars (e.g. `DateTime`) and  enums used throughout the schema.
+   
+2. **Input Types**  
+   
+   *   These define the shape of arguments passed into queries and mutations.  
+   *   They’re similar to object types, but used *for input* rather than output.  
+   *   It makes sense to place them early (right after scalars/enums) so they’re available before mutations or object types refer to them.
+   
+3. **Interfaces and Unions**  
+   
+   *   Define shared or polymorphic types used by objects.
+   
+4. **Object Types**  
+   
+   *   Your domain models, like `User`, `Post`, `Comment`, etc.
+   
+5. **Root Types**  
+   
+   *   `Query`, `Mutation`, and `Subscription`.
+   
+6. **Schema Definition** *(optional, if needed)*  
+   
+   *   Explicitly bind root types:
+   
+       ```apl
+       schema {
+         query: Query
+         mutation: Mutation
+       }
+       ```
+   
+       
