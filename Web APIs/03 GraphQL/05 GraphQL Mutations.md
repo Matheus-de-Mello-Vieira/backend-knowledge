@@ -34,9 +34,11 @@ input BookInput {
 ...
 
 type Mutation {
-  addBook(input: BookInput): Book!
+  addBook(input: BookInput!): Book!
 }
 ```
+
+*   It is important to add `!` after `BookInput`, so it is mandatory.
 
 So, on cl:
 

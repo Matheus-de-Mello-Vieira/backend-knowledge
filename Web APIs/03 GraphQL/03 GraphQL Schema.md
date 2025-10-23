@@ -230,6 +230,51 @@ An input type defines the shape of data that clients can send to the server — 
 
 *   While **object types** describe the shape of data you *receive* from the server, **input types** describe the shape of data you *send* **to** the server.
 
+## Schema directive
+
+a directive is a built-in mechanism for attaching extra behavior or metadata to part of a schema or query.
+
+*   Formally, a directive is a **named instruction** that tells the GraphQL execution or tooling layers to do *something special* with the element it decorates
+
+THe Schema-time directives extend or customize how parts of the schema behave for *all* queries.
+
+```apl
+directive @auth(role: Role!) on FIELD_DEFINITION
+
+type Query {
+  users: [User!]! @auth(role: ADMIN)
+}
+```
+
+*   `directive @auth(role: Role!) on FIELD_DEFINITION`
+
+    *   defines a new directive named **`@auth`** that can appear on **field definitions** in the schema.
+
+    *   It takes one argument, `role`, whose type is `Role!` (a required enum or scalar).
+
+    *   `FIELD_DEFINITION` means that this directive is for field definitions, some other values are:
+
+        ```
+        SCHEMA | OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION |
+        INTERFACE | UNION | ENUM | ENUM_VALUE |
+        INPUT_OBJECT | INPUT_FIELD_DEFINITION
+        ```
+
+*   `users: [User!]! @auth(role: ADMIN)`
+
+    *   attaches that directive to the `users` field.
+
+    *   the runtime calls the auth directive’s function first, that is like a REST API middleware:
+
+        ```js
+        function authDirective(role, nextResolver) {
+          if (currentUser.role !== role) {
+            throw new Error("Forbidden")
+          }
+          return nextResolver()
+        }
+        ```
+
 ##  On On the Order of Definitions in GraphQL Schemas
 
 In GraphQL, the order of type definitions has no effect on execution.
@@ -272,4 +317,4 @@ That said, adopting a consistent logical order makes schemas easier for humans t
        }
        ```
    
-       
+
