@@ -401,6 +401,8 @@ continues normally
 
 A `context` is an object passed to functions/goroutines that carries **cancellation, timeout, or request-scoped values**.
 
+* by convention, the context is always the first parameter.
+
 Main purposes:
 
 1.  **Cancel goroutines as a group** when no longer needed.
@@ -461,6 +463,49 @@ deadline := time.Now().Add(1 * time.Second)
 ctx, cancel := context.WithDeadline(context.Background(), deadline)
 defer cancel()
 ```
+
+### `WithValue`
+
+`context.WithValue` is a function in Go’s **`context`** package used to create a new context that carries a **key–value pair**.
+
+* It’s primarily used to pass request-scoped data **down a call chain**, such as through functions or goroutines, **without using global variables**.
+
+```go
+func main() {
+    ctx := context.Background()
+
+    // Create a new context with a key-value pair
+    ctx = context.WithValue(ctx, "userID", 42)
+
+    // Pass context down the call chain
+    processRequest(ctx)
+}
+
+func processRequest(ctx context.Context) {
+    // Retrieve value from context
+    userID := ctx.Value("userID")
+
+    if userID != nil {
+        fmt.Println("User ID:", userID)
+    } else {
+        fmt.Println("No user ID found")
+    }
+}
+```
+
+#### When to Use:
+
+- For **request-scoped data** that is **cross-cutting**, such as:
+  - Tracing IDs
+  - Authentication tokens
+  - Request metadata
+- When **passing data through layers** of your application (middleware, handlers, services, etc.)
+
+#### When NOT to Use:
+
+- **Do not use it for optional parameters or general data passing.**
+  - That’s better handled by function parameters or struct fields.
+- **Keys should be unexported custom types** to avoid collisions.
 
 ## `errgroup`
 

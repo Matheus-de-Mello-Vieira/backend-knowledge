@@ -168,6 +168,8 @@ func printSomething(value any) {
 }
 ```
 
+### Type assertion
+
 You can use [`switch` for types](./02 Essentials.md#switch-for-types), or:
 
 ```

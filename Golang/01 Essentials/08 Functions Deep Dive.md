@@ -53,7 +53,7 @@ quadrupled := transformNumbers(&numbers, func(number int) int {
 
 ### Closure
 
-Produce functions with functions:
+Produce functions with functions - through anonymous function:
 
 ```go
 func createTransformer(factor int) func(int) int {
@@ -63,9 +63,23 @@ func createTransformer(factor int) func(int) int {
 }
 ```
 
+* `factor` is **assigned** when `createTransformer` is called.
+* It’s **captured by reference** inside the returned anonymous function.
+* The inner function **remembers** the value of `factor` at that time.
+
+So
+
+```go
+double := createTransformer(2)
+triple := createTransformer(3)
+
+fmt.Println(double(4)) // 8
+fmt.Println(triple(4)) // 12
+```
+
+
+
 ## Variadic Functions
-
-
 
 In Go, a function can take a variadic (/ˌvɛəriˈædɪk/) parameter, which means it can accept *zero or more* arguments of the same type.
 

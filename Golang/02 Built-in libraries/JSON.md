@@ -69,7 +69,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
