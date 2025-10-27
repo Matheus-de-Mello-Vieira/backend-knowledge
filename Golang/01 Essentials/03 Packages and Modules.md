@@ -367,3 +367,112 @@ myproject/
         // your app starts here
     }
     ```
+
+## go.mod replace directive
+
+In Go, the `go.mod` file manages modules and dependencies. One of its useful features is the `replace` directive, which allows you to override the source or version of a dependency.
+
+### What `replace` does
+
+The `replace` directive tells Go to use a different module path or version than the one originally declared. This can point to a different version, a fork, or even a local directory.
+
+### Basic syntax
+
+```go
+replace [old-module] [old-version] => [new-module] [new-version]
+```
+
+If you want to replace with a local path, the syntax is:
+
+```go
+replace [old-module] => [local/path/to/module]
+```
+
+### Example: replace with a local path
+
+This is useful when developing multiple modules locally.
+
+```go
+module github.com/myuser/project
+
+go 1.22
+
+require github.com/myuser/shared v0.2.0
+
+replace github.com/myuser/shared => ../shared
+```
+
+This tells Go to use the local folder `../shared` instead of downloading `github.com/myuser/shared@v0.2.0`.
+
+### Example: replace with a different module path
+
+You can point a dependency to a forked repository.
+
+```go
+replace github.com/old/dependency => github.com/myfork/dependency v1.4.3
+```
+
+This makes Go use your fork instead of the original dependency.
+
+### Example: replace with a specific version
+
+You can override a version requested elsewhere in the dependency graph.
+
+```go
+replace github.com/some/lib v1.2.3 => github.com/some/lib v1.3.0
+```
+
+This forces Go to use version `v1.3.0` even if another module requires `v1.2.3`.
+
+### Multiple replaces
+
+You can list several `replace` directives in a single block.
+
+```go
+replace (
+    github.com/a/dependency => ../local/a
+    github.com/b/dependency => github.com/myfork/b v1.0.0
+)
+```
+
+### When to use `replace`
+
+- During local development, when working on multiple modules on your machine.
+- When using a fork to fix or modify a dependency.
+- When the original source of a module is unavailable or deprecated.
+
+### When not to use `replace`
+
+- Avoid committing local path replaces like `../something` in production code, since they will break for other developers.
+- Avoid long-term reliance on `replace`; dependencies should ideally resolve through normal versioning with `go get`.
+
+### How Go handles it
+
+When you run commands such as `go mod tidy` or `go build`, Go processes all `replace` directives first. Replacements always take priority when resolving dependencies.
+
+## Workspaces
+
+Instead of putting `replace` in each module, you can use a **workspace file** to manage them together.
+
+From `/home/user/projects/`, run:
+
+```
+go work init ./app ./lib
+```
+
+This creates a `go.work` file like:
+
+```
+go 1.22
+
+use (
+    ./app
+    ./lib
+)
+```
+
+Go automatically understands that when `app` imports `github.com/myuser/lib`, it should use the **local `lib` directory**.
+
+* You **don’t need a `replace` directive** in this case.
+* It will bug `go mod tidy` because it ignores workspace, so it will try to search the mod remotely.
+  * run `go mod tidy -e`to ignore these errors, and install the rest of the depedencies.

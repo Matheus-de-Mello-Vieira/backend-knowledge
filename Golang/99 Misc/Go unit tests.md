@@ -316,3 +316,137 @@ You also can run `go test` with `-race` to detect data races.
 *   `-race` detect data races.
 *   `-count=1` disable cache (force re-run).
 *   `-timeout=2m` change timeout.
+
+## Testfy
+
+[Testify](https://github.com/stretchr/testify) is a Go library that makes writing unit tests easier and more expressive. It builds on Go’s built-in testing package by adding assertions, mocks, and suites, helping you write cleaner and more readable tests.
+
+* It’s maintained by the Stretchr team and is widely used in the Go community.
+
+### Installation
+
+You can install it with:
+
+```bash
+go get github.com/stretchr/testify
+```
+
+Then import it in your test files:
+
+```go
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
+```
+
+### Assertions
+
+Testify provides many helper functions to simplify comparisons and test checks.
+
+Example:
+
+```go
+func TestAddition(t *testing.T) {
+    sum := 2 + 3
+    assert.Equal(t, 5, sum, "they should be equal")
+    assert.NotNil(t, sum)
+}
+```
+
+Common assertion functions include:
+
+- `assert.Equal(t, expected, actual)`
+- `assert.NotEqual(t, expected, actual)`
+- `assert.Nil(t, object)`
+- `assert.NotNil(t, object)`
+- `assert.True(t, condition)`
+- `assert.False(t, condition)`
+- `require.Equal(t, expected, actual)` – same as `assert`, but stops the test immediately on failure
+
+### Test Suites
+
+You can organize related tests into a **suite** by embedding `suite.Suite`:
+
+```go
+import (
+    "testing"
+    "github.com/stretchr/testify/suite"
+)
+
+type MathTestSuite struct {
+    suite.Suite
+}
+
+func (suite *MathTestSuite) TestAddition() {
+    suite.Equal(4, 2+2)
+}
+
+func TestMathTestSuite(t *testing.T) {
+    suite.Run(t, new(MathTestSuite))
+}
+```
+
+Suites let you define `SetupTest`, `TearDownTest`, `SetupSuite`, etc. for reusable setup/teardown logic.
+
+### Mocks
+
+Testify also has a simple **mocking framework** under `mock`.
+
+Example:
+
+```go
+import "github.com/stretchr/testify/mock"
+
+type MyMock struct {
+    mock.Mock
+}
+
+func (m *MyMock) DoSomething(number int) bool {
+    args := m.Called(number)
+    return args.Bool(0)
+}
+
+func TestSomething(t *testing.T) {
+    m := new(MyMock)
+    m.On("DoSomething", 123).Return(true)
+
+    result := m.DoSomething(123)
+    assert.True(t, result)
+
+    m.AssertExpectations(t)
+}
+```
+
+Where:
+
+- `m.Called(number)`:
+
+  - Records that the mock’s method was called with argument `number`.
+  - Looks up what to return (based on what you configured with `.On(...).Return(...)`).
+
+- `args.Bool(0)`:
+
+  - Gets the first return value (index `0`) as a boolean.
+
+- `m.On("DoSomething", 123).Return(true)`
+
+  - `m.On("DoSomething", 123)`
+
+    - Defines an expectation on the mock.
+
+    - You’re telling the mock:
+
+      > “At some point during this test, I expect the method named `DoSomething` to be called with the argument `123`.”
+
+    - This also *registers* the expected call inside the mock’s internal list of “promised interactions”.
+
+  - `.Return(true)`
+
+    - Specifies what the mock should give back when that expected call actually happens.
+    - So when your code later runs `m.DoSomething(123)`, the mock will look up the matching expectation and automatically return `true`.
+
+- `m.AssertExpectations(t)`
+
+  - Ensures that all declared expectations (`On(...)`) were actually called during the test.
+  - If you had set an expectation but didn’t call it, this would fail the test.

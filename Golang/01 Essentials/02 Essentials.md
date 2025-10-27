@@ -494,3 +494,58 @@ if err := event.Save(); err != nil {
 }
 ```
 
+### Handling Different Error Types with `switch`
+
+This approach is useful when your program can produce various error types, and you want to handle each case differently.
+
+````go
+_, err := os.Open("/no/such/file.txt")
+if err != nil {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		fmt.Println("System says: file does not exist")
+	case errors.Is(err, os.ErrPermission):
+		fmt.Println("System says: permission denied")
+	default:
+		fmt.Println("System says: some other error:", err)
+	}
+}
+````
+
+# `enum`
+
+Go doesn’t have a *native* `enum` keyword like languages such as C, Java, or Rust. However, you can achieve enumeration-like behavior using constants and the special keyword **`iota`**.
+
+An *enum* represents a set of related, named constants. In Go, you define these using a `const` block with `iota` — a built-in counter that increments automatically.
+
+#### Example:
+
+```go
+package main
+
+import "fmt"
+
+type Direction int
+
+const (
+    North Direction = iota
+    East
+    South
+    West
+)
+
+func main() {
+    fmt.Println(North, East, South, West)
+}
+```
+
+**Output:**
+
+```
+0 1 2 3
+```
+
+Here:
+
+- `Direction` is a custom type (an alias for `int`).
+- `iota` starts at `0` and increments by `1` for each constant in the block.
