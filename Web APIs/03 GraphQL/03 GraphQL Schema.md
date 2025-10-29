@@ -230,6 +230,65 @@ An input type defines the shape of data that clients can send to the server — 
 
 *   While **object types** describe the shape of data you *receive* from the server, **input types** describe the shape of data you *send* **to** the server.
 
+# `extend type`
+
+In GraphQL, the keyword `extend` lets you **add new fields or capabilities to a type that was defined somewhere else** — possibly in another file, another module, or even another service (in federation).
+
+```apl
+type Book {
+  id: ID!
+  name: String!
+}
+
+extend type Book {
+  author: Author
+}
+```
+
+Here:
+
+* The first block defines Book with id and name.
+* The second block extends the same type by adding a new field author.
+
+### Typical use cases
+
+#### Split features across files
+
+For example:
+
+* `schema.graphqls`
+
+  ```apl
+  type Query
+  type Mutation
+  type Subscription
+  ```
+
+* `book.graphqls`
+
+  ```apl
+  extend type Query {
+      books (id: ID, nameContains: String): [Book!]!
+  }
+  
+  extend type Mutation {
+    addBook(input: BookInput!): Book!
+  }
+  
+  extend type Subscription {
+    """Triggered whenever a new book is added."""
+    bookAdded: Book!
+  }
+  ```
+
+* `author.graphqls`
+
+  ```apl
+  extend type Query {
+      authors: [Author!]!
+  }
+  ```
+
 ## Schema directive
 
 a directive is a built-in mechanism for attaching extra behavior or metadata to part of a schema or query.
@@ -275,7 +334,7 @@ type Query {
         }
         ```
 
-##  On On the Order of Definitions in GraphQL Schemas
+##  On the Order of Definitions in GraphQL Schemas
 
 In GraphQL, the order of type definitions has no effect on execution.
  The schema language is declarative, not procedural, which means the GraphQL engine reads and validates the entire schema before resolving any references.

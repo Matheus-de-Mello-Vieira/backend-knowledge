@@ -134,7 +134,7 @@ const { promisify } = require('util')
 const result = await promisify(callbackBasedFunction)
 ```
 
-## Example
+### Example
 
 * `fs.readFile`
 
@@ -184,5 +184,43 @@ const result = await promisify(callbackBasedFunction)
     const data = await fs.readFile('file.txt', 'utf8')
     ```
 
-    
 
+## `fire-and-forgot` a promise
+
+### the `void` operator
+
+In JavaScript, the `void` operator evaluates an expression and **returns `undefined`**, regardless of what the expression’s actual value is.
+
+For example:
+
+```javascript
+void 123; // => undefined
+void (function() { return 42 })(); // => undefined
+```
+
+So the core idea is:
+
+> "`void x` means: run `x`, ignore its result, and yield `undefined`."
+
+### Using `void` to “fire-and-forget” a Promise
+
+When dealing with asynchronous code, sometimes you want to start a Promise but not await it — i.e., fire and forget.
+
+However, many linters (like ESLint) and TypeScript will warn you if you write code like:
+
+```javascript
+doSomethingAsync(); // Warning: 'Promise' returned by async function is not handled
+```
+
+That’s where `void` comes in handy.
+
+You can write:
+
+```javascript
+void doSomethingAsync();
+```
+
+- Executes `doSomethingAsync()` (which returns a Promise)
+- Explicitly discards the Promise result
+- Suppresses linter warnings about unhandled Promises
+- Makes it clear to readers: *“Yes, this async call is intentionally not awaited.”*

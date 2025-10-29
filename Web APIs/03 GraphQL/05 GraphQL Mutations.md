@@ -43,7 +43,7 @@ type Mutation {
 So, on cl:
 
 ```apl
-mutation ($book: BookInput) {
+mutation ($book: BookInput!) {
 	addBook(input: $book) {
     bookId
     name
