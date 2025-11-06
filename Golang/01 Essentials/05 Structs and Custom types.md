@@ -248,7 +248,7 @@ func newUser(name, email string) (*User, error) {
 ```
 If you don't want return a pointer:
 
-```
+```go
 func newUser(name, email string) (User, error) {
 	...
 	if name == "" {

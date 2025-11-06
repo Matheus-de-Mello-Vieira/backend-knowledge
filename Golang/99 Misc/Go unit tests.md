@@ -77,14 +77,14 @@ Example:
 
 ### Parallel tests
 
-You can speed up indepedent tests using `t.Parallel()`
+The `t.Parallel()` function in Go allows tests and subtests to run concurrently, which can significantly speed up your test suite when individual tests don’t depend on shared state. It’s particularly useful in **table-driven tests**, where each subtest can execute independently.
 
 ```go
 func TestAdd_Table(t *testing.T) {
-	tests := []struct{
-		name     string
-        a, b     int
-		want     int
+	tests := []struct {
+		name string
+		a, b int
+		want int
 	}{
 		{"small", 1, 2, 3},
 		{"negatives", -2, -3, -5},
@@ -92,16 +92,46 @@ func TestAdd_Table(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+    tt := tt // ✅ create a new tt variable for this iteration
 		t.Run(tt.name, func(t *testing.T) {
-            t.Parallel() // optional: speeds up independent tests
+			t.Parallel() // optional: speeds up independent tests
 			got := Add(tt.a, tt.b)
 			if got != tt.want {
-				t.Fatalf("Add(%d,%d) = %d; want %d", tt.a, tt.b, got, tt.want)
+				t.Fatalf("Add(%d, %d) = %d; want %d", tt.a, tt.b, got, tt.want)
 			}
 		})
 	}
 }
 ```
+
+#### Common Pitfall
+
+In Go, the loop variable in a `for _, tt := range tests` loop is **reused** for every iteration. If you write:
+
+```go
+for _, tt := range tests {
+	t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+		// use tt...
+	})
+}
+```
+
+then all subtests may end up referring to the same `tt` variable, because the subtest functions start running later—after the loop has advanced. This can cause unpredictable behavior or false test failures, since multiple subtests might see the values from the last iteration.
+
+To ensure each subtest captures its own copy of the test case, shadow the loop variable inside the loop:
+
+```go
+for _, tt := range tests {
+	tt := tt // create a new variable scoped to this iteration
+	t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+		// safe to use tt here
+	})
+}
+```
+
+This small line `tt := tt` creates a new variable within the loop body, effectively “freezing” the current value of `tt` for that specific subtest closure. Each subtest then has its own independent copy of the test data, making parallel execution safe and deterministic.
 
 ## Testing panics
 
@@ -450,3 +480,81 @@ Where:
 
   - Ensures that all declared expectations (`On(...)`) were actually called during the test.
   - If you had set an expectation but didn’t call it, this would fail the test.
+
+### Mocks conventions on layered projects
+
+#### Put each mock next to the interface it replaces
+
+**Convention:** Place mocks in a `mocks/` subfolder inside the package that *owns the interface* (e.g., `repository/mocks`, `service/mocks`).
+ **Rationale:**
+
+- **Ownership & discoverability:** The team that defines an interface also owns its contract and the primary mock. When you modify the interface, the mock is right there.
+- **Reuse across layers:** A repository mock is useful to service tests; a service mock is useful to handler tests. Keeping the mock with its interface avoids weird cross-package dependencies.
+- **Separation of concerns:** Mocks are test-only artifacts; the `mocks/` subfolder keeps them distinct from production code while still being importable.
+
+Example
+
+```
+repository/
+├── user_repository.go
+└── mocks/
+    └── mock_user_repository.go
+
+service/
+├── user_service.go
+└── mocks/
+    └── mock_user_service.go
+```
+
+#### Use `package mocks` inside mock files
+
+**Convention:** The mock files in `mocks/` use `package mocks`.
+ **Rationale:**
+
+- **Avoid circular imports:** If your mocks used the parent package name (e.g., `package repository`), tests in higher layers that import both `repository` and `graph/app` could create cycles. `package mocks` breaks that risk.
+- **Clear dependency direction:** Test code depends on `repository/mocks`, not the other way around.
+- **Black-box pressure:** Keeping mocks out of the implementation package encourages testing via the interface, not internal details.
+
+#### Name files by the interface they mock
+
+**Convention:** `mock_<interface_name>.go` in snake_case (e.g., `mock_user_repository.go`).
+ **Rationale:**
+
+- **Instant context:** The file tells you exactly which interface it satisfies.
+- **Predictable imports:** Multiple mocks sort nicely and are easy to grep.
+- **Scales with growth:** When you add `PaymentClient`, its mock becomes `mock_payment_client.go`—no naming debates.
+
+#### Prefer generated mocks over hand-rolled ones
+
+**Convention:** Use tools like `mockgen` (GoMock) or `testify/mock`.
+ **Rationale:**
+
+- **Consistency & speed:** Less boilerplate, fewer mistakes, uniform style across the codebase.
+- **Refactor safety:** When an interface changes, regenerating mocks fails fast and visibly.
+- **Explicit expectations:** Generated mocks make call ordering, arguments, and return values easy to declare and verify.
+
+Example:
+
+```bash
+mockgen -source=repository/user_repository.go \
+  -destination=repository/mocks/mock_user_repository.go \
+  -package=mocks
+```
+
+#### Keep mocks **exported** and minimal
+
+**Convention:** Export mock types (`type UserRepository struct{ ... }`) and avoid extra helpers unless they’re widely reused.
+ **Rationale:**
+
+- **Reuse:** Higher layers need to construct these mocks.
+- **Signal intent:** Exporting shows “this mock is part of the testing surface of this interface.”
+- **Less noise:** Don’t bury test-specific helpers in the production package; put shared test helpers in a dedicated `testsupport` package if they cross many tests.
+
+#### Avoid over-mocking
+
+**Convention:** Mock only the layer directly below. For deeper stacks, prefer a higher-level integration test instead of chaining multiple mocks.
+ **Rationale:**
+
+- **Signal-to-noise:** Too many mocks hide real behavior and make tests fragile.
+- **Confidence:** Use a small number of end-to-end tests to ensure wiring works, and unit tests to validate logic.
+

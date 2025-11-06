@@ -239,3 +239,6 @@ Unlike a classic REST API, with GraphQL you have a fine-grained control of the i
 
 There is a lot of libraries that supports GraphQL
 
+## Drawbacks of GraphQL
+
+* GraphQL doesn’t handle caching very well, since even slightly different queries need to be re-run.
