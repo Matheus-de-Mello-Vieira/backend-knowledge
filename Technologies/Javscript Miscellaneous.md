@@ -312,7 +312,7 @@ In JavaScript, a normal `Array` is not a fixed-size block like in C.
 
 Example:
 
-```
+```javascript
 let arr = [];
 arr.push(1);
 arr.push(2);
@@ -324,7 +324,7 @@ arr.push(2);
 JavaScript arrays are really objects with special optimizations for **dense integer keys**.
  If you start using them like sparse arrays, the engine may switch to a **hash map representation**:
 
-```
+```javascript
 let arr = [];
 arr[0] = "a";
 arr[1000000] = "b"; // big hole
@@ -338,7 +338,7 @@ arr[1000000] = "b"; // big hole
 
 You can give the engine a **hint** by specifying an initial length:
 
-```
+```javascript
 let arr = new Array(1000);
 ```
 
@@ -354,7 +354,7 @@ If you want something closer to C-style arrays, use **Typed Arrays**.
 
 Example:
 
-```
+```javascript
 let arr = new Float64Array(1000);
 arr[0] = 42.5;
 ```
