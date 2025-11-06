@@ -2,7 +2,7 @@
 
 ## `typeof`
 
-The typescript augments the [JavaScript operator `typeof`](../../../Javscript Miscellaneous.md#typeof).
+The typescript augments the [JavaScript operator `typeof`](../../Javscript Miscellaneous.md#typeof).
 
 *   It introduces a new `typeof` that is used automatically intead of the javascript one depeding on the situation.
 
@@ -169,5 +169,4 @@ getProb(user, 'email') // Argument of type '"email"' is not assignable to parame
     ```
 
 ## Indexed access types
-
 

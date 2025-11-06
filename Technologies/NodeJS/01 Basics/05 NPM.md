@@ -37,7 +37,7 @@
 
 ## Installing Packages
 
-* You can search for packages in [npmjs.com](npmjs.com).
+* You can search for packages in [npmjs.com](https://www.npmjs.com).
   * see:
     * the date of last publishment
     * the weekly downloads
