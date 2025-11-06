@@ -10,7 +10,7 @@ Node is single threaded
 The cluster module is a built-in module to help you out on this aspect
 
 * The cluster module enables the creation of child processes (also called workers) that run simultaneously
-  * All created workers share the same server port, on [Multiple Listeners on the same port and address](../../Fundamentals of Backend Engineering/05 Backend Execution Patterns/05 Architecture.md) architecture
+  * All created workers share the same server port, on [Multiple Listeners on the same port and address](../../../Fundamentals of Backend Engineering/05 Backend Execution Patterns/05 Architecture.md) architecture
 
 ### Overall workflow
 

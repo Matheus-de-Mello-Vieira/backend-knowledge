@@ -125,7 +125,7 @@ age = [];        // ❌ Error: 'any[]' is not assignable to type 'string | numbe
 
 ## Arrays
 
-Beyond [Javascript Arrays](../../Javscript Miscellaneous.md#Arrays-and-Memory-in-JavaScript) features, typescript allows you enforce typing:
+Beyond [Javascript Arrays](../../../Javscript Miscellaneous.md#Arrays-and-Memory-in-JavaScript) features, typescript allows you enforce typing:
 
 ```javascript
 let hobbies = ["Sports", "Cooking"]
@@ -522,7 +522,7 @@ const nonNullable = nullable!; // HTMLElement
 
 It will only silence the typescript about a potential `null` value, it doesn't check if it is true. So it can be dangerous.
 
-*   Also consider using [optional chaining](../../Javscript Miscellaneous.md#Optional-Chaining) instead
+*   Also consider using [optional chaining](../../../Javscript Miscellaneous.md#Optional-Chaining) instead
 
 ## Type casting
 
@@ -607,4 +607,3 @@ type User = {
   role?: "admin" | "guest";
 };
 ```
-

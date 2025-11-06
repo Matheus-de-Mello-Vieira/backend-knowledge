@@ -70,7 +70,7 @@ Nginx can operate in L4 or L7.
 * Nginx uses worker process
   * Nginx spins up a worker process per hardware thread on auto-mode, that is default
   * the kernel sit right behind on worker process
-  * the nginx tries to accept the connections as fast as possible. So one worker become its reader. [see more](../../Fundamentals of Backend Engineering/05 Backend Execution Patterns/05 Architecture.md)
+  * the nginx tries to accept the connections as fast as possible. So one worker become its reader. [see more](../../../Fundamentals of Backend Engineering/05 Backend Execution Patterns/05 Architecture.md)
     
     * you choose "Multiple Threads Multiple Acceptors Architecture" or "Multiple Threads with Socket Sharding"
       * until version 1.9.1, the default is the first one, otherwise it is the second one.
