@@ -291,4 +291,12 @@ You can:
   2) "user:101:group"
   ```
 
-  
+
+## Saving keys information on server
+
+To turn the redis off saving the info:
+
+```
+shutdown save
+```
+

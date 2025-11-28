@@ -31,58 +31,70 @@ A GraphQL server must follow GraphQL Specifications to do:
         *   If a mismatch is found: the server returns a standard error message.
         *   normally no coding is required for this validation.
 
-*   Route GraphQL Operations to Code
+* Route GraphQL Operations to Code
 
-    *   The server converts the JSON payload to objects and triggers methods to process the operations and return the data.
+  *   The server converts the JSON payload to objects and triggers methods to process the operations and return the data.
 
-        *   These methods are called `Resolvers`
+      *   These methods are called `Resolvers`
 
-    *   The server traverses thought the query and runs a resolver **for every field**.
+  *   The server traverses thought the query and runs a resolver **for every field**.
 
-        *   If the field returns a scalar value: this is what's returned
-        *   If the field returns a object value: the server runs resolvers for each field in the object.
+      *   If the field returns a scalar value: this is what's returned
+      *   If the field returns a object value: the server runs resolvers for each field in the object.
 
-    *   Most implementations automatically create resolvers for fields
+  *   Most implementations automatically create resolvers for fields
 
-    *   Custom resolvers can be specified
+  *   Custom resolvers can be specified
 
-    *   Resolvers can accept arguments with context data about the query
+  *   Resolvers can accept arguments with context data about the query
 
-    *   Resolvers in the same hierarchy run in parallel. 
+  *   Resolvers in the same hierarchy run in parallel. 
 
-        *   So you can't assume one will run before the other.
+      *   So you can't assume one will run before the other.
 
-            *   So you never use data from one resolver in another.
+          *   So you never use data from one resolver in another.
 
-        *   Given:
+      *   Given:
 
-            ```apl
-            books {
+          ```apl
+          books {
+            name
+            pages
+            author {
               name
-              pages
-              author {
-                name
-              }
             }
-            ```
+          }
+          ```
 
-        *   it will run:
+      *   it will run:
 
-            ```mermaid
-            graph LR
-              A["Query.books resolver"] --> B["Book[] list"]
-            
-              %% Example for one list item (repeats for each Book in the list)
-              B --> C["Book[0] object"]
-            
-              %% Book[0] field resolvers (same-level fields can execute in parallel)
-              C --> C1["Book.name resolver (default)"]
-              C --> C2["Book.pages resolver (default)"]
-              C --> C3["Book.author resolver"]
-            
-              %% Nested field requires its parent first
-              C3 --> C3a["Author.name resolver (default)"]
-            ```
+          ```mermaid
+          graph LR
+            A["Query.books resolver"] --> B["Book[0]"]
+            A --> B1["Book[1]"]
+            A --> B2["Book[2]"]
+            %% etc. for all items
+          
+            %% Book[0] fields (same-level; can run in parallel once Book[0] exists)
+            B --> C1["Book[0].name resolver (default)"]
+            B --> C2["Book[0].pages resolver (default)"]
+            B --> C3["Book[0].author resolver"]
+          
+            %% Book[0].author child field
+            C3 --> C3a["Author[0].name resolver (default)"]
+          
+            %% Book[1] fields
+            B1 --> D1["Book[1].name resolver (default)"]
+            B1 --> D2["Book[1].pages resolver (default)"]
+            B1 --> D3["Book[1].author resolver"]
+            D3 --> D3a["Author[1].name resolver (default)"]
+          
+            %% Book[2] fields
+            B2 --> E1["Book[2].name resolver (default)"]
+            B2 --> E2["Book[2].pages resolver (default)"]
+            B2 --> E3["Book[2].author resolver"]
+            E3 --> E3a["Author[2].name resolver (default)"]
+          ```
 
 *   Return GraphQL Results
 
