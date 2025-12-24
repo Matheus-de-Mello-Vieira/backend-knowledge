@@ -293,88 +293,8 @@ func main() {
 
 ## Go-Idiomatic Alternatives
 
-### Functional Options
-
-A common Go-native approach is to represent configuration steps as functions:
-
-```go
-type ClientOption func(*ClientConfig)
-```
-
-Examples:
-
-```go
-func WithTLS(cert, key string) ClientOption {
-    return func(cfg *ClientConfig) {
-        cfg.EnableTLS = true
-        cfg.CertFile = cert
-        cfg.KeyFile = key
-    }
-}
-
-func WithTimeout(s int) ClientOption {
-    return func(cfg *ClientConfig) {
-        cfg.TimeoutSeconds = s
-    }
-}
-```
-
-Constructor:
-
-```go
-func NewClientConfig(host string, port int, opts ...ClientOption) (ClientConfig, error) {
-    cfg := ClientConfig{
-        Host:           host,
-        Port:           port,
-        TimeoutSeconds: 5,
-        RetryCount:     3,
-    }
-
-    for _, opt := range opts {
-        opt(&cfg)
-    }
-
-    if cfg.EnableTLS && (cfg.CertFile == "" || cfg.KeyFile == "") {
-        return ClientConfig{}, fmt.Errorf("TLS enabled but missing certificate/key")
-    }
-
-    return cfg, nil
-}
-```
-
-Usage:
-
-```go
-cfg, err := NewClientConfig(
-    "api.example.com",
-    443,
-    WithTLS("/etc/client.crt", "/etc/client.key"), // optional feature
-    WithTimeout(15),                               // override default timeout
-    WithRetries(5),                                // override default retry policy
-)
-```
-
-Characteristics:
-
-- **Constructor-centric**: No builder object required.
-- **Extensible**: New options are added without touching existing code.
-- **Compact call sites**: Callers select desired options explicitly.
-- **Common in Go**: Matches language idioms and standard library patterns.
-
-Functional options are preferred when:
-
-- The object is created in a single step.
-- Configuration is mostly optional.
-- The builder type would add unnecessary complexity.
-
-### Declarative Configuration
-
-- **Struct-as-configuration**: Callers provide a complete configuration struct, often nested, that describes the desired final object.
-- **Single-shot construction**: A constructor or `Build` function interprets the struct, applies defaults, validates fields, and returns the runtime object.
-- **No stepwise construction**: There is no intermediate mutable state or ordered build sequence; everything is specified up front.
-- **Natural fit for Go**: Struct literals, JSON/YAML compatibility, and separation of configuration from behavior make this approach common in Go APIs.
-- **Used by major ecosystems**: Kubernetes manifests, Terraform resource specs, Pulumi configurations, and many stdlib patterns (e.g., `tls.Config`, `http.Server`) rely on declarative configuration.
-- **When to prefer it**: Use this model when the object can be fully described as data, ordering does not matter, and you want immutability, serialization friendliness, and easy composition.
+- [Functional Options](98%20Go-Idiomatic%20patterns.md#functional-options): Wrap each optional configuration in a function that mutates the target config inside the constructor, eliminating the need for a builder type.
+- [Declarative Configuration](98%20Go-Idiomatic%20patterns.md#declarative-configuration): Accept a fully populated struct (or JSON/YAML) that the constructor validates and applies in one pass, embracing Go’s data-first style.
 
 ## Known Uses
 
@@ -401,23 +321,6 @@ buf.WriteString(" payload")
 data := buf.Bytes()   // final product
 text := buf.String()  // alternative finalized representation
 ```
-
-### `net/http.Request` construction
-
-Although not exposed as a formal builder, the pattern emerges naturally: create a base object, then configure it in steps before use.
-
-```go
-req, err := http.NewRequest("GET", "https://example.com", nil)
-if err != nil { /* handle */ }
-
-req.Header.Set("User-Agent", "MyClient/1.0")
-req.Header.Set("Accept", "application/json")
-req = req.WithContext(ctx) // staged, incremental configuration
-
-resp, err := http.DefaultClient.Do(req) // final usage
-```
-
-This mirrors the builder flow: construct → configure → finalize.
 
 ### `encoding/json.Encoder`
 

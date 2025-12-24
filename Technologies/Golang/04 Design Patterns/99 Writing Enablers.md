@@ -1,5 +1,9 @@
 GoF book: https://www.javier8a.com/itc/bd1/articulo.pdf
 
+* Go to the index at page 2
+* Add the page number by 20
+  * for example, the factory method are on the book's page 107, so go to pdf's page 127 
+
 
 Prompt
 ```
