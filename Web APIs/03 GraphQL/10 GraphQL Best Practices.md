@@ -86,7 +86,97 @@ Most modern web frameworks use a pipeline model where requests are passed throug
 
 ## Authorization
 
-After authentication, the server should not make any authorization decisions about the request until GraphQL execution begins. Specifically, field-level authorization should be enforced by the business logic called from resolvers, allowing for a partial response to be generated if authorization-related errors are raised.
+Authorization determines **what an authenticated user is allowed to access**. Unlike authentication, authorization decisions should generally **not** be made before GraphQL execution begins.
+
+Instead, authorization should be enforced **during execution**, at the level of fields and business logic. This allows GraphQL to produce **partial responses** when access to specific fields is denied, rather than failing the entire request.
+
+Key principles:
+
+- Authentication happens before GraphQL execution
+- Authorization happens inside resolvers or domain logic
+- Unauthorized fields can resolve to `null` or raise field-level errors
+- Other authorized fields can still be returned
+
+> GraphQL execution should begin only after authentication middleware has confirmed the user’s identity and provided that information to the GraphQL context.
+
+### Example domain
+
+```apl
+type Post {
+  authorId: ID!
+  body: String
+}
+```
+
+Business rule: **Only authors can see their drafts**
+
+### Enforcing Authorization in Resolvers
+
+One way to enforce this rule is directly in the field resolver.
+
+```javascript
+function Post_body(obj, args, context, info) {
+  // Only return the body if the current user is the author
+  if (context.user && context.user.id === obj.authorId) {
+    return obj.body;
+  }
+  return null;
+}
+```
+
+This approach ensures:
+
+- Authorization is evaluated **only if the field is requested**
+- Unauthorized access does not break the entire query
+- The response accurately reflects what the user is allowed to see
+
+#### Delegating Authorization to Domain Logic
+
+To avoid duplicating authorization checks across resolvers, it is often better to delegate authorization to a **single source of truth** in the business or data access layer.
+
+```javascript
+export const postRepository = {
+  getBody({ user, post }) {
+    const isAuthor = user?.id === post.authorId;
+    return isAuthor ? post.body : null;
+  },
+};
+```
+
+Benefits of this approach:
+
+- Authorization rules are centralized
+- Business logic remains consistent across GraphQL and non-GraphQL consumers
+- Resolvers stay thin and declarative
+
+### Schema-Level Authorization with Directives
+
+Another common pattern is to express authorization rules declaratively using **schema directives**.
+
+```apl
+directive @auth(rule: Rule) on FIELD_DEFINITION
+
+enum Rule {
+  IS_AUTHOR
+}
+
+type Post {
+  authorId: ID!
+  body: String @auth(rule: IS_AUTHOR)
+}
+```
+
+In this model:
+
+- The schema documents authorization requirements explicitly
+- A directive implementation enforces the rule at runtime
+- Authorization logic can be reused across fields and types
+
+Directives are especially useful when:
+
+- Authorization rules are consistent and role-based
+- You want authorization to be visible at the schema level
+- You have infrastructure to enforce directives reliably
 
 ## Paginate Your Queries
 
@@ -143,6 +233,23 @@ Key points:
 - New fields can be added over time without changing the query entry point
 
 This pattern is especially useful when pagination needs to surface more than just slices of data, while preserving the same query semantics and client-driven response shaping.
+
+## Schema Design
+
+### Schema Evolution (Versioning)
+
+- GraphQL allows schema evolution without traditional versioning.
+- Unlike REST endpoints where changing response shapes often requires version bumps, GraphQL only returns the fields clients explicitly request.
+- You can add new types or fields without breaking existing clients, as long as previously existing fields remain unchanged.
+- This encourages a versionless API, where growth and new features don’t force new major API versions.
+
+### Nullability and Failure Semantics
+
+- In GraphQL, every field is nullable by default. 
+- This default exists because many things can go wrong in distributed systems (database failures, remote service issues, authorization rules, etc.).
+- When a nullable field fails (for any reason), GraphQL returns `null` for just that field, and the rest of the response can still resolve normally.
+- If your business model requires a field never be null, you can mark it with a non-null type (`!`) to enforce that guarantee. 
+- Choosing between nullable and non-null should be a design decision, informed by whether `null` is an acceptable result in real failure scenarios.
 
 ## Use Input Types for Mutations
 
@@ -321,3 +428,37 @@ type Query {
 ```
 
 Here, the schema describes what exists (`product`, `products`), while arguments describe **how to narrow the result**. This keeps the API stable as new lookup requirements emerge and avoids multiplying query fields that all lead to the same node.
+
+## Prefer Using Signed URLs for File Uploads
+
+File uploads are not a first-class concern in the GraphQL specification. GraphQL is designed to model and query structured data, not to efficiently transport large binary payloads.
+
+For this reason, a common and recommended approach is to **handle file uploads outside of GraphQL**, using mechanisms such as **signed URLs** (for example, direct uploads to object storage).
+
+In this pattern:
+
+- GraphQL is used to **request an upload authorization** (e.g. a signed URL)
+- The client uploads the file directly to the storage service
+- A follow-up mutation associates the uploaded file with domain data in the graph
+
+This approach has several advantages:
+
+- Large files bypass the GraphQL execution layer
+- Uploads can be streamed directly to storage
+- Resource limits, retries, and resumable uploads are handled by systems designed for them
+- The GraphQL API remains focused on modeling domain relationships
+
+### Caveat: Community-Supported Upload Patterns
+
+There are community conventions that enable file uploads through GraphQL itself, most notably multipart request–based approaches. These are widely implemented and can be practical in controlled environments.
+
+However, it’s important to note that:
+
+- These patterns are **not part of the GraphQL specification**
+- They rely on transport-level conventions rather than query semantics
+- They introduce additional complexity around memory usage, security, and request handling
+
+As a result, they should be treated as **opt-in extensions**, not default design choices.
+
+In short:
+ GraphQL excels at describing *what data exists and how it is connected*. For moving large binary payloads, **prefer specialized upload mechanisms**, and use GraphQL to coordinate and reference them rather than to transport them directly.
