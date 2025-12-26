@@ -39,18 +39,47 @@ The **`sync`** package provides synchronization primitives — such as `Mutex`, 
     var mu sync.Mutex
     cond := sync.NewCond(&mu)
     
+    ready := false
+    
     go func() {
         mu.Lock()
-        cond.Wait() // waits for signal
-        fmt.Println("woke up")
+        for !ready {
+            cond.Wait()
+        }
         mu.Unlock()
+        fmt.Println("woke up")
     }()
     
-    time.Sleep(time.Second)
     mu.Lock()
-    cond.Signal() // wakes one goroutine
+    ready = true
+    cond.Signal()
     mu.Unlock()
     ```
+
+- `sync.Cond` **does not remember signals** — if `Signal()` is called when no goroutine is waiting, the signal is lost
+
+- Calling `Wait()` after a lost signal can block **forever**
+
+- A `sync.Cond` must always be paired with a **shared condition (predicate)** protected by the same mutex
+
+- `Wait()` must be called inside a **`for` loop**, not an `if`, to re-check the condition after waking
+
+- The loop is required to handle **missed signals**, **spurious wakeups**, and **multiple waiters**
+
+- Using `time.Sleep` to “ensure” ordering is **not correct synchronization**
+
+- For simple one-time notifications, an **unbuffered channel** is usually **simpler and safer** than `sync.Cond`
+
+  ```go
+  ch := make(chan struct{})
+  
+  go func() {
+      <-ch
+      fmt.Println("woke up")
+  }()
+  
+  ch <- struct{}{}
+  ```
 
 ### **`sync/atomic`**
 
@@ -63,6 +92,53 @@ The **`sync`** package provides synchronization primitives — such as `Mutex`, 
     atomic.AddInt32(&counter, 1)
     v := atomic.LoadInt32(&counter)
     ```
+
+### sync.Pool
+
+* lets you **reuse temporary objects** that are:
+
+  - Expensive to allocate
+
+  - Short-lived
+
+  - Used frequently
+
+  - Safe to discard at any time
+
+* Typical examples:
+
+  - Buffers (`[]byte`, `bytes.Buffer`)
+  - Temporary structs
+  - Encoding/decoding scratch space
+
+* `sync.Pool` assumes: “Objects are cheap to lose and cheap to recreate.”
+
+```go
+var bufPool = sync.Pool{
+    New: func() any {
+        return make([]byte, 0, 4096)
+    },
+}
+
+func handle() {
+    buf := bufPool.Get().([]byte)
+    defer bufPool.Put(buf[:0]) // reset before putting back
+
+    // use buf
+}
+```
+
+Where
+
+- `Get()` → returns an object or calls `New()`
+- `Put(x)` → returns an object to the pool
+
+Critial behavior
+
+* **Objects can disappear at any time**: The runtime may clear the pool during garbage collection.
+* **Per-P sharding**: Internally, sync.Pool keeps per-P (processor) local pools.
+  * Objects tend to be reused by the same goroutine
+  * Cross-goroutine reuse is not guaranteed
 
 ### **WaitGroup**
 

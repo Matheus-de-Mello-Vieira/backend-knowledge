@@ -254,3 +254,133 @@ func main() {
 
 * Where `DialContext` is a function that opens a network (TCP) connection using a `context.Context`.
 * This gives **fine-grained** control and can be combined with `Client.Timeout` or a `context`.
+
+## Transport
+
+`http.Transport` is the core of HTTP performance in Go.
+
+* It is the component that actually dials, pools, reuses, and closes network connections.
+* http.Client is mostly a thin wrapper around it.
+* a concurrency-safe connection manager that:
+  - Opens TCP/TLS connections
+  - Reuses them via keep-alive
+  - Pools idle connections per host
+  - Handles HTTP/1.1 *and* HTTP/2 automatically.
+  - Applies limits and timeouts
+  - Shields you from low-level networking complexity
+
+```go
+transport := &http.Transport{
+    ...
+}
+
+client := &http.Client{
+    Transport: transport,
+    Timeout:   30 * time.Second, // overall request timeout
+}
+```
+
+Key rules:
+
+- Multiple http.Clients can share one Transport, even when talking to different hosts.
+
+- A Client without a custom Transport uses http.DefaultTransport
+
+- The Transport must be long-lived
+
+### Connection pool
+
+```go
+transport := &http.Transport{
+    MaxIdleConns:        200,
+    MaxIdleConnsPerHost: 50,
+    IdleConnTimeout:     90 * time.Second,
+}
+
+client := &http.Client{
+    Transport: transport,
+    Timeout:   30 * time.Second, // overall request timeout
+}
+```
+
+### Custom decorations 
+
+You can “decorate” an `http.RoundTripper` (the interface `Transport` implements) and wrap a real `*http.Transport` under it. That’s the standard way to add cross-cutting behavior like circuit breakers, retries, tracing, metrics, headers, etc.Simple decorator skeleton
+
+`http.Client.Transport` expects an `http.RoundTripper`:
+
+```go
+type RoundTripper interface {
+    RoundTrip(*http.Request) (*http.Response, error)
+}
+```
+
+So you implement a wrapper that holds `next http.RoundTripper` and forwards calls.
+
+Simple decorator skeleton:
+
+```go
+type RoundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func Wrap(next http.RoundTripper, w func(next http.RoundTripper) http.RoundTripper) http.RoundTripper {
+    if next == nil {
+        next = http.DefaultTransport
+    }
+    return w(next)
+}
+```
+
+* Alternatively:
+
+  ```go
+  func WrapAll(
+      base http.RoundTripper,
+      decorators ...Decorator,
+  ) http.RoundTripper {
+      if base == nil {
+          base = http.DefaultTransport
+      }
+  
+      rt := base
+      for _, d := range decorators {
+          rt = d(rt)
+      }
+      return rt
+  }
+  ```
+
+Decorator:
+
+```go
+type Decorator struct {
+    next http.RoundTripper
+}
+
+func (d *Decorator) RoundTrip(req *http.Request) (*http.Response, error) {
+    // ---- pre logic ----
+    // (inspect req, check breaker, start timer, etc.)
+
+    resp, err := d.next.RoundTrip(req)
+
+    // ---- post logic ----
+    // (record metrics, update breaker, etc.)
+
+    return resp, err
+}
+```
+
+Usage:
+
+```go
+base := &http.Transport{ /* tuning */ }
+
+rt := base
+rt = Wrap(rt, WithCircuitBreaker(/* ... */))
+rt = Wrap(rt, WithMetrics(/* ... */))
+rt = Wrap(rt, WithTracing(/* ... */))
+
+client := &http.Client{Transport: rt}
+```
+
