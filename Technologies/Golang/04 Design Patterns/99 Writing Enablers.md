@@ -24,6 +24,10 @@ Bullet-point formatting rules (strict):
 - Do not split the label and the explanation across lines.
 - Do not add extra prose between bullets.
 
+Formatting rules:
+- Use markdown headings (##, ###), bullet lists, and fenced Go code blocks.
+- Do not use horizontal rules.
+
 Required sections:
 
 ## Motivation
@@ -60,9 +64,6 @@ Required sections:
 - Use bullet points (following the strict bullet format) when listing examples.
 - Skip this section if there are no widely recognized or high-quality uses in Go.
 
-Formatting rules:
-- Use markdown headings (##, ###), bullet lists, and fenced Go code blocks.
-- Do not use horizontal rules.
-- Maintain a depth of explanation comparable to the Builder Pattern (Go Context) example.
+
 ```
 

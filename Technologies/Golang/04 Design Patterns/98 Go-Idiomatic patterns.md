@@ -211,3 +211,64 @@ Server constructed: &{Address:api.myservice.com:443 ReadTimeout:5s WriteTimeout:
 ```
 
 Key idea: construction is **atomic** (one function call), and once you have the runtime object it’s already **defaulted and validated**.
+
+## Closure-based provider
+
+A closure-based provider encapsulates a single instance inside a function. The shared value lives in the closure’s environment rather than in package-level state.
+
+```go
+type Database interface {
+	GetPopulation(city string) int
+}
+```
+
+The concrete implementation is ordinary and unexported.
+
+```go
+type databaseImpl struct {
+	capitals map[string]int
+}
+
+func (db *databaseImpl) GetPopulation(city string) int {
+	return db.capitals[city]
+}
+```
+
+The provider function constructs the instance once and returns a function that provides access to it.
+
+```go
+func NewDatabaseProvider() func() Database {
+	db := &databaseImpl{
+		capitals: map[string]int{
+			"Seoul":       17500000,
+			"Mexico City": 17400000,
+		},
+	}
+
+	return func() Database {
+		return db
+	}
+}
+```
+
+Every call to the returned function yields the same instance, because all calls close over the same variable.
+
+```go
+getDB := NewDatabaseProvider()
+
+db1 := getDB()
+db2 := getDB()
+
+_ = db1 == db2 // true
+```
+
+The scope of sharing is explicit. Creating a new provider creates a new, independent “singleton.”
+
+```go
+a := NewDatabaseProvider()
+b := NewDatabaseProvider()
+
+_ = a() == b() // false
+```
+
+This approach preserves controlled instance sharing without relying on global state. Lifecycle, visibility, and substitution remain local to the code that owns the provider, making the pattern easy to reason about and test in isolation.

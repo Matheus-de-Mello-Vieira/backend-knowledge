@@ -187,7 +187,7 @@ The compiler silently does:
     var a *Account
     a.Deposit(100) // panic if Deposit dereferences fields
     ```
-   
+
     * It happens because go automatically converts it to `(&a).Deposit(100)`
 
 Use for:
@@ -387,6 +387,103 @@ Internally:
     e.Person.Greet()
     ```
 
+#### Multiple Embedding and Selector Ambiguity in Go
+
+Go’s struct embedding feature promotes fields and methods from embedded structs, allowing them to be accessed as if they were defined directly on the outer struct. This works well as long as there is no conflict. Problems arise when a struct embeds **multiple structs that expose the same exported field or method name**, because Go has no rule for automatically choosing one over the other.
+
+Consider the following example:
+
+```go
+type Person struct {
+	Name string
+}
+
+type Customer struct {
+	Name string
+}
+
+type Employee struct {
+	Person
+	Customer
+}
+
+func main() {
+	e := Employee{
+		Person:   Person{Name: "Alice"},
+		Customer: Customer{Name: "Bob"},
+	}
+
+	// fmt.Println(e.Name) // ❌ compile-time error: ambiguous selector e.Name
+}
+```
+
+Both `Person` and `Customer` promote a `Name` field into `Employee`. When you write `e.Name`, the compiler sees two equally valid candidates at the same embedding depth and reports an **ambiguous selector** error. This is not a runtime issue—Go catches it at compile time to prevent unclear or fragile code.
+
+The same rule applies to methods:
+
+```go
+type Person struct{}
+func (Person) Greet() { fmt.Println("Hello from Person") }
+
+type Customer struct{}
+func (Customer) Greet() { fmt.Println("Hello from Customer") }
+
+type Employee struct {
+	Person
+	Customer
+}
+
+func main() {
+	var e Employee
+	// e.Greet() // ❌ ambiguous selector e.Greet
+}
+```
+
+Again, the compiler refuses to guess which `Greet` method should be called.
+
+Selector ambiguity is not a limitation of Go; it is a deliberate design choice. Go favors explicitness and predictability over complex resolution rules. When multiple embedded structs expose the same API, the compiler forces you to clarify your intent—either by qualifying access or by reconsidering whether embedding is the right modeling tool in that situation.
+
+##### How to resolve or avoid the problem
+
+1. **Explicit qualification (most common solution)**
+   Access the field or method through the embedded struct:
+
+   ```go
+   fmt.Println(e.Person.Name)
+   fmt.Println(e.Customer.Name)
+   
+   e.Person.Greet()
+   e.Customer.Greet()
+   ```
+
+2. **Avoid embedding when concepts overlap**
+   If both embedded types represent distinct roles, prefer named fields:
+
+   ```go
+   type Employee struct {
+       person   Person
+       customer Customer
+   }
+   ```
+
+   This removes promotion entirely and makes access explicit by design.
+
+3. **Define a field or method on the outer struct**
+   If `Employee` should expose a single “canonical” name or behavior, define it directly:
+
+   ```go
+   type Employee struct {
+       Person
+       Customer
+   }
+   
+   func (e Employee) Name() string {
+       return e.Person.Name
+   }
+   ```
+
+   This resolves ambiguity and documents intent.
+
 ### overriding
 
 -   Methods of the embedded type are **promoted** to the embedding type **unless overridden**.
@@ -413,3 +510,43 @@ func main() {
 	name.log()
 }
 ```
+
+### Single-Method Interface Adapters via Function Types
+
+It is common to see interfaces in Go that expose a **single, behavior-focused method**. In these cases, you can create implementations **without declaring verbose structs** by adapting a plain function to satisfy the interface.
+
+```go
+type Client interface {
+	Do(req string) error
+}
+```
+
+Instead of defining a struct type and a method, you can declare a **named function type** whose signature matches the interface method and, by attaching a method to that function type, turn it into a valid implementation of the interface.
+
+```go
+type clientFunc func(string) error
+
+func (f clientFunc) Do(req string) error {
+	return f(req)
+}
+```
+
+At this point, any function with the appropriate signature can be used as a `Client`.
+
+```go
+func send(req string) error {
+	println("sending:", req)
+	return nil
+}
+
+var c Client = clientFunc(send)
+c.Do("ping")
+```
+
+This approach provides a **lightweight interface adapter**:
+
+- It avoids boilerplate struct declarations.
+- It keeps the behavior local to the function itself.
+- It is idiomatic for narrow, single-method interfaces.
+
+The trade-off is structural: once the interface grows beyond one method or requires explicit state, this technique stops scaling and a struct-based implementation becomes the clearer choice.

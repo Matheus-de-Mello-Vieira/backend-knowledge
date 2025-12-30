@@ -303,9 +303,9 @@ client := &http.Client{
 }
 ```
 
-### Custom decorations 
+### Custom decorations
 
-You can “decorate” an `http.RoundTripper` (the interface `Transport` implements) and wrap a real `*http.Transport` under it. That’s the standard way to add cross-cutting behavior like circuit breakers, retries, tracing, metrics, headers, etc.Simple decorator skeleton
+To add cross-cutting behavior to outbound requests (logging, tracing, metrics, retries, circuit breaking, headers, etc.), decorate `http.RoundTripper` (the interface `Transport` implements). This is a direct application of the [Decorator](../04%20Design%20Patterns/09%20Decorator.md) pattern at a stable interface seam.
 
 `http.Client.Transport` expects an `http.RoundTripper`:
 
@@ -315,59 +315,25 @@ type RoundTripper interface {
 }
 ```
 
-So you implement a wrapper that holds `next http.RoundTripper` and forwards calls.
-
-Simple decorator skeleton:
+For this single-method interface, a function-based decorator is usually the lightest option:
 
 ```go
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-func Wrap(next http.RoundTripper, w func(next http.RoundTripper) http.RoundTripper) http.RoundTripper {
-    if next == nil {
-        next = http.DefaultTransport
+type RoundTripperDecorator func(http.RoundTripper) http.RoundTripper
+
+func WrapTransport(base http.RoundTripper, decorators ...RoundTripperDecorator) http.RoundTripper {
+    if base == nil {
+        base = http.DefaultTransport
     }
-    return w(next)
-}
-```
 
-* Alternatively:
-
-  ```go
-  func WrapAll(
-      base http.RoundTripper,
-      decorators ...Decorator,
-  ) http.RoundTripper {
-      if base == nil {
-          base = http.DefaultTransport
-      }
-  
-      rt := base
-      for _, d := range decorators {
-          rt = d(rt)
-      }
-      return rt
-  }
-  ```
-
-Decorator:
-
-```go
-type Decorator struct {
-    next http.RoundTripper
-}
-
-func (d *Decorator) RoundTrip(req *http.Request) (*http.Response, error) {
-    // ---- pre logic ----
-    // (inspect req, check breaker, start timer, etc.)
-
-    resp, err := d.next.RoundTrip(req)
-
-    // ---- post logic ----
-    // (record metrics, update breaker, etc.)
-
-    return resp, err
+    rt := base
+    for i := len(decorators) - 1; i >= 0; i-- {
+        rt = decorators[i](rt)
+    }
+    return rt
 }
 ```
 
@@ -376,11 +342,12 @@ Usage:
 ```go
 base := &http.Transport{ /* tuning */ }
 
-rt := base
-rt = Wrap(rt, WithCircuitBreaker(/* ... */))
-rt = Wrap(rt, WithMetrics(/* ... */))
-rt = Wrap(rt, WithTracing(/* ... */))
+rt := WrapTransport(
+    base,
+    WithTracing(/* ... */),
+    WithMetrics(/* ... */),
+    WithCircuitBreaker(/* ... */),
+)
 
 client := &http.Client{Transport: rt}
 ```
-
