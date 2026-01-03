@@ -325,6 +325,58 @@ redis> KEYS *
 (empty array)
 ```
 
+## Key iteration – `SCAN`
+
+`SCAN` is used to iterate over keys in the current key space in a **non-blocking** way.
+It is the recommended alternative to `KEYS` when working with large datasets or production systems.
+
+`SCAN` operates only on **keys**. It does not read values and is not related to data types or string encodings.
+
+**Usage**
+
+```
+redis> SCAN 0
+1) "14"
+2) 1) "user:1"
+   2) "user:2"
+   3) "session:9"
+```
+
+- `0` is the initial cursor
+- The first element of the reply is the next cursor
+- The second element is the list of keys returned
+
+To continue iterating, pass the returned cursor back to `SCAN`:
+
+```
+redis> SCAN 14
+```
+
+The iteration is complete when the returned cursor is `"0"`.
+
+**Filtering and tuning**
+
+You can filter keys by **key name** using `MATCH`:
+
+```
+redis> SCAN 0 MATCH user:*
+```
+
+You can filter keys by **logical value type** using `TYPE`:
+
+```
+redis> SCAN 0 TYPE string
+```
+
+You can control the amount of work per call using `COUNT`. The default is `10`
+`COUNT` is a **hint**, not a guarantee:
+
+```
+redis> SCAN 0 COUNT 100
+```
+
+`MATCH`, `TYPE`, and `COUNT` can be combined in the same `SCAN` call.
+
 ## Key naming conventions
 
 - Keep it simpel but robuts

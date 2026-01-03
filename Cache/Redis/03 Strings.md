@@ -442,3 +442,55 @@ redis> GET buffer
 - Use carefully with text data, especially with UTF-8 strings
 
 `SETRANGE` is a low-level but powerful command for partial, atomic string updates in Redis.
+
+## String Encoding types
+
+Redis decide the encoding automatically as per string values
+
+- **`int`** — Stores numeric strings as a native 64-bit signed integer inside the object; most memory-efficient and fastest for arithmetic, but only applies to values that are valid integers and stops being used once the value becomes non-numeric.
+- **`embstr`** — Optimized for small (≤ 44 bytes), read-mostly strings; object header and string data live in one allocation for better cache locality, but the string is immutable and any modification forces a conversion to `raw`.
+- **`raw`** — General-purpose string encoding using a separate, mutable SDS allocation; slightly higher memory overhead, but supports efficient resizing and amortized growth, making it ideal for large or frequently modified strings.
+
+`OBJECT ENCODING <key>` shows the internal representation Redis is using for that value *right now* (an implementation detail). Redis may change the encoding automatically as the value changes (size/content).
+
+Below is a `redis-cli` style session showing each encoding and the common transitions.
+
+* Small Immutable String (`embstr`) → Converted to `raw` After Modification
+
+  ```
+  redis> SET small "12345678901123456789011234567890112345678901"
+  OK
+  redis> OBJECT ENCODING small
+  "embstr"
+  redis> APPEND small "!"
+  (integer) 45
+  redis> OBJECT ENCODING small
+  "raw"
+  ```
+
+* Large String Stored Directly as `raw`
+
+  ```
+  redis> SET big "123456789123456789123456789123456789123456789"
+  OK
+  redis> OBJECT ENCODING big
+  "raw"
+  ```
+
+* Integer String (`int`) → Remains `int` for Numeric Ops → Converted to `raw` After Non-Numeric Change
+
+  ```
+  redis> SET counter 123
+  OK
+  redis> OBJECT ENCODING counter
+  "int"
+  redis> INCR counter
+  (integer) 124
+  redis> OBJECT ENCODING counter
+  "int"
+  redis> APPEND counter "x"
+  (integer) 4
+  redis> OBJECT ENCODING counter
+  "raw"
+  ```
+
