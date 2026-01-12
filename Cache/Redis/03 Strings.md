@@ -16,19 +16,111 @@
 
 ## Use cases
 
-* Plain Strings
-  * Serving static contents like static website pages
-    * Redis.io website used Redis database itself to serve all static pages
-* Caching
-  * Frequently used data can be cached into string
-  * With the help of  `EXPIRE`, `SET` commands, caching can be possible
+Here are the primary use cases for Redis Strings.
 
-* Counters
-  * Strings can be used to store stats
-  * Daily user visits, website stats and more
-  * Remember that counters are just strings storing integers, updated atomically with `INCR` / `DECR`
-* Configuration
-  * Store application configurations, as `app:config:title`, `config:countriesname`, `config:usertypes`.
+* Caching (HTML Fragments, API Responses)
+
+  - **Concept:** Storing the result of expensive database queries or API calls to reduce latency and load on backend systems.
+    - **Mechanism:**
+      - Use `SET` to store the data (often serialized as JSON).
+      - Use `SETEX` (or `SET ... EX`) to automatically expire the cache after a set time (TTL).
+
+  - **Application:** Caching user profiles, product catalog details, or full HTML pages.
+  
+  - **Example:** Caching a user profile with 1-hour expiration
+  
+    ```
+    redis> SET user:42 "{\"name\": \"John\", \"role\": \"admin\"}" EX 3600
+    OK
+    redis> GET user:42
+    "{\"name\": \"John\", \"role\": \"admin\"}"
+    ```
+
+* Atomic Counters
+
+  - **Concept:** tracking numeric values like page views, "likes," or video plays in real-time.
+
+  - **Atomicity:** Redis operations like `INCR` and `DECR` are atomic, meaning multiple clients can update the same counter simultaneously without race conditions (no "lost updates").
+    - **Mechanism:**
+      - `INCR` increments a value by 1.
+      - `INCRBY` increments by a specific amount.
+      - `INCRBYFLOAT` handles floating-point numbers.
+
+
+  - **Application:** Website hit counters, active connection counts, gaming leaderboards (simple).
+
+  - **Example:** Incrementing page views
+
+    ````
+    redis> SET page:home:views 0
+    OK
+    redis> INCR page:home:views
+    (integer) 1
+    redis> INCRBY page:home:views 10
+    (integer) 11
+    ````
+
+
+* Distributed Locks
+
+  - **Concept:** Ensuring that only one process or server can perform a critical action at a time (e.g., generating a daily report, processing a payment).
+    - **Mechanism:**
+      - Use `SET` with the `NX` (Only set if Not Exists) option.
+      - Include an expiration (`EX`) to prevent "deadlocks" if the process crashes before releasing the lock.
+
+
+  - **Application:** Cron job coordination, preventing double-spending.
+
+  - **Example**: Acquiring a lock
+
+    ````
+    redis> SET lock:report_job "server_1" NX EX 10
+    OK
+    redis> SET lock:report_job "server_2" NX EX 10
+    (nil)
+    ````
+
+
+* Session Store
+
+  - **Concept:** Storing user session state for web applications.
+
+  - **Benefit:** Redis is faster than relational databases for this purpose and allows session data to be shared across a cluster of web servers (stateless architecture).
+
+  - **Mechanism:** Keys are Session IDs (cookies); Values are serialized objects.
+
+  - **Application:** Shopping carts, user login status, temporary workflows.
+
+  - **Example**: Storing session data
+
+    ````
+    redis> SET session:xyz123 "uid=99;ip=192.168.1.1;cart_items=3"
+    OK
+    ````
+
+* Rate Limiting
+
+  - **Concept:** Limiting the number of requests a user or IP can make within a specific time window.
+    - **Mechanism:**
+      - Create a key specific to the user and the time window (e.g., `rate:ip:127.0.0.1:minute`).
+      - Use `INCR` on every request.
+      - If the result is `1`, set an expiration (`EXPIRE`).
+      - If the result > Limit, reject the request.
+
+
+  - **Application:** API quotas, preventing DDoS attacks, brute-force login protection.
+
+  - **Example**: Simple rate limiter
+
+    ```
+    redis> INCR rate:10.0.0.1
+    (integer) 1
+    redis> EXPIRE rate:10.0.0.1 60
+    (integer) 1
+    redis> INCR rate:10.0.0.1
+    (integer) 2
+    ```
+
 
 ## Counting numbers using `INCR` and `DECR`
 

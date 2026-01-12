@@ -1,4 +1,4 @@
-# Redis Data Management
+# Data Management
 
 ## Keys and Values - `GET` and `SET`
 
