@@ -81,7 +81,7 @@ The **`sync`** package provides synchronization primitives — such as `Mutex`, 
   ch <- struct{}{}
   ```
 
-### **`sync/atomic`**
+### `sync/atomic`
 
 -   **Atomic operations** on variables (integers, pointers).
 
@@ -92,6 +92,25 @@ The **`sync`** package provides synchronization primitives — such as `Mutex`, 
     atomic.AddInt32(&counter, 1)
     v := atomic.LoadInt32(&counter)
     ```
+
+- **CompareAndSwap (CAS)**: A fundamental primitive that updates a value only if it matches an "old" value. This is the basis for lock-free algorithms.
+
+  ```go
+  var counter int32
+  // Basic Add and Load
+  atomic.AddInt32(&counter, 1)
+  v := atomic.LoadInt32(&counter)
+  
+  // CompareAndSwapInt32(addr, old, new) bool
+  // Only sets counter to 100 if its current value is 1
+  swapped := atomic.CompareAndSwapInt32(&counter, 1, 100)
+  ```
+
+  The `CompareAndSwap` function returns a boolean:
+
+  - **`true`**: The current value matched the `old` value, and the `new` value was successfully stored.
+  - **`false`**: The current value did not match (meaning another goroutine changed it first), and no update occurred.
+
 
 ### sync.Pool
 
