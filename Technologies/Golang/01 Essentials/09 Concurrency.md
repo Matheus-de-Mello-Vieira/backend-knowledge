@@ -206,6 +206,162 @@ func main() {
         -   `.RLock()` / `.RUnlock()` → multiple readers can access simultaneously.
         -   `.Lock()` / `.Unlock()` → only one writer, blocks readers and other writers.
 
+### `sync.singleflight`
+
+* `singleflight` is a concurrency pattern (and a specific Go package) designed to prevent "cache stampedes" or the "thundering herd problem."
+
+* It ensures that if multiple concurrent processes ask for the same thing at the same time, the expensive operation (like a database query or API call) is performed only **once**, and the result is shared among all the callers.
+
+#### `Do(key, fn)`
+
+```go
+var g singleflight.Group
+
+key := "user:10"
+
+for i := 0; i < 5; i++ {
+  go func(reqID int) {
+    val, err, shared := g.Do(key, func() (interface{}, error) {
+      // it will be executed once 
+      return getProfileFromDB(10), nil
+    })
+
+    ...
+
+    // it will be executed five times
+    fmt.Printf("Req %d got: %v (Shared? %v)\n", reqID, val, shared)
+  }(i)
+}
+```
+
+- **Behavior:** Executes the given function `fn` for the given `key`. If there is already a `fn` running for that `key`, it blocks until the original finishes and returns the same result.
+
+  - It is blocking, if you need an non-blocking behavior, use `DoChan(key, fn)`
+
+  - `singleflight` automatically removes the key once the function finishes.
+
+    ```mermaid
+    sequenceDiagram
+        autonumber
+        participant ClientA as Client A
+        participant ClientB as Client B (Concurrent)
+        participant ClientC as Client C (Later)
+        participant SG as singleflight.Group
+        participant DB as Expensive DB/API Call
+    
+        note over ClientA, DB: === Phase 1: Concurrent Requests (Coalescing) ===
+    
+        ClientA->>+SG: g.Do("my-key", fn)
+        note right of SG: SG checks map: "my-key" not found.<br/>Marks "my-key" as running.
+        SG->>+DB: Execute function (Call ID: 101)
+    
+        note right of ClientB: Client B arrives while<br/>Call ID 101 is still running.
+        ClientB->>SG: g.Do("my-key", fn)
+        activate SG
+        note right of SG: SG checks map: "my-key" is running.<br/>Client B joins the waiting list.
+        deactivate SG
+    
+        DB-->>-SG: Return Result X (from Call ID 101)
+    
+        par Return to waiters
+            SG-->>ClientA: Returns Result X (shared: true)
+        and
+            SG-->>ClientB: Returns Result X (shared: true)
+        end
+    
+        note right of SG: CRITICAL STEP:<br/>Function finished.<br/>SG removes "my-key" from internal map.
+        deactivate SG
+    
+        note over ClientA, DB: === Wait time passes... ===
+    
+        note over ClientA, DB: === Phase 2: Request after finishing (No Caching) ===
+    
+        ClientC->>+SG: g.Do("my-key", fn)
+        note right of SG: SG checks map: "my-key" not found (it was removed).<br/>Marks "my-key" as running fresh.
+        SG->>+DB: Execute function AGAIN (Call ID: 102)
+        DB-->>-SG: Return Result Y (from Call ID 102)
+        SG-->>-ClientC: Returns Result Y (shared: false)
+        note right of SG: SG removes "my-key" from map.
+    ```
+
+    
+
+- **Returns:** `(v interface{}, err error, shared bool)`
+
+  - `v`: The result data.
+  - `shared`: `true` if this result was shared with other callers; `false` if this was the only caller.
+
+#### `DoChan(key, fn)`
+
+```go
+ch := g.DoChan("key", expensiveFunc)
+select {
+case res := <-ch:
+    fmt.Println(res.Val)
+case <-time.After(500 * time.Millisecond):
+    fmt.Println("Timeout!")
+}
+```
+
+- **Behavior:** The non-blocking (async) version. It returns a channel immediately ( `<-chan Result`) rather than blocking the goroutine.
+- **Use Case:** Useful if you want to implement timeouts using `select`.
+
+#### `Forget(key)`
+
+```go
+var g singleflight.Group
+slow := func() (any, error) { time.Sleep(time.Second); return "done", nil }
+
+// 1. Start first call (runs for 1s)
+go g.Do("key", slow)
+
+time.Sleep(100 * time.Millisecond) // ensure #1 started
+
+// 2. Forget key (unlocks "key" for new callers)
+g.Forget("key")
+
+// 3. Start second call immediately
+// Because we called Forget, this starts a NEW execution instead of waiting for #1
+g.Do("key", slow)
+```
+
+- **Behavior:** Removes the key from the map.
+
+  ```mermaid
+  sequenceDiagram
+      autonumber
+      participant G1 as Goroutine 1
+      participant Main as Main (Control)
+      participant G2 as Goroutine 2
+      participant SG as singleflight.Group
+      participant Fn as Slow Function
+  
+      Note over G1, Fn: 1. Start First Call
+      G1->>+SG: Do("key", slow)
+      SG->>+Fn: Start Execution A (1s)
+      
+      Note over Main, SG: ... 100ms later ...
+  
+      Note over Main, SG: 2. Call Forget
+      Main->>SG: Forget("key")
+      Note right of SG: Map entry for "key" is deleted.<br/>(Execution A is still running!)
+  
+      Note over G2, Fn: 3. Start Second Call
+      G2->>+SG: Do("key", slow)
+      Note right of SG: SG sees no entry for "key".<br/>Must start fresh.
+      SG->>+Fn: Start Execution B (1s)
+  
+      Note right of Fn: ⚠️ Both Execution A and B<br/>are running simultaneously.
+  
+      Fn-->>-SG: Execution A returns
+      SG-->>-G1: Returns result "A"
+  
+      Fn-->>-SG: Execution B returns
+      SG-->>-G2: Returns result "B"
+  ```
+
+- **User Case**: `Forget` is mostly used if you want to manually cancel/remove a key *while* the function is still potentially running (rare) or if you are managing sophisticated invalidation strategies.
+
 ## **Channel**
 
 -   Used to **exchange data between goroutines**.
