@@ -76,7 +76,17 @@ graph TD
 
 ## UDP Datagram
 
-* Datagrams slides into an IP packet as "data"
+```mermaid
+packet-beta
+title UDP Datagram (32-bit width)
+0-15: "Source Port (16 bits)"
+16-31: "Destination Port (16 bits)"
+32-47: "Length (16 bits)"
+48-63: "Checksum (16 bits)"
+64-95: "Data / Payload (Variable Length)"
+```
+
+* Datagrams slides into an IP packet as payload
 * Port are 16 bit (0 to 65535)
   * $2^{16} = 65536$
   * it is a hard limit for the number of connections

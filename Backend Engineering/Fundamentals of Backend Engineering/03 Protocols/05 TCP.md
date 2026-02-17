@@ -111,6 +111,23 @@ graph TD
 
 ## Anatomy of the TCP segment
 
+```mermaid
+packet-beta
+title TCP Segment Header (32-bit width)
+0-15: "Source Port"
+16-31: "Destination Port"
+32-63: "Sequence Number"
+64-95: "Acknowledgment Number"
+96-99: "Data Offset"
+100-105: "Reserved"
+106-111: "Control Flags"
+112-127: "Window Size"
+128-143: "Checksum"
+144-159: "Urgent Pointer"
+160-191: "Options & Padding (Variable)"
+192-223: "Data / Payload"
+```
+
 * TCP segment Header is 20 bytes and can go up to 60 bytes
 * TCP segment slides into an IP packet as "data"
 * Port are 16 bit (0 to 65535)

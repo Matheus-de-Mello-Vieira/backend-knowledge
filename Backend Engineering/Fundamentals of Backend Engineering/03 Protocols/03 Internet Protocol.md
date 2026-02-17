@@ -85,6 +85,24 @@ This knowledge is critical, because:
 
 ## Anatomy of the IP packet
 
+```mermaid
+packet-beta
+title IPv4 Packet Header (32-bit width)
+0-3: "Version"
+4-7: "IHL"
+8-15: "Type of Service (ToS)"
+16-31: "Total Length"
+32-47: "Identification"
+48-50: "Flags"
+51-63: "Fragment Offset"
+64-71: "Time to Live (TTL)"
+72-79: "Protocol"
+80-95: "Header Checksum"
+96-127: "Source IP Address"
+128-159: "Destination IP Address"
+160-191: "Options & Padding (Variable)"
+```
+
 * The IP Packet has headers and data sections
   * The headers is 20 bytes (can go up to 60 bytes if options are enabled.)
   * Data section can go up to 65536 bytes
@@ -107,7 +125,7 @@ The IP packet is basically the source IP address, the data, and the destination 
       * different ICMP can take differents ways, so the traceroutes isn't always right.
     * some routes turns the ICMP message off
 *  There is a header of protocol, that can be used to block decisions (without reading the data).
-* There is a header called Explicit Congestion Notification (ECN),  that you from a upper layer (TCP) by the router.
+* There is a header called Explicit Congestion Notification (ECN),  that is settled from a upper layer (TCP) by the router.
   * congestion causes packets drops.
   * When the route is overwhelmed, it starts to store the packets on buffers, when it is fulled, the incoming packets starts to be drooped.
     * it is a waste because makes the client wait for a long timeout
