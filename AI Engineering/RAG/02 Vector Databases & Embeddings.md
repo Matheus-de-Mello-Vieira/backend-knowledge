@@ -281,6 +281,12 @@ Adding a **"Tools"** section is a great way to ground all this theory in the rea
 
 Here is the final section to add to your notes:
 
+Gemini said
+
+Got it—let's stick to the formal Information Retrieval (IR) terminology. This is much better for technical documentation or if you're planning to implement evaluation frameworks like **Ragas** or **TruLens**, as they use these exact names.
+
+Here is your note on measuring RAG systems using standard industry metrics.
+
 ## **The Modern AI Stack: Tools & Ecosystem**
 
 Knowing the theory is step one; picking the right tool for each layer of the pipeline is step two.
