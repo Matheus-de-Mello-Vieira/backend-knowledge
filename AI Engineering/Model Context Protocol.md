@@ -81,6 +81,51 @@ graph LR
 * **MCP Client:** The connector inside the Host that speaks the MCP protocol.
 * **MCP Server:** A lightweight program that sits in front of a Tool (like Google Drive or a database) and translates its capabilities into the standard MCP format.
 
+## Transport layer
+
+The Transport Layer’s sole job is to establish a bidirectional communication channel between the client and the server. It handles:
+
+- **Connection Lifecycle:** Starting the connection, maintaining it, and closing it cleanly.
+- **Message Framing:** Ensuring messages are delineated correctly (so the receiver knows where one message ends and the next begins).
+- **Payload Delivery:** Carrying **JSON-RPC 2.0** messages (Requests, Responses, and Notifications).
+
+### Supported Transport Types
+
+MCP currently specifies two primary standard transport mechanisms. Each serves a different deployment architecture.
+
+#### A. Stdio (Standard Input/Output)
+
+This is the most common transport for **local** integrations.
+
+- **How it works:** The MCP Client spawns the MCP Server as a subprocess (a local program running on the same computer).
+- **Communication:**
+  - The Client writes JSON-RPC messages to the Server's **stdin** (Standard Input).
+  - The Server writes responses to its **stdout** (Standard Output).
+  - **stderr** (Standard Error) is usually reserved for logging logs (not protocol messages) so they don't corrupt the data stream.
+- **Use Case:** Connecting to local files, local databases, or scripts running on your laptop. This is the default for the Claude Desktop App.
+- **Pros:** Fast, secure (no network ports exposed), zero configuration networking.
+
+#### B. SSE (Server-Sent Events) over HTTP
+
+This is the standard transport for **remote** or distributed integrations.
+
+- **How it works:** The MCP Server runs as a web service (e.g., inside a Docker container or on a cloud server).
+- **Communication (Bi-directional split):**
+  1. **Server $\to$ Client:** Uses **SSE**. The client opens a persistent HTTP connection, and the server pushes JSON-RPC messages down this stream.
+  2. **Client $\to$ Server:** The client makes standard **HTTP POST** requests to a specific endpoint on the server to send messages up.
+- **Use Case:** Enterprise deployments, cloud-hosted agents, or when the server is running in a different environment than the client (e.g., WSL vs. Windows).
+- **Pros:** Works over standard web infrastructure, firewall-friendly, stateless (mostly).
+
+### The Message Format (JSON-RPC 2.0)
+
+Regardless of whether you use Stdio or SSE, the actual data flowing through the transport layer is **JSON-RPC 2.0**.
+
+The transport layer ensures these objects arrive intact:
+
+- **Requests:** `{"jsonrpc": "2.0", "method": "tools/list", "id": 1}`
+- **Responses:** `{"jsonrpc": "2.0", "result": {...}, "id": 1}`
+- **Notifications:** `{"jsonrpc": "2.0", "method": "notifications/message"}` (No ID, no response expected).
+
 ## The Three Core Primitives
 
  These are the three primary ways a server provides value to an LLM.
@@ -643,9 +688,66 @@ If a tool has two parameters that sound similar, or if its description is vague,
 - **The Good Description:** `"Updates the 'status' column of a ticket. Use ONLY for transitioning tickets between 'Open', 'In Progress', and 'Closed'."`
 - **Constraint via Enums:** Use `enum` in your JSON Schema to limit inputs. If a tool only accepts "high", "medium", or "low" priority, don't leave it as a free-text string.
 
-#### 4. Minimal Surface Area: Less is More
+#### Minimal Surface Area: Less is More
 
 Every parameter you add to a tool increases the chance of a "hallucinated" argument. Only expose parameters that the model *actually* needs to control.
 
 - **The Bad:** Including common http's headers asM `user_agent`, `request_id`, or `timestamp` in the `inputSchema`.
 - **The Good:** Hardcode those values on the server side. The model should only care about the *intent* (e.g., `recipient`, `subject`, `body`).
+
+## The Challenges of MCPs
+
+While the Model Context Protocol (MCP) is a powerful way to connect Large Language Models (LLMs) to external tools, poorly optimized MCPs can be a silent killer of model performance. 
+
+### Tool Overload and Context Limits
+
+When an LLM is given an overwhelming number of tools, two major problems arise:
+1. **Poor Decision Making:** It becomes difficult for the model to select the correct tool for a specific task, increasing the risk of hallucinations or failed operations.
+2. **Context Window Consumption:** The descriptions of the tools themselves must be loaded into the LLM's context, acting as a constant burden. Furthermore, each actual tool call consumes a slice of the active context window. To optimize performance, developers must minimize the number of tool calls and frequently clear intermediate results from the context.
+
+### The JSON Schema Bottleneck
+
+LLMs are primarily trained to understand and generate natural language, raw code, and documentation. However, MCP forces them to interface entirely via JSON. The core issue is that JSON schemas often lack the nuanced details necessary for an LLM to use a tool confidently.
+
+Common areas where JSON schemas introduce ambiguity include:
+
+* **Ambiguous Formats:**
+  ```json
+  { "date": "string" }
+  ```
+  *Unclear:* Does the system expect `"2024-01-15"`, `"January 15, 2024"`, `"15/01/2024"`, or a UNIX timestamp like `"1705276800"`?
+
+* **Optional Numeric Limits:**
+  ```json
+  { "limit": "number" } // optional
+  ```
+  *Unclear:* What is the maximum allowed value? What is the default if the field is omitted? Does `0` mean unlimited? Are negative values allowed?
+
+* **Complex Query Structures:**
+  ```json
+  { "filter": {}, "sort": {}, "page": {} }
+  ```
+  *Unclear:* Which combinations of these are valid? Are certain fields mutually exclusive, or required to be used together? Are there performance implications for specific queries?
+
+## Best MCPs to install
+
+* **Playwright MCP**: Essential for web development and automated testing. It allows your LLM to interact with a live browser, capture screenshots, and inspect the accessibility tree to debug UI issues or scrape data in real time.
+
+* **LSP (Language Server Protocol) MCP**: Bridges your IDE’s native language intelligence directly to the LLM. This provides the model with "hover" information, real-time diagnostics (errors/warnings), and "go-to-definition" capabilities, ensuring it writes code that actually compiles.
+
+* **Context7**: A specialized documentation-as-context tool. It fetches up-to-date, version-specific documentation and functional code examples directly from library sources, effectively eliminating hallucinations caused by the LLM’s training data cutoff.
+
+* **Remote Repository MCP (GitLab, GitHub, Azure)**: Provides a unified interface to your hosting platform's API. This allows the LLM to manage the social and administrative side of coding—such as reviewing Pull/Merge Requests, managing Issues, and checking CI/CD status—without needing a browser.
+
+* **Local Git MCP**: Gives the LLM direct access to your local version control history. It can analyze your branch structure, explain recent changes via `git log`, and help you craft precise, atomic commits based on the code it just wrote.
+
+* **Filesystem MCP**: Provides the LLM with structured access to read, write, and search your local directories. While you can use a Bash MCP for this, the Filesystem MCP is often superior for several reasons:
+
+### **A Note on the Bash/Shell MCP**
+
+Many of the MCPs listed above can technically be replaced by a single **Bash/Shell MCP**. However, using specialized servers is generally preferred for several reasons:
+
+- **Safety & Guardrails**: Specialized MCPs use "allow-lists" to sandbox the LLM, preventing accidental `rm -rf` disasters or access to sensitive system files.
+- **Structured Output**: They return data in JSON rather than raw terminal text, which significantly reduces "hallucinations" and parsing errors by the LLM.
+- **Token Efficiency**: They often include "chunking" features that prevent the LLM from blowing its context window by `cat`-ing a 2,000-line file just to find one function.
+- **Portability**: They work consistently across Windows, macOS, and Linux, whereas Bash commands often break when switching between Zsh and PowerShell.
