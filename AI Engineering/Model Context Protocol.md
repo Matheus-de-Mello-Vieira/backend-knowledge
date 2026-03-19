@@ -741,7 +741,7 @@ Common areas where JSON schemas introduce ambiguity include:
 
 * **Local Git MCP**: Gives the LLM direct access to your local version control history. It can analyze your branch structure, explain recent changes via `git log`, and help you craft precise, atomic commits based on the code it just wrote.
 
-* **Filesystem MCP**: Provides the LLM with structured access to read, write, and search your local directories. While you can use a Bash MCP for this, the Filesystem MCP is often superior for several reasons:
+* **Filesystem MCP**: Provides the LLM with structured access to read, write, and search your local directories.
 
 ### **A Note on the Bash/Shell MCP**
 
