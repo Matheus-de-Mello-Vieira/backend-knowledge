@@ -10,14 +10,6 @@
 
 **Authenticity**: The principle of preventing spoofing/impersonation. In other words, it is the principle of ensuring that all entities (or parties) involved in a communication are who they claim to be.
 
-* There are three main factors of authentication:
-  - **Something you know** (e.g., a password);
-  - **Something you have** (e.g., an access card);
-  - **Something you are** (e.g., facial scanning/biometrics).
-* Nowadays we also have:
-  * **Somewhere you are:** (e.g., GPS location / Geolocation).
-  * **Something you do:** (Typing and gesture patterns — Behavioral Biometrics / Keystroke Dynamics).
-
 **Non-repudiation:** The principle of preventing an entity from denying the origin or validity of a message or transaction. In other words, it provides admissible proof to a third party (e.g., the legal system) that the sender is the author and that the message was indeed sent.
 
 ## **Risk Management** 
@@ -34,24 +26,24 @@ To identify vulnerabilities, you must analyze each element of your architecture 
 
 ```mermaid
 flowchart LR
-    subgraph Alice Side
+    subgraph "Alice Side"
         A[Alice]
         P[Mobile Phone]
-        A --> P
+        A --- P
     end
 
-    subgraph Cloud
+    subgraph "Cloud"
         C[(Cloud Sync)]
     end
 
-    subgraph Bob Side
+    subgraph "Bob Side"
         L[Laptop]
         B[Bob]
-        L --> B
+        L --- B
     end
 
-    P --> C
-    C --> L
+    P --- C
+    C --- L
 ```
 
 Alice Side
@@ -120,3 +112,154 @@ Attacker Modeling is an exercise of putting yourself in the attacker's shoes. Yo
 
 
 Attacker modeling will always be inherently incomplete; nonetheless, it is essential because it enables risk prioritization.
+
+## Network, server, and application security controls.
+
+### Authentication
+
+There are three classic factors of authentication:
+
+- **Something you know** (e.g., a password).
+- **Something you have** (e.g., **an** access card).
+- **Something you are** (e.g., biometrics like facial recognition).
+
+Modern security now includes:
+
+- **Somewhere you are** (Geolocation/IP filtering).
+- **Something you do** (Behavioral Biometrics/Keystroke Dynamics).
+
+**Each factor has its own vulnerabilities:**
+
+- A password can be compromised via brute force or stolen via phishing.
+- An access card can be lost, stolen, or cloned.
+- Biometrics can be spoofed. This has the highest impact because, unlike other factors, biometric data cannot be revoked or changed if compromised.
+
+Therefore, to achieve the highest level of security, **it is best** to combine multiple factors (**Multi-Factor Authentication - MFA**).
+
+In modern environments, it is common to use multiple factors conditionally. This is known as Adaptive Authentication: the system prompts the user for an access token (Something you have) only if the login attempt is deemed anomalous or originates from an unusual location (Somewhere you are).
+
+### Encryption
+
+Encryption is the process of transforming readable data (**plaintext**) into an unreadable format (**ciphertext**) using an algorithm and a **key**. Only those with the correct key can revert the process (**decryption**).
+
+#### Symmetric vs. Asymmetric Encryption
+
+This is the most fundamental distinction in InfoSec. Think of it as the difference between a house key and a mailbox.
+
+| **Feature**  | **Symmetric Encryption**                    | **Asymmetric Encryption**                                    |
+| ------------ | ------------------------------------------- | ------------------------------------------------------------ |
+| **Keys**     | One shared secret key.                      | A pair: **Public Key** and **Private Key**.                  |
+| **Speed**    | Very fast.                                  | Slower (computationally expensive).                          |
+| **Use Case** | **Data at Rest** (Hard drives, databases).  | **Key Exchange** and Digital Signatures.                     |
+| **Analogy**  | A safe with one key that both parties have. | A mailbox where anyone can drop a letter (Public), but only you can open it (Private). |
+
+> **Tech Note:** In the real world, we use **Hybrid Encryption**. We use Asymmetric to exchange a secret key, and then use Symmetric for the actual communication because it's faster.
+
+#### The Two States of Encryption
+
+As we discussed before, the "where" matters:
+
+- **Encryption in Transit:** Protects data moving through a network (e.g., **TLS/SSL** for web traffic). This prevents **Eavesdropping** on your "network link".
+- **Encryption at Rest:** Protects data stored on physical media (e.g., **AES-256** on Bob's laptop or Alice's phone). This prevents data theft if the device is lost or stolen.
+
+#### Hashing: The "One-Way" Trap
+
+**Warning:** Many people confuse Hashing with Encryption. They are **not** the same thing!
+
+- **Encryption** is a two-way street: $Plaintext \leftrightarrow Ciphertext$. Its goal is **Confidentiality**.
+- **Hashing** is a one-way street: $Data \rightarrow Fingerprint$. You cannot "un-hash" something. Its goal is **Integrity**.
+
+> **Pro Tip:** We **encrypt** messages, but we **hash** passwords. If a database is leaked, the attacker only sees the "fingerprint" (hash), not the actual password.
+
+#### Encryption in your Architecture (Alice & Bob)
+
+Applying this to your diagram:
+
+- If Alice sends a message without **End-to-End Encryption (E2EE)**, the Cloud (the "middleman") can read it.
+- With **E2EE**, the communication is encrypted with Bob's **Public Key** on Alice's phone and can only be decrypted by Bob's **Private Key** on his laptop.
+
+#### **Asymmetric Encryption: The Two Sides of the Coin**
+
+In an asymmetric system (Public/Private key pair), the logic changes depending on your security goal:
+
+##### **A. For Confidentiality (Encryption)**
+
+- **Action:** You encrypt with the **recipient's Public Key**.
+- **Result:** Only the recipient can decrypt it with their **Private Key**.
+- **Goal:** Ensuring that only the authorized party can access the data.
+
+##### **B. For Authenticity & Non-repudiation (Digital Signature)**
+
+- **Action:** You "encrypt" (sign) a hash of the message with **your own Private Key**.
+- **Result:** Anyone can verify it using your **Public Key**.
+- **Goal:** Proving that you are the author (**Authenticity**) and providing proof that cannot be denied (**Non-repudiation**).
+
+> **Technical Insight:** When you sign a message with your private key, you create **Non-repudiation**. Since the private key is unique to you, you cannot later deny the origin or validity of the transaction to a third party.
+
+### **Firewalls**
+
+A firewall is a network security mechanism designed to protect a communication channel by restricting access based on predefined security rules. It serves as a critical defense layer, particularly for ensuring Availability—a tenet that Authentication and Encryption alone do not guarantee.
+
+In a communication utilizing the **TCP/IP protocol**, entities often have static IP addresses provided by their Internet Service Providers (ISPs). A firewall can be configured to allow traffic only from specific, authorized addresses—a process known as **whitelisting**.
+
+Considering the architecture aforementioned, we can apply firewall rules to protect the link between Alice, the Cloud, and Bob:
+
+- **Authorized Access:** Alice and Bob are assigned static IP addresses **X** and **Y**, respectively. The firewall is configured to permit only these addresses to access the communication channel.
+- **Unauthorized Access:** If Charlie attempts to access the channel from IP address **Z**, the firewall will identify him as unauthorized and block the connection.
+
+### **Intrusion Detection Systems (IDS)**
+
+Even when perimeter defenses like firewalls and authentication are successful, a threat actor may still manage to operate within the system using legitimate credentials. An **Intrusion Detection System (IDS)** acts as a surveillance layer that monitors system activity for malicious behavior or policy violations.
+
+**Behavioral and Anomaly Detection**: Instead of just checking "keys," an IDS analyzes behavior. It establishes a baseline of "normal" activity and flags deviations that could indicate an intruder impersonating a legitimate user. Key indicators include:
+
+- **Access Patterns**: Identifying logins at unusual times or from unexpected sequences of internal systems.
+
+- **Unusual Web Traffic**: Monitoring access to suspicious or non-standard websites that could indicate a "Command and Control" (C2) connection.
+
+- **Frequency Anomalies**: Detecting access rates (e.g., API calls or login attempts) that far exceed standard user behavior.
+
+- **File Integrity and Activity**: Flagging the **unusual access, modification, or deletion** of files—actions often associated with data exfiltration or ransomware.
+
+**Detecting the "Insider" Threat**:  The primary strength of an IDS is its ability to detect an attacker even when they possess correct credentials. By identifying that a specific user's behavior has become highly irregular, the system can trigger alerts or automated responses to mitigate the impact of a potential breach.
+
+> **Analogy:** If a Firewall is the locked front door, and Authentication is the ID check, an **IDS** is the security camera and motion sensor inside the building that notices someone walking through the halls at 3 AM opening drawers they shouldn't.
+
+### **Incident Response and Recovery**
+
+Because threat actors are increasingly sophisticated and new threats emerge constantly, it is imperative to establish a formal plan of action to handle active attacks and mitigate damage. Security is not only about prevention but also about **resilience** and the ability to recover.
+
+#### **1. Containment and Isolation**
+
+When an attack is detected, a primary strategy is to **isolate** the affected component of the system. In this scenario, a clear understanding of the **project's architecture** becomes highly valuable, as it allows security teams to identify trust boundaries and "cut off" the compromised segment to protect the rest of the infrastructure.
+
+#### **2. Diagnostic and Standardized Procedures**
+
+Effective recovery requires a calculated approach, even under the pressure of an active breach:
+
+- **Standardized Procedures**: Following pre-defined, step-by-step playbooks ensures that the response is organized and reduces human error during high-stress situations.
+- **Diagnostic Tools**: These tools are essential for visibility; it is impossible to isolate or recover a system without first understanding which specific part is under attack and how the breach occurred.
+
+#### **3. Backup and Recovery Strategy**
+
+Restoring operations safely depends on robust backup mechanisms:
+
+- **Offsite Backups**: Data should be backed up regularly, preferably on a separate server or environment, to ensure it remains unaffected by an attack on the main production system.
+- **Root Cause Analysis**: During the recovery process, it is vital to ensure that the original vulnerability is patched. Simply restoring a system without addressing the "gap" will likely lead to a re-incidence of the same attack.
+
+#### **4. Post-Incident Review and Continuous Improvement**
+
+The recovery process is only complete when the organization ensures that the same vulnerability cannot be exploited again. This stage turns a security failure into a learning opportunity to strengthen the system's resilience.
+
+- **Root Cause Analysis (RCA)**: After the immediate threat is neutralized, a deep-dive investigation must be conducted to identify the exact "gap" that was exploited. Without finding the root cause, any recovery effort is merely temporary.
+- **Post-Mortem Analysis**: This involves a standardized review of the incident response itself. By analyzing what worked and what failed during the "heat of the moment," the team can refine their procedures and diagnostic tools for future scenarios.
+- **Preventing Re-incidence**: Before a system is fully brought back online, it must be patched or reconfigured to eliminate the original vulnerability. This ensures that the restoration process does not inadvertently recreate the same flawed environment that led to the attack in the first place.
+- **Updating the Architectural Model**: Every attack provides a new "viewpoint" on the project's 3D object. The architecture must be updated to reflect this new understanding, ensuring that the two-dimensional projection used for risk management remains as accurate and dynamic as the project itself.
+
+A critical challenge during an incident is the tension between stopping the attack and preserving the data necessary to understand it. While a "hard shutdown" (unplugging the server) might stop data exfiltration, it can also destroy the most valuable evidence.
+
+- **Volatile Data Loss**: Much of an attacker's footprint—such as active network connections, running processes, and decrypted encryption keys—exists only in the system's **RAM (Volatile Memory)**. If the server is turned off, this information is lost forever, making a full "Root Cause Analysis" nearly impossible.
+- **The Trap of Self-Sabotage**: Shutting down prematurely can leave the security team "blind." Without the ability to perform **Live Forensics**, you may be unable to determine how the attacker got in, what other systems they touched (Lateral Movement), or if they left a "backdoor" for a future return.
+- **Forensic Integrity**: Before any destructive action is taken, teams should attempt to perform **Memory Imaging** (capturing a snapshot of the RAM) and collect logs. The goal is to maintain a **Chain of Custody** that allows for a reliable post-mortem analysis.
+- **Balanced Response**: The decision to shut down must be calculated. If the immediate risk (e.g., total data destruction) outweighs the need for evidence, isolation (via firewall or network disconnection) is often a better middle ground than a full power-off, as it stops the "leak" while keeping the "crime scene" intact for diagnostics.
+
