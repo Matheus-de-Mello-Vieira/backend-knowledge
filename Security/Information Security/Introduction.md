@@ -64,6 +64,10 @@ Communication
 * "Can the attacker launch an availability attack (e.g. DDoS) on the network link?"
 * "Can the attacker reroute the communication, to spoof the cloud?"
 
+**Remark:**
+
+> **The IoT (Internet of Things) Factor**: IoT devices often represent the "weakest link" in an architecture. They significantly expand the attack surface because they are frequently designed with limited computational resources, making robust encryption and complex authentication difficult to implement. Furthermore, many IoT devices ship with **hardcoded default credentials** and lack a streamlined mechanism for firmware updates, leaving known vulnerabilities unpatched for years. In the provided architecture, an insecure smart device on Alice’s network could serve as an entry point for an attacker to move laterally toward her phone or the cloud.
+
 ### Threats
 
 Threats are factors or actions capable of compromising at least one of the [security tenets](#the-tenets).
@@ -207,9 +211,9 @@ Considering the architecture aforementioned, we can apply firewall rules to prot
 - **Authorized Access:** Alice and Bob are assigned static IP addresses **X** and **Y**, respectively. The firewall is configured to permit only these addresses to access the communication channel.
 - **Unauthorized Access:** If Charlie attempts to access the channel from IP address **Z**, the firewall will identify him as unauthorized and block the connection.
 
-### **Intrusion Detection Systems (IDS)**
+### **Intrusion Detection Systems (IDS)** 
 
-Even when perimeter defenses like firewalls and authentication are successful, a threat actor may still manage to operate within the system using legitimate credentials. An **Intrusion Detection System (IDS)** acts as a surveillance layer that monitors system activity for malicious behavior or policy violations.
+Even when perimeter defenses like firewalls and authentication are successful, a threat actor may still manage to operate within the system using legitimate credentials. An **Intrusion Detection System (IDS - /ˌaɪ.diːˈɛs/)** acts as a surveillance layer that monitors system activity for malicious behavior or policy violations.
 
 **Behavioral and Anomaly Detection**: Instead of just checking "keys," an IDS analyzes behavior. It establishes a baseline of "normal" activity and flags deviations that could indicate an intruder impersonating a legitimate user. Key indicators include:
 
@@ -224,6 +228,10 @@ Even when perimeter defenses like firewalls and authentication are successful, a
 **Detecting the "Insider" Threat**:  The primary strength of an IDS is its ability to detect an attacker even when they possess correct credentials. By identifying that a specific user's behavior has become highly irregular, the system can trigger alerts or automated responses to mitigate the impact of a potential breach.
 
 > **Analogy:** If a Firewall is the locked front door, and Authentication is the ID check, an **IDS** is the security camera and motion sensor inside the building that notices someone walking through the halls at 3 AM opening drawers they shouldn't.
+
+**Remark**
+
+> **Device Profiling and IoT Baselines**: Unlike human users, IoT devices typically have highly predictable and "narrow" communication patterns (e.g., a smart light bulb only communicates with a specific controller at fixed intervals). An IDS is essential for identifying compromised IoT devices by flagging any deviation from this baseline—such as a thermostat suddenly performing an internal network scan or attempting to access a laptop's file system. This behavioral detection allows for the immediate isolation of the device, preventing an initial foothold from turning into a full-scale breach.
 
 ### **Incident Response and Recovery**
 
@@ -263,3 +271,56 @@ A critical challenge during an incident is the tension between stopping the atta
 - **Forensic Integrity**: Before any destructive action is taken, teams should attempt to perform **Memory Imaging** (capturing a snapshot of the RAM) and collect logs. The goal is to maintain a **Chain of Custody** that allows for a reliable post-mortem analysis.
 - **Balanced Response**: The decision to shut down must be calculated. If the immediate risk (e.g., total data destruction) outweighs the need for evidence, isolation (via firewall or network disconnection) is often a better middle ground than a full power-off, as it stops the "leak" while keeping the "crime scene" intact for diagnostics.
 
+## **Authorization**
+
+Authorization is the process of granting or denying specific permissions to an authenticated entity. It is governed by the **Principle of Least Privilege (PoLP)**, which states that a user or system should only have the minimum levels of access—or permissions—necessary to perform its intended function.
+
+### **Access Control Models**
+
+To implement authorization effectively, different models can be used depending on the complexity of the architecture:
+
+- **ACL (Access Control List):** /ˌeɪ.siːˈɛl/
+  - **Definition:** A simple list attached to a specific object (like a file or a network folder) that specifies which users or system processes are granted access and what operations are allowed (Read, Write, Execute).
+  - **Use Case:** Ideal for simple, object-level security. In our architecture, a cloud folder might have an ACL allowing only Alice's UID to "Write" data.
+- **RBAC (Role-Based Access Control): **/ˌɑːr.biːˈeɪ.siː/
+  - **Definition:** Permissions are assigned to specific **roles** (e.g., "Manager," "Editor," "Administrator") rather than individual users. Users are then assigned to one or more roles.
+  - **Benefit:** Highly scalable and easier to manage in large organizations. If Bob is promoted to an "Administrator" role, his permissions update automatically across the entire system.
+- **ABAC (Attribute-Based Access Control):** /ˌeɪ.biːˈeɪ.siː/
+  - **Definition:** The most flexible and complex model. Access is granted based on a combination of **attributes**:
+    - **User attributes** (e.g., job title, department).
+    - **Resource attributes** (e.g., file sensitivity level).
+    - **Environmental attributes** (e.g., time of day, current location).
+  - **Connection to Adaptive Auth:** ABAC is often used in the "Adaptive Authentication" scenarios we discussed. For example: *"Allow Bob to access sensitive files (Resource) ONLY IF he is in the office (Environment) during business hours (Time)."*
+
+### **Credential Lifecycle Management**
+
+Managing credentials—such as passwords, API keys, and digital certificates—is a continuous process. A failure at any stage of the lifecycle can compromise the entire architecture, regardless of how strong the individual authentication factors are.
+
+1. **Provisioning (Birth)**: The first stage involves creating the identity and assigning the necessary permissions (based on **RBAC** or **ABAC**).
+
+   - **Secure Delivery**: Temporary credentials must be sent through secure channels and forced to change upon first use.
+
+   - **Verification**: The identity must be thoroughly vetted before a credential is issued to ensure **Authenticity**.
+
+2. **Maintenance and Rotation (Life)**: Credentials should not be static. The longer a credential remains unchanged, the higher the risk of it being compromised through slow-burning attacks like brute force or credential stuffing.
+
+   - **Rotation Policies**: Regularly changing passwords or rotating API keys reduces the "window of opportunity" for a threat actor.
+
+   - **Complexity Requirements**: Enforcing strong entropy (length and variety of characters) to mitigate the risk of automated cracking.
+
+3. **Monitoring and Auditing**: As discussed in the **IDS** section, credentials must be monitored for anomalous behavior.
+
+   - **Audit Logs**: Keeping a record of when and where a credential was used provides the necessary diagnostics for **Incident Response**.
+
+   - **Privilege Creep**: Regular reviews are necessary to ensure users haven't accumulated more permissions than they need over time.
+
+4. **Revocation and Deprovisioning (Death)**: This is often the most overlooked stage. When a user leaves an organization or a project (offboarding), their access must be terminated immediately.
+
+   - **Zombie Accounts**: Accounts that remain active after a user has left are prime targets for attackers, as their activity is rarely monitored.
+
+   - **Centralized Management**: Using a Single Sign-On (SSO) system allows for "one-click" revocation across all integrated applications, ensuring **Availability** is not compromised by unauthorized former users.
+
+Examples:
+
+* **Insider Threat**: If Bob is fired and his credentials are not immediately revoked, he may become an insider threat, using his lingering access to compromise the system's Integrity or Confidentiality.
+* **Password Rotation**: If Alice has been using the same password for years, the likelihood that Charlie will eventually crack it increases. Implementing a password rotation policy (e.g., every 90 days) significantly reduces this risk by limiting the attacker's "window of opportunity".
