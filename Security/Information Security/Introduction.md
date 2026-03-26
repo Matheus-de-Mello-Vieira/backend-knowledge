@@ -324,3 +324,57 @@ Examples:
 
 * **Insider Threat**: If Bob is fired and his credentials are not immediately revoked, he may become an insider threat, using his lingering access to compromise the system's Integrity or Confidentiality.
 * **Password Rotation**: If Alice has been using the same password for years, the likelihood that Charlie will eventually crack it increases. Implementing a password rotation policy (e.g., every 90 days) significantly reduces this risk by limiting the attacker's "window of opportunity".
+
+Based on the provided materials, here is the section "Proper Procedures for Data Availability and Confidentiality" in English for your documentation.
+
+## Proper Procedures for Data Availability and Confidentiality
+
+In the "Data Era," information is considered the "new gold," and ensuring its availability and secrecy is vital for strategic business decision-making. Effective security mechanisms are required to overcome barriers related to privacy and information security.
+
+### Availability in the Data Era
+
+Availability ensures that systems and data are accessible to authorized users whenever needed. Technologies such as Big Data, Artificial Intelligence, and the Internet of Things (IoT) rely on the successful and continuous collection of data from the physical and digital worlds.
+
+- **Firewalls:** This mechanism protects communication channels by restricting network access to specific, authorized IP addresses. For instance, a firewall can whitelist IP addresses X and Y; if a threat actor attempts access from IP Z, they are blocked even if they possess valid credentials.
+- **Backups:** To mitigate the impact of cyberattacks and reduce downtime, data copies should be maintained on separate machines, networks, or even different cloud providers. This redundancy ensures that if one environment is compromised, the data remains available for recovery.
+- **Stateful Services Replication:** Unlike backups, which are static "at-rest" copies used for recovery, replication maintains active, running instances of a service across different nodes. This provides a higher level of availability because it allows for an immediate transition if the primary system fails, avoiding the delay required to restore and "wake up" a passive backup.
+
+### Confidentiality in the Data Era
+
+Confidentiality ensures that sensitive information is accessible only to legitimate users and the specific parties involved in the communication.
+
+- **Encryption Models:** **Symmetric encryption** is faster and more lightweight but requires a shared key. **Asymmetric encryption** provides high security for data exchange but involves a higher computational cost regarding processing and memory.
+- **End-to-End Encryption (E2EE):** This ensures that only the sender and recipient can access the content of a message. Because the platform does not have access to the users' cryptographic keys, it cannot read the plaintext data.
+
+Developing this subsection adds a vital "Regulatory Viewpoint" to your architecture. In the Data Era, information is often considered "the new gold," making its protection a legal necessity rather than just a technical choice.
+
+Here is an expanded version of the **Legal Frameworks** subsection for your notes:
+
+### 3. Legal Frameworks: LGPD and GDPR
+
+Modern information systems must comply with regulatory requirements that define how personal and sensitive data is handled. These laws turn the security tenets of **Confidentiality** and **Integrity** into mandatory legal obligations to protect user privacy.
+
+#### **LGPD (Lei Geral de Proteção de Dados - Brazil)**
+
+The LGPD emphasizes the protection of user data through several key requirements:
+
+- **Sensitive Data Definition:** It specifically categorizes "sensitive data," which requires a higher level of protection and confidentiality.
+- **User Consent:** Platforms are legally required to obtain explicit consent from users before collecting their data.
+- **Transparency of Purpose:** Organizations must clearly state the specific purpose behind the collection of every piece of data.
+- **Data Portability:** Users have the right to request and receive a complete copy of all data the platform has collected about them.
+
+#### **GDPR (General Data Protection Regulation - European Union)**
+
+The GDPR is often considered the global standard for privacy and introduces rigorous rights for individuals:
+
+- **The Right to be Informed:** This goes beyond simple consent; systems and platforms must be entirely transparent regarding exactly what data they use and for what specific purposes.
+- **The Right to be Forgotten (Deletion):** Users have the legal right to request that a platform permanently delete all their data.
+- **Architectural Challenges:** Implementing the "right to be forgotten" is technically complex. Data is often distributed across various systems or hidden within long-term **backups** (designed for availability), making complete erasure a significant engineering hurdle.
+
+#### **Data Management Policies**
+
+To practically apply these legal concepts, a platform must maintain a formal **Data Management Policy**. This document serves as the bridge between the law and the system's architecture by detailing:
+
+1. **Transparency:** Exactly what data is collected and why.
+2. **User Agency:** How users can provide consent or exercise their rights to access and delete their information.
+3. **Technical Guardrails:** Which specific mechanisms—such as **Firewalls** for availability and **Encryption** for secrecy—are employed to fulfill these legal promises.
