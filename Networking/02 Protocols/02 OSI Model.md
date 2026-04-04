@@ -101,7 +101,3 @@ Much simples than OSI just 4 layers
 * Internet: Layer 3
 * Data link: Layer 2
 * Physical layer is not officially covered in the model.
-
-## What is important from everthing?
-
-You need to know where your application sits
