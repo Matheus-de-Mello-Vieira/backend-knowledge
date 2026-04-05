@@ -1,14 +1,5 @@
 # Introduction
 
-## Note organization
-
-The `Networking` folder is now the canonical place for protocol, connection lifecycle, HTTPS, and proxy/load-balancing notes that were previously spread across `Backend Engineering`.
-
-- `02 Protocols`: protocol stack and protocol-specific notes
-- `03 Connections`: connection establishment, socket buffers, and transport behavior
-- `04 HTTPS`: HTTPS handshake variants and related notes
-- `05 Proxying and Load Balancing`: proxy and load-balancer concepts
-
 Bereft of the gift of communication, mankind would never have ascended to the technological heights it occupies today. Indeed, the very harmony of our ecosystem would falter were it not for the intricate dialogues that animals and insects weave within their own species.
 
 Broadly speaking, humanity exists in a state of perpetual exchange. In ages past, long before the advent of this digital world, we relied solely upon primitive gestures and the most rudimentary of speech; yet, this process underwent a profound metamorphosis into the written word. Through this new paradigm of writing, we began to employ a tapestry of symbols, meticulously arranged to preserve ideas, thoughts, and messages—marking the true genesis of the global exchange of information."

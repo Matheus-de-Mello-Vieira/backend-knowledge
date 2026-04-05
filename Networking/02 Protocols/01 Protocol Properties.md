@@ -8,7 +8,23 @@ A protocol is a standardized system of rules that allows two or more parties to 
 
 ## Key Properties of Protocols
 
-### 1. Data Format
+### Core Communication Functions
+Many protocols differ in implementation, but the same communication jobs tend to repeat:
+
+* **Addressing:** Defines the source and destination of data.
+* **Numbering / Sequencing:** Identifies packets, datagrams, segments, or messages in order.
+* **Connection Management:** Establishes and maintains a communication context when needed.
+* **Error Control:** Detects corruption or delivery problems and may trigger retransmission or rejection.
+* **Confirmation / Acknowledgment:** Confirms that data arrived intact.
+* **Conversion / Adaptation:** Converts data into a format the destination system can consume.
+
+Another important concept is **encapsulation**:
+
+* As data moves down the stack, each layer wraps it with its own metadata.
+* Application data is encapsulated by transport headers, then network headers, then link-layer headers.
+* This is what allows different devices and intermediaries to inspect only the layer they care about.
+
+### Data Format
 Defines how information is encoded for transmission.
 * **Text-Based:** Human-readable formats.
     * **Plain Text:** Simple ASCII/UTF-8 strings.
@@ -18,7 +34,7 @@ Defines how information is encoded for transmission.
     * **RESP (REdis Serialization Protocol):** A fast, simple protocol used by Redis and other client-server architectures.
     * **HTTP/2 & HTTP/3:** Unlike HTTP/1.1, these modern versions use binary framing for efficiency.
 
-### 2. Transfer Mode
+### Transfer Mode
 Defines how data is segmented and delivered.
 * **Message-Based:** Data is sent in discrete units with defined boundaries (start and end).
     * **Examples:** UDP, HTTP/1.1.
@@ -26,33 +42,39 @@ Defines how data is segmented and delivered.
     * **TCP:** Because TCP is a stream, high-level protocols (like HTTP) must implement logic to parse the stream back into distinct messages.
     * **WebRTC:** Optimized for streaming real-time media like audio and video.
 
-### 3. Addressing
+### Addressing
 The mechanism used to identify the source and destination of data.
 * **Physical:** MAC Addresses (Layer 2).
 * **Logical:** IP Addresses (Layer 3).
 * **Human-Readable:** DNS (maps names to IP addresses).
 
-### 4. Directionality and Duplexing
+### Directionality and Duplexing
 Defines the flow of data between parties.
 * **Unidirectional (Simplex):** Data flows in one direction only.
 * **Half-Duplex:** Data can flow in both directions, but only one party can send at a time (e.g., traditional walkie-talkies).
 * **Full-Duplex:** Data flows in both directions simultaneously (e.g., TCP, WebSockets).
     * *Note:* While standard HTTP is request-response, modern implementations like HTTP/2 allow for multiplexing.
 
-### 5. State Management
+More broadly, network communication is usually **bidirectional**:
+
+* A machine can be both sender and receiver.
+* Protocols usually need logic for both outbound and inbound handling.
+* Even in request-response systems, acknowledgments, retries, control messages, and teardown signals travel in both directions.
+
+### State Management
 * **Stateless:** Each request is independent and contains all the information needed to fulfill it (e.g., UDP, standard HTTP).
 * **Stateful:** The protocol remembers previous interactions and maintains a session context (e.g., TCP handshakes, gRPC, Apache Thrift).
 
-### 6. Flow and Congestion Control
+### Flow and Congestion Control
 Mechanisms to ensure the network or receiver isn't overwhelmed.
 * **TCP:** Robust control; it slows down transmission if it detects packet loss or network congestion.
 * **UDP:** No built-in control; it sends data as fast as the application allows, regardless of network health.
 
-### 7. Error Management
+### Error Management
 * **Error Codes:** Explicit signals (like HTTP 404 or TCP RST) indicating what went wrong.
 * **Reliability Logic:** Mechanisms like **Retries**, **Timeouts**, and **Checksums** to ensure data integrity and delivery.
 
-### 8. Routing and Intermediaries
+### Routing and Intermediaries
 Defines how data traverses through various nodes.
 * **Proxies:** Act as intermediaries for requests (often for security or caching).
 * **Gateways:** Connect different networks or translate between different protocol types.
