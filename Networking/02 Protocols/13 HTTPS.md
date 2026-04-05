@@ -19,7 +19,7 @@ HTTPS is everywhere, so there are so many configuration to HTTPS.
 
 Same thing of HTTP over TLS with TLS 1.2, but safer because uses a safer symmetric key agreement algorithm.
 
-* [more details](../02 Protocols/06 TLS.md).
+* [more details](../06 TLS.md).
 * except for compatibly problems, there is no reasons to use TLS 1.2 instead of TLS 1.3
 
 ## HTTP3: HTTPS over QUIC

@@ -187,24 +187,7 @@ The most critical distinction for a postgraduate student is the shift in **where
 | **Logic Center**    | Centralized (Mainframe)    | **Distributed** (Spread across nodes) |
 | **Relationship**    | Master-Slave               | Peer-to-Peer or Client-Server         |
 
-### The Anatomy of a Communication System
-
-A network is more than just a cable; it is a combination of physical and logical layers. According to **Macedo (2018)**, a functional communication system requires:
-
-1. **Physical Connection (Medium):** The hardware that carries the signal. This includes fiber optics, copper wiring, or electromagnetic waves (Wi-Fi/5G).
-2. **Set of Rules (Protocols):** The "social contract" of the machines. These are standardized technologies and rules that ensure a smartphone and a server can understand each other.
-
-### Diversity of Nodes and Data
-
-In a modern network, the definition of a "computer" has expanded. A node is no longer just a workstation; it is any device with processing power that can exchange data. This includes:
-
-- **End-User Devices:** Smartphones, PCs, Smart TVs.
-- **Security & IoT:** Cameras, sensors, smart appliances.
-- **Infrastructure:** Devices responsible specifically for the "exchange" (routers and switches).
-
 ## Categorizing Networks by Extension
-
-To solve the "Islands of Information" problem, engineers developed different tiers of connectivity. As geography expands, the technical challenges—specifically **latency** and **error rates**—increase.
 
 ### Local Area Network (LAN - /ˌɛl eɪ ˈɛn/)
 
