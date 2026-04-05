@@ -4,6 +4,18 @@ Anything that you do in the Internet will associated with the source IP and the 
 
 * Here you don't know about ports, HTTP headers, etc.
 * The data unit here is **packets**
+* IP is a **best-effort** protocol
+  * it is connectionless
+  * it is unreliable by itself
+  * it does not guarantee delivery
+  * it does not guarantee order
+  * it does not provide application-level confirmation that the packet arrived intact
+
+This means that each IP packet is processed independently and can take a different route to the same destination.
+
+* Packets sent by the same sender can arrive out of order
+* Packets can be lost, corrupted, or delayed
+* If you need reliability and integrity, IP is usually combined with a higher-quality transport such as TCP
 
 ## Anatomy of the IP
 
@@ -13,6 +25,9 @@ Anything that you do in the Internet will associated with the source IP and the 
 * Can be set automatically or statically
 * Network and Host portion
 * 4 bytes in IPv4 - 32 bits
+* IPv4 addresses are commonly written in **dotted decimal notation**
+  * for example `193.32.216.9`
+  * in binary that is `11000001 00100000 11011000 00001001`
 
 ### Network vs Host
 
@@ -24,6 +39,16 @@ Anything that you do in the Internet will associated with the source IP and the 
       * the subnet has a mask `255.255.255.0`
       * Subnet mask is used to determine whether an IP is in the same subnet
         * it is important to the router, because if the true it uses the MAC address; else the router send it to the gateway.
+
+IP addressing is hierarchical:
+
+* the high-order bits identify the network
+* the low-order bits identify the host
+* the shared block is usually described by its **prefix**
+  * the prefix is commonly represented by the lowest IP in the block plus the prefix length
+  * example: `192.168.254.0/24`
+* routers mainly care about the network prefix
+  * the host portion is not important for the routing decision itself
 
 ### Default Gateway
 
@@ -82,6 +107,107 @@ graph TD
 This knowledge is critical, because:
 
 * if your application and your database are in different databases, IP packets is going thought the router, that can delay the traffic, or even worse, the router can be congested.
+
+## IPv4 and IPv6
+
+Currently the two most important versions of IP are IPv4 and IPv6.
+
+### IPv4
+
+* IPv4 is the historically dominant version
+* It uses 32-bit addresses
+* It became widespread across nearly all Internet-connected hosts
+
+The main long-term problem is address exhaustion:
+
+* the Internet kept growing
+* more and more hosts needed addresses
+* IPv4 eventually became too limited for indefinite growth
+
+### IPv6
+
+IPv6 was created to solve the address growth problem.
+
+* It offers a vastly larger address space
+* It is intended to support long-term Internet growth
+
+### Transition from IPv4 to IPv6
+
+The migration from IPv4 to IPv6 is gradual.
+
+* not all services on the Internet run on IPv6 yet
+* for a long period, both versions coexist
+* this often appears as a **dual-stack** environment, where systems support both IPv4 and IPv6
+
+## Subnetting
+
+A subnet is a network that has been divided into smaller logical networks.
+
+Why subnet?
+
+* to avoid wasting IP addresses
+* to separate parts of the network logically
+* to scale the network according to the number of hosts actually needed
+* to isolate traffic between groups of machines
+
+Important points:
+
+* subnetting usually does not require external approval if you are subdividing your own allocated block internally
+* the overall address block stays the same from the outside
+* the main effects are local to your own network design and routing
+
+### Subnet masks and prefixes
+
+Subnetting is described either by:
+
+* a dotted-decimal subnet mask such as `255.255.252.0`
+* a prefix length such as `/22`
+
+These are two ways of expressing the same boundary between network bits and host bits.
+
+### Example: splitting `192.168.1.0/24`
+
+Suppose you start with:
+
+* `192.168.1.0/24`
+* this gives 256 total addresses
+* usually 254 are usable for hosts, since one is the network address and one is the broadcast address
+
+Now suppose you want 6 subnetworks with about 30 hosts each.
+
+Each new subnet needs:
+
+* 30 host addresses
+* 1 network address
+* 1 broadcast address
+
+So each subnet needs 32 total addresses.
+
+That means the subnet size must advance in blocks of 32:  `0`,  `32`, `64`, `96`, `128`, `160`, `192` and `224`
+
+To get blocks of 32 addresses, you borrow 3 bits from the host portion:
+
+* original mask: `/24`
+* new mask: `/27`
+* dotted-decimal mask: `255.255.255.224`
+  * because `224 = 128 + 64 + 32`
+
+With `/27`, the network becomes 8 subnetworks of 32 addresses each. For examples:
+
+* `192.168.1.0/27`
+* `192.168.1.32/27`
+* `192.168.1.64/27`
+* `192.168.1.96/27`
+* `192.168.1.128/27`
+* `192.168.1.160/27`
+* `192.168.1.192/27`
+* `192.168.1.224/27`
+
+And for each subnet:
+
+* the first address is the network address
+* the last address is the broadcast address
+* the addresses in between are usable hosts
 
 ## Anatomy of the IP packet
 
