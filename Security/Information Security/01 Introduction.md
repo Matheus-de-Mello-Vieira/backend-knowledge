@@ -53,7 +53,7 @@ Alice Side
 * "Does the Alice possess adequate security awareness to protect their device?"
   * **Human Factor**: Vulnerabilities do not only exist in hardware and software; they can also exist in human behavior.
 
-Cloud
+  Cloud
 
 * "Is the physical location of the infrastructure secure?"
 * "Are the authentication methods for administrative accounts secure (e.g., is MFA enabled)?"
@@ -142,63 +142,11 @@ Therefore, to achieve the highest level of security, **it is best** to combine m
 
 In modern environments, it is common to use multiple factors conditionally. This is known as Adaptive Authentication: the system prompts the user for an access token (Something you have) only if the login attempt is deemed anomalous or originates from an unusual location (Somewhere you are).
 
-### Encryption
+### Cryptography
 
-Encryption is the process of transforming readable data (**plaintext**) into an unreadable format (**ciphertext**) using an algorithm and a **key**. Only those with the correct key can revert the process (**decryption**).
+Encryption is the process of transforming readable data into an unreadable format to ensure Confidentiality, while Hashing creates unique data fingerprints to ensure Integrity. 
 
-#### Symmetric vs. Asymmetric Encryption
-
-This is the most fundamental distinction in InfoSec. Think of it as the difference between a house key and a mailbox.
-
-| **Feature**  | **Symmetric Encryption**                    | **Asymmetric Encryption**                                    |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------ |
-| **Keys**     | One shared secret key.                      | A pair: **Public Key** and **Private Key**.                  |
-| **Speed**    | Very fast.                                  | Slower (computationally expensive).                          |
-| **Use Case** | **Data at Rest** (Hard drives, databases).  | **Key Exchange** and Digital Signatures.                     |
-| **Analogy**  | A safe with one key that both parties have. | A mailbox where anyone can drop a letter (Public), but only you can open it (Private). |
-
-> **Tech Note:** In the real world, we use **Hybrid Encryption**. We use Asymmetric to exchange a secret key, and then use Symmetric for the actual communication because it's faster.
-
-#### The Two States of Encryption
-
-As we discussed before, the "where" matters:
-
-- **Encryption in Transit:** Protects data moving through a network (e.g., **TLS/SSL** for web traffic). This prevents **Eavesdropping** on your "network link".
-- **Encryption at Rest:** Protects data stored on physical media (e.g., **AES-256** on Bob's laptop or Alice's phone). This prevents data theft if the device is lost or stolen.
-
-#### Hashing: The "One-Way" Trap
-
-**Warning:** Many people confuse Hashing with Encryption. They are **not** the same thing!
-
-- **Encryption** is a two-way street: $Plaintext \leftrightarrow Ciphertext$. Its goal is **Confidentiality**.
-- **Hashing** is a one-way street: $Data \rightarrow Fingerprint$. You cannot "un-hash" something. Its goal is **Integrity**.
-
-> **Pro Tip:** We **encrypt** messages, but we **hash** passwords. If a database is leaked, the attacker only sees the "fingerprint" (hash), not the actual password.
-
-#### Encryption in your Architecture (Alice & Bob)
-
-Applying this to your diagram:
-
-- If Alice sends a message without **End-to-End Encryption (E2EE)**, the Cloud (the "middleman") can read it.
-- With **E2EE**, the communication is encrypted with Bob's **Public Key** on Alice's phone and can only be decrypted by Bob's **Private Key** on his laptop.
-
-#### **Asymmetric Encryption: The Two Sides of the Coin**
-
-In an asymmetric system (Public/Private key pair), the logic changes depending on your security goal:
-
-##### **A. For Confidentiality (Encryption)**
-
-- **Action:** You encrypt with the **recipient's Public Key**.
-- **Result:** Only the recipient can decrypt it with their **Private Key**.
-- **Goal:** Ensuring that only the authorized party can access the data.
-
-##### **B. For Authenticity & Non-repudiation (Digital Signature)**
-
-- **Action:** You "encrypt" (sign) a hash of the message with **your own Private Key**.
-- **Result:** Anyone can verify it using your **Public Key**.
-- **Goal:** Proving that you are the author (**Authenticity**) and providing proof that cannot be denied (**Non-repudiation**).
-
-> **Technical Insight:** When you sign a message with your private key, you create **Non-repudiation**. Since the private key is unique to you, you cannot later deny the origin or validity of the transaction to a third party.
+> **Note:** For a comprehensive deep-dive into how these mechanisms work—including Symmetric vs. Asymmetric keys, Hashing algorithms, Digital Signatures, and Digital Certificates—please refer to the dedicated notes in [03 Cryptography.md](./03 Cryptography.md).
 
 ### **Firewalls**
 
