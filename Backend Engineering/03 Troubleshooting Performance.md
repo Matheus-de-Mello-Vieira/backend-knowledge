@@ -163,11 +163,7 @@ Here `http://localhost:9002` is the real backend, and clients talk to port `9000
 
 ## Tier 3: Wireshark
 
-Wireshark provides lower-level visibility than DevTools or MITM tools.
-
-* `tcpdump` is a CLI alternative.
-* Useful for packet-level timing, retransmissions, window sizes, and transport behavior.
-* Can inspect both client-to-proxy and proxy-to-backend traffic.
+For foundational concepts on protocol analyzers, packet decoding, and how these tools capture data, refer to [Network Management](../Networking/05 Network Management.md).
 
 ### How to use it
 
@@ -315,7 +311,7 @@ Useful for HTTP and HTTPS:
 
 ### `tcpdump`
 
-Terminal-oriented packet capture.
+Terminal-oriented packet capture, [see more](../Networking/05 Network Management.md).
 
 ### `traceroute`
 
