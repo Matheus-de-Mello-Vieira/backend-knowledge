@@ -121,26 +121,7 @@ Attacker modeling will always be inherently incomplete; nonetheless, it is essen
 
 ### Authentication
 
-There are three classic factors of authentication:
-
-- **Something you know** (e.g., a password).
-- **Something you have** (e.g., **an** access card).
-- **Something you are** (e.g., biometrics like facial recognition).
-
-Modern security now includes:
-
-- **Somewhere you are** (Geolocation/IP filtering).
-- **Something you do** (Behavioral Biometrics/Keystroke Dynamics).
-
-**Each factor has its own vulnerabilities:**
-
-- A password can be compromised via brute force or stolen via phishing.
-- An access card can be lost, stolen, or cloned.
-- Biometrics can be spoofed. This has the highest impact because, unlike other factors, biometric data cannot be revoked or changed if compromised.
-
-Therefore, to achieve the highest level of security, **it is best** to combine multiple factors (**Multi-Factor Authentication - MFA**).
-
-In modern environments, it is common to use multiple factors conditionally. This is known as Adaptive Authentication: the system prompts the user for an access token (Something you have) only if the login attempt is deemed anomalous or originates from an unusual location (Somewhere you are).
+Authentication is the process of verifying that a user or system is who they claim to be. [See more](../Authentication.md).
 
 ### Cryptography
 

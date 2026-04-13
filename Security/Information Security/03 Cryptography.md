@@ -24,17 +24,41 @@ The true strength of cryptography lies entirely in the strength of its key. Howe
 
 ## 2. Symmetric vs. Asymmetric Encryption
 
-This is the most fundamental distinction in Information Security. 
+This is the most fundamental distinction in Information Security. In modern systems, we rarely choose just one; instead, we use a **Hybrid Encryption** approach. We use Asymmetric encryption to safely exchange a secret key across the network, and then use Symmetric encryption for the actual data transfer because it is significantly more efficient.
 
-| **Feature** | **Symmetric Encryption** | **Asymmetric Encryption** |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------ |
-| **Keys** | One shared secret key used for both encryption and decryption. | A pair of keys: a **Public Key** (widely distributed) and a **Private Key** (kept secret). |
-| **Speed** | Very fast and highly effective. | Slower (computationally expensive). |
-| **Security** | Less secure, as the key must be shared between parties, increasing the risk of compromise. | More secure, as the private key never needs to be shared. |
-| **Use Case** | **Data at Rest** (Hard drives, databases). | **Key Exchange**, SSL/TLS, and Digital Signatures. |
-| **Analogy** | A safe with one key that both parties have. | A mailbox where anyone can drop a letter (Public), but only you can open it (Private). |
+| **Feature**                | **Symmetric Encryption**                                     | **Asymmetric Encryption**                                    |
+| -------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **Keys**                   | Uses **one shared secret key** for both encryption and decryption. | Uses a **pair of keys**: one **Public** and one **Private**. |
+| **Mathematical Mechanism** | Performs simple **bit-wise XOR operations** on the content and the key. | Relies on complex **exponential mathematical operations**.   |
+| **Speed**                  | **Very fast** due to its low computational overhead.         | **Much slower** and more computationally expensive.          |
+| **Security Foundation**    | Both client and server **must possess the exact same key**.  | Both parties can have their own unique public keys.          |
+| **Key Generation**         | N/A                                                          | You can generate a public key using a private one, but you **cannot** derive a private key from a public one. |
+| **Primary Use Case**       | **Data at Rest** (hard drives/databases) and bulk data transmission. | **Key Exchange**, SSL/TLS handshakes, and Digital Signatures. |
 
-> **Tech Note:** In the real world, we use **Hybrid Encryption**. We use Asymmetric encryption to securely exchange a secret key, and then use Symmetric encryption for the actual communication because it is much faster.
+### **The Logic of Asymmetric Key Pairs**
+
+The security goal of an asymmetric system changes depending on which key is used for encryption:
+
+- **Encrypt with Public $\rightarrow$ Decrypt with Private:**
+  -  **Goal:** Confidentiality and Receiver Authenticity.
+  - **Logic:** Since only the owner of the Private Key can decrypt the message, the sender is guaranteed that only the intended authorized party can access the data.
+- **Encrypt with Private $\rightarrow$ Decrypt with Public:**
+  -  **Goal:** Sender Authenticity and Integrity (Digital Signature).
+  - **Logic:** Since only the corresponding Public Key can decrypt it, the receiver is certain that only the owner of the Private Key could have signed the document. This ensures nobody has tampered with the content during transit.
+
+### Common Encryption Algorithms
+
+#### **Symmetric Algorithms**
+
+- **AES (Advanced Encryption Standard):** The current global standard. **AES-256** is approved for top-secret data. It is incredibly fast on hardware with AES-NI acceleration.
+- **ChaCha20:** A modern stream cipher that is often faster than AES on devices without hardware acceleration (mobile/IoT) and is highly resistant to certain side-channel attacks.
+- **DES / 3DES:** Older computational algorithms. DES is insecure; 3DES is an evolution that applies DES three times but is mostly replaced by AES.
+
+#### **Asymmetric Algorithms**
+
+- **RSA:** Traditionally used for handshakes and digital signatures. It relies on the difficulty of factoring large prime numbers.
+- **ECC (Elliptic Curve Cryptography):** A modern alternative to RSA. A 256-bit ECC key provides security equivalent to a 3072-bit RSA key, making it much more efficient for mobile devices and high-traffic servers.
+- **Diffie-Hellman (DH):** A key exchange protocol where two parties establish a shared secret over an insecure channel using their own private keys and a common public key.
 
 ## 3. The States of Encryption
 Data must be protected differently depending on its current state:
@@ -85,7 +109,19 @@ These algorithms are currently considered highly secure, offering robust mathema
   - **How it Works:** In the sponge construction, input data is "absorbed" into the system's state through XOR operations and block permutations, and then the final hash result is "squeezed" out.
   - **Purpose:** Because of the successful attacks on older algorithms, NIST selected SHA-3 to serve as a highly secure, structurally dissimilar alternative. This ensures that if a foundational flaw is ever discovered in the SHA-2 architecture, SHA-3 can be directly substituted into current applications to maintain security.
 
+### Keyed-Hashing: HMAC
+
+While a standard hash ensures **Integrity**, it does not prove **Authenticity** because anyone with the data can generate the same hash. To solve this, we use **HMAC** (Hash-based Message Authentication Code), which incorporates a **secret key** into the hashing process.
+
+- **Mechanism:** HMAC combines a cryptographic hash function (like SHA-256) with a secret key known only to the sender and the receiver.
+- **Security Tenets:** Unlike simple hashing, HMAC addresses both **Integrity** (the message hasn't changed) and **Authenticity** (the message must have come from someone with the secret key).
+- **Use Case:** HMAC is commonly used in API authentication and **JSON Web Tokens (JWTs)**. Even if an attacker intercepts the message and modifies it, they cannot generate a valid HMAC to match the changes because they lack the secret key.
+- **Comparison:**
+  - **Standard Hash:** Integrity only (detects accidental corruption).
+  - **HMAC:** Integrity + Authenticity (detects malicious tampering and verifies the sender).
+
 ## 5. Applications of Asymmetric Cryptography
+
 In an asymmetric system (Public/Private key pair), the logic changes entirely depending on your security goal:
 
 **A. For Confidentiality (Encryption)**
@@ -93,19 +129,41 @@ In an asymmetric system (Public/Private key pair), the logic changes entirely de
 * **Result:** Only the recipient can decrypt it with their **Private Key**.
 * **Goal:** Ensuring that only authorized parties can read the data.
 
-
-
 **B. For Authenticity & Non-repudiation (Digital Signatures)**
 
 * **Action:** You "encrypt" (sign) a hash of a message using **your own Private Key**.
 * **Result:** Anyone can verify the signature using your **Public Key**.
 * **Goal:** Proving that you are the true author (**Authenticity**) and providing undeniable proof of the transaction (**Non-repudiation**).
 
-## 6. Digital Certificates
+## 6. Digital Certificates and PKI
 
-A digital certificate is an electronic document containing identity information about a person, company, or institution. It functions as an electronic ID card, allowing for secure digital transactions, user authentication in systems, electronic signing of documents, and sending encrypted messages.
+A primary challenge in secure communications is proving authenticity—for example, proving that a website name actually belongs to the legitimate owner. To solve this, we use Digital Certificates and a Public Key Infrastructure (PKI).
 
-* **Certificate Authority (CA):** Certificates are issued by a trusted Certificate Authority, which attests to the authenticity of the holder's identity through a digital signature. 
-* **The Issuance Process:** The CA rigorously verifies the identity of the applicant using personal identification documents and proof of address. Once verified, the CA issues the digital certificate.
-* **Storage:** Certificates can be stored on physical devices (like USB tokens or smart cards) or installed directly onto a computer.
-* **Use Cases:** Widely adopted in e-commerce, banking, e-government, and healthcare to guarantee data authenticity and integrity.
+A digital certificate is an electronic document containing identity information about a person, company, or institution. It functions as an electronic ID card, allowing for secure digital transactions, user authentication in systems, electronic signing of documents, and sending encrypted messages. Today, the universal standard for these certificates is **X.509**.
+
+### **The Certificate Creation Process**
+The lifecycle of creating a trusted certificate generally follows these steps:
+1. **Generate a Key Pair:** The applicant generates a pair of public and private keys.
+2. **Identity Verification:** A trusted third party, known as a Certificate Authority (CA), rigorously verifies the identity of the applicant using personal identification documents and proof of address.
+3. **Draft the Certificate:** The applicant's public key is placed into the certificate document along with their identity information.
+4. **Sign the Certificate:** The CA signs the certificate using its own private key, officially attesting to the authenticity of the holder's identity.
+
+### **The Trust Chain**
+Certificates can sign "other certificates," which creates a hierarchical **Trust Chain**. Every certificate has an "Issuer Name" that dictates exactly who issued and signed it.
+
+* **Root Certificates:** Ultimately, every trust chain leads back to a Root Certificate. Root certificates are always "self-signed" and are implicitly trusted by everyone. 
+* **Certificate Stores:** These trusted root certificates are pre-installed in a big list within the Operating System's root certificate store. However, some systems (like web browsers) maintain their own independent certificate stores so they do not have to rely solely on the OS's list.
+* **Self-Signed Certificates (Untrusted):** Anyone can create a self-signed certificate (where the private key signing the cert belongs to the public key inside it). Unless it is a recognized Root Certificate, a self-signed certificate is usually untrusted by default and is primarily used only for local development or testing.
+
+### **The Validation Process**
+When a client (like a browser) receives a certificate, it must determine if it can trust it. It does this by evaluating the trust chain recursively:
+
+```mermaid
+flowchart LR
+    A([Start: Receive Certificate]) --> B{Is the certificate<br>a Root?}
+    B -- Yes --> C([Trusted!])
+    B -- No --> D[Look for the certificate of<br>the issuer that signed it]
+    D -. Repeats recursively .-> B
+```
+
+> **Network Engineering Note:** During a connection, servers will often send the **full chain** of certificates to the client. This is because clients might not have all the intermediate certificate authorities cached in their local store. By sending the full chain, the server ensures it can support more clients and establish trust seamlessly, even though it requires transferring slightly more data during the handshake.

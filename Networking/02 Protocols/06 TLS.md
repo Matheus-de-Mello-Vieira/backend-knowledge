@@ -7,6 +7,8 @@
   * other people say that it is layer 4 because follow the script of TCP handshake
 * on the handshake, the both ends get the same key, so they can encrypt their messages.
 
+> **Note on Cryptography:** TLS relies heavily on Symmetric/Asymmetric encryption and Public Key Infrastructure (PKI). For the mathematical theory behind these algorithms and how Trust Chains work, see [Cryptography](../../Security/Information Security/03 Cryptography.md).
+
 ## Why TLS
 
 * We encrypt with symmetric key algorithms
@@ -19,69 +21,6 @@
     * so there is two encryption algorithms: one to key exchange, and another to the actual data.
 * Authenticate the server
 * Extensions (SNI, preshared, 0RTT)
-
-## Encryption
-
-* Encryptions are two types
-  * Symmetric: You encrypt with key and decrypt with the same key
-    * one key
-    * Fast but both client and server must have the same key
-  * Asymmetric: You encrypt with a key and decrypt with another
-    * Comes in pair: one private and one public
-    * Slower but both client and server can have their own public keys
-    * you can generate the public key using the private one, but you can't generate the private key using the public one.
-    * there is two ways:
-      * you can encrypt with the public key, and decrypt with the private one
-        * only owner of private Key can decrypt it
-        * it can prove receiver authenticity
-      * you can encrypt with the private key, and decrypt with the public one
-        * only the corresponding public key can decrypt it
-        * only owner of the private key could have signed this document
-        * Protects confidentially, nobody could have missed with it.
-* We always want to encrypt with Symmetric encryptions
-* Exchange the symmetric key with asymmetric encryption
-
-### Certificates
-
-* We need a way to proof authenticity
-
-  * for example, proof my website name is mine.
-
-* process:
-
-  1) Generate a pair of public/private key
-
-  2) Put a public key in a certificate
-
-  3) Sign the certificate with the a private key
-
-  4) Meet x509: the standard for certificates today
-
-* certificates can be "self signed"
-
-  * i.e. private key signing the cert belong to the public key
-  * Usually untrusted and used for test/local
-
-* certificates can sign "other certificates"
-
-  * creating a trust chain
-  * Issuer name is who issued it
-  * Leys enctypts
-
-* Ultimately a ROOT cert is found
-
-  * Root certs are always self signed
-  * They are trusted by everyone
-  * Installed with OS root (certificate store), with a big list of trusted root certs
-    * some systems have their on certificate store, so they don't need to trust the OS' one.
-
-The trust a certificates:
-
-* Is the certificate a root?
-  * if yes, it is trusted
-  * else, it looks for the certificate that signed it, and repeat the process recessively. 
-    * servers can send the full chain of certificates, because sometimes clients don't have some of the intermediate certificate authorities in their certificate store.
-      * the server supports more clients, in spite of having to transfer more data.
 
 ## TLS Versions
 
