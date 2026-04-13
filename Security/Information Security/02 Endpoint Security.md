@@ -103,26 +103,20 @@ File protection is a critical component of cybersecurity. Confidential files—s
 * **Protective Techniques:** To secure files, organizations implement techniques like data encryption, access management, and rigorous security policies to control who can access the information.
 * **Backups:** It is essential for organizations to perform regular backups and maintain these security copies in separate, isolated locations. This guarantees data recovery in the event of hardware failures or cyberattacks (like ransomware).
 
-## **File Systems: Basic Concepts**
+## Filesystem Security
 
-- **Definition:** A file system is the method and data structure used by an operating system (OS) to store, organize, and access files on a storage device.
-- **Directory (Folder):** The fundamental organizational unit within a file system, which can contain files as well as other directories (subdirectories).
-- **File:** A distinct set of information stored on a device. Files possess names and extensions that indicate both their type and their content.
-- **File Extension:** The specific set of characters that appears after the filename, serving to indicate the file's type or format.
-- **Path:** The exact location or address of a file or directory within the file system.
-  - *Absolute Path:* Traces the location starting from the very root of the file system.
-  - *Relative Path:* Traces the location starting from the current working directory.
-- **File Permissions:** Security controls that define exactly who is allowed to access, read, write, or execute a specific file.  These permissions can be individually configured for the file's owner, a specific group of users, and all other users.
-- **Disk Formatting:** The initial process of preparing a physical storage device to be used as a file system. This creates the foundational structure needed to store files and directories, and the process can erase all previously existing data on the device.
-- **File Fragmentation:** A condition that occurs when a single file is broken into smaller pieces and stored in scattered, non-contiguous parts of the disk.  This typically happens when there is not enough continuous free space available to store the file in one place. Fragmentation negatively affects file system performance, resulting in slower read and write operations.
+For the operating-system concepts behind file systems, see:
 
-### Common File Systems
+- [02 File Systems.md](../../Operating%20Systems/02%20File%20Systems.md)
 
-- **NTFS (New Technology File System):** The default file system used for Windows operating systems. It allows for the creation of folders and subfolders, as well as the robust management of file and directory permissions.
-- **HFS (Hierarchical File System):** The standard file system traditionally used for MacOS. It allows for the organization of files into folders and subfolders, in addition to providing built-in support for large files and data compression.
-- **EXT4 (Fourth Extended File System):** The default file system for Linux operating systems. It enables the management of large files and supports both fragmentation and data compression.
-- **FAT32 (File Allocation Table 32-bit):** An older, legacy file system that has been widely used for external storage devices and USB flash drives.  While it offers high compatibility across many different operating systems, it has strict limitations and does not support large individual files or folders containing a massive number of files.
-- **exFAT (Extended File Allocation Table):** A modernized file system designed specifically to bridge the gap between platforms. It allows for seamless compatibility with external storage devices and USB flash drives across different operating systems, while fully supporting the storage of large files that FAT32 cannot handle.
+Security involving the filesystem is about protecting how data is stored, accessed, modified, and recovered on disk. In practice, this means controlling permissions, limiting unauthorized reads and writes, encrypting sensitive data, maintaining backups, and choosing safe operational practices for storage devices.
+
+- **Access Control:** File and directory permissions are one of the first security boundaries on an endpoint. Misconfigured permissions can expose confidential data or allow unauthorized modification of executables and configuration files.
+- **Data Protection:** Encryption at rest helps protect sensitive files if a device is stolen or if an attacker gains physical access to the storage medium.
+- **Recovery and Resilience:** Backups reduce the impact of corruption, accidental deletion, hardware failure, and ransomware attacks.
+- **Operational Risks:** Actions like formatting disks, mounting removable media, or using legacy file systems can introduce security and reliability risks if done carelessly.
+
+
 
 ## Cryptography
 
@@ -132,20 +126,22 @@ Encryption is the process of transforming readable data into an unreadable forma
 
 ## Backup and Restore
 
-**1. Data Backup**
+### **Data Backup**
 
 - **Definition:** A backup is a security copy of data stored on a device, such as a personal computer, server, mobile device, or other storage medium. It is an essential security measure designed to protect data against accidental loss, file corruption, or physical damage to the original device.
 - **The Process:** The backup process involves copying stored data and transferring it to a secondary storage location, such as an external hard drive, a dedicated backup server, or a cloud storage environment.
 - **Execution:** Backups can be performed manually or by utilizing automated backup software. Automated solutions allow administrators to configure schedules, ensuring the backup process runs periodically without requiring manual user intervention.
 - **Storage Best Practices:** It is highly recommended, and often critical, to store backup copies in secure, off-site locations (away from where the original data resides). This geographic separation ensures that data can be recovered even in the event of localized physical incidents, such as natural disasters, fires, or thefts.
 
-**2. Types of Backup** There are different backup strategies, which vary based on execution frequency and the required level of data protection:
+### **Types of Backup**
+
+There are different backup strategies, which vary based on execution frequency and the required level of data protection:
 
 - **Full Backup:** A complete, comprehensive copy of *all* data stored on a device at a given time.
 - **Incremental Backup:** A targeted copy of only the data that has been altered or added since the *last backup* (regardless of whether that previous backup was full or incremental).
 - **Differential Backup:** A targeted copy of only the data that has been altered specifically since the *last full backup*.
 
-**3. Data Recovery**
+### **Data Recovery**
 
 - **Definition:** Restore, also known as data recovery, is the process of retrieving saved data from a backup copy and transferring it back to the original device or to a completely new device.
 - **When it is Used:** A restore operation becomes necessary when original data is lost, corrupted, or damaged, or when data needs to be migrated to new hardware.
