@@ -55,7 +55,7 @@ Here are the structured notes regarding the Protocol Analysis and Types of Analy
 - **Main Advantage:** It displays captured packets in detail through a real-time graphical interface and includes features for deep log inspection.
 - **Attention:** In most cases, it is not recommended to use the capture feature simultaneously with packet analysis, as this can affect the resources of the machine being used.
 
-**Note:** For practical, step-by-step examples of how to use Wireshark and tcpdump to diagnose backend latency, TLS handshakes, and TCP window issues, see [Troubleshooting Performance](../Backend Engineering/03 Troubleshooting Performance.md).
+**Note:** For practical, step-by-step examples of how to use Wireshark and tcpdump to diagnose backend latency, TLS handshakes, and TCP window issues, see [Troubleshooting Performance](03%20Troubleshooting%20Performance.md).
 
 #### **2. Tcpdump**
 
