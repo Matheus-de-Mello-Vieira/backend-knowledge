@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "5c607ea94a24da66",
+        "id": "a5bf742cf689aea4",
         "type": "tabs",
         "children": [
           {
-            "id": "fd2c12d371cc6aca",
+            "id": "3af5cdb614b46ce5",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/OWASP.md",
+                "file": "Security/Information Security/02 Endpoint Security.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "OWASP"
+              "title": "02 Endpoint Security"
+            }
+          },
+          {
+            "id": "a7d3891cc06c5a37",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/Information Security/01 Introduction.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "01 Introduction"
             }
           }
         ]
@@ -90,13 +114,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/OWASP.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of OWASP"
+              "title": "Outline"
             }
           }
         ]
@@ -184,49 +207,8 @@
             }
           },
           {
-            "id": "b8c24e58711eb785",
-            "type": "leaf",
-            "state": {
-              "type": "terminal:terminal",
-              "state": {
-                "terminal:terminal": {
-                  "cwd": "/Users/matheusmv/Documents/estudo/backend-knowledge",
-                  "focus": false,
-                  "profile": {
-                    "args": [
-                      "--login"
-                    ],
-                    "executable": "/bin/zsh",
-                    "followTheme": true,
-                    "name": "",
-                    "platforms": {
-                      "darwin": true
-                    },
-                    "pythonExecutable": "python3",
-                    "restoreHistory": false,
-                    "rightClickAction": "copyPaste",
-                    "successExitCodes": [
-                      "0",
-                      "SIGINT",
-                      "SIGTERM"
-                    ],
-                    "terminalOptions": {
-                      "documentOverride": null
-                    },
-                    "type": "integrated",
-                    "useWin32Conhost": true
-                  },
-                  "serial": null
-                }
-              },
-              "icon": "terminal",
-              "title": "Terminal: ✳ Claude Code"
-            }
-          },
-          {
             "id": "f2cbd629bcd1c92c",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -260,9 +242,18 @@
                   "serial": null
                 }
               },
-              "pinned": true,
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: ✳ Claude Code"
+            }
+          },
+          {
+            "id": "a5516ff1318a002c",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
             }
           }
         ],
@@ -287,16 +278,17 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Security/general.md",
-    "Security/Authentication.md",
-    "Security/geral.md",
-    "Security/Back-end security checklist.md",
-    "Security/OWASP.md",
-    "Security/Information Security/03 Cryptography.md",
-    "CLAUDE.md",
-    "Security/Zero Trust Architecture.md",
-    "Security/Information Security/01 Introduction.md",
     "Security/Information Security/02 Endpoint Security.md",
+    "Security/Information Security/01 Introduction.md",
+    "Security/Information Security/03 Cryptography.md",
+    "Security/Authentication.md",
+    "Security/Back-end security checklist.md",
+    "Security/Zero Trust Architecture.md",
+    "Technologies/Golang/04 Design Patterns/03 Factories.md",
+    "CLAUDE.md",
+    "Security/OWASP.md",
+    "Security/general.md",
+    "Security/geral.md",
     "Resilience.md",
     "Patterns.md",
     "Untitled.base",

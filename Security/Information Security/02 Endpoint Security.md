@@ -721,7 +721,7 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 #### **AI/ML-Enhanced Cloud Security**
 
 **Machine Learning Applications:**
-- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities
+- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities. For more details on behavioral analysis techniques, see [Intrusion Detection Systems](./01%20Introduction.md#intrusion-detection-systems-ids) in the Introduction section.
 - **Predictive Security Analytics:** Forecasting potential security incidents based on historical data
 - **Automated Response:** AI-driven incident response and remediation actions
 
