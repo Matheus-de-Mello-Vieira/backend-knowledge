@@ -198,3 +198,299 @@ For high-security environments, basic tools are supplemented by advanced techniq
 - **Behavioral Analysis:** Using AI algorithms to identify "anomalous" system behavior that deviates from a established baseline.
 - **Sandboxing:** Executing suspicious files in an isolated virtual environment to observe their behavior without risking the main system.
 - **Virtualization:** Running applications or entire operating systems in isolated containers to prevent cross-contamination from threats.
+
+## Windows Endpoint Security
+
+Microsoft Windows provides a comprehensive security ecosystem designed to protect endpoints through multiple layers of defense. Understanding these tools and their integration is crucial for securing Windows-based infrastructure effectively.
+
+### **1. Zero Trust in Windows**
+
+- **Definition:** Zero Trust is a security framework that assumes no implicit trust and continuously validates every transaction within a network, regardless of location or user credentials.
+- **Core Principles in Windows Environment:**
+  - **Continuous Verification:** Every access request is authenticated, authorized, and encrypted before granting access to resources.
+  - **Least Privilege Access:** Users and applications receive the minimum level of access required to perform their functions.
+  - **Assume Breach:** Security architecture assumes that attackers are already inside the network and implements controls accordingly.
+- **Windows Implementation:** Microsoft integrates Zero Trust principles through Azure Active Directory, Conditional Access policies, and Microsoft 365 security features that work together to verify identity, device health, and application integrity before granting access to corporate resources.
+
+### **2. Microsoft Defender Antivirus**
+
+- **Definition:** Microsoft Defender Antivirus is a built-in, real-time protection solution that comes standard with Windows 10 and Windows 11, designed to defend against viruses, malware, spyware, and other security threats.
+- **Real-Time Protection Features:**
+  - **Always-On Scanning:** Continuously monitors file system activity, downloads, and program execution.
+  - **Background Scanning:** Performs automatic scans during system idle times to minimize performance impact.
+  - **Boot-Time Protection:** Scans the system during startup before other applications can load.
+- **Detection Methods:**
+  - **Signature-Based Detection:** Uses a database of known malware signatures to identify threats based on unique code patterns.
+  - **Behavior-Based Detection:** Monitors application behavior and system changes to identify suspicious activities that may indicate unknown threats.
+  - **Cloud-Powered Intelligence:** Leverages Microsoft's global threat intelligence network to provide real-time protection against emerging threats, often detecting new malware variants within milliseconds of discovery.
+- **Microsoft Defender Ecosystem Integration:** Works seamlessly with Microsoft Defender for Endpoint, Microsoft 365 Defender, and Azure Sentinel to provide enterprise-grade threat detection and response capabilities.
+
+### **3. Microsoft Defender and Encryption**
+
+- **Data Protection Strategy:** Microsoft Defender works in conjunction with Windows encryption technologies to provide comprehensive data protection both during threat detection and for securing sensitive information.
+- **BitLocker Integration:**
+  - **Full Disk Encryption:** BitLocker encrypts entire drives to protect against data theft if a device is lost or stolen.
+  - **Defender Coordination:** Microsoft Defender can pause BitLocker during certain remediation activities to ensure system integrity during threat removal.
+  - **Recovery Integration:** Defender helps manage BitLocker recovery keys through Azure Active Directory for enterprise environments.
+- **EFS (Encrypting File System) Protection:**
+  - **File-Level Encryption:** EFS provides transparent encryption for individual files and folders at the NTFS level.
+  - **Certificate Management:** Defender monitors and protects EFS certificates that are crucial for accessing encrypted files.
+  - **Ransomware Defense:** The combination of EFS and Defender provides additional protection against ransomware by maintaining encrypted backups of critical files.
+- **Data at Rest Protection:** The integration ensures that even if malware bypasses initial detection, encrypted data remains protected from unauthorized access or exfiltration.
+
+### **4. Windows Defender Firewall**
+
+- **Definition:** Windows Defender Firewall is a host-based firewall that monitors and controls incoming and outgoing network traffic based on predetermined security rules.
+- **Traffic Control Mechanisms:**
+  - **Packet Filtering:** Examines individual network packets and allows or blocks them based on source/destination addresses, ports, and protocols.
+  - **Stateful Inspection:** Tracks the state of network connections and makes decisions based on connection context and history.
+  - **Application-Based Rules:** Controls network access on a per-application basis, allowing granular control over which programs can access the network.
+- **Firewall Profiles:**
+  - **Domain Profile:** Applied when connected to a domain network (corporate environment). Typically allows more network services and has specific rules for domain resources.
+  - **Private Profile:** Used for trusted private networks (home networks). Provides moderate security with some network discovery enabled.
+  - **Public Profile:** The most restrictive profile for untrusted networks (public Wi-Fi, airports). Blocks most inbound connections and limits network discovery.
+- **Network Segmentation Role:** Works with Group Policy and enterprise management tools to create network zones, isolate critical systems, and prevent lateral movement during security incidents.
+
+### **5. Application Guard and Microsoft Defender SmartScreen**
+
+#### **Microsoft Defender Application Guard**
+- **Definition:** A hardware isolation security feature that uses virtualization-based security (VBS) to isolate untrusted websites and documents in a secure container.
+- **Virtualization-Based Isolation:**
+  - **Hyper-V Container:** Creates an isolated virtual machine specifically for running untrusted content.
+  - **Hardware Requirements:** Requires modern processors with virtualization support and sufficient RAM for container creation.
+  - **Resource Management:** Automatically manages container lifecycle, creating and destroying isolated environments as needed.
+- **Untrusted Website Protection:** When users navigate to potentially dangerous websites, Application Guard opens them in an isolated browser instance that cannot access the host operating system or corporate network resources.
+
+#### **Microsoft Defender SmartScreen**
+- **Definition:** A cloud-based anti-phishing and anti-malware component that helps protect users from malicious websites, downloads, and applications.
+- **Malicious Download Protection:**
+  - **File Reputation Analysis:** Checks downloaded files against a global reputation database before execution.
+  - **URL Reputation:** Evaluates website URLs in real-time to identify phishing sites and malware distribution points.
+  - **Behavioral Analysis:** Monitors download patterns and user behavior to identify potential social engineering attacks.
+- **Application and Website Reputation System:**
+  - **SmartScreen Filter:** Analyzes website content, URL patterns, and user reports to maintain an updated reputation database.
+  - **Application Reputation:** Checks executable files and applications against known good and bad software databases.
+  - **User Feedback Integration:** Incorporates user reports and Microsoft's global telemetry to improve threat detection accuracy.
+
+### **6. Windows Defender Credential Guard**
+
+- **Definition:** A virtualization-based security feature that isolates secrets so that only privileged system software can access them, protecting against credential theft attacks.
+- **Virtualization-Based Security (VBS):**
+  - **Secure Kernel:** Uses the Windows hypervisor to create a secure environment that is isolated from the normal operating system.
+  - **Hardware Requirements:** Requires UEFI firmware, Secure Boot, and modern processors with virtualization extensions (Intel VT-x or AMD-V).
+  - **Memory Protection:** Utilizes hardware features like SMEP (Supervisor Mode Execution Prevention) and SMAP (Supervisor Mode Access Prevention) for additional security.
+- **System Credential Protection:**
+  - **NTLM Hash Protection:** Prevents the storage of NTLM password hashes in the Local Security Authority (LSA) process memory.
+    - *NTLM (NT LAN Manager): Microsoft's legacy challenge-response authentication protocol that uses MD4 password hashes*
+  - **Kerberos Ticket Protection:** Secures Kerberos Ticket Granting Tickets (TGTs) in the isolated environment.
+  - **Certificate Protection:** Protects private keys and certificates used for authentication.
+- **Attack Mitigation:**
+  - **Pass-the-Hash Prevention:** By isolating NTLM hashes, attackers cannot extract and reuse them even with administrative privileges.
+  - **Pass-the-Ticket Prevention:** Kerberos tickets are protected in the secure environment, preventing their theft and reuse.
+  - **Golden Ticket Defense:** Makes it significantly harder for attackers to create forged Kerberos tickets for persistent access.
+  - **Memory Dumping Protection:** Prevents credential harvesting tools like Mimikatz from accessing secrets stored in memory.
+
+## Linux Endpoint Security
+
+Linux provides a comprehensive security model through multiple layers of protection, leveraging the operating system's inherent architecture and specialized security tools to create robust endpoint defense.
+
+### **The Linux Security Model: SELinux**
+
+- **Definition:** SELinux (Security-Enhanced Linux) is a mandatory access control (MAC) system that provides fine-grained security policies at the operating system level.
+- **Core Concept:** Uses the principle of **least privilege** by defining domains and access policies that restrict what processes can do, regardless of user permissions.
+- **Distribution Availability:**
+  - **Default Installation:** Red Hat Enterprise Linux (RHEL), CentOS, Fedora, and Rocky Linux
+  - **Available but Not Default:** Ubuntu, Debian, SUSE Linux Enterprise
+  - **Installation Command:** `apt install selinux-utils selinux-basics` (Debian/Ubuntu) or `yum install selinux-policy-targeted` (RHEL-based)
+- **Configuration Locations:**
+  - **Main Config:** `/etc/selinux/config` - controls SELinux mode and policy type
+  - **Policy Files:** `/etc/selinux/targeted/` - contains the actual security policies
+  - **Runtime Status:** `/sys/fs/selinux/enforce` - current enforcement status (0=permissive, 1=enforcing)
+- **Operation Modes:**
+  - **Enforcing Mode:** Actively blocks policy violations and logs security events
+  - **Permissive Mode:** Logs policy violations but doesn't block them (useful for testing and debugging)
+  - **Disabled Mode:** SELinux is completely turned off
+- **Security Benefits:**
+  - Prevents privilege escalation attacks by confining processes to their designated domains
+  - Mitigates zero-day exploits by limiting what compromised processes can access
+  - Provides defense-in-depth even when traditional Unix permissions are bypassed
+
+### **Virus and Malware Protection**
+
+Linux endpoint protection relies on multiple complementary approaches:
+
+#### **Architectural Defenses**
+- **Kernel Design:** Linux kernel architecture inherently limits malware propagation through strict process isolation and memory protection
+- **Permission System:** Traditional Unix file permissions (read/write/execute) create barriers for unauthorized file modification
+- **Package Integrity:** Most software is installed through trusted package managers with cryptographic signature verification
+
+#### **Active Protection Tools**
+- **ClamAV:** Open-source antivirus engine commonly used for mail servers and file scanning
+- **ESET NOD32:** Commercial antivirus solution with real-time protection
+- **Sophos:** Enterprise-grade endpoint protection for Linux servers and workstations
+- **Firewall Integration:** Host-based firewalls block suspicious network connections and malicious downloads
+
+#### **Preventive Measures**
+- **Regular Updates:** Automatic security patches through package managers (`apt`, `yum`, `dnf`, `pacman`)
+- **File Integrity Monitoring:** Tools like `AIDE` and `Tripwire` detect unauthorized file modifications
+- **Secure Boot:** UEFI Secure Boot prevents loading of unauthorized kernel modules and bootloaders
+
+### **Encryption and Access Control**
+
+#### **SSH (Secure Shell) Protection**
+- **Definition:** Cryptographic network protocol that provides secure remote access and command execution over untrusted networks
+- **Security Features:**
+  - **Public Key Authentication:** Uses RSA, Ed25519, or ECDSA key pairs for passwordless authentication
+  - **Forward Secrecy:** Session keys are ephemeral and cannot be compromised retroactively
+  - **Host Verification:** Prevents man-in-the-middle attacks through host key fingerprinting
+- **Hardening Best Practices:**
+  - Disable root login: `PermitRootLogin no`
+  - Use non-standard ports: `Port 2222`
+  - Implement fail2ban for brute force protection
+  - Require key-based authentication: `PasswordAuthentication no`
+
+#### **ACL (Access Control Lists)**
+- **Definition:** Extended permission system that provides granular access control beyond traditional Unix permissions
+- **Implementation:** Uses `setfacl` and `getfacl` commands to manage extended file permissions
+- **Use Cases:**
+  - Grant specific users access to shared directories
+  - Implement fine-grained database file permissions
+  - Control access to log files and system resources
+
+### **Firewall: iptables and netfilter**
+
+#### **Architecture Overview**
+- **netfilter:** Kernel-space framework that provides packet filtering hooks in the Linux network stack
+- **iptables:** User-space utility that configures netfilter rules and policies
+- **Modern Alternative:** `nftables` is the newer framework replacing iptables in recent distributions
+
+#### **iptables Rule Processing**
+- **Tables and Chains:** Rules are organized in tables (`filter`, `nat`, `mangle`) with predefined chains (`INPUT`, `OUTPUT`, `FORWARD`)
+- **Sequential Processing:** iptables evaluates rules in order from top to bottom within each chain
+- **Rule Matching:** Packets are evaluated against rules based on criteria like source IP, destination port, and protocol
+- **Actions:** Matched packets can be `ACCEPT`ed, `DROP`ped, `REJECT`ed, or `LOG`ged
+
+**Execution Flow for Rule Processing:**
+
+1. **Terminal vs Non-Terminal Targets:**
+   - **Terminal Targets** (`ACCEPT`, `DROP`, `REJECT`): Stop rule processing immediately when matched
+   - **Non-Terminal Targets** (`LOG`, `MARK`): Continue to next rule after executing the action
+
+2. **Rate Limiting Execution Route:**
+   Using the SSH brute force example, here's how packets are processed:
+
+   - **Within Rate Limit:** Packet matches first rule's limit condition → `ACCEPT` (terminal) → processing stops
+   - **Exceeds Rate Limit:** Packet fails first rule's limit condition → continues to second rule → `LOG` (non-terminal) → continues to third rule → `DROP` (terminal)
+
+3. **Module Matching Behavior:**
+   - The `limit` module only matches packets that are *within* the specified rate
+   - Packets exceeding the rate do not match the limit rule, allowing them to fall through to subsequent rules
+   - This creates an automatic "overflow" mechanism for handling excess traffic
+
+4. **Policy vs Rules:**
+   - If no rules match, the chain's default policy takes effect (usually `ACCEPT` or `DROP`)
+   - It's best practice to set restrictive policies and explicitly allow desired traffic
+
+#### **Common Firewall Configurations**
+
+**Basic SSH-Only Access Control:**
+The most fundamental firewall configuration allows only SSH connections while blocking all other incoming traffic. This creates a secure baseline for server administration.
+
+```bash
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -j DROP
+```
+
+- `-A INPUT`: Appends rules to the INPUT chain (handles incoming packets)
+- `-p tcp`: Specifies the TCP protocol
+- `--dport 22`: Matches packets destined for port 22 (SSH default port)
+- `-j ACCEPT`: Jumps to ACCEPT target, allowing the packet through
+- `-j DROP`: Silently discards packets without sending rejection responses
+
+**Stateful Connection Tracking:**
+Modern firewalls should allow established connections to continue functioning. This rule permits return traffic for connections that were initiated from the local machine, enabling normal internet browsing and outbound communications.
+
+```bash
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+```
+
+- `-m state`: Loads the connection tracking module
+- `--state ESTABLISHED`: Matches packets belonging to existing connections
+- `--state RELATED`: Matches packets related to established connections (like FTP data channels)
+- The comma separates multiple connection states in a single rule
+
+**SSH Brute Force Protection:**
+Rate limiting prevents automated password attacks by restricting the number of SSH connection attempts. This configuration allows only 3 SSH connection attempts per minute from any single source, with logging for anomaly detection.
+
+```bash
+iptables -A INPUT -p tcp --dport 22 -m limit --limit 3/min -j ACCEPT
+iptables -A INPUT -p tcp --dport 22 -j LOG --log-prefix "SSH_BRUTE_FORCE: "
+iptables -A INPUT -p tcp --dport 22 -j DROP
+```
+
+- `-m limit`: Loads the limit module for rate limiting functionality
+- `--limit 3/min`: Sets maximum rate to 3 matches per minute per source IP
+- The limit module uses a token bucket algorithm to track connection rates
+- `-j LOG`: Logs packets that exceed the rate limit to system logs (`/var/log/messages` or `/var/log/syslog`)
+- `--log-prefix "SSH_BRUTE_FORCE: "`: Adds a custom prefix to log entries for easy filtering and alerting
+- The three-rule sequence: ACCEPT (rate-limited) → LOG (excess packets) → DROP (excess packets)
+
+### **Application and Service Control**
+
+#### **Mandatory Access Control Systems**
+- **SELinux:** Comprehensive MAC system with complex policies (Red Hat/CentOS/Fedora default)
+- **AppArmor:** Profile-based MAC system that's easier to configure (Ubuntu/SUSE default)
+- **grsecurity:** Kernel hardening patchset with additional security features (third-party)
+
+#### **Package Management Security**
+- **Package Verification:** All major package managers verify cryptographic signatures before installation
+- **Dependency Resolution:** Automatic handling of software dependencies reduces manual installation risks
+- **Common Package Managers:**
+  - `apt` (Debian/Ubuntu): `apt update && apt upgrade`
+  - `yum`/`dnf` (Red Hat/CentOS/Fedora): `dnf update`
+  - `pacman` (Arch Linux): `pacman -Syu`
+  - `zypper` (openSUSE): `zypper update`
+
+#### **Service Management with systemd**
+- **Service Control:** `systemctl start/stop/restart/enable/disable service-name`
+- **Security Features:**
+  - Process sandboxing with `SystemCallFilter` and `CapabilityBoundingSet`
+  - Network isolation with `PrivateNetwork`
+  - Filesystem restrictions with `ReadOnlyPaths` and `InaccessiblePaths`
+- **Monitoring:** `journalctl` provides centralized logging for security analysis
+
+### **User and Group Management**
+
+#### **User Account Control**
+- **Account Creation:** `useradd -m -s /bin/bash username`
+- **Password Policy:** `passwd` command with complexity requirements via PAM
+- **Account Modification:** `usermod -aG sudo username` (add to sudo group)
+- **Account Removal:** `userdel -r username` (remove home directory)
+
+#### **Group-Based Permissions**
+- **Group Creation:** `groupadd groupname`
+- **Group Assignment:** `usermod -aG groupname username`
+- **Permission Management:** Use groups to control access to shared resources and system functions
+
+#### **Security Configuration Files**
+- `/etc/passwd` - User account information
+- `/etc/shadow` - Encrypted password storage (restricted access)
+- `/etc/group` - Group definitions
+- `/etc/sudoers` - Sudo access control (edit with `visudo`)
+
+### **Advanced Security Hardening**
+
+#### **Network Security**
+- **SSH Key Management:** Use `ssh-keygen -t ed25519` for strong key generation
+- **VPN Integration:** WireGuard or OpenVPN for secure remote access
+- **Network Monitoring:** `netstat`, `ss`, and `lsof` for connection analysis
+
+#### **System Monitoring and Logging**
+- **Log Analysis:** `rsyslog` or `systemd-journald` for centralized logging
+- **Security Monitoring:** `auditd` for system call auditing and compliance
+- **Intrusion Detection:** `OSSEC` or `Samhain` for host-based intrusion detection
+
+#### **Disk and Data Protection**
+- **Full Disk Encryption:** LUKS (Linux Unified Key Setup) for transparent disk encryption
+- **File-Level Encryption:** `gpg` for individual file encryption
+- **Secure File Deletion:** `shred` command for secure file wiping
