@@ -129,7 +129,11 @@ Encryption is the process of transforming readable data into an unreadable forma
 
 > **Note:** For a comprehensive deep-dive into how these mechanisms work—including Symmetric vs. Asymmetric keys, Hashing algorithms, Digital Signatures, and Digital Certificates—please refer to the dedicated notes in [03 Cryptography.md](./03 Cryptography.md).
 
-### **Firewalls**
+### **Network Security and Firewalls**
+
+Network security encompasses a comprehensive set of technologies and practices designed to protect network infrastructure and the data transmitted across it. Modern network security goes far beyond traditional perimeter defense to include advanced threat detection, network segmentation, and continuous monitoring.
+
+#### **Firewall Technologies**
 
 A firewall is a network security mechanism designed to protect a communication channel by restricting access based on predefined security rules. It serves as a critical defense layer, particularly for ensuring Availability—a tenet that Authentication and Encryption alone do not guarantee.
 
@@ -139,6 +143,57 @@ Considering the architecture aforementioned, we can apply firewall rules to prot
 
 - **Authorized Access:** Alice and Bob are assigned static IP addresses **X** and **Y**, respectively. The firewall is configured to permit only these addresses to access the communication channel.
 - **Unauthorized Access:** If Charlie attempts to access the channel from IP address **Z**, the firewall will identify him as unauthorized and block the connection.
+
+**Modern Firewall Types:**
+- **Packet-Filtering Firewalls:** Examine individual packets based on source/destination IP, port numbers, and protocol types.
+- **Stateful Inspection Firewalls:** Track the state of network connections and make decisions based on connection context.
+- **Application Layer Firewalls:** Inspect traffic at the application layer, understanding specific protocols like HTTP, FTP, and SMTP.
+- **Next-Generation Firewalls (NGFW):** Integrate traditional firewall capabilities with intrusion prevention, application awareness, and threat intelligence.
+
+#### **Network Segmentation Strategies**
+
+Network segmentation divides a network into smaller, isolated segments to limit the spread of security breaches and improve overall network security.
+
+- **VLAN Segmentation:** Using Virtual Local Area Networks to logically separate network traffic based on function, department, or security requirements.
+- **Subnet Segmentation:** Physical or logical division of networks into smaller subnets with controlled inter-subnet communication.
+- **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
+- **Zero Trust Network Access (ZTNA):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
+
+#### **Micro-Segmentation**
+
+Advanced network segmentation that creates granular security zones around individual workloads or applications:
+
+- **Software-Defined Perimeters:** Dynamic creation of encrypted network tunnels based on user identity and device trust.
+- **Container Network Security:** Specialized segmentation for containerized applications and microservices architectures.
+- **East-West Traffic Control:** Monitoring and controlling lateral movement within the network, not just north-south traffic.
+- **Application-Centric Policies:** Security policies that follow applications regardless of their network location.
+
+#### **Network Access Control (NAC)**
+
+Comprehensive systems for controlling device access to network resources:
+
+- **Device Authentication:** Verifying the identity and security posture of devices before granting network access.
+- **Compliance Checking:** Ensuring devices meet security requirements (patches, antivirus, configuration) before network admission.
+- **Guest Network Management:** Secure, isolated network access for visitors and temporary users.
+- **Quarantine Mechanisms:** Automatically isolating non-compliant devices until security issues are resolved.
+
+#### **Intrusion Prevention Systems (IPS)**
+
+Active network security systems that monitor traffic and automatically block detected threats:
+
+- **Signature-Based Detection:** Identifying known attack patterns and malicious traffic signatures.
+- **Behavioral Analysis:** Detecting anomalous network behavior that may indicate new or unknown threats.
+- **Protocol Analysis:** Deep inspection of network protocols to identify violations or attacks.
+- **Automated Response:** Immediate blocking of malicious traffic and notification of security teams.
+
+#### **Network Monitoring and Analysis**
+
+Continuous surveillance of network traffic for security threats and performance issues:
+
+- **Deep Packet Inspection (DPI):** Comprehensive analysis of packet contents to identify threats and policy violations.
+- **Flow Analysis:** Statistical analysis of network traffic patterns to identify anomalies and trends.
+- **Network Forensics:** Detailed investigation of network incidents using captured traffic and log data.
+- **Bandwidth and Performance Monitoring:** Tracking network utilization to identify potential security issues or attacks.
 
 ### **Intrusion Detection Systems (IDS)** 
 
@@ -166,25 +221,75 @@ Even when perimeter defenses like firewalls and authentication are successful, a
 
 Because threat actors are increasingly sophisticated and new threats emerge constantly, it is imperative to establish a formal plan of action to handle active attacks and mitigate damage. Security is not only about prevention but also about **resilience** and the ability to recover.
 
-#### **1. Containment and Isolation**
+#### **1. Incident Response Framework**
+
+A comprehensive incident response program requires structured processes and clear responsibilities:
+
+- **Incident Response Team (IRT):** Cross-functional team including security analysts, system administrators, legal counsel, communications specialists, and management representatives.
+- **Response Phases:** Standardized phases including Preparation, Identification, Containment, Eradication, Recovery, and Lessons Learned.
+- **Escalation Procedures:** Clear criteria and processes for escalating incidents based on severity, impact, and regulatory requirements.
+- **Communication Plans:** Pre-defined communication strategies for internal stakeholders, customers, partners, regulators, and law enforcement.
+
+#### **2. Security Information and Event Management (SIEM)**
+
+Centralized systems for collecting, analyzing, and responding to security events:
+
+- **Log Aggregation:** Centralized collection of security logs from firewalls, intrusion detection systems, servers, applications, and endpoints.
+- **Correlation Rules:** Automated analysis to identify patterns and relationships between seemingly unrelated events.
+- **Threat Intelligence Integration:** Real-time incorporation of external threat intelligence to enhance detection capabilities.
+- **Automated Response:** Scripted responses to common security events, such as account lockouts or network isolation.
+
+#### **3. Security Operations Center (SOC)**
+
+Dedicated facility and team for continuous security monitoring and incident response:
+
+- **24/7 Monitoring:** Around-the-clock surveillance of security events and alerts across the entire organization.
+- **Tiered Analysis:** Structured escalation from Level 1 (event triage) to Level 3 (advanced threat analysis and response).
+- **Threat Hunting:** Proactive searching for indicators of advanced threats that may have evaded automated detection.
+- **Metrics and KPIs:** Performance measurement including mean time to detection (MTTD) and mean time to response (MTTR).
+
+#### **4. Containment and Isolation**
 
 When an attack is detected, a primary strategy is to **isolate** the affected component of the system. In this scenario, a clear understanding of the **project's architecture** becomes highly valuable, as it allows security teams to identify trust boundaries and "cut off" the compromised segment to protect the rest of the infrastructure.
 
-#### **2. Diagnostic and Standardized Procedures**
+- **Network Isolation:** Immediately disconnecting compromised systems from the network to prevent lateral movement.
+- **Account Isolation:** Disabling compromised user accounts and related access credentials.
+- **Process Isolation:** Terminating malicious processes while preserving evidence for forensic analysis.
+- **Service Isolation:** Taking affected services offline while maintaining business continuity through redundant systems.
+
+#### **5. Digital Forensics and Evidence Preservation**
+
+Systematic collection and analysis of digital evidence to understand attack methods and impact:
+
+- **Forensic Imaging:** Creating bit-for-bit copies of affected systems and storage devices for analysis.
+- **Chain of Custody:** Maintaining detailed documentation of evidence handling to ensure legal admissibility.
+- **Live Forensics:** Analyzing running systems to capture volatile data before it is lost.
+- **Timeline Analysis:** Reconstructing the sequence of events to understand attack progression and impact.
+
+#### **6. Threat Hunting and Advanced Analytics**
+
+Proactive security practices to identify sophisticated threats:
+
+- **Behavioral Analytics:** Using machine learning and statistical analysis to identify anomalous behavior patterns.
+- **Indicator of Compromise (IOC) Analysis:** Searching for known signatures of malicious activity.
+- **Threat Actor Profiling:** Understanding attacker tactics, techniques, and procedures (TTPs) to improve defensive measures.
+- **Advanced Persistent Threat (APT) Detection:** Specialized techniques for identifying long-term, sophisticated attacks.
+
+#### **7. Diagnostic and Standardized Procedures**
 
 Effective recovery requires a calculated approach, even under the pressure of an active breach:
 
 - **Standardized Procedures**: Following pre-defined, step-by-step playbooks ensures that the response is organized and reduces human error during high-stress situations.
 - **Diagnostic Tools**: These tools are essential for visibility; it is impossible to isolate or recover a system without first understanding which specific part is under attack and how the breach occurred.
 
-#### **3. Backup and Recovery Strategy**
+#### **8. Backup and Recovery Strategy**
 
 Restoring operations safely depends on robust backup mechanisms:
 
 - **Offsite Backups**: Data should be backed up regularly, preferably on a separate server or environment, to ensure it remains unaffected by an attack on the main production system.
 - **Root Cause Analysis**: During the recovery process, it is vital to ensure that the original vulnerability is patched. Simply restoring a system without addressing the "gap" will likely lead to a re-incidence of the same attack.
 
-#### **4. Post-Incident Review and Continuous Improvement**
+#### **9. Post-Incident Review and Continuous Improvement**
 
 The recovery process is only complete when the organization ensures that the same vulnerability cannot be exploited again. This stage turns a security failure into a learning opportunity to strengthen the system's resilience.
 
@@ -192,6 +297,8 @@ The recovery process is only complete when the organization ensures that the sam
 - **Post-Mortem Analysis**: This involves a standardized review of the incident response itself. By analyzing what worked and what failed during the "heat of the moment," the team can refine their procedures and diagnostic tools for future scenarios.
 - **Preventing Re-incidence**: Before a system is fully brought back online, it must be patched or reconfigured to eliminate the original vulnerability. This ensures that the restoration process does not inadvertently recreate the same flawed environment that led to the attack in the first place.
 - **Updating the Architectural Model**: Every attack provides a new "viewpoint" on the project's 3D object. The architecture must be updated to reflect this new understanding, ensuring that the two-dimensional projection used for risk management remains as accurate and dynamic as the project itself.
+
+#### **10. Forensic Considerations and Evidence Preservation**
 
 A critical challenge during an incident is the tension between stopping the attack and preserving the data necessary to understand it. While a "hard shutdown" (unplugging the server) might stop data exfiltration, it can also destroy the most valuable evidence.
 

@@ -68,6 +68,7 @@ This is a study and reference repository focused on backend engineering knowledg
 - **Clear hierarchical headings**: Uses `#` for main topics, `##` for sections, `###` for subsections
 - **Numbered sequencing**: Files prefixed with numbers (01, 02, etc.) indicate learning progression
 - **"99 Misc" convention**: Miscellaneous and supplementary content organized under "99" prefix
+- **Non-enumerated headings**: Do not use numbered or sequentially prefixed headings (e.g., "01", "1.", "Step 1") unless the content has a clear, inherent order, progression, or dependency. For topics that are independent, unordered, or equally weighted, use descriptive, non-enumerated headings instead
 
 ### Content Formatting
 - **Definition-first approach**: Concepts start with clear, bold definitions followed by explanations
@@ -100,6 +101,8 @@ This is a study and reference repository focused on backend engineering knowledg
 - **Assumption of learning context**: Written for someone actively studying backend engineering
 
 ### Cross-Reference Patterns
+- **Inline linking**: Link related concepts as they naturally appear in the text rather than in separate "Related Concepts" or "See Also" sections at the end
 - **Parenthetical links**: Related concepts linked in parentheses after key terms
 - **Directory-aware linking**: Links follow the actual file structure with relative paths
 - **Topic clustering**: Related concepts grouped together with extensive internal linking
+- **Contextual references**: Links should enhance the reading flow by appearing where concepts are naturally discussed

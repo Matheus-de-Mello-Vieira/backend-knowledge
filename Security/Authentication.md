@@ -340,3 +340,93 @@ sequenceDiagram
 * For SPAs or mobile apps, other flows like Implicit Flow or PKCE are used, since they can't safely store the client secret.
 * There are many libraries and frameworks that handle the OAuth 2.0 flow for you—especially in popular languages like Node.js and Python—making integration with providers like Google or GitHub much simpler and more secure.
 * The authorization code is a JWT.
+
+## Identity Federation and Single Sign-On (SSO)
+
+Identity Federation enables organizations to manage user identities across multiple systems and domains while maintaining security and user convenience. It represents a shift from isolated, application-specific identity stores to centralized identity management that can span organizational boundaries.
+
+### **Identity Federation Concepts**
+
+Identity Federation creates trust relationships between different security domains, allowing users to access resources across organizational boundaries using a single set of credentials.
+
+- **Identity Providers (IdP):** Organizations that maintain and validate user identities, such as corporate Active Directory or cloud identity services.
+- **Service Providers (SP):** Applications or services that rely on external identity providers for user authentication.
+- **Trust Relationships:** Formal agreements and technical configurations that allow IdPs and SPs to exchange identity information securely.
+- **Federated Identity:** A single digital identity that can be recognized and accepted across multiple organizations or security domains.
+
+### **Single Sign-On (SSO) Implementation**
+
+SSO allows users to authenticate once and gain access to multiple applications without repeated login prompts:
+
+- **Session Management:** Centralized management of user sessions across multiple applications and services.
+- **Token Propagation:** Secure transmission of authentication tokens between applications to maintain single sign-on state.
+- **Universal Logout:** Capability to terminate user sessions across all connected applications with a single logout action.
+- **Cross-Domain Authentication:** Technical mechanisms to maintain authentication state across different domains and applications.
+
+### **SAML (Security Assertion Markup Language)**
+
+SAML is a standard for exchanging authentication and authorization data between parties, particularly between identity providers and service providers:
+
+- **SAML Assertions:** XML-based statements that provide information about user authentication, attributes, and authorization decisions.
+- **SAML Protocol:** Standardized request and response mechanisms for exchanging assertions between parties.
+- **Identity Provider (IdP) Initiated:** SSO flow where users start their session at the identity provider and are directed to service providers.
+- **Service Provider (SP) Initiated:** SSO flow where users start at a service provider and are redirected to the identity provider for authentication.
+
+### **OpenID Connect (OIDC)**
+
+OpenID Connect builds on OAuth 2.0 to provide standardized identity layer:
+
+- **ID Tokens:** JWT tokens that contain user identity information in a standardized format.
+- **UserInfo Endpoint:** Standardized API endpoint for retrieving additional user profile information.
+- **Discovery Mechanism:** Automated configuration discovery to simplify integration between clients and providers.
+- **Claim-based Identity:** Structured approach to representing user attributes and permissions.
+
+### **Identity Provider Selection and Management**
+
+Organizations must carefully evaluate and manage their identity provider relationships:
+
+- **Provider Trust Assessment:** Evaluation of identity provider security posture, reliability, and compliance capabilities.
+- **Multi-Provider Strategies:** Using multiple identity providers to avoid vendor lock-in and provide user choice.
+- **Fallback Mechanisms:** Backup authentication methods in case primary identity providers become unavailable.
+- **Provider Integration:** Technical and organizational processes for integrating with new identity providers.
+
+### **Privileged Access Management (PAM)**
+
+PAM provides specialized identity and access management for high-privilege accounts:
+
+- **Just-in-Time (JIT) Access:** Temporary elevation of privileges for specific tasks, automatically revoked after completion.
+- **Privileged Session Management:** Recording and monitoring of all privileged user activities for security and compliance.
+- **Password Vaulting:** Secure storage and automatic rotation of privileged account passwords.
+- **Break-Glass Procedures:** Emergency access procedures for critical situations when normal authentication systems fail.
+
+### **Access Governance and Compliance**
+
+Comprehensive management of identity and access rights throughout their lifecycle:
+
+- **Identity Lifecycle Management:** Automated processes for provisioning, modifying, and deprovisioning user accounts and access rights.
+- **Access Reviews and Certification:** Periodic validation that users have appropriate access rights and that unused access is removed.
+- **Segregation of Duties (SoD):** Ensuring that no single individual has access to complete sensitive business processes independently.
+- **Compliance Reporting:** Automated generation of access reports for regulatory compliance and audit purposes.
+
+### **Modern Identity Trends**
+
+- **Passwordless Authentication:** Moving beyond traditional passwords using biometrics, hardware tokens, and cryptographic keys.
+- **Decentralized Identity:** Blockchain and distributed ledger approaches to identity management that give users more control.
+- **Context-Aware Authentication:** Dynamic authentication requirements based on risk assessment and environmental factors.
+- **Identity-as-a-Service (IDaaS):** Cloud-based identity management services that provide scalable, managed identity infrastructure.
+
+Identity Federation and SSO represent critical components of modern enterprise security architecture, enabling organizations to maintain security while providing seamless user experiences across complex, distributed environments.
+
+## Implementation Examples
+
+Authentication methods are implemented across different platforms and environments:
+
+**Platform-Specific Implementations:**
+- **Windows:** [Credential Guard and Azure AD](./Information%20Security/02%20Endpoint%20Security.md#windows-defender-credential-guard) - Windows identity protection and enterprise SSO
+- **Linux:** [SSH Key Management](./Information%20Security/02%20Endpoint%20Security.md#ssh-secure-shell-protection) - Public key authentication and access control
+- **Cloud Services:** Cloud identity providers and federated authentication systems
+
+**Related Security Concepts:**
+- [Zero Trust Architecture](../Zero%20Trust%20Architecture.md) - Identity-centric security framework requiring continuous authentication
+- [Cryptography](./Information%20Security/03%20Cryptography.md) - Digital signatures and certificates used in authentication
+- [Access Control Models](./Information%20Security/01%20Introduction.md#authorization) - RBAC, ABAC, and ACL systems for authorization
