@@ -46,7 +46,7 @@ Linux endpoint protection relies on multiple complementary approaches:
 ### **Encryption and Access Control**
 
 #### **SSH (Secure Shell) Protection**
-SSH provides cryptographic protection for remote access. For detailed information about SSH's encryption mechanisms, see [Cryptography and Data Protection](../03 Cryptography and Data Protection/01 Cryptography.md#5-applications-of-asymmetric-cryptography).
+SSH provides cryptographic protection for remote access. For detailed information about SSH's encryption mechanisms, see [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#5.%20Applications%20of%20Asymmetric%20Cryptography).
 
 **Linux SSH Security Configuration:**
 - **Key-Based Authentication:** Ed25519 keys preferred for stronger security
@@ -58,7 +58,7 @@ SSH provides cryptographic protection for remote access. For detailed informatio
 - **Access Control Integration:** Integrate with PAM and system user management
 
 #### **ACL (Access Control Lists)**
-Linux ACLs provide extended access control beyond traditional UNIX permissions. For comprehensive information about access control models, see [Authorization and Access Control](../02 Identity and Access/02 Authorization and Access Control.md).
+Linux ACLs provide extended access control beyond traditional UNIX permissions. For comprehensive information about access control models, see [Authorization and Access Control](../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md).
 
 **Linux ACL Implementation:**
 - **Extended Permissions:** Fine-grained control using `setfacl` and `getfacl` commands

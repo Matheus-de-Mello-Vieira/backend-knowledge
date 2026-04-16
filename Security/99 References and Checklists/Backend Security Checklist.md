@@ -42,7 +42,7 @@
     - **Python:** [pyotp](https://pypi.org/project/pyotp/), [Flask-Login](https://flask-login.readthedocs.io/), [Django sessions & CSRF middleware](https://docs.djangoproject.com/en/stable/ref/csrf/)
     - **Go:** [gorilla/sessions](https://github.com/gorilla/sessions), [gorilla/csrf](https://github.com/gorilla/csrf), [go-webauthn](https://github.com/go-webauthn/webauthn), [go-otp](https://github.com/xlzd/gotp)
 * [ ] **Protection against Cross-Site Request Forgery (CSRF) attacks**: Implement mechanisms to prevent CSRF attacks.
-  * Include an `X-CSRF-TOKEN` HTTP header in every request that modifies server state: [see more](../04 Application and API Security/CSRF Tokens.md).
+  * Include an `X-CSRF-TOKEN` HTTP header in every request that modifies server state: [see more](../04%20Application%20and%20API%20Security/CSRF%20Tokens.md).
   * Allow state-changing operations only through POST, PUT, PATCH, or DELETE routes (avoid using GET for them).
   * Example tools and libraries:
     - **Node.js:** [csurf](https://www.npmjs.com/package/csurf), [@fastify/csrf-protection](https://github.com/fastify/csrf-protection)

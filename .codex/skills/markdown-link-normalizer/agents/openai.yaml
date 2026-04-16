@@ -1,0 +1,5 @@
+interface:
+  display_name: "Markdown Link Normalizer"
+  short_description: "Normalize and validate local Markdown links."
+  default_prompt: "Use $markdown-link-normalizer to normalize local Markdown links and verify file and heading anchors resolve."
+

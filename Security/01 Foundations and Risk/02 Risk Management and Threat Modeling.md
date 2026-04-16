@@ -50,14 +50,11 @@ Communication
 * "Can the attacker launch an availability attack (e.g. DDoS) on the network link?"
 * "Can the attacker reroute the communication, to spoof the cloud?"
 
-**Remark:**
-
-> **The IoT (Internet of Things) Factor**: IoT devices often represent the "weakest link" in an architecture. They significantly expand the attack surface because they are frequently designed with limited computational resources, making robust encryption and complex authentication difficult to implement. Furthermore, many IoT devices ship with **hardcoded default credentials** and lack a streamlined mechanism for firmware updates, leaving known vulnerabilities unpatched for years. In the provided architecture, an insecure smart device on Alice’s network could serve as an entry point for an attacker to move laterally toward her phone or the cloud.
+IoT devices can materially expand this kind of attack surface. For the device-specific risks behind that concern, see [IoT Security](../05%20Architecture%20and%20Infrastructure%20Security/IoT%20Security.md#IoT%20Attack%20Surface%20Risk).
 
 ### Threats
 
-Threats are factors or actions capable of compromising at least one of the [security tenets](./01 Security Principles.md#the-tenets).
-
+Threats are factors or actions capable of compromising at least one of the [The tenets](01%20Security%20Principles.md#The%20tenets).
 * Threat Actor is the entity who lauches the threat.
 * Threat Vector is is the means by which an attacker exploits a vulnerability.
 
@@ -90,7 +87,7 @@ Risk is the likelihood that a threat will exploit a vulnerability, resulting in 
 
 $$Risk = Likelihood \times Impact$$
 
-Where impact is is typically measured in terms of the [security tenets](./01 Security Principles.md#the-tenets), while likelihood is assessed through attacker modeling.
+Where impact is is typically measured in terms of the [The tenets](01%20Security%20Principles.md#The%20tenets), while likelihood is assessed through attacker modeling.
 
 Attacker Modeling is an exercise of putting yourself in the attacker's shoes. You can build a threat actor profile based on three pillars (often called the M.O.C. Triangle):
 

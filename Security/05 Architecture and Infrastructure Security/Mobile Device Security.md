@@ -148,6 +148,6 @@ Mobile applications can present security risks, including malware, unauthorized 
 - **Runtime Protection:** Dynamic analysis and protection techniques for mobile applications
 
 **Related Security Concepts:**
-- [Authentication Methods](../02 Identity and Access/01 Authentication.md) - Identity verification techniques including multi-factor authentication
-- [Cryptography and Data Protection](../03 Cryptography and Data Protection/01 Cryptography.md) - Encryption algorithms and key management for mobile devices
-- [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) - Framework for continuous verification applicable to mobile endpoints
+- [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Identity verification techniques including multi-factor authentication
+- [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md) - Encryption algorithms and key management for mobile devices
+- [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Framework for continuous verification applicable to mobile endpoints

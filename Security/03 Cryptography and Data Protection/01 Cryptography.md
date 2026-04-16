@@ -243,14 +243,14 @@ Key management is often considered the most challenging aspect of implementing c
 Cryptographic concepts are implemented across different platforms and environments:
 
 **Platform-Specific Implementations:**
-- **Windows:** [BitLocker and EFS](../05 Architecture and Infrastructure Security/Windows Endpoint Security.md#microsoft-defender-and-encryption) - Windows encryption technologies and certificate management
-- **Linux:** [SSH and LUKS](../05 Architecture and Infrastructure Security/Linux Endpoint Security.md#ssh-secure-shell-protection) - SSH key management and disk encryption
+- **Windows:** [BitLocker and EFS](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Endpoint%20Security.md#Microsoft%20Defender%20and%20Encryption) - Windows encryption technologies and certificate management
+- **Linux:** [SSH and LUKS](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md#SSH%20%28Secure%20Shell%29%20Protection) - SSH key management and disk encryption
 - **Cloud Services:** Cloud-native key management services and hardware security modules
 
 **Authentication Integration:**
-- [HMAC Authentication](../02 Identity and Access/01 Authentication.md#hmac) - Using cryptographic signatures for API security
-- [JWT Tokens](../02 Identity and Access/01 Authentication.md#json-web-tokens-jwt) - Digital signatures for stateless authentication
-- [Digital Certificates](../05 Architecture and Infrastructure Security/02 Endpoint Security.md) - PKI implementation in endpoint security
+- [HMAC Authentication](../02%20Identity%20and%20Access/01%20Authentication.md#HMAC) - Using cryptographic signatures for API security
+- [JWT Tokens](../02%20Identity%20and%20Access/01%20Authentication.md#JSON%20Web%20Tokens%20%28JWT%29) - Digital signatures for stateless authentication
+- [Digital Certificates](../05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md) - PKI implementation in endpoint security
 
 **Related Security Frameworks:**
-- [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) - Identity-centric security requiring strong cryptographic foundations
+- [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Identity-centric security requiring strong cryptographic foundations

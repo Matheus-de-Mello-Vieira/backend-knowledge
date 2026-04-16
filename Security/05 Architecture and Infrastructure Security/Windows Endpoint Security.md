@@ -4,7 +4,7 @@ Microsoft Windows provides a comprehensive security ecosystem designed to protec
 
 ### **Zero Trust Implementation in Windows**
 
-Microsoft integrates [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) principles through Azure Active Directory, Conditional Access policies, and Microsoft 365 security features that work together to verify identity, device health, and application integrity before granting access to corporate resources.
+Microsoft integrates [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) principles through Azure Active Directory, Conditional Access policies, and Microsoft 365 security features that work together to verify identity, device health, and application integrity before granting access to corporate resources.
 
 **Windows-Specific Zero Trust Features:**
 - **Azure Active Directory Integration:** Centralized identity management with conditional access policies
@@ -27,7 +27,7 @@ Microsoft integrates [Zero Trust Architecture](../02 Identity and Access/03 Zero
 
 ### **Microsoft Defender and Encryption**
 
-Microsoft Defender works in conjunction with Windows encryption technologies to provide comprehensive data protection. For detailed information about encryption concepts and key management, see [Cryptography and Data Protection](../03 Cryptography and Data Protection/01 Cryptography.md).
+Microsoft Defender works in conjunction with Windows encryption technologies to provide comprehensive data protection. For detailed information about encryption concepts and key management, see [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md).
 
 **Windows-Specific Encryption Integration:**
 - **BitLocker Integration:**

@@ -36,6 +36,12 @@ For IoT to function properly, it depends on:
 
 Vulnerabilities and threats in the Internet of Things (IoT) are a growing concern due to the increasing number of devices connected to the Internet:
 
+#### IoT Attack Surface Risk
+
+IoT devices expand the attack surface because they are numerous, network-connected, and often placed close to users, facilities, and internal systems. In a broader architecture, an insecure smart device on a user's network can become an entry point for lateral movement toward phones, laptops, cloud services, or internal systems.
+
+The concrete causes behind that risk are covered in the sections below, especially authentication gaps, software and firmware vulnerabilities, insecure communication protocols, and network-based attacks.
+
 #### **Authentication and Access Control Threats**
 - **Brute Force Attacks:** Used to guess weak passwords or password patterns, which can allow attackers unauthorized access to devices
 - **Default Credentials:** Many IoT devices ship with default usernames and passwords that are never changed
@@ -288,7 +294,7 @@ IoT security is a critical topic that has received increasing attention in recen
 As technology evolves, new challenges and opportunities will emerge in the IoT security field, requiring continuous adaptation and innovation in security practices.
 
 **Related Security Concepts:**
-- [Network Security Controls](./01 Network Security and Firewalls.md) - Network segmentation and firewall strategies for IoT
-- [Cryptography and Data Protection](../03 Cryptography and Data Protection/01 Cryptography.md) - Encryption algorithms and key management for IoT devices
-- [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) - Continuous verification framework for IoT environments
-- [Authentication Methods](../02 Identity and Access/01 Authentication.md) - Device and user authentication in IoT ecosystems
+- [Network Security Controls](01%20Network%20Security%20and%20Firewalls.md) - Network segmentation and firewall strategies for IoT
+- [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md) - Encryption algorithms and key management for IoT devices
+- [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Continuous verification framework for IoT environments
+- [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Device and user authentication in IoT ecosystems

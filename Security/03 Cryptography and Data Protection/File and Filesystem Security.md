@@ -24,10 +24,10 @@ Security involving the filesystem is about protecting how data is stored, access
 
 Endpoint security relies heavily on cryptographic protections for data at rest, in transit, and during processing. This section covers platform-specific implementations of cryptographic controls.
 
-> **Core Concepts:** For comprehensive information about encryption algorithms, key management, digital certificates, and cryptographic best practices, see [Cryptography and Data Protection](./01 Cryptography.md).
+> **Core Concepts:** For comprehensive information about encryption algorithms, key management, digital certificates, and cryptographic best practices, see [Cryptography and Data Protection](01%20Cryptography.md).
 
 **Related Security Concepts:**
-- [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) - Framework for continuous verification and least-privilege access
-- [Authentication Methods](../02 Identity and Access/01 Authentication.md) - Identity verification techniques including multi-factor authentication
-- [Network Security Controls](../05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md) - Firewall and network segmentation strategies
-- [Incident Response](../06 Security Operations and Governance/02 Incident Response and Recovery.md) - Security incident management and forensics
+- [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Framework for continuous verification and least-privilege access
+- [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Identity verification techniques including multi-factor authentication
+- [Network Security Controls](../05%20Architecture%20and%20Infrastructure%20Security/01%20Network%20Security%20and%20Firewalls.md) - Firewall and network segmentation strategies
+- [Incident Response](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) - Security incident management and forensics

@@ -154,7 +154,7 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 
 **Network Security:**
 - **Network Segmentation:** Virtual Private Clouds (VPCs) with properly configured subnets and security groups
-- **Zero Trust Implementation:** Cloud-native [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) with micro-segmentation and encryption
+- **Zero Trust Implementation:** Cloud-native [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) with micro-segmentation and encryption
 - **DDoS Protection:** Cloud-native DDoS mitigation services and rate limiting
 
 **Application Security:**
@@ -216,7 +216,7 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 #### **AI/ML-Enhanced Cloud Security**
 
 **Machine Learning Applications:**
-- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities. For more details on behavioral analysis techniques, see [Intrusion Detection Systems](../06 Security Operations and Governance/01 Intrusion Detection.md) in the Introduction section.
+- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities. For more details on behavioral analysis techniques, see [Intrusion Detection Systems](../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection.md) in the Introduction section.
 - **Predictive Security Analytics:** Forecasting potential security incidents based on historical data
 - **Automated Response:** AI-driven incident response and remediation actions
 

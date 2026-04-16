@@ -219,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -254,15 +254,16 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "README.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
+    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/99 References and Checklists/Backend Security Checklist.md",
     "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
     "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
     "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
     "Security/99 References and Checklists",
@@ -286,7 +287,6 @@
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk",
-    "Security/Information Security/02 Endpoint Security.md",
     "Untitled.base",
     "Untitled 1.base"
   ]
