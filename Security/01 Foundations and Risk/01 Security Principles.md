@@ -1,8 +1,8 @@
-# General Security Principles
+# Security Principles
 
 **Security is a multi-layered discipline** that requires consistent application of defensive principles across all system components. These fundamental guidelines form the foundation of secure software development.
 
-## Core Security Principles
+## Practical Security Principles
 
 ### Input Validation and Trust
 - **Never trust user input**: All external data must be validated, sanitized, and verified before processing
@@ -173,3 +173,15 @@ public static String generateResetToken() {
 3. **Assume sophisticated attackers**: Modern attackers have advanced mathematical and computational capabilities
 4. **Test security assumptions**: Regularly audit cryptographic and security-sensitive code
 5. **Defense in depth**: Combine multiple security measures (token expiration, rate limiting, etc.)
+
+## The tenets
+
+**Confidentiality:** The principle of preventing unauthorized **disclosure** of information during transmission between A and B. In other words, it is the principle of ensuring that only authorized parties can access the data.
+
+**Integrity:** The principle of preventing unauthorized **modification** of information during transmission between A and B. In other words, it is the principle of ensuring that the information received by B is identical to the information sent by A.
+
+**Availability**: The principle of preventing unauthorized disruption of access to information. In other words, it is the principle of ensuring that systems and data are accessible to authorized users when needed.
+
+**Authenticity**: The principle of preventing spoofing/impersonation. In other words, it is the principle of ensuring that all entities (or parties) involved in a communication are who they claim to be.
+
+**Non-repudiation:** The principle of preventing an entity from denying the origin or validity of a message or transaction. In other words, it provides admissible proof to a third party (e.g., the legal system) that the sender is the author and that the message was indeed sent.

@@ -1,4 +1,4 @@
-# Cryptography and Data Protection
+# Cryptography
 
 ## 1. Classic Cryptography and Core Concepts
 At its simplest, cryptography is the science that studies techniques to transform data into codes that can only be deciphered by someone who possesses the correct access key. 
@@ -243,14 +243,14 @@ Key management is often considered the most challenging aspect of implementing c
 Cryptographic concepts are implemented across different platforms and environments:
 
 **Platform-Specific Implementations:**
-- **Windows:** [BitLocker and EFS](./02%20Endpoint%20Security.md#microsoft-defender-and-encryption) - Windows encryption technologies and certificate management
-- **Linux:** [SSH and LUKS](./02%20Endpoint%20Security.md#ssh-secure-shell-protection) - SSH key management and disk encryption
+- **Windows:** [BitLocker and EFS](../05 Architecture and Infrastructure Security/Windows Endpoint Security.md#microsoft-defender-and-encryption) - Windows encryption technologies and certificate management
+- **Linux:** [SSH and LUKS](../05 Architecture and Infrastructure Security/Linux Endpoint Security.md#ssh-secure-shell-protection) - SSH key management and disk encryption
 - **Cloud Services:** Cloud-native key management services and hardware security modules
 
 **Authentication Integration:**
-- [HMAC Authentication](../Authentication.md#hmac) - Using cryptographic signatures for API security
-- [JWT Tokens](../Authentication.md#json-web-tokens-jwt) - Digital signatures for stateless authentication
-- [Digital Certificates](./02%20Endpoint%20Security.md) - PKI implementation in endpoint security
+- [HMAC Authentication](../02 Identity and Access/01 Authentication.md#hmac) - Using cryptographic signatures for API security
+- [JWT Tokens](../02 Identity and Access/01 Authentication.md#json-web-tokens-jwt) - Digital signatures for stateless authentication
+- [Digital Certificates](../05 Architecture and Infrastructure Security/02 Endpoint Security.md) - PKI implementation in endpoint security
 
 **Related Security Frameworks:**
-- [Zero Trust Architecture](../Zero%20Trust%20Architecture.md) - Identity-centric security requiring strong cryptographic foundations
+- [Zero Trust Architecture](../02 Identity and Access/03 Zero Trust Architecture.md) - Identity-centric security requiring strong cryptographic foundations

@@ -1,4 +1,4 @@
-# CSRF Token
+# CSRF Tokens
 
 `X-CSRF-TOKEN` is a custom HTTP header used to protect against Cross-Site Request Forgery (CSRF) attacks. It’s a token (a random, unique string) that ensures a request to a server actually comes from a legitimate, authenticated user rather than a malicious site.
 

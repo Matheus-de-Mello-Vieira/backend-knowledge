@@ -23,32 +23,32 @@ The architecture operates under the assumption that the network perimeter has al
 
 - **Lateral Movement Prevention:** Network segmentation and micro-segmentation to contain potential breaches.
 - **Behavioral Analysis:** Continuous monitoring for anomalous behavior that might indicate compromised accounts or systems.
-- **Incident Response Integration:** Built-in capabilities for rapid detection, containment, and response to security incidents, following comprehensive [incident response procedures](./Information%20Security/01%20Introduction.md#incident-response-and-recovery).
+- **Incident Response Integration:** Built-in capabilities for rapid detection, containment, and response to security incidents, following comprehensive [incident response procedures](../06 Security Operations and Governance/02 Incident Response and Recovery.md).
 
 ## Implementation Strategies
 
 ### **Identity-Centric Security**
 Zero Trust architecture places identity at the center of all security decisions:
 
-- **Multi-Factor Authentication (MFA):** Required for all user and system identities accessing any resources using [modern authentication methods](../Authentication.md#multi-factor-authentication-mfa).
-- **Identity Verification:** Comprehensive validation of user identity using [multiple authentication factors](../Authentication.md#the-five-factors-of-authentication) and contextual information.
-- **Identity Federation:** [Single sign-on (SSO) systems](../Authentication.md#identity-federation-and-single-sign-on-sso) that centralize identity management while maintaining security controls.
-- **Privileged Identity Management (PIM):** Special controls and monitoring for accounts with [elevated privileges](../Authentication.md#privileged-access-management-pam).
+- **Multi-Factor Authentication (MFA):** Required for all user and system identities accessing any resources using [modern authentication methods](./01 Authentication.md#multi-factor-authentication-mfa).
+- **Identity Verification:** Comprehensive validation of user identity using [multiple authentication factors](./01 Authentication.md#the-five-factors-of-authentication) and contextual information.
+- **Identity Federation:** [Single sign-on (SSO) systems](./01 Authentication.md#identity-federation-and-single-sign-on-sso) that centralize identity management while maintaining security controls.
+- **Privileged Identity Management (PIM):** Special controls and monitoring for accounts with [elevated privileges](./01 Authentication.md#privileged-access-management-pam).
 
 ### **Network Micro-Segmentation**
-Traditional network perimeter security is replaced with granular internal controls using [advanced network segmentation](./Information%20Security/01%20Introduction.md#network-security-and-firewalls):
+Traditional network perimeter security is replaced with granular internal controls using [advanced network segmentation](../05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md):
 
 - **Software-Defined Perimeters (SDP):** Dynamic creation of secure network segments based on user identity and resource requirements.
 - **Application-Level Segmentation:** Isolation of individual applications and services rather than broad network segments.
 - **East-West Traffic Inspection:** Monitoring and controlling lateral network traffic between internal systems.
-- **Encrypted Communication:** All network traffic [encrypted in transit](./Information%20Security/03%20Cryptography.md#3-the-states-of-encryption), even within the internal network.
+- **Encrypted Communication:** All network traffic [encrypted in transit](../03 Cryptography and Data Protection/01 Cryptography.md#3-the-states-of-encryption), even within the internal network.
 
 ### **Device and Endpoint Security**
 Every device accessing network resources must be verified and secured:
 
 - **Device Registration:** Comprehensive inventory and registration of all devices accessing network resources.
 - **Health Assessment:** Continuous monitoring of device security posture, including patch levels, antivirus status, and compliance.
-- **Device Certificates:** [Cryptographic certificates](./Information%20Security/03%20Cryptography.md#6-digital-certificates-and-pki) for device authentication and secure communication.
+- **Device Certificates:** [Cryptographic certificates](../03 Cryptography and Data Protection/01 Cryptography.md#6-digital-certificates-and-pki) for device authentication and secure communication.
 - **Mobile Device Management (MDM):** Centralized control and security enforcement for mobile devices.
 
 ## Technology Components
@@ -57,8 +57,8 @@ Every device accessing network resources must be verified and secured:
 Centralized systems that manage user identities, authentication, and authorization:
 
 - **Directory Services:** Centralized user and group management (Active Directory, LDAP, cloud directories).
-- **Authentication Systems:** [Multi-factor authentication](../Authentication.md#multi-factor-authentication-mfa), [single sign-on](../Authentication.md#identity-federation-and-single-sign-on-sso), and [adaptive authentication](../Authentication.md#strengthening-security).
-- **Authorization Engines:** Policy-based [access control systems](./Information%20Security/01%20Introduction.md#authorization) that evaluate access requests against security policies.
+- **Authentication Systems:** [Multi-factor authentication](./01 Authentication.md#multi-factor-authentication-mfa), [single sign-on](./01 Authentication.md#identity-federation-and-single-sign-on-sso), and [adaptive authentication](./01 Authentication.md#strengthening-security).
+- **Authorization Engines:** Policy-based [access control systems](./02 Authorization and Access Control.md) that evaluate access requests against security policies.
 - **Audit and Compliance:** Comprehensive logging and reporting of all access activities.
 
 ### **Security Information and Event Management (SIEM)**
@@ -66,13 +66,13 @@ Centralized collection and analysis of security events from across the Zero Trus
 
 - **Log Aggregation:** Centralized collection of security logs from all systems and applications.
 - **Threat Detection:** Advanced analytics and machine learning to identify potential security threats.
-- **Incident Response:** Automated and manual [response capabilities](./Information%20Security/01%20Introduction.md#incident-response-and-recovery) to contain and remediate security incidents.
+- **Incident Response:** Automated and manual [response capabilities](../06 Security Operations and Governance/02 Incident Response and Recovery.md) to contain and remediate security incidents.
 - **Compliance Reporting:** Automated generation of compliance reports and audit trails.
 
 ### **Data Protection**
 Comprehensive protection of data at rest, in transit, and in use:
 
-- **Encryption:** Strong encryption for all data, with proper [key management and rotation](./Information%20Security/03%20Cryptography.md#7-key-management-lifecycle).
+- **Encryption:** Strong encryption for all data, with proper [key management and rotation](../03 Cryptography and Data Protection/01 Cryptography.md#7-key-management-lifecycle).
 - **Data Classification:** Systematic categorization of data based on sensitivity and business value.
 - **Data Loss Prevention (DLP):** Monitoring and prevention of unauthorized data access, sharing, or exfiltration.
 - **Rights Management:** Fine-grained control over data access and usage rights.
@@ -123,4 +123,4 @@ Zero Trust architecture doesn't replace traditional security controls but rather
 - **Legacy System Integration:** Careful planning required to integrate legacy systems that may not support all Zero Trust capabilities.
 - **Gradual Implementation:** Zero Trust is typically implemented gradually, starting with the most critical assets and users.
 
-Zero Trust represents a fundamental shift in cybersecurity thinking, moving from implicit trust to explicit verification at every level of the technology stack. The framework is implemented differently across various platforms, from [Windows environments](./Information%20Security/02%20Endpoint%20Security.md#zero-trust-implementation-in-windows) with Azure AD and Conditional Access, to Linux systems using SELinux and mandatory access controls, to [cloud services](./Information%20Security/02%20Endpoint%20Security.md#cloud-service-protection) with cloud-native identity and network security controls.
+Zero Trust represents a fundamental shift in cybersecurity thinking, moving from implicit trust to explicit verification at every level of the technology stack. The framework is implemented differently across various platforms, from [Windows environments](../05 Architecture and Infrastructure Security/Windows Endpoint Security.md#zero-trust-implementation-in-windows) with Azure AD and Conditional Access, to Linux systems using SELinux and mandatory access controls, to [cloud services](../05 Architecture and Infrastructure Security/Cloud Security.md) with cloud-native identity and network security controls.

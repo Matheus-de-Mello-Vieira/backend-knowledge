@@ -1,4 +1,4 @@
-## CORS
+# CORS
 
 CORS (Cross-Origin Resource Sharing) is a security mechanism implemented by web browsers to control how web pages can make requests to resources on a different origin (domain, protocol, or port) than their.
 
@@ -127,4 +127,3 @@ Your browser would **automatically include your cookies** (since you’re logged
 *   CORS is **not a server-side security feature** — it’s enforced by browsers only.
 *   Setting `Access-Control-Allow-Origin: *` doesn’t make your API secure — it just removes CORS restrictions for browsers.
 *   CORS errors do **not** mean the server is broken; they mean the **browser** is blocking access.
-
