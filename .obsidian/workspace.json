@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/06 Network Monitoring.md",
+                "file": "Networking/05 Network Management.md",
                 "mode": "source",
                 "source": true,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "06 Network Monitoring"
+              "title": "05 Network Management"
             }
           }
         ]
@@ -219,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: ⠧ backend-knowledge"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -254,7 +254,10 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/05 Network Management.md",
     "Networking/06 Network Monitoring.md",
+    "Networking/02 Protocols/15 SSH.md",
+    "Networking/02 Protocols/14 SNMP.md",
     "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
@@ -280,10 +283,7 @@
     "Security/05 Architecture and Infrastructure Security",
     "Security/04 Application and API Security/OWASP.md",
     "Security/04 Application and API Security/CSRF Tokens.md",
-    "Security/04 Application and API Security/CORS.md",
     "Security/04 Application and API Security",
-    "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
-    "Security/03 Cryptography and Data Protection/Backup and Restore.md",
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",

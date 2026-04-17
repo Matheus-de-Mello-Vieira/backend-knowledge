@@ -74,24 +74,12 @@ In active monitoring, the system acts as an investigator, periodically knocking 
 - **Blind Spots Between Intervals:** If you poll a device every 5 minutes, an issue could occur and resolve itself within that 5-minute window, leaving you completely blind to the event.
 - **Artificial Network Load:** Active monitoring generates its own traffic. In highly constrained networks, excessive polling can consume valuable bandwidth and CPU cycles on the target devices.
 
-**Protocols**
-In active monitoring, the central server initiates the communication, reaching out to the devices to gather information.
+**Common Protocols and Interfaces**
+In active monitoring, the central server initiates the communication and polls the target on a schedule.
 
-- **ICMP (Internet Control Message Protocol):** * **How it works:** This is the foundation of the classic `ping` command. The monitoring server sends an ICMP Echo Request to a device and waits for an Echo Reply.
-    
-    - **Use Case:** It is primarily used for basic up/down availability checks and measuring network latency (Round Trip Time). If a device stops responding to ICMP, the monitor flags it as offline.
-        
-- **SNMP (Simple Network Management Protocol) - GET Requests:**
-    
-    - **How it works:** SNMP is the industry standard for managing network equipment (routers, switches, firewalls). In active mode, the monitoring server sends an "SNMP GET" request to query specific data points (called OIDs) on the device.
-        
-    - **Use Case:** Used to actively fetch detailed metrics like CPU utilization, interface bandwidth usage, temperature, and memory consumption at regular intervals (e.g., every 5 minutes).
-        
-- **SSH (Secure Shell):**
-    
-    - **How it works:** The monitoring server establishes a secure, encrypted command-line session with the target device (usually a Linux server or a network switch).
-        
-    - **Use Case:** The monitor executes scripts or commands (like `df -h` to check disk space or `show interfaces` on a switch) and parses the text output to collect custom metrics that might not be available via SNMP.
+- **[ICMP](02%20Protocols/03%20Internet%20Protocol.md#ICMP):** Best for low-cost reachability checks and round-trip time measurement. It is commonly used for `ping`-style up/down monitoring and basic latency tracking.
+- **[SNMP](02%20Protocols/14%20SNMP.md) GET requests:** Best for periodic polling of device counters and health metrics such as interface utilization, CPU, memory, temperature, and error counters.
+- **[SSH](02%20Protocols/15%20SSH.md):** Best for scripted checks on servers and appliances when you need to run commands and parse output, especially for metrics that are not exposed through SNMP or another telemetry interface.
 
 #### Passive Monitoring (Event-Driven/Flow Analysis)
 
@@ -109,21 +97,13 @@ In passive monitoring, the system acts as a listener. It waits for devices to re
 - **Alert Fatigue:** If a major switch goes down, every device connected to it might send an alert simultaneously. Without proper tuning and correlation, passive monitoring can flood administrators with thousands of redundant notifications.
 - **High Storage Requirements:** Capturing real-time logs and network flows requires significant storage capacity and processing power to analyze effectively.
 
-**Protocols**
+**Common Protocols and Collection Approaches**
 
-In passive monitoring, the central server acts as a listener, waiting for the devices themselves to push data or alerts.
+In passive monitoring, the central server acts as a listener, waiting for devices or collectors to push data or alerts.
 
-- **SNMP Traps:**
-    
-    - **How it works:** While SNMP GET is active, an "SNMP Trap" is completely passive. The network device is pre-configured to send an asynchronous alert (the Trap) to the monitoring server the exact moment a specific condition is met.
-        
-    - **Use Case:** Used for immediate fault detection. For example, if a power supply fails or a critical network port goes down, the switch instantly fires an SNMP Trap to the monitor, bypassing the usual 5-minute polling interval.
-        
-- **Agent-Based Monitoring:**
-    
-    - **How it works:** A small, lightweight software program (the "Agent") is installed directly onto the target device's operating system (common with tools like Zabbix, PRTG, or Datadog).
-        
-    - **Use Case:** The agent gathers deep system-level metrics from the inside and pushes that data out to the monitoring server. This is highly secure and firewall-friendly, as the agent usually initiates an outbound connection over HTTPS to deliver the data, meaning you do not have to open inbound ports on the server's firewall.
+- **[SNMP](02%20Protocols/14%20SNMP.md) traps/informs:** Best for immediate fault notification. Devices can push events such as link failures, power supply alarms, or threshold crossings without waiting for the next polling cycle.
+- **Syslog:** Best for operational and security event streams generated by network devices, operating systems, and services.
+- **Agent-based monitoring:** This is a collection approach rather than a protocol. Agents are installed on hosts to gather internal metrics and push them outward, often over HTTPS or a vendor-specific transport. It is useful when you need deep host visibility and want to avoid opening inbound firewall ports.
 
 ### Common Mistakes in Network Monitoring
 
