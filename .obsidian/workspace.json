@@ -90,12 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Networking/05 Network Management.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 05 Network Management"
             }
           }
         ]
@@ -254,8 +255,8 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Networking/05 Network Management.md",
     "Networking/06 Network Monitoring.md",
+    "Networking/05 Network Management.md",
     "Networking/02 Protocols/15 SSH.md",
     "Networking/02 Protocols/14 SNMP.md",
     "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
