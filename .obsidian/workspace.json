@@ -13,8 +13,8 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
-                "mode": "preview",
+                "file": "Networking/06 Network Monitoring.md",
+                "mode": "source",
                 "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
@@ -28,31 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 Network Security and Firewalls"
-            }
-          },
-          {
-            "id": "0d25353127d8719c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "03 Workstation Security"
+              "title": "06 Network Monitoring"
             }
           }
         ]
@@ -243,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: ⠧ backend-knowledge"
             }
           },
           {
@@ -257,11 +233,11 @@
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 570.5
+    "width": 632.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -276,8 +252,9 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "f2cbd629bcd1c92c",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/06 Network Monitoring.md",
     "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
@@ -307,7 +284,6 @@
     "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
     "Security/03 Cryptography and Data Protection/Backup and Restore.md",
-    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",

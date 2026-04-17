@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Topic Search"
+  short_description: "Search repository notes by subject"
+  default_prompt: "Use $note-topic-search to find the most relevant existing notes about a given subject in this repository."

@@ -1,12 +1,3 @@
-model = "gpt-5"
-
 [mcp_servers.file-system]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
-
-[mcp_servers.local-rag]
-command = "npx"
-args = ["-y", "mcp-local-rag"]
-
-[mcp_servers.codex_apps]
-enabled = false

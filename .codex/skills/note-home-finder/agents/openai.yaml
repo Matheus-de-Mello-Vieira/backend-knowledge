@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Home Finder"
+  short_description: "Find the right folder for a note"
+  default_prompt: "Use $note-home-finder to choose the best location for a new note about a given topic."
