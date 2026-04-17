@@ -6,7 +6,7 @@ The goal is to reduce the risk that an endpoint becomes an entry point for unaut
 
 ## Core Areas
 
-- [Workstation Security](Workstation%20Security.md): practical controls for user machines, including anti-malware, anti-ransomware, phishing prevention, sandboxing, virtualization, and monitoring.
+- [03 Workstation Security](03%20Workstation%20Security.md): practical controls for user machines, including anti-malware, anti-ransomware, phishing prevention, sandboxing, virtualization, and monitoring.
 - [Windows Endpoint Security](Windows%20Endpoint%20Security.md): Windows-specific protections such as Microsoft Defender, Credential Guard, SmartScreen, firewalls, and Windows-oriented Zero Trust controls.
 - [Linux Endpoint Security](Linux%20Endpoint%20Security.md): Linux-specific protections such as SELinux, package security, service control, users/groups, iptables, SSH, and hardening practices.
 - [Mobile Device Security](Mobile%20Device%20Security.md): mobile risks, MDM/MAM, BYOD, mobile authentication, app security, Wi-Fi safety, and data protection.

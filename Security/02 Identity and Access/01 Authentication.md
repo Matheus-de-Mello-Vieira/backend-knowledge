@@ -17,7 +17,7 @@ Security professionals categorize authentication methods into three classic cate
 * **Inherence (Something you are):** Biological traits unique to the individual, such as fingerprints, retina scans, or facial recognition.
   * **Examples**: Biometrics
   * **Primary Vulnerabilities**: Spoofing (deepfakes/silicone prints).
-    * **High Impact:** Biometric data cannot be "reset" if compromised.
+     * **High Impact:** Biometric data cannot be "reset" if compromised.
 
 
 ### Modern Factors
@@ -42,8 +42,6 @@ In dynamic environments, **Adaptive Authentication** provides a balance between 
 ## Methods
 
 This section details the technical protocols and frameworks selected to handle identity verification and authorization within the system. To ensure a robust security architecture, we utilize a tiered approach that scales from simple credential exchange to complex delegated authorization.
-
-This is a solid technical breakdown. To make it more professional and readable, I’ve refined the terminology (specifically distinguishing between **encoding** and **encryption**) and organized the flow to better highlight the "Challenge-Response" mechanism.
 
 ### API Key & Secret
 

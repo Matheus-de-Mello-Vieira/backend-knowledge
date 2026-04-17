@@ -24,28 +24,17 @@ To implement authorization effectively, different models can be used depending o
 Managing credentials—such as passwords, API keys, and digital certificates—is a continuous process. A failure at any stage of the lifecycle can compromise the entire architecture, regardless of how strong the individual authentication factors are.
 
 1. **Provisioning (Birth)**: The first stage involves creating the identity and assigning the necessary permissions (based on **RBAC** or **ABAC**).
-
-   - **Secure Delivery**: Temporary credentials must be sent through secure channels and forced to change upon first use.
-
-   - **Verification**: The identity must be thoroughly vetted before a credential is issued to ensure **Authenticity**.
-
+    - **Secure Delivery**: Temporary credentials must be sent through secure channels and forced to change upon first use.
+    - **Verification**: The identity must be thoroughly vetted before a credential is issued to ensure **Authenticity**.
 2. **Maintenance and Rotation (Life)**: Credentials should not be static. The longer a credential remains unchanged, the higher the risk of it being compromised through slow-burning attacks like brute force or credential stuffing.
-
-   - **Rotation Policies**: Regularly changing passwords or rotating API keys reduces the "window of opportunity" for a threat actor.
-
-   - **Complexity Requirements**: Enforcing strong entropy (length and variety of characters) to mitigate the risk of automated cracking.
-
+    - **Rotation Policies**: Regularly changing passwords or rotating API keys reduces the "window of opportunity" for a threat actor.
+    - **Complexity Requirements**: Enforcing strong entropy (length and variety of characters) to mitigate the risk of automated cracking.
 3. **Monitoring and Auditing**: As discussed in the **IDS** section, credentials must be monitored for anomalous behavior.
-
-   - **Audit Logs**: Keeping a record of when and where a credential was used provides the necessary diagnostics for **Incident Response**.
-
-   - **Privilege Creep**: Regular reviews are necessary to ensure users haven't accumulated more permissions than they need over time.
-
+    - **Audit Logs**: Keeping a record of when and where a credential was used provides the necessary diagnostics for **Incident Response**.
+    - **Privilege Creep**: Regular reviews are necessary to ensure users haven't accumulated more permissions than they need over time.
 4. **Revocation and Deprovisioning (Death)**: This is often the most overlooked stage. When a user leaves an organization or a project (offboarding), their access must be terminated immediately.
-
-   - **Zombie Accounts**: Accounts that remain active after a user has left are prime targets for attackers, as their activity is rarely monitored.
-
-   - **Centralized Management**: Using a Single Sign-On (SSO) system allows for "one-click" revocation across all integrated applications, ensuring **Availability** is not compromised by unauthorized former users.
+    - **Zombie Accounts**: Accounts that remain active after a user has left are prime targets for attackers, as their activity is rarely monitored.
+    - **Centralized Management**: Using a Single Sign-On (SSO) system allows for "one-click" revocation across all integrated applications, ensuring **Availability** is not compromised by unauthorized former users.
 
 Examples:
 

@@ -8,10 +8,10 @@ A firewall is a network security mechanism designed to protect a communication c
 
 In a communication utilizing the **TCP/IP protocol**, entities often have static IP addresses provided by their Internet Service Providers (ISPs). A firewall can be configured to allow traffic only from specific, authorized addresses—a process known as **whitelisting**.
 
-Considering the architecture aforementioned, we can apply firewall rules to protect the link between Alice, the Cloud, and Bob:
+Using the communication example introduced in [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
 
-- **Authorized Access:** Alice and Bob are assigned static IP addresses **X** and **Y**, respectively. The firewall is configured to permit only these addresses to access the communication channel.
-- **Unauthorized Access:** If Charlie attempts to access the channel from IP address **Z**, the firewall will identify him as unauthorized and block the connection.
+- **Authorized Access:** Approved IP addresses are allowed to reach the communication channel.
+- **Unauthorized Access:** Requests from unapproved addresses are blocked before the connection is established.
 
 **Modern Firewall Types:**
 - **Packet-Filtering Firewalls:** Examine individual packets based on source/destination IP, port numbers, and protocol types.
@@ -26,7 +26,7 @@ Network segmentation divides a network into smaller, isolated segments to limit 
 - **VLAN Segmentation:** Using Virtual Local Area Networks to logically separate network traffic based on function, department, or security requirements.
 - **Subnet Segmentation:** Physical or logical division of networks into smaller subnets with controlled inter-subnet communication.
 - **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
-- **Zero Trust Network Access (ZTNA):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
+- **[Zero Trust Network Access (ZTNA)](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
 
 #### **Micro-Segmentation**
 

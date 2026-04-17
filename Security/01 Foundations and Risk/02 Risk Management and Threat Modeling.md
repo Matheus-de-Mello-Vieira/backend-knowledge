@@ -10,6 +10,8 @@ A vulnerability is a flaw or weakness in the project's architecture that can be 
 
 To identify vulnerabilities, you must analyze each element of your architecture and ask: 'Is this element weak?' or 'Is this element more vulnerable than others?'
 
+To ground the discussion, consider a simple communication flow between Alice, a cloud synchronization service, and Bob. This example is only an introduction for threat modeling here; the network protection controls built around the same scenario are covered in [Network Security and Firewalls](../05%20Architecture%20and%20Infrastructure%20Security/01%20Network%20Security%20and%20Firewalls.md).
+
 ```mermaid
 flowchart LR
     subgraph "Alice Side"
@@ -54,7 +56,7 @@ IoT devices can materially expand this kind of attack surface. For the device-sp
 
 ### Threats
 
-Threats are factors or actions capable of compromising at least one of the [The tenets](01%20Security%20Principles.md#The%20tenets).
+Threats are factors or actions capable of compromising at least one of the [tenets](01%20Security%20Principles.md#The%20tenets).
 * Threat Actor is the entity who lauches the threat.
 * Threat Vector is is the means by which an attacker exploits a vulnerability.
 
@@ -87,15 +89,14 @@ Risk is the likelihood that a threat will exploit a vulnerability, resulting in 
 
 $$Risk = Likelihood \times Impact$$
 
-Where impact is is typically measured in terms of the [The tenets](01%20Security%20Principles.md#The%20tenets), while likelihood is assessed through attacker modeling.
+Where impact is is typically measured in terms of [the tenets](01%20Security%20Principles.md#The%20tenets), while likelihood is assessed through attacker modeling.
 
 Attacker Modeling is an exercise of putting yourself in the attacker's shoes. You can build a threat actor profile based on three pillars (often called the M.O.C. Triangle):
 
-- Capability (Means): The level of skill, tools, and resources (e.g., a "script kiddie" vs. a "state-sponsored actor").
+- **Capability (Means)**: The level of skill, tools, and resources (e.g., a "script kiddie" vs. a "state-sponsored actor").
 
-- Motivation (Motive): The "why" behind the attack (e.g., financial gain, social status/ego, hacktivism, disgruntled employees, or corporate espionage/sabotage).
+- **Motivation (Motive)**: The "why" behind the attack (e.g., financial gain, social status/ego, hacktivism, disgruntled employees, or corporate espionage/sabotage).
 
-- Opportunity: The existence of a vulnerability and the "window" to exploit it without being detected.
-
+- **Opportunity**: The existence of a vulnerability and the "window" to exploit it without being detected.
 
 Attacker modeling will always be inherently incomplete; nonetheless, it is essential because it enables risk prioritization.
