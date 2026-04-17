@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/05 Network Management.md",
+                "file": "Networking/06 Network Monitoring.md",
                 "mode": "source",
                 "source": true,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "05 Network Management"
+              "title": "06 Network Monitoring"
             }
           }
         ]
@@ -90,13 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Networking/05 Network Management.md",
+                "file": "Networking/06 Network Monitoring.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 05 Network Management"
+              "title": "Outline of 06 Network Monitoring"
             }
           }
         ]
@@ -220,7 +220,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -234,7 +234,7 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -253,19 +253,27 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "a7d3891cc06c5a37",
   "lastOpenFiles": [
+    "Networking/99 Proxying and Load Balancing.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
+    "Security/04 Application and API Security/CSRF Tokens.md",
+    "Security/04 Application and API Security/OWASP.md",
+    "Security/05 Architecture and Infrastructure Security/Patch Management and Security Updates.md",
+    "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
+    "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
+    "Security/03 Cryptography and Data Protection/Backup and Restore.md",
+    "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
+    "Networking/02 Network Components.md",
+    "Networking/01 Introduction.md",
     "Networking/06 Network Monitoring.md",
     "Networking/05 Network Management.md",
     "Networking/02 Protocols/15 SSH.md",
     "Networking/02 Protocols/14 SNMP.md",
-    "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
-    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Security/02 Identity and Access/03 Zero Trust Architecture.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/02 Identity and Access/01 Authentication.md",
@@ -273,17 +281,9 @@
     "README.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/99 References and Checklists/Backend Security Checklist.md",
-    "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
-    "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
-    "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
-    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security",
-    "Security/04 Application and API Security/OWASP.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
     "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",

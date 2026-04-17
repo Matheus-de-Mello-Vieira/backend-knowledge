@@ -63,3 +63,13 @@ Continuous surveillance of network traffic for security threats and performance 
 - **Flow Analysis:** Statistical analysis of network traffic patterns to identify anomalies and trends.
 - **Network Forensics:** Detailed investigation of network incidents using captured traffic and log data.
 - **Bandwidth and Performance Monitoring:** Tracking network utilization to identify potential security issues or attacks.
+
+#### **Types of Network Defense**
+
+Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
+
+- **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md#Network%20Micro-Segmentation), [access control](../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md), [hardening](../01%20Foundations%20and%20Risk/01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
+- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection](../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection.md).
+- **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) procedures.
+
+In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.

@@ -291,8 +291,7 @@ To complete your architectural survey, we must include the **Mesh Topology**. Th
 
 Here is the addition for your **Network Topology: The Architecture of Connectivity** section:
 
-### Mesh Topology (Malha)
-
+### Mesh Topology 
 If the Star topology is a hub-and-spoke and the Ring is a circle, the **Mesh** topology is a spiderweb. In this arrangement, nodes are interconnected with multiple redundant paths.
 
 ```mermaid
@@ -317,4 +316,4 @@ flowchart LR
 - **Characteristics:**
   - **No Single Point of Failure:** Unlike the Bus or Star, there is no central cable or switch that can bring down the entire system.
   - **High Fault Tolerance:** It is the most resilient topology available, which is why it is used for critical infrastructure.
-  - **Scalability Challenges:** In wired environments, the number of cables required grows exponentially with each new node ($n(n-1)/2$).
+  - **Scalability Challenges:** In wired environments, the number of cables required grows quadratically with each new node ($n(n-1)/2$).

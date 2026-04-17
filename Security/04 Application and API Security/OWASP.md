@@ -382,6 +382,7 @@ Missing appropriate security hardening across any part of the application stack 
         * Attackers exploit known CVEs immediately after disclosure.
         * Older frameworks introduce RCE or deserialization vulnerabilities.
         * Dependency versions are not tracked or monitored.
+        * See also: [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md)
     * **Typical failures shown:**
         * Unsupported or end-of-life software used in production
         * Missing automated patching or dependency checks
@@ -426,6 +427,7 @@ The resource is vulnerable, **unsupported, or out of date**. This includes the O
 - If you do not know the versions of all components you use (both client-side and server-side). This includes components you directly use as well as nested dependencies.
 - If you do not scan for vulnerabilities regularly and subscribe to security bulletins related to the components you use.
 - If software developers do not test the compatibility of updated, upgraded, or patched libraries.
+- For the broader operational discipline behind these controls, see [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md).
 
 #### Attack scenarios
 
