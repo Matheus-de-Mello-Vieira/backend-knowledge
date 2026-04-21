@@ -60,6 +60,64 @@ The router is a sophisticated device that operates at the Network Layer (Layer 3
 
 A router acts like a dedicated computer, managing traffic flow, controlling broadcast signals to prevent network congestion, and providing security features like firewalls. It is the "traffic controller" of the digital world, ensuring that data packets find their way from a local source to a destination that might be halfway across the globe.
 
+## A Small Office Network in Practice
+
+One of the simplest ways to understand network infrastructure is to follow how a small environment grows over time.
+
+### Stage 1: Shared Local Resources
+
+An office may begin with a single computer and a printer connected directly. As soon as a second computer needs to use that same printer, direct point-to-point cabling becomes insufficient and a **switch** becomes the central component of the local network.
+
+- **Switch Role:** Interconnects multiple devices inside the same **LAN**.
+- **Practical Effect:** Printers, files, and internal services can be shared by multiple hosts.
+- **Security Implication:** Once several devices share the same environment, unauthorized access and lateral movement become real concerns.
+
+### Stage 2: Internet Access
+
+When the office contracts Internet service, the internal network is typically connected to the provider through a **modem** and then forwarded into the local environment through routing equipment.
+
+- **Modem Role:** Terminates the ISP connection and translates the physical transmission medium into digital network traffic.
+- **Router Role:** Connects the private local network to external networks such as the Internet.
+- **Security Implication:** The moment a local network is exposed to the Internet, the attack surface expands beyond internal misuse to include external scanning, exploitation attempts, and unauthorized remote access.
+
+### Stage 3: Wireless Expansion
+
+As smartphones, tablets, and laptops become part of the environment, a **wireless router** or **wireless access point** adds Wi-Fi connectivity to the same infrastructure.
+
+- **Wired Segment:** Usually Ethernet-based and physically bounded.
+- **Wireless Segment:** Extends the same network through radio frequency communication.
+- **Security Implication:** Wireless access introduces additional risks such as weak encryption, rogue devices, poor password hygiene, and signal exposure beyond the physical office boundary.
+
+## Telephony and Video Surveillance Networks
+
+Computer data is not the only type of traffic that forms a networked environment. Telephony and surveillance systems also create communication networks that must be protected.
+
+### Telephony and PBX
+
+A telephone line may initially serve a single device, but as the organization grows, a **PBX (Private Branch Exchange)** distributes the service across multiple handsets and internal extensions.
+
+- **Internal Extensions:** Allow communication between users without leaving the organization's internal system.
+- **External Connectivity:** Connects internal users to public telephony networks.
+- **Security Implication:** Telephony systems can be abused through call interception, toll fraud, weak administration interfaces, and insecure VoIP deployments.
+
+### CCTV, DVR, and NVR
+
+Video surveillance environments also form a network. Cameras send image streams to recording and management systems such as a **DVR (Digital Video Recorder)** or **NVR (Network Video Recorder)**.
+
+- **Local-Only Operation:** Cameras and recorders may initially be accessible only from the local premises.
+- **Remote Access:** Once the recorder or camera platform is connected to the Internet, operators can view feeds remotely.
+- **Security Implication:** Remote viewing increases convenience, but it also exposes surveillance assets to credential attacks, outdated firmware exploitation, and privacy breaches.
+
+## Mixed and Converged Networks
+
+When different network types coexist in the same environment, such as computers, Wi-Fi, telephony, and surveillance, the result is a **mixed** or **converged network**.
+
+- **Shared Infrastructure:** IP phones and IP cameras may run on the same switching infrastructure used by desktops and servers.
+- **Operational Benefit:** Consolidation reduces cabling complexity and centralizes management.
+- **Security Trade-off:** Integration increases the potential blast radius of a compromise unless segmentation, access control, and monitoring are applied.
+
+In practice, a modern organization rarely protects only a "computer network." It protects a connected ecosystem of business, operational, and physical-security systems.
+
 ## Network Software and Protocols (The Logic)
 
 Software consists of the programs and rules responsible for the exchange of information between machines.

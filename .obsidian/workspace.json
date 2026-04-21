@@ -4,31 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "a5bf742cf689aea4",
+        "id": "49ebba1cfc70e1e2",
         "type": "tabs",
         "children": [
           {
-            "id": "a7d3891cc06c5a37",
+            "id": "78c0341230606d30",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Networking/06 Network Monitoring.md",
-                "mode": "source",
-                "source": true,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "06 Network Monitoring"
+              "title": "New tab"
             }
           }
         ]
@@ -220,6 +206,48 @@
                 }
               },
               "icon": "terminal",
+              "title": "Terminal: backend-knowledge"
+            }
+          },
+          {
+            "id": "0395dbd7cb92c024",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "terminal:terminal",
+              "state": {
+                "terminal:terminal": {
+                  "cwd": "/Users/matheusmv/Documents/estudo/backend-knowledge/",
+                  "focus": false,
+                  "profile": {
+                    "args": [
+                      "--login"
+                    ],
+                    "executable": "/bin/zsh",
+                    "followTheme": true,
+                    "name": "",
+                    "platforms": {
+                      "darwin": true
+                    },
+                    "pythonExecutable": "python3",
+                    "restoreHistory": false,
+                    "rightClickAction": "copyPaste",
+                    "successExitCodes": [
+                      "0",
+                      "SIGINT",
+                      "SIGTERM"
+                    ],
+                    "terminalOptions": {
+                      "documentOverride": null
+                    },
+                    "type": "integrated",
+                    "useWin32Conhost": true
+                  },
+                  "serial": null
+                }
+              },
+              "pinned": true,
+              "icon": "terminal",
               "title": "Terminal: zsh"
             }
           },
@@ -234,11 +262,11 @@
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 632.5
+    "width": 595.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -253,8 +281,11 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "a7d3891cc06c5a37",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/02 Network Components.md",
+    "Descomplica Enablers.md",
+    "Networking/06 Network Monitoring.md",
     "Networking/99 Proxying and Load Balancing.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
@@ -265,9 +296,7 @@
     "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
     "Security/03 Cryptography and Data Protection/Backup and Restore.md",
     "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
-    "Networking/02 Network Components.md",
     "Networking/01 Introduction.md",
-    "Networking/06 Network Monitoring.md",
     "Networking/05 Network Management.md",
     "Networking/02 Protocols/15 SSH.md",
     "Networking/02 Protocols/14 SNMP.md",
@@ -280,7 +309,6 @@
     "Security/01 Foundations and Risk/01 Security Principles.md",
     "README.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
-    "Security/99 References and Checklists/Backend Security Checklist.md",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security",

@@ -73,3 +73,19 @@ Network defense can be understood in three complementary categories. The goal is
 - **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) procedures.
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.
+
+#### **Mixed Network Defense**
+
+Real environments often combine traditional computing assets with wireless devices, IP telephony, surveillance systems, and IoT equipment. This convergence improves operational efficiency, but it also increases the attack surface because devices with very different security maturity levels start sharing the same infrastructure.
+
+- **Wireless Exposure:** Wi-Fi extends the network beyond walls, which increases the importance of strong encryption, authentication, and guest isolation.
+- **IP Telephony Risk:** VoIP and PBX platforms can suffer from interception, weak administrative interfaces, toll fraud, and poor segmentation from user workstations.
+- **CCTV and Recorder Risk:** IP cameras, DVRs, and NVRs are frequent targets because they are often Internet-exposed, poorly updated, and rich in sensitive operational data.
+- **Shared Infrastructure Risk:** When cameras, phones, laptops, and servers coexist on the same flat network, one compromised device may become a pivot point for lateral movement.
+
+For that reason, mixed environments should apply controls such as:
+
+- **Segmentation:** Separate user devices, servers, cameras, telephony, and guest access into distinct VLANs or trust zones.
+- **Access Control:** Restrict which users, devices, and systems can reach management interfaces and sensitive internal services.
+- **Continuous Monitoring:** Detect abnormal behavior such as unexpected scans, unusual outbound traffic, or device-to-device communication outside the normal baseline.
+- **Remote Access Hardening:** Avoid exposing administrative interfaces directly to the Internet; prefer VPNs, strong authentication, and tightly scoped access paths.
