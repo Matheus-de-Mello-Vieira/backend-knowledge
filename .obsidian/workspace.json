@@ -219,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: ⠹ backend-knowledge"
             }
           },
           {
@@ -275,7 +275,7 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -294,7 +294,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "f2cbd629bcd1c92c",
   "lastOpenFiles": [
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
