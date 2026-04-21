@@ -8,26 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "527844488c4cd17f",
-            "type": "leaf",
-            "state": {
-              "type": "split-diff-view",
-              "state": {
-                "aFile": "Security/02 Identity and Access/03 Zero Trust Architecture.md",
-                "bFile": "Security/02 Identity and Access/03 Zero Trust Architecture.md",
-                "aRef": ""
-              },
-              "icon": "diff",
-              "title": "Diff: 03 Zero Trust Architecture  (Working Tree)"
-            }
-          },
-          {
             "id": "2032ef0ead5834a9",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/03 Network Models.md",
+                "file": "Security/02 Identity and Access/02 Authorization and Access Control.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -42,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "03 Network Models"
+              "title": "02 Authorization and Access Control"
             }
           }
         ]
@@ -112,7 +98,8 @@
               "title": "Outline"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -233,13 +220,12 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
             "id": "0395dbd7cb92c024",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -273,7 +259,6 @@
                   "serial": null
                 }
               },
-              "pinned": true,
               "icon": "terminal",
               "title": "Terminal: zsh"
             }
@@ -289,11 +274,11 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 6
       }
     ],
     "direction": "horizontal",
-    "width": 595.5
+    "width": 841.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -308,43 +293,43 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "527844488c4cd17f",
+  "active": "0395dbd7cb92c024",
   "lastOpenFiles": [
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
-    "Networking/02 Protocols/02 MAC Addressing.md",
-    "Networking/03 Network Models.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Security/01 Foundations and Risk/04 Defense in Depth.md.md",
-    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
-    "Security/01 Foundations and Risk/01 Security Principles.md",
-    "Networking/06 Network Monitoring.md",
-    "Networking/02 Protocols/15 SSH.md",
-    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
+    "Security/02 Identity and Access/01 Authentication.md",
     "Networking/02 Network Components.md",
     "Descomplica Enablers.md",
-    "Networking/99 Proxying and Load Balancing.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
-    "Security/04 Application and API Security/OWASP.md",
+    "Security/99 References and Checklists/Backend Security Checklist.md",
+    "Security/99 References and Checklists",
+    "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
+    "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
+    "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
+    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
+    "Security/06 Security Operations and Governance",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
+    "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security/Patch Management and Security Updates.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security",
+    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
+    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
+    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
+    "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
+    "Security/05 Architecture and Infrastructure Security",
+    "Security/04 Application and API Security/OWASP.md",
+    "Security/04 Application and API Security/CSRF Tokens.md",
+    "Security/04 Application and API Security/CORS.md",
+    "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
     "Security/03 Cryptography and Data Protection/Backup and Restore.md",
-    "Networking/01 Introduction.md",
-    "Networking/05 Network Management.md",
-    "Networking/02 Protocols/14 SNMP.md",
-    "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
-    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
-    "Security/99 References and Checklists",
-    "Security/06 Security Operations and Governance",
-    "Security/05 Architecture and Infrastructure Security",
-    "Security/04 Application and API Security",
+    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
     "Security/03 Cryptography and Data Protection",
+    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",
-    "Untitled.base",
-    "Untitled 1.base"
+    "Security",
+    "Untitled.base"
   ]
 }
