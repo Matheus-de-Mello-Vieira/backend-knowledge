@@ -6,6 +6,12 @@ Monitoring is the active process of watching, verifying, and following a system,
 
 Network monitoring is a subset of [Network Management](05%20Network%20Management.md). Its job is to collect and interpret signals about availability, performance, faults, traffic, and suspicious behavior.
 
+At a practical level, network monitoring exists to protect three core outcomes:
+
+- **Availability:** confirming that links, devices, and services remain reachable and operational.
+- **Performance:** verifying that latency, packet loss, throughput, and resource usage stay within acceptable limits.
+- **Security:** detecting abnormal behavior, policy violations, intrusion attempts, and other indicators of compromise.
+
 ## Objectives of Network Monitoring
 
 ### Trend Analysis
@@ -56,6 +62,24 @@ When monitoring a network, the collected data is utilized to detect malicious ac
 - **The Threat:** This is a classic brute-force attack. If left unchecked, this attack will eventually succeed because, given enough time, the attackers will guess a valid username and password combination.
     
 - **Proactive Action:** Because the network is actively monitored, administrators can see this attack happening and take immediate action, such as blocking the hackers' IPs at the firewall. Conversely, an unmonitored network is completely blind to this activity and will inevitably be compromised; it is only a matter of time.
+
+### Performance Protection
+
+Monitoring is also essential for maintaining application quality, especially for latency-sensitive workloads such as voice and video.
+
+- **Scenario:** A company uses IP telephony across several offices. Users begin reporting delayed audio, interruptions, and overlapping speech during calls.
+- **The Risk:** Voice traffic is highly sensitive to latency, jitter, and packet loss. According to `ITU-T G.114`, one-way latency should generally remain below `150 ms` for acceptable voice quality.
+- **Proactive Action:** By monitoring delay and related quality indicators, administrators can identify where the degradation occurs and apply corrective measures such as traffic prioritization through QoS, path optimization, or congestion reduction.
+
+This is a good example of why monitoring should not focus only on link status. A network can be technically "up" while still delivering poor user experience.
+
+### Operational Efficiency
+
+Monitoring also improves the efficiency of the IT team itself.
+
+- Repeated alerts and recurring operational patterns reveal which activities consume time unnecessarily.
+- Once these repetitive tasks are visible, teams can automate them through scripts, alert rules, remediation workflows, or configuration templates.
+- This reduces manual effort, lowers the risk of human error, and frees administrators to focus on higher-value work such as architecture, security, and capacity planning.
 
 ### How to Monitor: Active vs. Passive Methods
 
@@ -146,6 +170,35 @@ Use `-w capture.pcap` to write raw packet data. Redirecting terminal output with
 * A traffic-monitoring tool focused on observing IP traffic and flow characteristics.
 * It is useful for identifying heavy talkers, traffic distribution, and broad flow behavior when you want a summarized operational view rather than full packet-by-packet inspection.
 
+### Common Monitoring Platforms
+
+In addition to packet analyzers, organizations often use full monitoring platforms to centralize metrics, alerts, dashboards, and historical trend analysis.
+
+#### Zabbix
+
+* An open-source monitoring platform widely used for networks, servers, and applications.
+* It supports active and passive checks, alerting, graphing, agent-based collection, and SNMP-based device monitoring.
+
+#### Nagios
+
+* A traditional monitoring platform known for host and service checks.
+* It is commonly used for availability monitoring and alert-based operations, especially in environments that rely on plugins and custom checks.
+
+#### The Dude
+
+* A MikroTik monitoring tool aimed primarily at network discovery, topology visualization, and device supervision.
+* It is useful in smaller or MikroTik-heavy environments where administrators want an integrated operational view.
+
+#### Cacti
+
+* A monitoring and graphing tool strongly associated with long-term visualization of SNMP-polled metrics.
+* It is useful when historical charts and capacity trends are more important than deep event correlation.
+
+#### PRTG
+
+* A commercial monitoring platform that supports networks, systems, applications, and environmental sensors through a broad set of built-in probes.
+* It is known for ease of deployment and an all-in-one approach, although licensing limits may apply depending on scale.
+
 ### Common Mistakes in Network Monitoring
 
 To maintain a healthy and secure infrastructure, network administrators must actively avoid several common pitfalls:
@@ -156,3 +209,4 @@ To maintain a healthy and secure infrastructure, network administrators must act
 - **Neglecting Network Updates:** New vulnerabilities are discovered daily, and software patches are constantly released to fix them. Many administrators still neglect this reality and fail to apply updates regularly, leaving known vulnerabilities exposed.
   - For the broader operational discipline, see [Patch Management and Security Updates](../Security/05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md).
 - **Ignoring Digital Hygiene Practices for Users:** Network management teams must regularly promote "digital hygiene" among the staff. This involves informing and training employees on smart password creation, the use of security codes, and the proper protocols for safe network access.
+- **Failing to Reinforce User Training Regularly:** Good monitoring is not only technical. Organizations should repeatedly train users on password hygiene, phishing awareness, and safe access habits so that human behavior does not become the weakest point in the environment.

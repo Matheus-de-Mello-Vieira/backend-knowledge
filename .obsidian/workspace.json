@@ -8,13 +8,27 @@
         "type": "tabs",
         "children": [
           {
-            "id": "78c0341230606d30",
+            "id": "527844488c4cd17f",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Networking/06 Network Monitoring.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "06 Network Monitoring"
             }
           }
         ]
@@ -283,9 +297,12 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/02 Protocols/15 SSH.md",
+    "Networking/06 Network Monitoring.md",
+    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
+    "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
     "Networking/02 Network Components.md",
     "Descomplica Enablers.md",
-    "Networking/06 Network Monitoring.md",
     "Networking/99 Proxying and Load Balancing.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
@@ -295,15 +312,12 @@
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
     "Security/03 Cryptography and Data Protection/Backup and Restore.md",
-    "Security/05 Architecture and Infrastructure Security/01 Network Security and Firewalls.md",
     "Networking/01 Introduction.md",
     "Networking/05 Network Management.md",
-    "Networking/02 Protocols/15 SSH.md",
     "Networking/02 Protocols/14 SNMP.md",
     "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
-    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
