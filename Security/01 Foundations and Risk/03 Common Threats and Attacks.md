@@ -84,3 +84,14 @@ obs.:
 
 - **Context:** Understanding famous cyberattacks is crucial because of their complexity or the massive financial/structural damage they caused.
 - **Stuxnet:** A highly sophisticated malware designed specifically to attack industrial operating systems. It successfully targeted and damaged nuclear centrifuges in Iran and is widely considered to be the first modern cyberweapon.
+## Network Threats
+
+We can classify the various types of network attacks and/or threats by the attacker's level of interaction with the data:
+- **Active Attacks:** These are attacks that act upon the information being transmitted over the network. They involve interrupting, modifying, or fabricating data.
+- **Passive Attacks:** These are attacks that intercept the data traveling across the network but do not act upon or alter it in any way. They merely make a copy of the information (e.g., eavesdropping or wiretapping).
+
+We can also classify them by their impact on the physical flow of information between the source and destination:
+- **Interruption:** The information leaves the source but cannot reach the destination because it has been blocked or destroyed in some way. This is an attack on _Availability_ (e.g., a Denial of Service attack).
+- **Interception :** The information leaves the source, but an attacker manages to intercept and copy it before it reaches the destination. This is an attack on _Confidentiality_ (e.g., packet sniffing or wiretapping).
+- **Modification:** The information leaves the source and is intercepted by the attacker, who alters the data before forwarding it to the destination. This is an attack on _Integrity_ (e.g., a Man-in-the-Middle attack altering a message).
+- **Fabrication:** The information is entirely manufactured by the attacker, who falsifies (spoofs) the source address of the information to deceive the destination into believing it came from a legitimate user. This is an attack on _Authenticity_ (e.g., IP spoofing or injecting fake routing data).
