@@ -1,3 +1,7 @@
 [mcp_servers.file-system]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+[mcp_servers.qmd]
+command = "npx"
+args = ["-y", "@tobilu/qmd", "mcp"]

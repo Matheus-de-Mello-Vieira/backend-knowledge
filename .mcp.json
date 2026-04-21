@@ -7,6 +7,12 @@
         "@modelcontextprotocol/server-filesystem",
         "."
       ]
+    },
+    "qmd": {
+      "command": "qmd",
+      "args": [
+        "mcp"
+      ]
     }
   }
 }
