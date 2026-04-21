@@ -1,14 +1,14 @@
-# Network Security and Firewalls
+# Network Security
 
 Network security encompasses a comprehensive set of technologies and practices designed to protect network infrastructure and the data transmitted across it. Modern network security goes far beyond traditional perimeter defense to include advanced threat detection, network segmentation, and continuous monitoring.
-
+ms
 #### **Firewall Technologies**
 
 A firewall is a network security mechanism designed to protect a communication channel by restricting access based on predefined security rules. It serves as a critical defense layer, particularly for ensuring Availability—a tenet that Authentication and Encryption alone do not guarantee.
 
 In a communication utilizing the **TCP/IP protocol**, entities often have static IP addresses provided by their Internet Service Providers (ISPs). A firewall can be configured to allow traffic only from specific, authorized addresses—a process known as **whitelisting**.
 
-Using the communication example introduced in [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
+Using the communication example introduced in [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
 
 - **Authorized Access:** Approved IP addresses are allowed to reach the communication channel.
 - **Unauthorized Access:** Requests from unapproved addresses are blocked before the connection is established.
@@ -26,7 +26,7 @@ Network segmentation divides a network into smaller, isolated segments to limit 
 - **VLAN Segmentation:** Using Virtual Local Area Networks to logically separate network traffic based on function, department, or security requirements.
 - **Subnet Segmentation:** Physical or logical division of networks into smaller subnets with controlled inter-subnet communication.
 - **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
-- **[Zero Trust Network Access (ZTNA)](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
+- **[Zero Trust Network Access (ZTNA)](03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
 
 #### **Micro-Segmentation**
 
@@ -68,9 +68,9 @@ Continuous surveillance of network traffic for security threats and performance 
 
 Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
 
-- **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md#Network%20Micro-Segmentation), [access control](../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md), [hardening](../01%20Foundations%20and%20Risk/01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
-- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection](../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection.md).
-- **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) procedures.
+- **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](03%20Zero%20Trust%20Architecture.md#Network%20Micro-Segmentation), [access control](02%20Authorization%20and%20Access%20Control.md), [hardening](01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
+- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection](01%20Intrusion%20Detection.md).
+- **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](02%20Incident%20Response%20and%20Recovery.md) procedures.
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.
 

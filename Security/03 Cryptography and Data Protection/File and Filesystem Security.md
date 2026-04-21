@@ -29,5 +29,5 @@ Endpoint security relies heavily on cryptographic protections for data at rest, 
 **Related Security Concepts:**
 - [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Framework for continuous verification and least-privilege access
 - [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Identity verification techniques including multi-factor authentication
-- [Network Security Controls](../05%20Architecture%20and%20Infrastructure%20Security/01%20Network%20Security%20and%20Firewalls.md) - Firewall and network segmentation strategies
+- [Network Security Controls](01%20Network%20Security.md) - Firewall and network segmentation strategies
 - [Incident Response](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) - Security incident management and forensics
