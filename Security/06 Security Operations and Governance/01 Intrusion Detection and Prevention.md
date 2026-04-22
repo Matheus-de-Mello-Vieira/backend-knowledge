@@ -21,6 +21,9 @@ The crucial difference between the two systems is not _how_ they detect the thre
 ## Intrusion Detection System (IDS)
 
 An IDS (/ˌaɪ.diːˈɛs/) operates passively, meaning the network traffic flows **"on the side"** rather than through it.
+
+It observes traffic and raises alerts, functioning like a security camera. It monitors and records everything that happens but does not prevent offensive actions. In other words, if a theft occurs, we can check the footage to identify the culprit. It won't stop the crime, but it will help solve it.
+
 ```mermaid
 flowchart LR
     Internet((Internet)) --- Router[Router]
@@ -29,14 +32,18 @@ flowchart LR
 
     %% The IDS is connected to a monitoring port
     Switch -.- IDS([IDS Monitor])
+    
+    style IDS fill:#00ff00,stroke:#333,stroke-width:2px
 ```
 
 - **How it works:** The IDS is connected to a switch port configured for "Port Mirroring" (or SPAN) or uses a physical network tap. As legitimate traffic flows through the switch to its destination, the switch sends an exact _copy_ of those packets to the IDS. The IDS analyzes these copies offline.
 - **Pros & Cons:** Because it only looks at copies, an IDS introduces zero latency to the network. If the IDS crashes, network traffic continues completely unaffected. However, because it is not in the direct path of the traffic, it cannot stop a packet that has already been sent.
-- **The Response Model:** It observes traffic and raises alerts, functioning like a security camera. It monitors and records everything that happens but does not prevent offensive actions. In other words, if a theft occurs, we can check the footage to identify the culprit. It won't stop the crime, but it will help solve it.
-## Intrusion Prevention System (IPS - /ˌaɪ.piːˈɛs/): Inline (Active)
+## Intrusion Prevention System (IPS)
 
-An IPS operates inline, meaning the network traffic physically flows **"through"** the device.
+An IPS (/ˌaɪ.piːˈɛs/) operates inline, meaning the network traffic physically flows **"through"** the device.
+
+It can actively block or interrupt detected threats via automated responses. It functions like a security camera with someone watching the feed 24/7. The moment someone steals an item, the guard sees it and alerts security at the door to intercept the individual, preventing them from leaving with the product.
+
 ```mermaid
 flowchart LR
     Internet((Internet)) --- Router[Router]
@@ -49,4 +56,3 @@ flowchart LR
 
 - **How it works:** The IPS sits directly in the communication path (often positioned right behind the firewall, or integrated directly into a Next-Generation Firewall). Every single packet must enter the IPS interface, be held in memory, inspected, and explicitly permitted before it is allowed to exit the other side toward the internal network.
 - **Pros & Cons:** Because it sits in the middle of the traffic stream, it can instantly drop malicious packets, reset TCP connections, or block an attacker's IP address on the spot. The trade-off is that an IPS must be incredibly fast to avoid adding latency to the network, and if the IPS hardware fails, it could potentially block all network traffic.
-- **The Response Model:** It can actively block or interrupt detected threats via automated responses. It functions like a security camera with someone watching the feed 24/7. The moment someone steals an item, the guard sees it and alerts security at the door to intercept the individual, preventing them from leaving with the product.

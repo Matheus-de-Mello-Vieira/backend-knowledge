@@ -8,38 +8,14 @@
         "type": "tabs",
         "children": [
           {
-            "id": "0d6e065df3e32101",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Networking/02 Network Components.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "02 Network Components"
-            }
-          },
-          {
             "id": "0d2524cb930f3d2b",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/03 Connections/01 How Connections are Established.md",
+                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
                 "mode": "source",
-                "source": false,
+                "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -52,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 How Connections are Established"
+              "title": "Firewall Technologies"
             }
           },
           {
@@ -79,8 +55,7 @@
               "title": "02 Network Components"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -326,7 +301,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 851.5
+    "width": 459.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -341,13 +316,13 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "0d2524cb930f3d2b",
   "lastOpenFiles": [
-    "Networking/02 Network Components.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Backend Engineering/02 Execution Patterns.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Networking/03 Connections/01 How Connections are Established.md",
+    "Networking/02 Network Components.md",
+    "Backend Engineering/02 Execution Patterns.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Networking/02 Protocols/05 TCP.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
