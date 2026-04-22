@@ -48,6 +48,12 @@ If the task requires a specific config or ignore file, pass it through the scrip
 .codex/skills/markdownlint-fix/scripts/markdownlint_fix.py --config .markdownlint.json --ignore-path .markdownlintignore docs
 ```
 
+## Markdown Style Conventions
+
+- Nested lists must use 4 spaces (enforced by markdownlint).
+- Blank lines before nested lists are not required.
+- Blank lines after list blocks are required (not enforced by markdownlint).
+
 ## Manual Follow-Up
 
 Treat a nonzero result after the second lint run as a to-do list, not as a script failure. Fix remaining findings manually, then rerun the script on the same targets until markdownlint exits cleanly.

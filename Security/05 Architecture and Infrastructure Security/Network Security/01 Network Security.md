@@ -1,25 +1,12 @@
 # Network Security
 
 Network security encompasses a comprehensive set of technologies and practices designed to protect network infrastructure and the data transmitted across it. Modern network security goes far beyond traditional perimeter defense to include advanced threat detection, network segmentation, and continuous monitoring.
-ms
-#### **Firewall Technologies**
 
-A firewall is a network security mechanism designed to protect a communication channel by restricting access based on predefined security rules. It serves as a critical defense layer, particularly for ensuring Availability—a tenet that Authentication and Encryption alone do not guarantee.
+## Firewall
 
-In a communication utilizing the **TCP/IP protocol**, entities often have static IP addresses provided by their Internet Service Providers (ISPs). A firewall can be configured to allow traffic only from specific, authorized addresses—a process known as **whitelisting**.
+Firewall-specific concepts are covered in [Firewall Technologies](Firewall%20Technologies.md).
 
-Using the communication example introduced in [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
-
-- **Authorized Access:** Approved IP addresses are allowed to reach the communication channel.
-- **Unauthorized Access:** Requests from unapproved addresses are blocked before the connection is established.
-
-**Modern Firewall Types:**
-- **Packet-Filtering Firewalls:** Examine individual packets based on source/destination IP, port numbers, and protocol types.
-- **Stateful Inspection Firewalls:** Track the state of network connections and make decisions based on connection context.
-- **Application Layer Firewalls:** Inspect traffic at the application layer, understanding specific protocols like HTTP, FTP, and SMTP.
-- **Next-Generation Firewalls (NGFW):** Integrate traditional firewall capabilities with intrusion prevention, application awareness, and threat intelligence.
-
-#### **Network Segmentation Strategies**
+## Network Segmentation Strategies
 
 Network segmentation divides a network into smaller, isolated segments to limit the spread of security breaches and improve overall network security.
 
@@ -28,7 +15,7 @@ Network segmentation divides a network into smaller, isolated segments to limit 
 - **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
 - **[Zero Trust Network Access (ZTNA)](03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
 
-#### **Micro-Segmentation**
+## Micro-Segmentation
 
 Advanced network segmentation that creates granular security zones around individual workloads or applications:
 
@@ -37,7 +24,7 @@ Advanced network segmentation that creates granular security zones around indivi
 - **East-West Traffic Control:** Monitoring and controlling lateral movement within the network, not just north-south traffic.
 - **Application-Centric Policies:** Security policies that follow applications regardless of their network location.
 
-#### **Network Access Control (NAC)**
+## Network Access Control (NAC)
 
 Comprehensive systems for controlling device access to network resources:
 
@@ -46,7 +33,7 @@ Comprehensive systems for controlling device access to network resources:
 - **Guest Network Management:** Secure, isolated network access for visitors and temporary users.
 - **Quarantine Mechanisms:** Automatically isolating non-compliant devices until security issues are resolved.
 
-#### **Intrusion Prevention Systems (IPS)**
+## Intrusion Prevention Systems (IPS)
 
 Active network security systems that monitor traffic and automatically block detected threats:
 
@@ -55,7 +42,7 @@ Active network security systems that monitor traffic and automatically block det
 - **Protocol Analysis:** Deep inspection of network protocols to identify violations or attacks.
 - **Automated Response:** Immediate blocking of malicious traffic and notification of security teams.
 
-#### **Network Monitoring and Analysis**
+## Network Monitoring and Analysis
 
 Continuous surveillance of network traffic for security threats and performance issues:
 
@@ -64,7 +51,7 @@ Continuous surveillance of network traffic for security threats and performance 
 - **Network Forensics:** Detailed investigation of network incidents using captured traffic and log data.
 - **Bandwidth and Performance Monitoring:** Tracking network utilization to identify potential security issues or attacks.
 
-#### **Types of Network Defense**
+## Types of Network Defense
 
 Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
 
@@ -74,7 +61,7 @@ Network defense can be understood in three complementary categories. The goal is
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.
 
-#### **Mixed Network Defense**
+## Mixed Network Defense
 
 Real environments often combine traditional computing assets with wireless devices, IP telephony, surveillance systems, and IoT equipment. This convergence improves operational efficiency, but it also increases the attack surface because devices with very different security maturity levels start sharing the same infrastructure.
 

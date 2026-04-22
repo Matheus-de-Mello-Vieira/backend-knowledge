@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/02 Identity and Access/02 Authorization and Access Control.md",
+                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Authorization and Access Control"
+              "title": "Firewall Technologies"
             }
           }
         ]
@@ -98,8 +98,7 @@
               "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -220,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -278,7 +277,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 841.5
+    "width": 781.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -295,6 +294,9 @@
   },
   "active": "0395dbd7cb92c024",
   "lastOpenFiles": [
+    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Networking/02 Network Components.md",
@@ -304,10 +306,8 @@
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
     "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
     "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
-    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security/Patch Management and Security Updates.md",
     "Security/05 Architecture and Infrastructure Security/Network Security",
@@ -326,7 +326,6 @@
     "Security/03 Cryptography and Data Protection/Backup and Restore.md",
     "Security/03 Cryptography and Data Protection/01 Cryptography.md",
     "Security/03 Cryptography and Data Protection",
-    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",
     "Security",
