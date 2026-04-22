@@ -240,8 +240,7 @@ title IPv4 Packet Header (32-bit width)
         * dangerous because mischiefs can pretend fragmentations
         * one fragment could fail, and resend just a part is difficult.
 
-The IP packet is basically the source IP address, the data, and the destination IP address. Probably it is everything that you would need as a backend engineer. However, here some more details:
-
+The IP packet is basically the source IP address, the data, and the destination IP address. Here some more details:
 * There is three headers for fragmentation: Identification, Flags (whether the packet should be fragmented or not) and Fragment Offset 
 * There is a header for time to live, it is important because the packet can be found in a situation of infinite loop between routes.
   * the time to live is a counter that is decreased by one on each router
@@ -251,12 +250,20 @@ The IP packet is basically the source IP address, the data, and the destination 
       * different ICMP can take differents ways, so the traceroutes isn't always right.
     * some routes turns the ICMP message off
 *  There is a header of protocol, that can be used to block decisions (without reading the data).
-* There is a header called Explicit Congestion Notification (ECN),  that is settled from a upper layer (TCP) by the router.
-  * congestion causes packets drops.
-  * When the route is overwhelmed, it starts to store the packets on buffers, when it is fulled, the incoming packets starts to be drooped.
-    * it is a waste because makes the client wait for a long timeout
-    * When the router buffer it about to be fulled, it starts to set the ECN to true, and process the packet normally.
-      * the receiver will be notified about the congestion by that bit, and will response the client with the same bit, so the client also will be notified.
+* `ToS`: It is an 8-bit field designed to tell routers how to handle a specific packet—essentially acting as a "priority" or "special handling" tag for network traffic.
+	* The ToS field is how the packet tells the router, "Hey, I'm a voice call, don't let me lag," or "I'm a background file backup, I can wait in line."
+	* Originally, the field was split into two main parts: 
+		* **IP Precedence (3 bits):** Ranked traffic from 0 (Routine) to 7 (Network Control).
+		* **ToS Flags (4 bits):** Requested specific optimizations like **Low Delay**, **High Throughput**, or **High Reliability**.
+		* **Reserved (1 bit):** Set to zero.
+	* Because the original ToS was a bit too simple for today's complex networks, it was redefined as the **Differentiated Services (DiffServ)** field. It is now broken down into:
+		* **DSCP (Differentiated Services Code Point - 6 bits):** This allows for 64 different levels of priority. It’s what modern routers use to decide which packets get sent first during congestion.
+		* **ECN (Explicit Congestion Notification - 2 bits):** These bits allow routers to signal that the network is getting crowded without having to actually drop the packet.
+			* that is set from a upper layer (TCP) by the router.
+			* When the route is overwhelmed, it starts to store the packets on buffers, when it is fulled, the incoming packets starts to be drooped.
+			    * it is a waste because makes the client wait for a long timeout
+			    * When the router buffer it about to be fulled, it starts to set the ECN to true, and process the packet normally.
+			      * the receiver will be notified about the congestion by that bit, and will response the client with the same bit, so the client also will be notified.
 * Finally, there are one header for source IP address, and another destination IP address
   * you can change the your source IP, but your Internet Provider can block your packets because it. The provider knows you IP because they assigned it.
 
@@ -270,7 +277,6 @@ The IP packet is basically the source IP address, the data, and the destination 
 * Uses IP directly
 * PING and traceroute use it
 * Doesn't require listeners or ports to be opened
-
 * Some firewalls block ICMP for security reasons
   * bad persons can use ICMP to flood the server in, or to discover opened ports
 * Disabling ICMP also can cause real damage with connection establishment

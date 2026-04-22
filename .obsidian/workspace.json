@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
@@ -32,12 +32,12 @@
             }
           },
           {
-            "id": "a723bb756b9af079",
+            "id": "c3048dbad8f547e9",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Descomplica Enablers.md",
+                "file": "Networking/02 Protocols/03 Internet Protocol.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Descomplica Enablers"
+              "title": "03 Internet Protocol"
             }
           }
         ]
@@ -319,8 +319,10 @@
   "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Descomplica Enablers.md",
+    "Networking/02 Protocols/03 Internet Protocol.md",
+    "Networking/02 Protocols/02 MAC Addressing.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
+    "Descomplica Enablers.md",
     "Networking/02 Network Components.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
     "Networking/03 Connections/01 How Connections are Established.md",
@@ -346,8 +348,6 @@
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security",
-    "Security/04 Application and API Security/OWASP.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
     "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",
