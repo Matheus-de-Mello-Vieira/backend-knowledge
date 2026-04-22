@@ -322,11 +322,11 @@
             }
           }
         ],
-        "currentTab": 6
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 588.5
+    "width": 851.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -341,7 +341,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "0395dbd7cb92c024",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Networking/02 Network Components.md",
     "Networking/03 Connections/01 How Connections are Established.md",
