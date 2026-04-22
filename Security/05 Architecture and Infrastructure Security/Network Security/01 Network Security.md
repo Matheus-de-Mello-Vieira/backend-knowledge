@@ -13,16 +13,18 @@ Network segmentation divides a network into smaller, isolated segments to limit 
 - **VLAN Segmentation:** Using Virtual Local Area Networks to logically separate network traffic based on function, department, or security requirements.
 - **Subnet Segmentation:** Physical or logical division of networks into smaller subnets with controlled inter-subnet communication.
 - **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
-- **[Zero Trust Network Access (ZTNA)](03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
+- **[Zero Trust Network Access (ZTNA)](../../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
 
 ## Micro-Segmentation
 
-Advanced network segmentation that creates granular security zones around individual workloads or applications:
+Micro-segmentation is advanced network segmentation that creates granular security zones around individual workloads, applications, services, or identities. Instead of relying on a broad trusted internal network, it applies internal controls that limit which systems can communicate and under what conditions.
 
-- **Software-Defined Perimeters:** Dynamic creation of encrypted network tunnels based on user identity and device trust.
+- **Software-Defined Perimeters (SDP):** Dynamic creation of secure network segments or encrypted tunnels based on user identity, device trust, and resource requirements.
+- **Application-Level Segmentation:** Isolation of individual applications and services rather than broad network segments.
 - **Container Network Security:** Specialized segmentation for containerized applications and microservices architectures.
-- **East-West Traffic Control:** Monitoring and controlling lateral movement within the network, not just north-south traffic.
+- **East-West Traffic Control:** Monitoring, inspecting, and controlling lateral (internal) traffic between internal systems, not just north-south traffic crossing the perimeter.
 - **Application-Centric Policies:** Security policies that follow applications regardless of their network location.
+- **Encrypted Communication:** Internal traffic should be [encrypted in transit](../../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#3.%20The%20States%20of%20Encryption), including service-to-service communication inside the network.
 
 ## Network Access Control (NAC)
 
@@ -50,9 +52,9 @@ Continuous surveillance of network traffic for security threats and performance 
 
 Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
 
-- **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](03%20Zero%20Trust%20Architecture.md#Network%20Micro-Segmentation), [access control](02%20Authorization%20and%20Access%20Control.md), [hardening](01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
+- **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](#Micro-Segmentation), [access control](../../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md), [hardening](../../01%20Foundations%20and%20Risk/01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
 - **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection and Prevention](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md).
-- **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](02%20Incident%20Response%20and%20Recovery.md) procedures.
+- **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](../../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) procedures.
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.
 

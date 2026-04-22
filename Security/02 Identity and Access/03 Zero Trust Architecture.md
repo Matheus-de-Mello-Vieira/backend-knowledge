@@ -36,12 +36,7 @@ Zero Trust architecture places identity at the center of all security decisions:
 - **Privileged Identity Management (PIM):** Special controls and monitoring for accounts with [elevated privileges](01%20Authentication.md#Privileged%20Access%20Management%20%28PAM%29).
 
 ### **Network Micro-Segmentation**
-Traditional network perimeter security is replaced with granular internal controls using [advanced network segmentation](01%20Network%20Security.md):
-
-- **Software-Defined Perimeters (SDP):** Dynamic creation of secure network segments based on user identity and resource requirements.
-- **Application-Level Segmentation:** Isolation of individual applications and services rather than broad network segments.
-- **East-West Traffic Inspection:** Monitoring and controlling lateral network traffic between internal systems.
-- **Encrypted Communication:** All network traffic [encrypted in transit](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#3.%20The%20States%20of%20Encryption), even within the internal network.
+Traditional network perimeter security is replaced with granular internal controls. See [Micro-Segmentation](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Micro-Segmentation) for the detailed network security treatment.
 
 ### **Device and Endpoint Security**
 Every device accessing network resources must be verified and secured:
