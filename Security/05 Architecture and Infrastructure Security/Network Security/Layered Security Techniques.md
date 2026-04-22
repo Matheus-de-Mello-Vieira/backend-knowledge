@@ -40,3 +40,4 @@ This layer is primarily governed by the TCP and UDP protocols described in the [
 This layer encompasses a wide variety of distinct applications, and understanding how each works is essential for implementing proper defenses. For the broader conceptual breakdown of these layers, see [Network Communication Models](../../../Networking/03%20Network%20Models.md).
 
 - **Application-Specific Defenses:** The techniques used are highly specific to the protocol. For example, the defense mechanisms for HTTP (web traffic) are vastly different from those used for SMTP (email). Email systems face unique problems like spam, which does not affect HTTP. DNS (Domain Name System) traffic also has its own unique vulnerabilities and required security measures. In short, each application requires highly particular, tailor-made security techniques.
+

@@ -107,3 +107,64 @@ A firewall should not be an isolated tool; it should be the "brain" of your secu
 - **Seamless Sharing:** Automatically share event data and threat info with your email, web, and endpoint security tools.
 - **Workflow Automation:** These systems can automate security tasks, tune policies, and perform impact assessments, reducing the manual burden on your IT team.
 - **Flexible Deployment:** Whether you are a small business or a massive enterprise, you can deploy on-premises or in the cloud via **virtual firewalls**, with a choice of centralized or on-box management.
+
+## Firewalls Across the OSI Model Layers
+
+A firewall can act across multiple layers of the OSI model, and the more layers it analyzes, the more granular and efficient the applied security policy becomes. This multi-layered approach correlates closely with the evolution of firewall generations.
+
+### Layer 1: Physical Layer
+
+Physical layer security focuses on the "tangible" elements of a network. Instead of looking at data packets, it monitors physical quantities:
+
+- **Connectivity:** Is a cable physically plugged in?    
+- **Signaling:** Is there measurable electrical energy or optical light present?
+- **Port Status:** Is the administrative state (on/off) consistent with actual usage?
+
+By tracking these signals, systems can implement **Physical Firewalls**. For example, if a switch port designated as "unused" suddenly detects an electrical signal, the system can automatically block the port to prevent a breach. Although limited in scope, this establishes the essential first barrier in a multi-layered security strategy.
+
+### Layer 2: Data Link Layer
+
+At **Layer 2**, security mechanisms transition from physical signals to **logical information**. The primary focus here is the **MAC (Media Access Control) address**, the hardware identifier found within Ethernet frames.
+
+- **Structured Filtering:** Unlike the physical layer, devices can now read frame headers to identify the origin and destination of data. This allows administrators to implement filtering policies that allow or block communication between specific devices.
+- **MAC Whitelisting:** A common security practice is creating a list of authorized MAC addresses. If an unauthorized device connects, its address will not be recognized, and the network will automatically block its access.
+- **Traffic Prioritization (CoS):** This layer utilizes **Class of Service (CoS)** information. Switches can identify critical traffic and prioritize it, ensuring that essential data is delivered while less important packets are discarded during network congestion.
+
+Layer 2 is susceptible to specific exploits that cannot be detected by higher-layer (Layer 3) firewalls. These include:
+
+- **ARP Spoofing & Flooding:** Attacks that manipulate the Address Resolution Protocol to intercept or disrupt traffic.    
+- **DHCP Spoofing:** Where an attacker provides false IP configurations to devices on the network.
+
+Because these threats occur within the local data link, they must be mitigated by security features implemented directly on the **switches**. By acting at this layer, the network gains a vital barrier that protects the integrity of local communication before it even reaches the router or main firewall.
+
+### Layer 3: Network Layer
+
+At **Layer 3** (the Network Layer), security mechanisms focus on **logical addressing** through the **IP (Internet Protocol)**.
+
+- **Advanced Packet Filtering:** Firewalls at this layer inspect IP headers to filter traffic based on source and destination IP addresses. They can also analyze additional header fields, such as **TTL (Time to Live)** and **DSCP (Differentiated Services Code Point)**.
+- **Sophisticated Access Rules:** This visibility allows administrators to build complex firewall rules and access control lists (ACLs) that strictly govern which specific hosts, networks, or subnets are permitted to communicate with one another.
+
+### Layer 4: Transport Layer
+
+At **Layer 4** (the Transport Layer), the firewall advances to inspecting **protocols (TCP and UDP)** and **logical ports**. This allows the security system to move beyond identifying machines and start identifying specific applications.
+- **Granular Control:** Because ports identify specific services (e.g., Port 80 for HTTP, Port 443 for HTTPS, Port 25 for SMTP), firewalls can refine their rules. Instead of blocking a host entirely—which might disrupt multiple services—an administrator can allow web traffic while blocking file transfers or remote login attempts.
+- **Protocol Analysis:** The firewall differentiates between **TCP** (transmission control protocol), which is connection-oriented and reliable, and **UDP** (user datagram protocol), which is faster but lacks error recovery.
+
+In modern networking, the port number (Layer 4) no longer strictly defines the application. For example, **Port 80 (HTTP)** is traditionally for web browsing, but it is now used to transport many different services:
+
+- **Webmail:** Accessing email through a browser instead of a dedicated POP client.
+- **Collaboration Tools:** Services like Google Meet or TeamViewer.
+- **Streaming:** Video platforms like YouTube.
+
+A Layer 4 firewall cannot distinguish between these services because they all appear as Port 80 traffic
+
+### Layer 7: Application Layer
+
+At **Layer 7** (the Application Layer), we reach the most advanced level of network security. While Layer 4 distinguishes traffic by port numbers, Layer 7 firewalls—often called **Next-Generation Firewalls (NGFW)**—inspect the actual data within the packet to identify the specific application being used.
+
+Analyzing traffic at Layer 7 is significantly more "expensive" in terms of hardware resources.
+
+- **Layer 1-3:** The system only needs to read the outermost headers, which is fast and uses minimal memory.
+- **Layer 7:** The firewall must "peel back" every single header (Layers 1 through 6) to reach the application data.
+
+Because this requires more processing power and time, Layer 7 analysis is usually reserved for complex security policies, while simpler filters are handled at lower layers for maximum efficienc
