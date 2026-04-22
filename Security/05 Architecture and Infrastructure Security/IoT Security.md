@@ -110,6 +110,9 @@ To protect against malware and software/firmware vulnerabilities:
 - Implement network monitoring to detect suspicious device behavior
 - Use endpoint protection solutions designed for IoT environments
 
+#### **Device Profiling and IoT Baselines**
+Unlike human users, IoT devices typically have highly predictable and "narrow" communication patterns (e.g., a smart light bulb only communicates with a specific controller at fixed intervals). An IDS is essential for identifying compromised IoT devices by flagging any deviation from this baseline—such as a thermostat suddenly performing an internal network scan or attempting to access a laptop's file system. This behavioral detection allows for the immediate isolation of the device, preventing an initial foothold from turning into a full-scale breach.
+
 ### **Insecure Communication Protocols and Cyberattacks**
 
 Insecure communication protocols and cyberattacks are serious threats to Internet of Things (IoT) security:

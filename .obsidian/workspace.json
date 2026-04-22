@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "2032ef0ead5834a9",
+            "id": "0d6e065df3e32101",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+                "file": "Networking/02 Network Components.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,10 +28,59 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Firewall Technologies"
+              "title": "02 Network Components"
+            }
+          },
+          {
+            "id": "0d2524cb930f3d2b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/03 Connections/01 How Connections are Established.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "01 How Connections are Established"
+            }
+          },
+          {
+            "id": "e04986be4aab8e60",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/02 Network Components.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "02 Network Components"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -102,7 +151,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 326.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -219,7 +268,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -277,7 +326,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 781.5
+    "width": 588.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -294,12 +343,17 @@
   },
   "active": "0395dbd7cb92c024",
   "lastOpenFiles": [
+    "Networking/02 Network Components.md",
+    "Networking/03 Connections/01 How Connections are Established.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
+    "Backend Engineering/02 Execution Patterns.md",
+    "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
+    "Networking/02 Protocols/05 TCP.md",
+    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
+    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/02 Identity and Access/01 Authentication.md",
-    "Networking/02 Network Components.md",
     "Descomplica Enablers.md",
     "Security/99 References and Checklists/Backend Security Checklist.md",
     "Security/99 References and Checklists",
@@ -313,18 +367,13 @@
     "Security/05 Architecture and Infrastructure Security/Network Security",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
     "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
-    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
     "Security/05 Architecture and Infrastructure Security",
     "Security/04 Application and API Security/OWASP.md",
     "Security/04 Application and API Security/CSRF Tokens.md",
-    "Security/04 Application and API Security/CORS.md",
     "Security/04 Application and API Security",
-    "Security/03 Cryptography and Data Protection/File and Filesystem Security.md",
-    "Security/03 Cryptography and Data Protection/Backup and Restore.md",
-    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",

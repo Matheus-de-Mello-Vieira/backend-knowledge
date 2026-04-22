@@ -35,12 +35,7 @@ Comprehensive systems for controlling device access to network resources:
 
 ## Intrusion Prevention Systems (IPS)
 
-Active network security systems that monitor traffic and automatically block detected threats:
-
-- **Signature-Based Detection:** Identifying known attack patterns and malicious traffic signatures.
-- **Behavioral Analysis:** Detecting anomalous network behavior that may indicate new or unknown threats.
-- **Protocol Analysis:** Deep inspection of network protocols to identify violations or attacks.
-- **Automated Response:** Immediate blocking of malicious traffic and notification of security teams.
+See [Intrusion Detection and Prevention](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md).
 
 ## Network Monitoring and Analysis
 
@@ -56,7 +51,7 @@ Continuous surveillance of network traffic for security threats and performance 
 Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
 
 - **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](03%20Zero%20Trust%20Architecture.md#Network%20Micro-Segmentation), [access control](02%20Authorization%20and%20Access%20Control.md), [hardening](01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
-- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection](01%20Intrusion%20Detection.md).
+- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection and Prevention](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md).
 - **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](02%20Incident%20Response%20and%20Recovery.md) procedures.
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.
