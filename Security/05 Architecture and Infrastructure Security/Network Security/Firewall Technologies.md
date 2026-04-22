@@ -20,7 +20,9 @@ Firewalls emerged in the late 1980s out of a critical need to control network ac
 
 The true catalyst for change occurred in 1988 when the internet experienced its first major "blackout" due to a rapidly spreading computer worm. In response, firewalls were conceptually adopted to act just like physical fire doors—preventing an infection in one network from spreading to others.
 
-From this point, the technology rapidly evolved across distinct "generations." However, it is crucial to understand that **this evolution is not a story of replacement, but of accumulation**. Newer generations of firewalls did not render the older ones obsolete. Instead, each generation introduced a deeper level of inspection. Today, these distinct technologies do not compete with one another; rather, they are positioned at different points in the network to create a comprehensive "Defense in Depth" strategy:
+From this point, the technology rapidly evolved across distinct "generations." However, it is crucial to understand that **this evolution is not a story of replacement, but of accumulation**. Newer generations of firewalls did not render the older ones obsolete. Instead, each generation introduced a deeper level of inspection. Today, these distinct technologies do not compete with one another; rather, they are positioned at different points in the network to create a comprehensive "Defense in Depth" strategy.
+
+The OSI-layer perspective appears later in [Firewalls Across the OSI Model Layers](#Firewalls%20Across%20the%20OSI%20Model%20Layers). This section focuses on how firewall capabilities evolved over time.
 
 ### First Generation: Stateless Packet Filters (Late 1980s)
 
@@ -110,7 +112,7 @@ A firewall should not be an isolated tool; it should be the "brain" of your secu
 
 ## Firewalls Across the OSI Model Layers
 
-A firewall can act across multiple layers of the OSI model, and the more layers it analyzes, the more granular and efficient the applied security policy becomes. This multi-layered approach correlates closely with the evolution of firewall generations.
+A firewall can act across multiple layers of the OSI model. This section focuses on what each layer can inspect and enforce, rather than when each firewall generation appeared.
 
 ### Layer 1: Physical Layer
 
@@ -146,25 +148,37 @@ At **Layer 3** (the Network Layer), security mechanisms focus on **logical addre
 
 ### Layer 4: Transport Layer
 
-At **Layer 4** (the Transport Layer), the firewall advances to inspecting **protocols (TCP and UDP)** and **logical ports**. This allows the security system to move beyond identifying machines and start identifying specific applications.
+At **Layer 4** (the Transport Layer), the firewall advances to inspecting **protocols (TCP and UDP)** and **logical ports**. This allows the security system to move beyond identifying machines and start identifying specific services.
+
 - **Granular Control:** Because ports identify specific services (e.g., Port 80 for HTTP, Port 443 for HTTPS, Port 25 for SMTP), firewalls can refine their rules. Instead of blocking a host entirely—which might disrupt multiple services—an administrator can allow web traffic while blocking file transfers or remote login attempts.
 - **Protocol Analysis:** The firewall differentiates between **TCP** (transmission control protocol), which is connection-oriented and reliable, and **UDP** (user datagram protocol), which is faster but lacks error recovery.
 
-In modern networking, the port number (Layer 4) no longer strictly defines the application. For example, **Port 80 (HTTP)** is traditionally for web browsing, but it is now used to transport many different services:
+However, the port number no longer strictly defines the application. For example, **Port 80 (HTTP)** is traditionally for web browsing, but it is now used to transport many different services:
 
 - **Webmail:** Accessing email through a browser instead of a dedicated POP client.
 - **Collaboration Tools:** Services like Google Meet or TeamViewer.
 - **Streaming:** Video platforms like YouTube.
 
-A Layer 4 firewall cannot distinguish between these services because they all appear as Port 80 traffic
+A Layer 4 firewall cannot distinguish between these services because they all appear as Port 80 traffic.
 
 ### Layer 7: Application Layer
 
-At **Layer 7** (the Application Layer), we reach the most advanced level of network security. While Layer 4 distinguishes traffic by port numbers, Layer 7 firewalls—often called **Next-Generation Firewalls (NGFW)**—inspect the actual data within the packet to identify the specific application being used.
+At **Layer 7** (the Application Layer), the firewall inspects the actual data within the packet to identify the specific application being used.
 
 Analyzing traffic at Layer 7 is significantly more "expensive" in terms of hardware resources.
 
 - **Layer 1-3:** The system only needs to read the outermost headers, which is fast and uses minimal memory.
 - **Layer 7:** The firewall must "peel back" every single header (Layers 1 through 6) to reach the application data.
 
-Because this requires more processing power and time, Layer 7 analysis is usually reserved for complex security policies, while simpler filters are handled at lower layers for maximum efficienc
+Because this requires more processing power and time, Layer 7 analysis is usually reserved for complex security policies, while simpler filters are handled at lower layers for maximum efficiency.
+
+## Mapping Firewall Generations to OSI Layers
+
+The two perspectives overlap, but they answer different questions: generations explain how firewall technology evolved, while OSI layers explain what information a control can inspect.
+
+| Firewall generation | Main inspection level | Typical controls |
+| --- | --- | --- |
+| Stateless packet filters | Layers 3-4 | Source/destination IP addresses, protocols, ports, ACLs |
+| Stateful inspection | Layer 4 | TCP/UDP sessions, connection state tables, directional access control |
+| Application layer firewalls / proxies | Layer 7 | HTTP/FTP/SMTP commands, payload inspection, reverse proxying, WAF-style controls |
+| Next-generation firewalls (NGFW) | Layers 3-7 | Application identity, user identity, DPI, IPS, URL filtering, sandboxing, threat intelligence |

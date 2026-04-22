@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
@@ -114,13 +114,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Firewall Technologies"
+              "title": "Outline"
             }
           }
         ]
@@ -284,7 +283,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -319,8 +318,8 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Descomplica Enablers.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Descomplica Enablers.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
     "Networking/02 Network Components.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
