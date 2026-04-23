@@ -52,8 +52,9 @@ A hub is a basic connectivity device that operates at the Physical Layer (Layer 
 
 ### The Switch
 
-The switch is an intelligent evolution of the hub, operating primarily at the Data Link Layer (Layer 2). Unlike a hub, a switch identifies the specific device connected to each of its ports by learning their MAC addresses. When it receives a data packet, it checks the destination address and forwards the packet only to the specific port where the receiving computer is located. This creates a dedicated path for communication, eliminates data collisions, and ensures that each device has access to full network speeds simultaneously.
+The switch represents an intelligent evolution of the legacy hub, serving as the core device of the Data Link Layer (Layer 2) in Ethernet networks. While legacy hubs blindly broadcasted data to every port, a switch functions as a sophisticated traffic controller that dynamically learns the  [MAC addresses](02%20Protocols/02%20Ethernet.md#MAC%20Addressing) of all connected hardware to build a dedicated MAC Address Table.
 
+When an Ethernet frame enters the device, the switch reads the destination MAC address in the frame header and forwards the data only to the specific port where the receiving computer is located. This process creates a dedicated path for communication, effectively eliminating data collisions and ensuring that every device on the network can access full speeds simultaneously.
 ### The Router
 
 The router is a sophisticated device that operates at the Network Layer (Layer 3). While a switch connects devices to form a local network, a router connects multiple networks together, such as joining a home LAN to the global Internet. Routers use logical addressing—specifically **IP Addresses**—to determine the best path for data to travel across interconnected segments.

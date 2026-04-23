@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/02 Protocols/02 MAC Addressing.md",
+                "file": "Networking/02 Protocols/02 Ethernet.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,18 +28,18 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 MAC Addressing"
+              "title": "02 Ethernet"
             }
           },
           {
-            "id": "b57f04834fcb81ce",
+            "id": "9afb83ce29541451",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-                "mode": "source",
-                "source": false,
+                "file": "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
+                "mode": "preview",
+                "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -52,10 +52,11 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Firewall Technologies"
+              "title": "Layered Security Techniques"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -114,12 +115,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Networking/02 Protocols/02 Ethernet.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 02 Ethernet"
             }
           }
         ]
@@ -301,7 +303,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 597.5
+    "width": 593.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -318,19 +320,21 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Networking/02 Protocols/02 MAC Addressing.md",
-    "Networking/02 Protocols/03 Internet Protocol.md",
-    "Networking/03 Network Models.md",
+    "Networking/02 Protocols/02 Ethernet.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Networking/02 Protocols/03 Internet Protocol.md",
+    "Networking/01 Introduction.md",
+    "Networking/02 Network Components.md",
+    "Networking/03 Network Models.md",
+    "Networking/02 Protocols/05 TCP.md",
+    "Networking/02 Protocols/02 MAC Addressing.md",
     "Security/02 Identity and Access/03 Zero Trust Architecture.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Descomplica Enablers.md",
-    "Networking/02 Network Components.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
     "Networking/03 Connections/01 How Connections are Established.md",
     "Backend Engineering/02 Execution Patterns.md",
-    "Networking/02 Protocols/05 TCP.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
@@ -345,8 +349,6 @@
     "Security/05 Architecture and Infrastructure Security/Patch Management and Security Updates.md",
     "Security/05 Architecture and Infrastructure Security/Network Security",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
-    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security",
     "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection",

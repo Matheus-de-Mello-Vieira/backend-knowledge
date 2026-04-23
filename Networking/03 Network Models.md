@@ -1,4 +1,4 @@
-# Comprehensive Notes: Network Communication Models
+# Network Communication Models
 
 ## Why Do We Need Communication Models?
 
