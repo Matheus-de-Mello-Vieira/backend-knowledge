@@ -40,37 +40,39 @@
 - **Definition:** A specific type of malicious software that encrypts the data on an infected system and demands a ransom payment to restore access to the files.
 - **Execution:** Once the files are encrypted and inaccessible, a message is displayed demanding payment, usually in a cryptocurrency like Bitcoin, which makes tracking the attacker difficult. It is a growing threat for businesses and government organizations.
 - **Common Propagation Methods:**
-  - **Phishing Emails:** Fake emails containing malicious links or attachments that infect the system when downloaded.
+  - [**Phishing Emails**](#phishing): Fake emails containing malicious links or attachments that infect the system when downloaded.
   - **Compromised Websites:** Legitimate websites infected with malware that automatically downloads to a user's computer upon visiting.
   - **Outdated Software:** Exploiting known vulnerabilities in unpatched software to install the malware.
-- **Prevention:** Organizations should maintain updated software, perform regular data backups, use firewalls and updated antivirus solutions, and train users to recognize phishing attempts.
+- **Prevention:** Organizations should maintain updated software, perform regular data backups, use firewalls and updated antivirus solutions, and train users to recognize [phishing](#phishing) attempts.
   - For the broader operational discipline, see [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md).
+#### **Backdoors**
 
-obs.: 
+- **Definition:** A hidden method or entry point that bypasses a system’s standard authentication or encryption measures, providing unauthorized access to a computer, network, or software application.
+- **Execution Mechanism:** Backdoors are often established in two ways: they can be "hardcoded" by original developers for maintenance or troubleshooting (known as a trapdoor), or they can be installed maliciously by other malware, such as [**Trojans**](#trojans-trojan-horses) or [**Worms**](#worms), to create a persistent, secret entrance for future use.
+- **Impact:** The primary goal of a backdoor is **persistence**. It allows an attacker to regain access to a system at any time without the user's knowledge. Once inside, attackers can remotely execute commands, install additional malware, exfiltrate sensitive data, or monitor user activity indefinitely, often remaining undetected by standard security protocols.
+- **Prevention:** Rigorous code audits and peer reviews are necessary to identify intentional or accidental backdoors in software. Organizations should also deploy **Endpoint Detection and Response (EDR)** and network monitoring tools to flag suspicious outbound connections or unauthorized administrative activity. Following the principle of least privilege ensures that even if a backdoor is accessed, the potential for damage is limited.
+    - For the broader operational discipline, see [Patch Management and Security Updates](https://www.google.com/search?q=../05%2520Architecture%2520and%2520Infrastructure%2520Security/Patch%2520Management%2520and%2520Security%2520Updates.md).
+#### **Phishing**
 
-#### DDoS (Distributed Denial of Service) Attacks
-
-- **Definition:** A cyberattack aimed at overwhelming an online system or service with excessive network traffic, rendering it unavailable to legitimate users.
-- **Execution Mechanism:** These attacks are carried out using a "botnet"—a massive network of infected computers and devices worldwide controlled remotely by an attacker.
-- **Attack Methods:** Attackers flood the target server with fake traffic requests or excessive network packets, causing the system to overload and crash.
-- **Motivations & Impact:** Driven by sabotage, extortion, or espionage, DDoS attacks can severely impact critical infrastructure (banking, healthcare, government) and cause significant financial losses.
-- **Protection:** Defenses include utilizing firewalls, load balancers, Intrusion Prevention Systems (IPS), rate-limiting traffic requests, and partnering with cybersecurity service providers for real-time monitoring and mitigation.
-
+- **Definition:** A form of social engineering where attackers use deceptive communications to trick individuals into compromising their own security or sharing sensitive data.
+- **Execution Mechanism:** Attackers typically send fake emails that contain malicious links or attachments. The attack relies on human error, as it requires the user to actively click a link or download a file to infect the system or reveal information.
+- **Impact:** Phishing is a primary method for identity theft, allowing attackers to obtain private information such as names, addresses, Social Security Numbers, and financial details to conduct fraudulent transactions. It also serves as a common propagation method for malware, specifically ransomware.
+- **Prevention:** The most critical defense is providing cybersecurity awareness training to teach users how to recognize phishing attempts. Additionally, individuals should remain vigilant, never share personal data on untrusted websites, and avoid executing unexpected email attachments.
 #### Human Error and Sabotage
 
-- **Human Error:** Occurs when an employee accidentally compromises the organization's cybersecurity. Examples include falling for phishing emails, clicking malicious links, using weak passwords, or inadvertently sharing confidential information.
+- **Human Error:** Occurs when an employee accidentally compromises the organization's cybersecurity. Examples include falling for [phishing](#phishing) emails, clicking malicious links, using weak passwords, or inadvertently sharing confidential information.
 - **Sabotage:** An intentional act to damage an organization's cybersecurity. This can be perpetrated by a disgruntled employee (e.g., stealing data, destroying systems, installing malware) or by external hackers motivated by financial or political gains.
 - **Prevention (Human Error):** Provide cybersecurity awareness training, enforce strong password policies, restrict access to confidential data, and utilize robust security systems.
 - **Prevention (Sabotage):** Implement strict access controls, monitor user activity, segregate duties, conduct background checks on potential hires, and limit sensitive data access to a strict need-to-know basis.
 
 #### Identity and Equipment Theft
 
-- **Identity Theft:** Occurs when an attacker steals a person's private information (name, address, date of birth, SSN, financial details) to conduct fraudulent transactions, open bank accounts, or issue credit cards in the victim's name. Attackers obtain this data via phishing, stolen documents, or cyberattacks on databases.
+- **Identity Theft:** Occurs when an attacker steals a person's private information (name, address, date of birth, SSN, financial details) to conduct fraudulent transactions, open bank accounts, or issue credit cards in the victim's name. Attackers obtain this data via [phishing](#phishing), stolen documents, or cyberattacks on databases.
 - **Common Fraud Scenarios:** Purchasing cell phones or vehicles, financing electronics, and opening shell companies using stolen data.
 - **Equipment Theft:** The physical loss or theft of electronic devices (laptops, smartphones, tablets), leading to unauthorized access to personal, financial, or corporate data.
 - **Prevention:**
   -  *For Equipment:* Install remote tracking/wiping software, use strong device passwords, and keep security software updated.
-  - *For Identity:* Be vigilant against phishing, never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
+  - *For Identity:* Be vigilant against [phishing](#phishing), never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
 
 #### Hardware and Power Failures
 
@@ -95,3 +97,28 @@ We can also classify them by their impact on the physical flow of information be
 - **Interception :** The information leaves the source, but an attacker manages to intercept and copy it before it reaches the destination. This is an attack on _Confidentiality_ (e.g., packet sniffing or wiretapping).
 - **Modification:** The information leaves the source and is intercepted by the attacker, who alters the data before forwarding it to the destination. This is an attack on _Integrity_ (e.g., a Man-in-the-Middle attack altering a message).
 - **Fabrication:** The information is entirely manufactured by the attacker, who falsifies (spoofs) the source address of the information to deceive the destination into believing it came from a legitimate user. This is an attack on _Authenticity_ (e.g., IP spoofing or injecting fake routing data).
+### Types
+#### **IP Spoofing**
+
+- **Definition:** A technique where an attacker creates Internet Protocol (IP) packets with a falsified source IP address to impersonate another computer system or user.
+- **Execution Mechanism:** IP spoofing is classified as a **Fabrication** attack. The attacker entirely manufactures the information and falsifies the source address to deceive the destination into believing the communication originated from a legitimate or trusted source.
+- **Impact:** This is primarily an attack on **Authenticity**. It is frequently used to bypass IP-based authentication filters or to conduct **DDoS attacks**, where a botnet floods a target with traffic that appears to come from a vast array of legitimate IP addresses, making the attack harder to block.
+- **Prevention:** To defend against spoofing, organizations should utilize **firewalls** and **Intrusion Prevention Systems (IPS)** to monitor for anomalous traffic patterns. Implementing ingress and egress filtering on routers—which verifies that incoming and outgoing packets have legitimate source addresses—is also a critical technical control.
+#### **Man-in-the-Middle (MitM)**
+
+- **Definition:** A type of network attack where an attacker intercepts and potentially alters the communication between two parties who believe they are communicating directly with each other.
+- **Execution Mechanism:** This is classified as a **Modification** attack. The information leaves the source and is intercepted by the attacker, who then alters the data before forwarding it to the destination. It can also involve **Interception**, where the attacker makes a copy of the data traveling across the network.
+- **Impact:** It is a primary attack on **Integrity**, as the information is changed during transmission. Because the data is also intercepted, it compromises **Confidentiality**. This allows attackers to eavesdrop on private conversations, steal credentials, or manipulate the contents of a message (e.g., changing the destination of a bank transfer).
+- **Prevention:** Defenses include utilizing **Intrusion Prevention Systems (IPS)** and **firewalls** to detect and block unauthorized network activity. Strong encryption is also vital to ensure that even if data is intercepted, it remains unreadable and its integrity can be verified.
+#### **DoS (Denial of Service)**
+
+- **Definition:** A cyberattack intended to make a computer, network, or online service unavailable to its intended users by disrupting services of a host connected to the Internet.
+- **Execution Mechanism:** Unlike its distributed counterpart, a standard DoS attack typically originates from a **single source** or one specific internet connection. The attacker sends a constant stream of service requests or exploits a software vulnerability to crash the system or exhaust its resources (such as CPU or memory).
+- **Impact:** This is primarily an attack on **Availability**, categorized as an **Interruption**. It prevents legitimate traffic from reaching its destination, leading to service downtime and potential loss of productivity or revenue.
+- **Prevention:** Defenses include utilizing **firewalls** and **Intrusion Prevention Systems (IPS)** to identify and block the attacking IP address. **Rate-limiting** traffic requests is also an effective way to prevent a single source from overwhelming the system.
+#### **DDoS (Distributed Denial of Service)**
+
+- **Definition:** A sophisticated cyberattack aimed at overwhelming an online system or service with excessive network traffic from multiple sources, rendering it unavailable to legitimate users.
+- **Execution Mechanism:** These attacks are carried out using a **"botnet"**—a massive network of infected computers and devices (often called "zombies") worldwide controlled remotely by an attacker. The attacker commands the botnet to flood the target server with fake traffic requests or excessive network packets simultaneously.
+- **Impact:** Like the standard DoS, this is an attack on **Availability** through **Interruption**. Driven by sabotage, extortion, or espionage, DDoS attacks can severely impact critical infrastructure (banking, healthcare, government) and cause significant financial losses. Because the attack traffic originates from thousands of different sources, it is much harder to filter or block than a single-source DoS attack.
+- **Prevention:** Effective protection requires utilizing **load balancers** to distribute traffic, **firewalls**, and **IPS**. Many organizations also partner with specialized cybersecurity service providers for real-time monitoring and advanced traffic scrubbing to mitigate massive floods of data.
