@@ -219,7 +219,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: ⠙ backend-knowledge"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -265,7 +265,7 @@
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 6
       }
     ],
     "direction": "horizontal",
@@ -284,7 +284,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "0395dbd7cb92c024",
+  "active": "f9632eba1bc24ea7",
   "lastOpenFiles": [
     "AI Engineering/LLM/LLM Model Selection.md",
     "AI Engineering/LLM/Runtime.md",
