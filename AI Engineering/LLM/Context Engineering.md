@@ -155,6 +155,30 @@ This accumulation introduces opportunities to critical risks:
 - **Context Poisoning (Logic Corruption):** A single piece of incorrect information (e.g., a hallucinated tool output) enters the history and derails all subsequent reasoning. The model treats this error as a fact.
 - **Context Confusion (Dilution):** As unnecessary noise accumulates, the signal-to-noise ratio drops. The model loses track of the original instruction ("Lost in the Middle" phenomenon), leading to vague or irrelevant responses.
 - **Context Clash (Inconsistency):** New information contradicts earlier data in the same session. The model struggles to reconcile these conflicts, often resulting in incoherent or oscillating behavior.
+## Tokens
+
+Tokens are the fundamental units that Generative AI models process, understand, and predict. Rather than reading or generating text word-by-word, models break information down into these smaller fragments, which can be a single letter, a syllable, or a full word.
+
+Token boundaries do not always align perfectly with whole words, and different models use slightly different methods to split text apart.
+
+- **The Rule of Thumb:** In standard natural language, **1 token is roughly ¾ of a word** (meaning 100 tokens is about 75 words). 
+- **The Token Discrepancy**: Tokenization is not a universal standard. Different models use different methodologies to split up text, meaning the exact token count will change depending on the specific model you are using.
+	- **Visualizing Tokens:** If you want to see this in action, OpenAI provides a free online [Tokenizer](https://platform.openai.com/tokenizer) tool that visually highlights how text is spliced.
+	- **Under the Hood:** For developers wanting to explore the mechanics or calculate tokens locally in their applications, OpenAI’s tokenization framework, [Tiktoken](https://github.com/openai/tiktoken), is available open-source on GitHub.
+- **The Code Tax:** A critical detail for developers is that **programming code generally consumes more tokens than standard text**. Because code relies heavily on special characters, indents, and non-standard syntax, it breaks down into more pieces. For example, 1,200 characters of Python code might consume around 300 tokens, whereas the exact same number of characters from a novel might only use 267. As your codebase or prompt grows, keeping an eye on this token gap becomes essential.
+
+## Context Window
+
+The context window is the specific limit of tokens an AI model can process and "remember" at any given time to make its next prediction. It functions as the model's active working memory, encompassing both the information you provide and the response the model generates.
+
+- **The Moving Horizon:** AI memory operates as a sliding window where reaching the token limit forces the model to drop the oldest messages to make room for new ones, leading to "forgetfulness" regarding earlier instructions.
+- **The Capacity Spectrum:** Model limits vary significantly by architecture, ranging from the 4,000-token baseline of early GPT-3.5 models to the massive 128,000-token capacity of GPT-4 Turbo and the 1 million-plus token range of Gemini Pro.
+- **The Sandwich Effect:** Models tend to prioritize information located at the very beginning and the very end of a prompt; critical instructions or data buried in the middle of a long text are frequently ignored or given less relevance.
+- **The Input-Output Balance:** The context window must accommodate both your prompt and the expected response; if your input consumes nearly the entire window, the model will return an error because it lacks the "buffer" required to generate text.
+- **The Token Tax:** Since generative AI services charge based on token volume for both input and output, large context windows provide power but require a cost-benefit analysis as projects scale.
+- **The Clean Slate:** Maintaining short, specific conversations is the most effective way to manage context, as starting a new chat session ensures the model isn't distracted by irrelevant or outdated data from previous turns.
+- **The Summary Anchor:** For long-running interactions, periodically asking the AI to summarize the key points of the discussion "refreshes" the context, bringing essential information from the beginning of the chat into the model's immediate focus.
+- **The Tokenizer Check:** Before sending massive blocks of code or text, use a tokenizer tool to verify the count and ensure you have left several hundred tokens of "headroom" for the model’s response to prevent delivery failures.
 
 ## Context Engineering Strategies
 

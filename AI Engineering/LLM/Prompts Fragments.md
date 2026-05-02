@@ -11,4 +11,3 @@ When generating Markdown content that includes internal code blocks (e.g., ```js
 **Why this is necessary:**
 Standard markdown parsers close a code block at the first matching 3-backtick delimiter they find. If you wrap my requested markdown in standard 3 backticks, the internal code blocks will prematurely close the outer block, breaking the rendering and making it impossible for me to cleanly copy-paste the raw content. Using a 4-backtick outer container safely encapsulates the 3-backtick internal blocks.
 ```
-
