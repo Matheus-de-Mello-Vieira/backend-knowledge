@@ -49,7 +49,7 @@ To a architecture be deemed as restful, it needs to follow 6 design rules:
 
     * For example, the HTTP headers `Accept`, `Content-Type`, `Host` and the status code.
 
-  * Server sends hydermedia [(HATEAOS)](08 Advanced Topics.md#HateOAS)
+  * Server sends hydermedia [(HATEAOS)](08%20Advanced%20Topics.md#HateOAS)
 
 ### **Statelessness**
 
@@ -70,7 +70,7 @@ To a architecture be deemed as restful, it needs to follow 6 design rules:
 * We can use cache in:
   * Database
   * Server
-  * Client: "Server should specify Cache-Control Directives in responses to control Caching behavior" (see [HTTP cache headers](../../HTTP headers.md))
+  * Client: "Server should specify Cache-Control Directives in responses to control Caching behavior" (see [HTTP cache headers](../../HTTP%20headers.md))
     * For example, for stock prices, that isn't cacheable, the server must include on response that it isn't cacheable 
 
   * Proxies and Gateways
@@ -112,4 +112,4 @@ So you can, for example, add a load balancer after gateway changing only the gat
 
 * It is a optional Constraint
 * the server can not only send data to the client, but also code to be executed by the client.
-* it is [HATEAOS](08 Advanced Topics.md#HateOAS)
+* it is [HATEAOS](08%20Advanced%20Topics.md#HateOAS)

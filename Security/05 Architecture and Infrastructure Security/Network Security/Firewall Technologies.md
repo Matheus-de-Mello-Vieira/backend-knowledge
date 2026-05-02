@@ -132,7 +132,7 @@ At **Layer 2**, firewalls and switch-level controls can inspect Ethernet frame i
 
 At **Layer 3** (the Network Layer), security mechanisms focus on **logical addressing** through the **IP (Internet Protocol)**.
 
-- **Packet Filtering:** Firewalls at this layer inspect [IP headers](../../../Networking/02%20Protocols/03%20Internet%20Protocol.md#anatomy-of-the-ip-packet) to filter traffic based on source and destination IP addresses. They can also analyze additional header fields, such as **TTL (Time to Live)** and **DSCP (Differentiated Services Code Point)**.
+- **Packet Filtering:** Firewalls at this layer inspect [IP headers](../../../Networking/02%20Protocols/03%20Internet%20Protocol.md#Anatomy%20of%20the%20IP%20packet) to filter traffic based on source and destination IP addresses. They can also analyze additional header fields, such as **TTL (Time to Live)** and **DSCP (Differentiated Services Code Point)**.
 - **Access Rules:** This visibility allows administrators to build firewall rules and access control lists (ACLs) that govern which specific hosts, networks, or subnets are permitted to communicate with one another.
 
 ### Layer 4: Transport Layer

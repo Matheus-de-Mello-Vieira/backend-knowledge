@@ -163,7 +163,7 @@ Here `http://localhost:9002` is the real backend, and clients talk to port `9000
 
 ## Tier 3: Wireshark
 
-For foundational concepts on protocol analyzers, packet decoding, and how these tools capture data, refer to [Network Management](../Networking/05 Network Management.md).
+For foundational concepts on protocol analyzers, packet decoding, and how these tools capture data, refer to [Network Management](../Networking/05%20Network%20Management.md).
 
 ### How to use it
 
@@ -311,7 +311,7 @@ Useful for HTTP and HTTPS:
 
 ### `tcpdump`
 
-Terminal-oriented packet capture, [see more](../Networking/05 Network Management.md).
+Terminal-oriented packet capture, [see more](../Networking/05%20Network%20Management.md).
 
 ### `traceroute`
 

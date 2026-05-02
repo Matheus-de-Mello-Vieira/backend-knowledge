@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
+                "file": "AI Engineering/LLM/LLM Model Selection.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "04 Cybersecurity Governance"
+              "title": "LLM Model Selection"
             }
           }
         ]
@@ -219,6 +219,48 @@
                 }
               },
               "icon": "terminal",
+              "title": "Terminal: ⠙ backend-knowledge"
+            }
+          },
+          {
+            "id": "f9632eba1bc24ea7",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "terminal:terminal",
+              "state": {
+                "terminal:terminal": {
+                  "cwd": "/Users/matheusmv/Documents/estudo/backend-knowledge",
+                  "focus": false,
+                  "profile": {
+                    "args": [
+                      "--login"
+                    ],
+                    "executable": "/bin/zsh",
+                    "followTheme": true,
+                    "name": "",
+                    "platforms": {
+                      "darwin": true
+                    },
+                    "pythonExecutable": "python3",
+                    "restoreHistory": false,
+                    "rightClickAction": "copyPaste",
+                    "successExitCodes": [
+                      "0",
+                      "SIGINT",
+                      "SIGTERM"
+                    ],
+                    "terminalOptions": {
+                      "documentOverride": null
+                    },
+                    "type": "integrated",
+                    "useWin32Conhost": true
+                  },
+                  "serial": null
+                }
+              },
+              "pinned": true,
+              "icon": "terminal",
               "title": "Terminal: zsh"
             }
           }
@@ -227,7 +269,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 630.5
+    "width": 785.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -244,6 +286,21 @@
   },
   "active": "0395dbd7cb92c024",
   "lastOpenFiles": [
+    "AI Engineering/LLM/LLM Model Selection.md",
+    "AI Engineering/LLM/Runtime.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "AI Engineering/LLM Model Selection.md",
+    "AI Engineering/LLM",
+    "AI Engineering/LLM.md",
+    "AI Engineering/Model Context Protocol.md",
+    "AI Engineering/Lexical Information Retrieval.md",
+    "AI Engineering/Context Engineering.md",
+    "AI Engineering/Prompts Fragments.md",
+    "AI Engineering/Prompt Engineering.md",
     "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
@@ -256,20 +313,6 @@
     "Networking/02 Protocols/02 Ethernet.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Networking/02 Protocols/03 Internet Protocol.md",
-    "Networking/01 Introduction.md",
-    "Networking/02 Network Components.md",
-    "Networking/03 Network Models.md",
-    "Networking/02 Protocols/05 TCP.md",
-    "Networking/02 Protocols/02 MAC Addressing.md",
-    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
-    "Descomplica Enablers.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
-    "Security/06 Security Operations and Governance/01 Intrusion Detection.md",
-    "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security",
@@ -278,7 +321,6 @@
     "Security/03 Cryptography and Data Protection",
     "Security/02 Identity and Access",
     "Security/01 Foundations and Risk",
-    "Security",
-    "Untitled.base"
+    "Security"
   ]
 }

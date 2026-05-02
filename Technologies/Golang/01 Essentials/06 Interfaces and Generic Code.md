@@ -170,7 +170,7 @@ func printSomething(value any) {
 
 ### Type assertion
 
-You can use [`switch` for types](./02 Essentials.md#switch-for-types), or:
+You can use [`switch` for types](02%20Essentials.md#switch%20for%20types), or:
 
 ```
 typedVal, ok := value.(int)

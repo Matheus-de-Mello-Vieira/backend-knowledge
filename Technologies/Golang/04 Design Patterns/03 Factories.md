@@ -503,7 +503,7 @@ func main() {
 
 ## Go-Idiomatic Alternatives
 
-* [Functional Options](98%20Go-Idiomatic%20patterns.md#functional-options): Represent optional creation rules as functions that are applied during factory execution, enabling flexible configuration without multiplying factory functions.
+* [Functional Options](98%20Go-Idiomatic%20patterns.md#Functional%20Options): Represent optional creation rules as functions that are applied during factory execution, enabling flexible configuration without multiplying factory functions.
 
 ## Known Uses
 

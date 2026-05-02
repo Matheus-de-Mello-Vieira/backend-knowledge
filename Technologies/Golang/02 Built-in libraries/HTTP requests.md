@@ -32,7 +32,7 @@ func main() {
 
 ## Receve a JSON
 
-See [json](./JSON.md)
+See [json](JSON.md)
 
 ## `http.NewRequest`
 

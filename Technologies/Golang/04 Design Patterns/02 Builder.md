@@ -293,8 +293,8 @@ func main() {
 
 ## Go-Idiomatic Alternatives
 
-- [Functional Options](98%20Go-Idiomatic%20patterns.md#functional-options): Wrap each optional configuration in a function that mutates the target config inside the constructor, eliminating the need for a builder type.
-- [Declarative Configuration](98%20Go-Idiomatic%20patterns.md#declarative-configuration): Accept a fully populated struct (or JSON/YAML) that the constructor validates and applies in one pass, embracing Go’s data-first style.
+- [Functional Options](98%20Go-Idiomatic%20patterns.md#Functional%20Options): Wrap each optional configuration in a function that mutates the target config inside the constructor, eliminating the need for a builder type.
+- [Declarative Configuration](98%20Go-Idiomatic%20patterns.md#Declarative%20Configuration): Accept a fully populated struct (or JSON/YAML) that the constructor validates and applies in one pass, embracing Go’s data-first style.
 
 ## Known Uses
 

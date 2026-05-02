@@ -328,7 +328,7 @@ func GetDatabase() *databaseImpl {
 
 * **Package-level value**: A `var` at package scope addresses “single shared instance” with the least machinery, and is preferred when lazy initialization is not needed.
   * The same implementation as an eager singleton via package-level initialization, described from a Go-native perspective rather than a GoF pattern perspective.
-* [Closure-based provider](98%20Go-Idiomatic%20patterns.md#closure-based-provider): A closure-based provider offers controlled instance sharing without relying on package-level state. 
+* [Closure-based provider](98%20Go-Idiomatic%20patterns.md#Closure-based%20provider): A closure-based provider offers controlled instance sharing without relying on package-level state. 
   * Instead of enforcing a single global instance, it scopes “singleness” to the owner of the provider, improving locality, testability, and dependency clarity.
   * This approach addresses the same problem as a singleton while aligning more closely with Go’s preference for explicit dependencies and bounded state.
 

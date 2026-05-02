@@ -112,7 +112,7 @@ Struct-based and function-based decorators are both idiomatic in Go, but they op
   }
   ```
 
-* **Function wrapper**: For [Single-Method Interface Adapters via Function Types](../01%20Essentials/05%20Structs%20and%20Custom%20types.md#single-method-interface-adapters-via-function-types), function wrappers are concise and effective for single-method interfaces, but they become opaque once behavior grows, state is needed, or multiple methods must be forwarded.
+* **Function wrapper**: For [Single-Method Interface Adapters via Function Types](../01%20Essentials/05%20Structs%20and%20Custom%20types.md#Single-Method%20Interface%20Adapters%20via%20Function%20Types), function wrappers are concise and effective for single-method interfaces, but they become opaque once behavior grows, state is needed, or multiple methods must be forwarded.
 
   ```go
   func withLogging(next Client) Client {

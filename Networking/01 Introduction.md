@@ -76,7 +76,7 @@ Synchronous transmission is designed for high-speed, high-volume data. Instead o
 - **Mechanism:** The transmitter and receiver are locked to the exact same frequency. This is achieved either by a separate **clock line** or, more commonly, by embedding the clock signal within the data itself (using techniques like **Manchester Encoding** or **Phase-Locked Loops - PLL**).
 - **Efficiency:** There are no start or stop bits between characters. The only overhead is a small "preamble" at the beginning of the frame to align the clocks. This makes it much faster and more efficient for modern networks like Ethernet.
 
-Modern Ethernet is an example of synchronous transmission: it uses a preamble before the frame so the receiver can synchronize before interpreting the frame fields. The Ethernet-specific layout is covered in [Anatomy of the Ethernet Frame](02%20Protocols/02%20Ethernet.md#anatomy-of-the-ethernet-frame)
+Modern Ethernet is an example of synchronous transmission: it uses a preamble before the frame so the receiver can synchronize before interpreting the frame fields. The Ethernet-specific layout is covered in [Anatomy of the Ethernet Frame](02%20Protocols/02%20Ethernet.md#Anatomy%20of%20the%20Ethernet%20Frame)
 ### Bandwidth and Transmission Rate
 
 The distinction between **Bandwidth** and **Transmission Rate** is fundamental to understanding network performance. **Bandwidth** represents the theoretical capacity of the physical medium—the "size of the pipe"—often measured by the frequency range (**Hz**) it can support. In contrast, the **Transmission Rate** (or Bit Rate) is the actual speed at which data is successfully pushed through that medium, measured in bits per second (**bps**).

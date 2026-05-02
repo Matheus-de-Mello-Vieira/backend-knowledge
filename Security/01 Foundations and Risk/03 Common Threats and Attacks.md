@@ -40,15 +40,15 @@
 - **Definition:** A specific type of malicious software that encrypts the data on an infected system and demands a ransom payment to restore access to the files.
 - **Execution:** Once the files are encrypted and inaccessible, a message is displayed demanding payment, usually in a cryptocurrency like Bitcoin, which makes tracking the attacker difficult. It is a growing threat for businesses and government organizations.
 - **Common Propagation Methods:**
-  - [**Phishing Emails**](#phishing): Fake emails containing malicious links or attachments that infect the system when downloaded.
+  - [**Phishing Emails**](#Phishing): Fake emails containing malicious links or attachments that infect the system when downloaded.
   - **Compromised Websites:** Legitimate websites infected with malware that automatically downloads to a user's computer upon visiting.
   - **Outdated Software:** Exploiting known vulnerabilities in unpatched software to install the malware.
-- **Prevention:** Organizations should maintain updated software, perform regular data backups, use firewalls and updated antivirus solutions, and train users to recognize [phishing](#phishing) attempts.
+- **Prevention:** Organizations should maintain updated software, perform regular data backups, use firewalls and updated antivirus solutions, and train users to recognize [phishing](#Phishing) attempts.
   - For the broader operational discipline, see [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md).
 #### **Backdoors**
 
 - **Definition:** A hidden method or entry point that bypasses a system’s standard authentication or encryption measures, providing unauthorized access to a computer, network, or software application.
-- **Execution Mechanism:** Backdoors are often established in two ways: they can be "hardcoded" by original developers for maintenance or troubleshooting (known as a trapdoor), or they can be installed maliciously by other malware, such as [**Trojans**](#trojans-trojan-horses) or [**Worms**](#worms), to create a persistent, secret entrance for future use.
+- **Execution Mechanism:** Backdoors are often established in two ways: they can be "hardcoded" by original developers for maintenance or troubleshooting (known as a trapdoor), or they can be installed maliciously by other malware, such as [**Trojans**](#Trojans%20%28Trojan%20Horses%29) or [**Worms**](#Worms), to create a persistent, secret entrance for future use.
 - **Impact:** The primary goal of a backdoor is **persistence**. It allows an attacker to regain access to a system at any time without the user's knowledge. Once inside, attackers can remotely execute commands, install additional malware, exfiltrate sensitive data, or monitor user activity indefinitely, often remaining undetected by standard security protocols.
 - **Prevention:** Rigorous code audits and peer reviews are necessary to identify intentional or accidental backdoors in software. Organizations should also deploy **Endpoint Detection and Response (EDR)** and network monitoring tools to flag suspicious outbound connections or unauthorized administrative activity. Following the principle of least privilege ensures that even if a backdoor is accessed, the potential for damage is limited.
     - For the broader operational discipline, see [Patch Management and Security Updates](https://www.google.com/search?q=../05%2520Architecture%2520and%2520Infrastructure%2520Security/Patch%2520Management%2520and%2520Security%2520Updates.md).
@@ -60,19 +60,19 @@
 - **Prevention:** The most critical defense is providing cybersecurity awareness training to teach users how to recognize phishing attempts. Additionally, individuals should remain vigilant, never share personal data on untrusted websites, and avoid executing unexpected email attachments.
 #### Human Error and Sabotage
 
-- **Human Error:** Occurs when an employee accidentally compromises the organization's cybersecurity. Examples include falling for [phishing](#phishing) emails, clicking malicious links, using weak passwords, or inadvertently sharing confidential information.
+- **Human Error:** Occurs when an employee accidentally compromises the organization's cybersecurity. Examples include falling for [phishing](#Phishing) emails, clicking malicious links, using weak passwords, or inadvertently sharing confidential information.
 - **Sabotage:** An intentional act to damage an organization's cybersecurity. This can be perpetrated by a disgruntled employee (e.g., stealing data, destroying systems, installing malware) or by external hackers motivated by financial or political gains.
 - **Prevention (Human Error):** Provide cybersecurity awareness training, enforce strong password policies, restrict access to confidential data, and utilize robust security systems.
 - **Prevention (Sabotage):** Implement strict access controls, monitor user activity, segregate duties, conduct background checks on potential hires, and limit sensitive data access to a strict need-to-know basis.
 
 #### Identity and Equipment Theft
 
-- **Identity Theft:** Occurs when an attacker steals a person's private information (name, address, date of birth, SSN, financial details) to conduct fraudulent transactions, open bank accounts, or issue credit cards in the victim's name. Attackers obtain this data via [phishing](#phishing), stolen documents, or cyberattacks on databases.
+- **Identity Theft:** Occurs when an attacker steals a person's private information (name, address, date of birth, SSN, financial details) to conduct fraudulent transactions, open bank accounts, or issue credit cards in the victim's name. Attackers obtain this data via [phishing](#Phishing), stolen documents, or cyberattacks on databases.
 - **Common Fraud Scenarios:** Purchasing cell phones or vehicles, financing electronics, and opening shell companies using stolen data.
 - **Equipment Theft:** The physical loss or theft of electronic devices (laptops, smartphones, tablets), leading to unauthorized access to personal, financial, or corporate data.
 - **Prevention:**
   -  *For Equipment:* Install remote tracking/wiping software, use strong device passwords, and keep security software updated.
-  - *For Identity:* Be vigilant against [phishing](#phishing), never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
+  - *For Identity:* Be vigilant against [phishing](#Phishing), never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
 
 #### Hardware and Power Failures
 

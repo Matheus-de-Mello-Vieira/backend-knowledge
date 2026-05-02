@@ -2,7 +2,7 @@
 
 ## `typeof`
 
-The typescript augments the [JavaScript operator `typeof`](../../Javscript Miscellaneous.md#typeof).
+The typescript augments the [JavaScript operator `typeof`](../../Javscript%20Miscellaneous.md#typeof).
 
 *   It introduces a new `typeof` that is used automatically intead of the javascript one depeding on the situation.
 

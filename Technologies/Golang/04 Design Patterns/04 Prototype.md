@@ -309,7 +309,7 @@ In Go, serialization-based copying should be treated as a **convenience techniqu
 
 ### Prototype Factory
 
-This section is a complement to [Prototype factory](03%20Factories.md#prototype-factory), where will be used many utilities functions.
+This section is a complement to [Prototype factory](03%20Factories.md#Prototype%20factory), where will be used many utilities functions.
 
 ```go
 func newPerson(proto *Person, name, street, city string) *Person {
@@ -351,7 +351,7 @@ func main() {
 
 ## Go-Idiomatic Alternatives
 
-* [Functional Options](98%20Go-Idiomatic%20patterns.md#functional-options): Prefer when you mostly need flexible configuration (not copying existing state) and want a single constructor without “constructor explosion.”
+* [Functional Options](98%20Go-Idiomatic%20patterns.md#Functional%20Options): Prefer when you mostly need flexible configuration (not copying existing state) and want a single constructor without “constructor explosion.”
 
 * **Plain constructors with explicit params**: Prefer when initialization is cheap and there are only a few stable variants; it keeps intent obvious and avoids copy semantics entirely.
 
@@ -374,4 +374,4 @@ func main() {
   p2 := p1 // full, independent copy
   ```
 
-* **[Prototype Factory](#prototype-factory) without public `Clone`**: Prefer when object creation is copy-based but cloning should remain an internal detail; the factory owns the prototypes, performs the copy, and applies controlled customization, keeping the public API small and preventing misuse.
+* **[Prototype Factory](#Prototype%20Factory) without public `Clone`**: Prefer when object creation is copy-based but cloning should remain an internal detail; the factory owns the prototypes, performs the copy, and applies controlled customization, keeping the public API small and preventing misuse.

@@ -85,7 +85,7 @@ app.get("/admin", (req, res, next) => {
 
 * `express.static` It serves static files and is based on serve-static.
 
-  * Check out [Serving Static Files](../01 Introduction/01 Introduction.md#serving-static-files) for details on serving static content in Express.
+  * Check out [Serving Static Files](../01%20Introduction/01%20Introduction.md#Serving%20Static%20Files) for details on serving static content in Express.
 
 * `express.urlencoded` It parses incoming request with `urlencoded` payloads
 

@@ -11,7 +11,7 @@ Caching-related headers control freshness, validation, and cache key variance ac
 - `Vary`: Which request headers differentiate cached variants.
 - Conditional requests: `If-Match` and `If-None-Match` for concurrency/validation.
 
-For the full caching guide (policies, validators, examples), see: [Cache/Caching Headers.md](Cache/Caching Headers.md)
+For the full caching guide (policies, validators, examples), see: [Cache/Caching Headers.md](Cache/Caching%20Headers.md)
 
 ## CORS
 
