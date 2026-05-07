@@ -10,7 +10,7 @@ A vulnerability is a flaw or weakness in the project's architecture that can be 
 
 To identify vulnerabilities, you must analyze each element of your architecture and ask: 'Is this element weak?' or 'Is this element more vulnerable than others?'
 
-To ground the discussion, consider a simple communication flow between Alice, a cloud synchronization service, and Bob. This example is only an introduction for threat modeling here; the network protection controls built around the same scenario are covered in [Network Security and Firewalls](01%20Network%20Security.md).
+To ground the discussion, consider a simple communication flow between Alice, a cloud synchronization service, and Bob. This example is only an introduction for threat modeling here; the network protection controls built around the same scenario are covered in [Network Security and Firewalls](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md).
 
 ```mermaid
 flowchart LR

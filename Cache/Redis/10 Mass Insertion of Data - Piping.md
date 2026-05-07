@@ -72,7 +72,7 @@ For most bulk imports, this method provides excellent performance with minimal c
 
 ## Solution: Generating RESP directly for maximum performance
 
-Although `redis-cli --pipe` accepts plain commands, it can also accept [raw RESP](./12 Redis Protocol.md). In this case, `redis-cli` forwards the data directly to Redis without parsing.
+Although `redis-cli --pipe` accepts plain commands, it can also accept [raw RESP](12%20Redis%20Serialization%20Protocol.md). In this case, `redis-cli` forwards the data directly to Redis without parsing.
 
 Example using `awk`:
 

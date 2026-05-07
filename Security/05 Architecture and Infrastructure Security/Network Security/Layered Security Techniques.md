@@ -18,12 +18,12 @@ Securing physical access to equipment is accomplished in two main stages:
 		- It is unacceptably careless to have a locked rack where the side panel can be easily popped open without a key.
 	- All network cables must run through closed conduits—no cable should be exposed, accessible, or even visible.
 
-**2. Data Link Layer Techniques (OSI Layer 2) **
+## 2. Data Link Layer Techniques (OSI Layer 2)
 
 When discussing network layer protection techniques at this level, we are referring to Layer 2 of the [OSI model](../../../Networking/03%20Network%20Models.md#The%20OSI%20%28Open%20Systems%20Interconnection%29%20Model). The primary equipment here is the switch, which forms the backbone of the company's Local Area Network (LAN). The most important Layer 2 protocol is the [Ethernet](../../../Networking/02%20Protocols/02%20Ethernet.md).
 - **Device Inventory & Port Binding:** The foundation of a "[Layer 2 firewalls](Firewall%20Technologies.md#Layer%202:%20Data%20Link%20Layer)" is maintaining a strict registry that maps authorized MAC addresses to their designated physical switch ports. While this tracking is an excellent control measure, it is unfortunately often neglected. 
 - **MAC Filtering & Limiting:** Using the device inventory, administrators can statically bind a specific [MAC address](../../../Networking/02%20Protocols/02%20Ethernet.md#MAC%20Addressing)  to its assigned port and restrict the total number of allowed MACs per port (which prevents attackers from plugging in unmanaged switches). If frames arrive from an unauthorized MAC, or if an authorized MAC transmits on the wrong port, the switch automatically drops the traffic.
-- **Untrusted CoS Markings:** Edge switches should never blindly trust [Class of Service (CoS)](02%20Ethernet.md#Class%20of%20Service%20%28CoS%29) markings from endpoints. Because 802.1Q tags are easily spoofed, an attacker or misconfigured device can artificially elevate standard traffic to a critical priority queue, starving the network. To prevent this, edge ports should strip or rewrite incoming CoS values, reserving inherent trust exclusively for trunk links between core networking devices.
+- **Untrusted CoS Markings:** Edge switches should never blindly trust [Class of Service (CoS)](../../../Networking/02%20Protocols/02%20Ethernet.md#Class%20of%20Service%20%28CoS%29) markings from endpoints. Because 802.1Q tags are easily spoofed, an attacker or misconfigured device can artificially elevate standard traffic to a critical priority queue, starving the network. To prevent this, edge ports should strip or rewrite incoming CoS values, reserving inherent trust exclusively for trunk links between core networking devices.
 
 These controls can reduce accidental misuse and raise the bar for simple attacks, but they are not strong identity guarantees by themselves because [MAC addresses can be spoofed](../../../Networking/02%20Protocols/02%20Ethernet.md#MAC%20Spoofing%20and%20Randomization).
 

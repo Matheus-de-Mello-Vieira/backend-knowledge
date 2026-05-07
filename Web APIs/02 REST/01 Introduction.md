@@ -60,7 +60,7 @@ You can measure the RESTfulness using Richardson Maturity Model (RMM) of your HT
 
   * **level 3**
 
-    * [HATEAOS](08%20Advanced%20Topics.md#HateOAS)
+    * [HATEAOS](07%20Advanced%20Topics.md#HateOAS)
 
 ## WebApp versus REST API
 
@@ -68,7 +68,7 @@ You can measure the RESTfulness using Richardson Maturity Model (RMM) of your HT
   * both uses cleint - server
   * layered
   * caching
-  * [HATEAOS](08%20Advanced%20Topics.md#HateOAS)
+  * [HATEAOS](07%20Advanced%20Topics.md#HateOAS)
 * but there is differences
   * webAPP have no hard rules on interface, the REST have (Contract, Resources identity )
   * webAPP can be stateful. The REST is always stateless.

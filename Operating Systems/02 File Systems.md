@@ -2,7 +2,7 @@
 
 A file system is the method and data structure used by an operating system (OS) to store, organize, and access files on a storage device.
 
-For the security perspective on file systems, see [02 Endpoint Security.md](../Security/Information%20Security/02%20Endpoint%20Security.md#filesystem-security).
+For the security perspective on file systems, see [Endpoint Security](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md).
 
 ## Basic Concepts
 

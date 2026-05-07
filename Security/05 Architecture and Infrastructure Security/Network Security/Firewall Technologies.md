@@ -9,7 +9,7 @@ The term "firewall" is derived from physical construction—a firebreak wall or 
 - In computer networks, a firewall is a hardware or software mechanism that applies security policies to control traffic flowing through a specific point in the network.
 - When a firewall is deployed as a dedicated, specialized piece of hardware running built-in software, it is referred to as an **Appliance**.
 
-Using the communication example introduced in [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
+Using the communication example introduced in [Risk Management and Threat Modeling](../../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), we can apply firewall rules to protect the link between the endpoints and the cloud service:
 
 - **Authorized Access:** Approved IP addresses are allowed to reach the communication channel.
 - **Unauthorized Access:** Requests from unapproved addresses are blocked before the connection is established.
@@ -73,7 +73,7 @@ Traditional firewalls look at "doors" (ports) and "addresses" (IPs). NGFWs shift
 
 The number one job of a firewall is to prevent breaches, but because no defense is 100% effective, modern systems include multi-layered "fail-safes":
 
-- **[Deep Packet Inspection (DPI)](01%20Network%20Security.md#Network%20Monitoring%20and%20Analysis) & [Intrusion Prevention Systems (IPS)](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md#Intrusion%20Prevention%20Systems%20%28IPS%29):** By combining high-speed stateful inspection with a built-in **IPS**, the firewall can detect and stop stealthy, "in-the-flow" attacks.
+- **[Deep Packet Inspection (DPI)](01%20Network%20Security.md#Network%20Monitoring%20and%20Analysis) & [Intrusion Prevention System (IPS)](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md#Intrusion%20Prevention%20System%20%28IPS%29):** By combining high-speed stateful inspection with a built-in **IPS**, the firewall can detect and stop stealthy, "in-the-flow" attacks.
 - **Integrated Sandboxing:** This promotes advanced protection by continuously analyzing the behavior of suspicious files in a safe environment to detect and eliminate malware before it spreads.
 - **URL Filtering:** Policies are enforced across hundreds of millions of URLs to prevent users from reaching malicious sites in the first place.
 

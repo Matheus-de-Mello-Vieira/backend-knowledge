@@ -7,7 +7,7 @@
   * other people say that it is layer 4 because follow the script of TCP handshake
 * on the handshake, the both ends get the same key, so they can encrypt their messages.
 
-> **Note on Cryptography:** TLS relies heavily on Symmetric/Asymmetric encryption and Public Key Infrastructure (PKI). For the mathematical theory behind these algorithms and how Trust Chains work, see [Cryptography](../../Security/Information Security/03 Cryptography.md).
+> **Note on Cryptography:** TLS relies heavily on Symmetric/Asymmetric encryption and Public Key Infrastructure (PKI). For the mathematical theory behind these algorithms and how Trust Chains work, see [Cryptography](../../Security/03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md).
 
 ## Why TLS
 

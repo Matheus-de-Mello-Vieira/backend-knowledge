@@ -43,10 +43,10 @@ Use this local-link style:
 
 Examples:
 
-```md
-[The tenets](01%20Security%20Principles.md#The%20tenets)
-[Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md)
-[HMAC](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#Keyed-Hashing:%20HMAC)
+```text
+[The tenets] -> 01%20Security%20Principles.md#The%20tenets
+[Cryptography] -> ../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md
+[HMAC] -> ../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#Keyed-Hashing:%20HMAC
 ```
 
 ## Scripts

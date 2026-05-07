@@ -54,7 +54,7 @@ While the diagram above shows the logical Layer 2 structure, a complete transmis
 
 **1. Physical Layer Overhead (Not technically part of the Layer 2 frame)**
 
-Ethernet uses synchronous block-level transmission, where the receiver must align its clock before reading the frame. See [Synchronous Transmission](../../01%20Introduction.md#2-synchronous-transmission-block-level-sync) for the general concept.
+Ethernet uses synchronous block-level transmission, where the receiver must align its clock before reading the frame. See [Synchronous Transmission](../01%20Introduction.md#2.%20Synchronous%20Transmission%20%28Block-Level%20Sync%29) for the general concept.
 
 In Ethernet specifically, this synchronization is implemented with:
 - **Preamble (7 bytes):** clock alignment pattern.

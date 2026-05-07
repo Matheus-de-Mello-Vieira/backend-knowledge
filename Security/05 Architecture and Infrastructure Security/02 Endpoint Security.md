@@ -20,4 +20,4 @@ The goal is to reduce the risk that an endpoint becomes an entry point for unaut
 - [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md): treats endpoint identity and posture as part of every access decision.
 - [Authentication](../02%20Identity%20and%20Access/01%20Authentication.md): verifies users, services, and devices before allowing access.
 - [Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md): provides encryption, hashing, certificates, signatures, and key-management foundations.
-- [Network Security and Firewalls](01%20Network%20Security.md): controls endpoint communication through filtering, segmentation, monitoring, and network access rules.
+- [Network Security and Firewalls](Network%20Security/01%20Network%20Security.md): controls endpoint communication through filtering, segmentation, monitoring, and network access rules.

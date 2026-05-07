@@ -61,9 +61,9 @@ Previously we talked about how backend communicates with clients. Here the focus
 
 These topics were moved to Networking and are maintained there:
 
-* [How Connections are Established](../../../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md)
-* [Reading and Sending Data](../../../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md)
-* [Nagle's Algorithm](../../../Networking/03%20Connections/03%20Nagle%27s%20algorithm.md)
+* [How Connections are Established](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md)
+* [Reading and Sending Data](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md)
+* [Nagle's Algorithm](../Networking/03%20Connections/03%20Nagle%27s%20algorithm.md)
 
 From the backend perspective, these notes explain what the kernel is doing before your application logic even starts: creating connections, buffering reads and writes, acknowledging data, and sometimes delaying small writes for efficiency.
 

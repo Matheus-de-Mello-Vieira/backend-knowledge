@@ -297,7 +297,7 @@ IoT security is a critical topic that has received increasing attention in recen
 As technology evolves, new challenges and opportunities will emerge in the IoT security field, requiring continuous adaptation and innovation in security practices.
 
 **Related Security Concepts:**
-- [Network Security Controls](01%20Network%20Security.md) - Network segmentation and firewall strategies for IoT
+- [Network Security Controls](Network%20Security/01%20Network%20Security.md) - Network segmentation and firewall strategies for IoT
 - [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md) - Encryption algorithms and key management for IoT devices
 - [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Continuous verification framework for IoT environments
 - [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Device and user authentication in IoT ecosystems

@@ -115,7 +115,7 @@ Some types of Web APIs are:
 
 * **gRPC**
 
-  * [Fundamentals of Backend Engineering](../../Backend Engineering/Fundamentals of Backend Engineering/03 Protocols/11 gRPC.md)
+  * [gRPC](../../Networking/02%20Protocols/11%20gRPC.md)
   * Quite performant
   * Not widely used yet
     * Uses HTTP2 that isn't quite popular

@@ -150,7 +150,7 @@ Examples:
 * Slow clients can be overrun.
 * Requires a transport that supports this model well.
 
-For transport-level examples, pair this with [Networking/02 Protocols/08 WebSockets](../../../Networking/02%20Protocols/08%20WebSockets.md).
+For transport-level examples, pair this with [Networking/02 Protocols/08 WebSockets](../Networking/02%20Protocols/08%20WebSockets.md).
 
 ## Short Polling
 
@@ -222,8 +222,8 @@ This stays inside the HTTP request-response model.
 
 SSE works particularly well with HTTP/2, so this also connects to:
 
-* [Networking/02 Protocols/07 HTTP1.1](../../../Networking/02%20Protocols/07%20HTTP1.1.md)
-* [Networking/02 Protocols/09 HTTP2](../../../Networking/02%20Protocols/09%20HTTP2.md)
+* [Networking/02 Protocols/07 HTTP1.1](../Networking/02%20Protocols/07%20HTTP1.1.md)
+* [Networking/02 Protocols/09 HTTP2](../Networking/02%20Protocols/09%20HTTP2.md)
 
 ## Publish-Subscribe
 
@@ -281,8 +281,8 @@ Examples:
 
 For the protocol side of this, see:
 
-* [Networking/02 Protocols/07 HTTP1.1](../../../Networking/02%20Protocols/07%20HTTP1.1.md)
-* [Networking/02 Protocols/09 HTTP2](../../../Networking/02%20Protocols/09%20HTTP2.md)
+* [Networking/02 Protocols/07 HTTP1.1](../Networking/02%20Protocols/07%20HTTP1.1.md)
+* [Networking/02 Protocols/09 HTTP2](../Networking/02%20Protocols/09%20HTTP2.md)
 
 ### Connection pooling
 
@@ -328,8 +328,8 @@ You can still build:
 
 Relevant protocol references:
 
-* [Networking/02 Protocols/04 UDP](../../../Networking/02%20Protocols/04%20UDP.md)
-* [Networking/02 Protocols/05 TCP](../../../Networking/02%20Protocols/05%20TCP.md)
+* [Networking/02 Protocols/04 UDP](../Networking/02%20Protocols/04%20UDP.md)
+* [Networking/02 Protocols/05 TCP](../Networking/02%20Protocols/05%20TCP.md)
 
 ### Completely stateless systems
 

@@ -74,7 +74,7 @@ This is a study and reference repository focused on backend engineering knowledg
 - **Definition-first approach**: Concepts start with clear, bold definitions followed by explanations
 - **Bullet-driven explanations**: Heavy use of bullet points for breaking down complex concepts
 - **Code-example heavy**: Most technical concepts include practical code examples in fenced blocks
-- **Cross-referencing**: Liberal use of markdown links to related concepts, often in `[concept](../path/file.md)` format
+- **Cross-referencing**: Liberal use of markdown links to related concepts, often in `[concept] -> ../path/file.md` form
 
 ### Code and Technical Content
 - **Multi-language examples**: Primarily JavaScript/TypeScript, with examples in other languages as needed
