@@ -24,10 +24,11 @@ The core goals center around minimizing risk, maintaining visibility, and ensuri
 - **Preserve rollback paths and operational simplicity:** When things go wrong, getting back to a stable state needs to be fast, simple, and guaranteed. A good strategy ensures that reverting to the previous version is a straightforward, well-practiced step rather than a complex engineering puzzle.
 - **Balance speed of delivery against confidence and cost:** An effective rollout process finds the sweet spot between deploying features quickly to stay competitive, building enough automated testing and infrastructure to be confident in the code's stability, and avoiding unnecessarily expensive or overly complex deployment pipelines.
 ## Prerequisites for Safe Rollouts
-
-* Health checks, alerts, and service-level indicators.
-* Versioned deployments and automated rollback hooks.
-* Request tracing, metrics, structured logs, and dashboards.
+	
+* [05 Observability](05%20Observability.md)
+	* Health checks, alerts, and service-level indicators.
+	- Request tracing, metrics, structured logs, and dashboards.
+* Versioned deployments and automated rollback hooks
 * Safe database and schema evolution strategy.
 * Clear ownership during rollout and incident response.
 

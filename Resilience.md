@@ -11,13 +11,13 @@ According www.merriam-webster.com:
 
 In software development, resilience is the capacity of keep the software available, so it can deliver its business value.
 
-\[\text{Availability} = \frac{\text{MTTF}}{\text{MTTF} + \text{MTTR}}\]
+$$\text{Availability} = \frac{\text{MTTF}}{\text{MTTF} + \text{MTTR}}$$
 
 Where:
 
-* \(\text{MTTF}\): **M**ean **T**ime **T**o **F**ailure
+* $\text{MTTF}$: **M**ean **T**ime **T**o **F**ailure
   * The average between come up until it first failure is seen from outside
-* \(\text{MTTR}\): **M**ean **T**ime **T**o **R**ecovery
+* $\text{MTTR}$: **M**ean **T**ime **T**o **R**ecovery
   * The average between the failure and its recovery
 
 The closer the value is to 1, the better.
@@ -467,7 +467,7 @@ There are different approaches and patterns available
   - Don’t drive operators to burnout; embed self-healing behavior directly into the system.
 - Part of the system – complex failure handling strategies possible
 - Outside the system – more robust against system-level failures
-
+See [05 Observability](05%20Observability.md)
 #### Error Handler
 
 * Units often don’t have enough time or information to handle errors

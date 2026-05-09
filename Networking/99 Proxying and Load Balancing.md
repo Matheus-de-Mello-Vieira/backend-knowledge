@@ -123,7 +123,7 @@ Having a load balancer in place is only half the battle; the other half is deter
 - **IP Hash (or Source IP Hash):** This algorithm generates a unique cryptographic hash based on the client's source IP address (and sometimes the destination IP). The resulting hash key dictates which backend server receives the request. This ensures that a specific user is consistently routed to the exact same server every time, which is crucial for maintaining session state or "sticky sessions."
 - **Least Response Time (or Least Latency):** A highly dynamic algorithm that actively monitors both the number of active connections and the average response time of each server. It routes the next request to the server that is currently responding the fastest and has the fewest active connections, ensuring optimal performance from the user's perspective.
 - **Random:** As the name implies, this simply routes incoming requests to a random server in the pool. While it sounds chaotic, it can actually perform quite well in massive clusters where all servers have identical capacity and the sheer volume of traffic naturally distributes the load evenly over time.
-- 
+
 ### Adaptive Load Balancing
 
 **Adaptive (or Resource-Based) Load Balancing** is one of the smartest—and most complex—routing strategies. Instead of just looking at external network metrics like active connection counts or response times, an adaptive algorithm actually looks _inside_ the backend servers to make its decisions.

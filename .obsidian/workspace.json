@@ -4,21 +4,31 @@
     "type": "split",
     "children": [
       {
-        "id": "49ebba1cfc70e1e2",
+        "id": "ebb9ad0f1a51fa8b",
         "type": "tabs",
         "children": [
           {
-            "id": "a1e2a529972d6d61",
+            "id": "2ab0995f51f1b941",
             "type": "leaf",
             "state": {
-              "type": "split-diff-view",
+              "type": "markdown",
               "state": {
-                "aFile": "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
-                "bFile": "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
-                "aRef": ""
+                "file": "Backend Engineering/05 Observability.md",
+                "mode": "source",
+                "source": true,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
               },
-              "icon": "diff",
-              "title": "Diff: 02 Risk Management and Threat Modeling  (Working Tree)"
+              "icon": "lucide-file",
+              "title": "05 Observability"
             }
           }
         ]
@@ -109,6 +119,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Backend Engineering/05 Observability.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +129,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for 05 Observability"
             }
           },
           {
@@ -127,11 +138,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Backend Engineering/05 Observability.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from 05 Observability"
             }
           },
           {
@@ -210,7 +222,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -260,7 +272,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 517.5
+    "width": 689.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -275,11 +287,13 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "a1e2a529972d6d61",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Networking/99 Proxying and Load Balancing.md",
-    "Backend Engineering/04 Release and Rollout Strategies.md",
     "Backend Engineering/05 Observability.md",
+    "Backend Engineering/04 Release and Rollout Strategies.md",
+    "Networking/06 Network Monitoring.md",
+    "Networking/99 Proxying and Load Balancing.md",
+    "Resilience.md",
     "AI Engineering/LLM/Prompt Engineering.md",
     "Web APIs/02 REST/08 Performance.md",
     "Web APIs/02 REST/07 Advanced Topics.md",
@@ -303,8 +317,6 @@
     "AI Engineering/Context Engineering.md",
     "AI Engineering/Prompts Fragments.md",
     "AI Engineering/Prompt Engineering.md",
-    "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security",
