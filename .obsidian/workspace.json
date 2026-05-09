@@ -13,9 +13,9 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Backend Engineering/05 Observability.md",
+                "file": "Security/99 TODO/Response and Incident Response Plan.md",
                 "mode": "source",
-                "source": true,
+                "source": false,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "05 Observability"
+              "title": "Response and Incident Response Plan"
             }
           }
         ]
@@ -90,16 +90,16 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 02 Incident Response and Recovery"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -272,7 +272,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 689.5
+    "width": 600.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,8 +287,14 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "2ab0995f51f1b941",
   "lastOpenFiles": [
+    "Security/99 TODO/Disaster Recovery Methods.md",
+    "Security/99 TODO/Ethics, Policies, and Compliance in Cybersecurity.md",
+    "Security/99 TODO/Forensic Investigation.md",
+    "Security/99 TODO/Response and Incident Response Plan.md",
+    "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
+    "Security/99 TODO",
     "Backend Engineering/05 Observability.md",
     "Backend Engineering/04 Release and Rollout Strategies.md",
     "Networking/06 Network Monitoring.md",
@@ -312,18 +318,12 @@
     "AI Engineering/LLM Model Selection.md",
     "AI Engineering/LLM",
     "AI Engineering/LLM.md",
-    "AI Engineering/Model Context Protocol.md",
-    "AI Engineering/Lexical Information Retrieval.md",
-    "AI Engineering/Context Engineering.md",
-    "AI Engineering/Prompts Fragments.md",
-    "AI Engineering/Prompt Engineering.md",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security",
     "Security/05 Architecture and Infrastructure Security",
     "Security/04 Application and API Security",
     "Security/03 Cryptography and Data Protection",
-    "Security/02 Identity and Access",
-    "Security/01 Foundations and Risk"
+    "Security/02 Identity and Access"
   ]
 }
