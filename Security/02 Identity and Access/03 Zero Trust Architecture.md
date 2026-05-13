@@ -23,7 +23,7 @@ The architecture operates under the assumption that the network perimeter has al
 
 - **Lateral Movement Prevention:** Network segmentation and micro-segmentation to contain potential breaches.
 - **Behavioral Analysis:** Continuous monitoring for anomalous behavior that might indicate compromised accounts or systems.
-- **Incident Response Integration:** Built-in capabilities for rapid detection, containment, and response to security incidents, following comprehensive [incident response procedures](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md).
+- **Incident Response Integration:** Built-in capabilities for rapid detection, containment, and response to security incidents, following comprehensive [incident response procedures](Incident%20Response%20and%20Recovery.md).
 
 ## Implementation Strategies
 
@@ -61,7 +61,7 @@ Centralized collection and analysis of security events from across the Zero Trus
 
 - **Log Aggregation:** Centralized collection of security logs from all systems and applications.
 - **Threat Detection:** Advanced analytics and machine learning to identify potential security threats.
-- **Incident Response:** Automated and manual [response capabilities](../06%20Security%20Operations%20and%20Governance/02%20Incident%20Response%20and%20Recovery.md) to contain and remediate security incidents.
+- **Incident Response:** Automated and manual [response capabilities](Incident%20Response%20and%20Recovery.md) to contain and remediate security incidents.
 - **Compliance Reporting:** Automated generation of compliance reports and audit trails.
 
 ### **Data Protection**
