@@ -8,12 +8,7 @@ While prevention is a critical first step, modern cybersecurity is built on the 
 The core cybersecurity lifecycle transforms "emergency mode" into a structured, repeatable process. By following these stages, an organization ensures that its response to a crisis is calculated rather than chaotic:
 
 1. [**Prepare**](#Preparation): This phase is an ongoing effort to ensure the organization has the necessary tools, procedures, and personnel ready before an incident occurs.
-	- [**Risk & Impact Analysis**](#Risk%20Analysis%20and%20Business%20Impact%20Analysis): Evaluating potential hazards and quantifying the maximum tolerable downtime through Business Impact Analysis (BIA).
-	- [**Documentation**](#Incident%20Response%20Plan): Creating a formal [Disaster Recovery Plan](#Disaster%20Recovery%20Plan) (DRP) and [Incident Response Plan](#Incident%20Response%20Plan) (IRP) that outline specific responsibilities.
-	- [**Training**](#Standards%20and%20Frameworks): Regularly educating employees on security standards to reduce human error.
 2. [**Detect**](#Identification,%20Detection,%20and%20Analysis): Detection involves identifying abnormal behavior patterns across IT assets, including cloud resources and internal networks.
-	- [**SIEM & SOC**](#SOC,%20SIEM,%20and%20Threat%20Detection): Utilizing [Security Information and Event Management](#SIEM) (SIEM) systems for log aggregation and 24/7 monitoring via a [Security Operations Center](#Security%20Operations%20Center) (SOC).
-	- [**Alerting**](#Identification,%20Detection,%20and%20Analysis): Using automated alerts to flag potential breaches, such as multiple failed login attempts or unauthorized access to data centers.
 3. [**Respond**](#Containment): Once a threat is identified, the primary goal is to stop its effects before it causes further damage.
 	- [**Containment & Isolation**](#Types%20of%20containment): Disconnecting compromised systems from the network or disabling affected user accounts to prevent "lateral movement".
 	- [**Team Coordination**](#Roles%20and%20responsibilities): Gathering a cross-functional team (legal, technical, and management) to lead the mitigation effort.
@@ -100,19 +95,27 @@ The primary objective of an IRP is to minimize the cost, damage, and business di
 * **Evidence Handling**: Preserving digital evidence in its most original form—such as capturing volatile RAM data before a shutdown—to ensure it remains admissible for forensic analysis or legal proceedings.
 * **Controlled Restoration**: Facilitating a recovery process that identifies the root cause of a breach, ensuring the "gap" is patched before systems are brought back online to prevent immediate re-incidence.
 
-### What an IRP should include
+### Roles and Responsibilities
 
-#### Roles and Responsibilities
+Organizing your response strategy into two distinct groups—the broader **IRT** and the technical **CSIRT**—clarifies who manages the business impact versus who handles the technical "firefighting."
 
-A comprehensive IRP requires a cross-functional **Incident Response Team (IRT)** with clearly defined ownership:
+#### **Incident Response Team (IRT)**
 
-* **Security & IT**: Security analysts and system administrators handle the technical identification, containment, and eradication of threats.
-* **Management**: Responsible for coordinating the overall process, providing necessary resources, and ensuring the plan's effectiveness.
-* **Legal Counsel**: Manages regulatory requirements and ensures that evidence collection follows legal guidelines.
-* **Communications**: Manages the flow of information to internal stakeholders, customers, and the media.
-* **Human Resources**: Involved specifically if the incident involves an "insider threat" or a malicious act by an employee.
+The IRT is a cross-functional group responsible for the high-level management, coordination, and non-technical decision-making during a crisis. This team ensures the business remains resilient and compliant throughout the incident lifecycle.
 
-#### Severity Levels
+- **Management**: Provides the necessary resources and leadership to execute the plan. They are responsible for coordinating the overall disaster recovery process and ensuring that all departments are aligned with the response goals.
+- **Legal Counsel**: Manages regulatory requirements and ensures that all actions, particularly evidence collection, follow legal guidelines to maintain a proper **chain of custody**.
+- **Communications**: Acts as the primary point of contact for internal stakeholders, customers, partners, and the media. Their goal is to manage the flow of information to prevent brand damage and provide transparency.
+- **Human Resources**: Involved when an incident is linked to an "insider threat" or a malicious act by an employee, ensuring that internal personnel policies are followed.
+#### **Computer Security Incident Response Team (CSIRT)**
+
+The CSIRT is the specialized, technical arm of the response effort. They are the "front line" staff who possess the expertise to identify, analyze, and neutralize digital threats directly.
+
+- **Security Analysts**: Monitor IT assets (endpoints, cloud resources, and networks) to identify abnormal behavior patterns and determine the severity of a potential incident. They also perform [forensic analysis](#Forensic%20techniques) to understand the attack's scope. 
+- **System Administrators**: Responsible for the technical containment of the threat, such as isolating infected networks or terminating malicious processes. They also handle the **recovery** phase by rebuilding systems from backups and deploying security patches.
+- **Threat Hunters**: Proactively search for indicators of advanced threats (APTs) that may have evaded automated detection systems.
+- **Forensic Specialists**: Focus on preserving the "crime scene" by performing **memory imaging** and capturing volatile data before it is lost due to a system shutdown.
+### Severity Levels
 
 To prioritize resources, incidents are classified using a practical severity model based on impact and urgency:
 
@@ -121,15 +124,13 @@ To prioritize resources, incidents are classified using a practical severity mod
 - **High**: Major incident affecting critical systems or sensitive data; requires the full IRT (Incident Response Team).
 - **Critical**: Business-wide disruption, large-scale data breach, or active compromise of the entire infrastructure.
 
-#### Escalation Procedures
-
 The IRP must define clear criteria for when an incident should be escalated to higher management or specialized teams:
 
 * **Defined Thresholds**: Triggers for escalation based on severity level, potential financial impact, or regulatory significance.
 * **Approval Paths**: Explicitly stating who has the authority to approve high-impact actions, such as disconnecting a production database from the network.
 * **Communication Chains**: Ensuring the right people are informed at the right time to avoid response delays.
 
-#### Communication Plan
+### Communication Plan
 
 Effective communication prevents panic and preserves the organization's reputation. The plan defines paths for:
 
@@ -138,7 +139,7 @@ Effective communication prevents panic and preserves the organization's reputati
 * **Regulators & Law Enforcement**: Providing mandatory reports to comply with data protection laws and assisting in criminal investigations.
 * **Public/Media**: Using pre-defined strategies to manage the external narrative of the incident.
 
-#### Playbooks
+### Playbooks
 
 The IRP references specialized playbooks that provide step-by-step instructions for common scenarios:
 
@@ -146,23 +147,45 @@ The IRP references specialized playbooks that provide step-by-step instructions 
 * **[DDoS](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20(Distributed%20Denial%20of%20Service)) Attacks**: Procedures for filtering malicious traffic and maintaining service availability.
 * **Data Leaks/[Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing)**: Methods for containing compromised credentials and identifying the extent of data exfiltration.
 * **Post-Mortem Analysis**: Standardized procedures for a "lessons learned" meeting to refine the IRP after an incident is resolved.
----
-
 ## Incident Response Lifecycle
+
+The **Incident Response Lifecycle** provides a structured, standardized framework for handling active attacks and mitigating damage. Because threat actors are increasingly sophisticated, organizations must move beyond simple prevention and focus on **resilience**—the ability to identify, contain, and recover from an event with minimal loss. This lifecycle is not a one-time reaction but a continuous process designed to turn every security failure into a learning opportunity.
+
+Effective execution of this lifecycle requires a cross-functional [Incident Response Team (IRT)](#**Incident%20Response%20Team%20(IRT)**), comprising security analysts, system administrators, legal counsel, and management representatives. By following a calculated approach—even under the pressure of an active breach—the team can reduce human error and ensure that the response is organized and thorough.
+
+The lifecycle typically revolves around several core functional goals:
+
+- **Minimizing Impact**: Reducing the cost and business disruption caused by any attack that occurs.
+- **Structured Resolution**: Using pre-defined playbooks to ensure every phase of the incident is addressed systematically.
+- **Forensic Preservation**: Balancing the need to stop an attack with the preservation of volatile data (like RAM) necessary for a proper root cause analysis.
+- **Continuous Improvement**: Conducting post-incident reviews to ensure the same vulnerability cannot be exploited twice.
+
+The following sections detail the specific phases of the lifecycle, as defined by industry standards such as the [NIST Cybersecurity Framework](#NIST%20Cybersecurity%20Framework) and [ISO 22301](#ISO%2022301).
 
 ## Preparation
 
-### Purpose of preparation
+The **Preparation** phase is the foundational stage of the Incident Response Lifecycle. It is an ongoing, proactive process designed to ensure that the organization is ready to respond effectively before a security incident or disaster occurs.
 
-Prepare people, tooling, access, and procedures before an incident happens.
+### Key Objectives
 
-### Preparation content to include
+- **Readiness and Tools**: Ensuring the [**Computer Security Incident Response Team (CSIRT)**](#**Computer%20Security%20Incident%20Response%20Team%20(CSIRT)**) or [**Incident Response Team (IRT)**](#**Incident%20Response%20Team%20(IRT)**) has the best procedures, tools, and expertise available to respond to a crisis.
+- **Vulnerability Identification**: Using regular risk assessments to identify network vulnerabilities and prioritize potential incident types based on their potential business impact.
+- **Standardization**: Establishing documented outlines and [playbooks](#Playbooks) to guide detailed steps and reduce human error during high-stress situations.
 
-Keep this section limited to readiness prerequisites: people, tooling, logging, backups, access, contacts, and tested procedures.
+### Essential Preparatory Activities
 
-Related notes: [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md), [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md)
-Write there: add playbook ownership, response-team contact hygiene, and exercise/testing cadence where those notes discuss operational readiness.
-
+- **Defining Scope and Objectives**: Outlining exactly which assets, structures, and services require protection and identifying the critical needs of each department.
+- [**Risk & Impact Analysis**](#Risk%20Analysis%20and%20Business%20Impact%20Analysis): Evaluating potential hazards and quantifying the maximum tolerable downtime through Business Impact Analysis (BIA).
+- **Team Assembly**: Appointing a planning commission or a cross-functional IRT that includes security analysts, system administrators, legal counsel, and management.
+- **Management Involvement**: Securing the support and involvement of senior management to coordinate the planning process and ensure it is effective organization-wide.
+- **Preventive Security Measures**: Implementing controls to minimize the likelihood of an incident, such as:
+    - Regular employee training on security standards.
+    - Implementing and constantly updating security patches.
+    - Monitoring and logging user and data activity across the network.
+    - Encrypting mobile devices and laptops.
+- **Documentation**: Creating a formal [Disaster Recovery Plan](#Disaster%20Recovery%20Plan) (DRP), [Incident Response Plan](#Incident%20Response%20Plan) (IRP) and [**Communication Plan**](#Communication%20Plan) that outline specific responsibilities.
+	- **Testing**: Evaluate the documentation regularly—at least annually—to ensure all necessary steps are functional.
+- [**Training**](#Standards%20and%20Frameworks): Regularly educating employees on security standards to reduce human error.
 ---
 
 ## Identification, Detection, and Analysis
@@ -171,7 +194,11 @@ Write there: add playbook ownership, response-team contact hygiene, and exercise
 
 Determine whether an incident occurred, what type it is, and how severe it is.
 
+
 ### Identification, detection, and analysis content to include
+
+- [**SIEM & SOC**](#SOC,%20SIEM,%20and%20Threat%20Detection): Utilizing [Security Information and Event Management](#SIEM) (SIEM) systems for log aggregation and 24/7 monitoring via a [Security Operations Center](#Security%20Operations%20Center) (SOC).
+- [**Alerting**](#Identification,%20Detection,%20and%20Analysis): Using automated alerts to flag potential breaches, such as multiple failed login attempts or unauthorized access to data centers.
 
 Keep this section focused on confirming scope, severity, and whether the threat is still active.
 
