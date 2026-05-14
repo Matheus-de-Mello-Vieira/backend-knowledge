@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "4af8556c73e513b0",
+        "id": "cf38bda119364d01",
         "type": "tabs",
         "children": [
           {
-            "id": "ba83131e3b58113f",
+            "id": "5bcbbdfe8cde9aae",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -32,7 +32,7 @@
             }
           },
           {
-            "id": "ed2ba1ff122b4764",
+            "id": "4f61f6fd4ecc7212",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -53,33 +53,10 @@
               },
               "icon": "lucide-file",
               "title": "Incident Response, Forensics, and Disaster Recovery"
-            }
-          },
-          {
-            "id": "6a9438f310e2d347",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "03 Common Threats and Attacks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -147,8 +124,7 @@
               "title": "Outline of Incident Response, Forensics, and Disaster Recovery"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -336,7 +312,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "4f61f6fd4ecc7212",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
