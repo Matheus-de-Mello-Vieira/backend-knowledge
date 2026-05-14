@@ -9,12 +9,12 @@ The core cybersecurity lifecycle transforms "emergency mode" into a structured, 
 
 1. [**Prepare**](#Preparation): This phase is an ongoing effort to ensure the organization has the necessary tools, procedures, and personnel ready before an incident occurs.
 2. [**Detect**](#Identification,%20Detection,%20and%20Analysis): Detection involves identifying abnormal behavior patterns across IT assets, including cloud resources and internal networks.
-3. [**Containment**](#Types%20of%20containment): Once a threat is identified, the primary goal is to stop its effects before it causes further damage.
+3. [**Containment**](#Containment): Once a threat is identified, the primary goal is to stop its effects before it causes further damage.
 4. [**Investigate**](#Digital%20Forensics): Investigation, or digital forensics, focuses on discovering and interpreting electronic data to reconstruct past events.
 	- [**Evidence Preservation**](#Evidence%20Preservation%20During%20Incidents): Creating "bit-for-bit" forensic images of affected storage devices while maintaining a strict [**chain of custody**](#Chain%20of%20custody) for legal admissibility.
 	- [**Live Analysis**](#Volatile%20evidence): Extracting volatile data from RAM (like active network connections) before a system is shut down and the evidence is lost.
 5. [**Recover**](#Recovery): Recovery focuses on returning systems to normal operations safely and with minimal loss.
-6. [**Improve**](#Lessons%20Learned%20and%20Documentation): The lifecycle is only complete when the organization turns the failure into a learning opportunity, for example with [**Post-Mortem Analysis**](#Root%20Cause%20Analysis%20and%20Post-Mortem) and [**Plan Updates**](#Preventing%20recurrence)
+6. [**Improve**](#Lessons%20Learned%20and%20Documentation): The lifecycle is only complete when the organization turns the failure into a learning opportunity, for example with [**Post-Mortem Analysis**](#Post-mortem%20analysis) and [**Plan Updates**](#Preventing%20recurrence)
 ### Why organizations need formal plans
 
 Organizations need formal plans because incidents create time pressure, uncertainty, and competing priorities.
@@ -65,11 +65,11 @@ Technology-driven outage or destructive compromise.
 
 - **High Probability**: These are statistically the most likely disasters an organization will face.
 - **Management Complexity**: They vary in impact and typically require a high level of technical expertise to plan for, control, and mitigate effectively.
-- **Cyberattack Integration**: This category includes a broad range of malicious activities that have become increasingly common and easier to execute, including [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware), [Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing), and [Man-in-the-Middle (MitM)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Man-in-the-Middle%20(MitM)) attacks.
+- **Cyberattack Integration**: This category includes a broad range of malicious activities that have become increasingly common and easier to execute, including [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware), [Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing), and [Man-in-the-Middle (MitM)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Man-in-the-Middle%20%28MitM%29) attacks.
 - **Comprehensive Examples**:
     - **Malware-based Attacks**: [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware), [Spyware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Spyware), and [Computer Viruses](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Computer%20Viruses) designed to steal or encrypt data.
     - **Infrastructure Failures**: [Hardware and Power Failures](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Hardware%20and%20Power%20Failures) and network infrastructure collapses.
-    - **Network Attacks**: [DoS (Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DoS%20(Denial%20of%20Service)), [DDoS (Distributed Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20(Distributed%20Denial%20of%20Service)), and [Injection Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Injection%20Attacks) that overwhelm or compromise databases.
+    - **Network Attacks**: [DoS (Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DoS%20%28Denial%20of%20Service%29), [DDoS (Distributed Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20%28Distributed%20Denial%20of%20Service%29), and [Injection Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Injection%20Attacks) that overwhelm or compromise databases.
     - **Modern Threats**: [Zero-Day Vulnerabilities](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Zero-Day%20Vulnerabilities), IoT device compromises, and intentional [Insider Threats](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Insider%20Threats).
 
 ---
@@ -137,14 +137,14 @@ Effective communication prevents panic and preserves the organization's reputati
 The IRP references specialized playbooks that provide step-by-step instructions for common scenarios:
 
 * **[Malware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Malware) & [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware)**: Steps for isolating infected segments and restoring from offsite backups.
-* **[DDoS](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20(Distributed%20Denial%20of%20Service)) Attacks**: Procedures for filtering malicious traffic and maintaining service availability.
+* **[DDoS](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20%28Distributed%20Denial%20of%20Service%29) Attacks**: Procedures for filtering malicious traffic and maintaining service availability.
 * **Data Leaks/[Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing)**: Methods for containing compromised credentials and identifying the extent of data exfiltration.
 * **Post-Mortem Analysis**: Standardized procedures for a "lessons learned" meeting to refine the IRP after an incident is resolved.
 ## Incident Response Lifecycle
 
 The **Incident Response Lifecycle** provides a structured, standardized framework for handling active attacks and mitigating damage. Because threat actors are increasingly sophisticated, organizations must move beyond simple prevention and focus on **resilience**—the ability to identify, contain, and recover from an event with minimal loss. This lifecycle is not a one-time reaction but a continuous process designed to turn every security failure into a learning opportunity.
 
-Effective execution of this lifecycle requires a cross-functional [Incident Response Team (IRT)](#**Incident%20Response%20Team%20(IRT)**), comprising security analysts, system administrators, legal counsel, and management representatives. By following a calculated approach—even under the pressure of an active breach—the team can reduce human error and ensure that the response is organized and thorough.
+Effective execution of this lifecycle requires a cross-functional [Incident Response Team (IRT)](#Incident%20Response%20Team%20%28IRT%29), comprising security analysts, system administrators, legal counsel, and management representatives. By following a calculated approach—even under the pressure of an active breach—the team can reduce human error and ensure that the response is organized and thorough.
 
 The lifecycle typically revolves around several core functional goals:
 
@@ -161,7 +161,7 @@ The **Preparation** phase is the foundational stage of the Incident Response Lif
 
 ### Key Objectives
 
-- **Readiness and Tools**: Ensuring the [**Computer Security Incident Response Team (CSIRT)**](#**Computer%20Security%20Incident%20Response%20Team%20(CSIRT)**) or [**Incident Response Team (IRT)**](#**Incident%20Response%20Team%20(IRT)**) has the best procedures, tools, and expertise available to respond to a crisis.
+- **Readiness and Tools**: Ensuring the [**Computer Security Incident Response Team (CSIRT)**](#Computer%20Security%20Incident%20Response%20Team%20%28CSIRT%29) or [**Incident Response Team (IRT)**](#Incident%20Response%20Team%20%28IRT%29) has the best procedures, tools, and expertise available to respond to a crisis.
 - **Vulnerability Identification**: Using regular risk assessments to identify network vulnerabilities and prioritize potential incident types based on their potential business impact.
 - **Standardization**: Establishing documented outlines and [playbooks](#Playbooks) to guide detailed steps and reduce human error during high-stress situations.
 
@@ -200,7 +200,7 @@ Not every alert is a crisis. Identification involves determining the severity an
 - **Evidence Scoping**: Investigators must identify what evidence is present, where it is stored (e.g., hard drives, cloud services, or mobile devices), and what format it is in.
 - **Diagnostic Visibility**: Without diagnostic tools, it is impossible to isolate or recover a system; the team must first understand exactly which part of the infrastructure is under attack and how the breach occurred.
 
-### Analysis: Understanding the Breach
+### Analysis
 
 Analysis is the deep-dive phase where the team pieces together fragments to prove or refute a security case.
 
@@ -237,7 +237,7 @@ By using these controlled isolation techniques, the team ensures that the incide
 
 Once the threat has been successfully contained, the organization moves into the **Eradication** phase. The primary goal of this stage is the full remediation and permanent removal of the threat from the environment. It is a deep-cleaning process designed to ensure that no traces of the breach remain that could allow an attacker to regain access.
 
-During eradication, the [Incident Response Team (IRT)](#**Incident%20Response%20Team%20(IRT)**) executes specific technical actions based on the findings from the **Analysis** phase:
+During eradication, the [Incident Response Team (IRT)](#Incident%20Response%20Team%20%28IRT%29) executes specific technical actions based on the findings from the **Analysis** phase:
 
 - **Threat Removal**: This involves destroying identified malware, viruses, or worms and deleting malicious artifacts left behind by the attacker.
 - **Access Revocation**: Security teams must boot unauthorized users from the network and invalidate any compromised credentials.
@@ -267,6 +267,31 @@ Keep this section focused on timeline, root cause, impact, response quality, and
 
 Related notes: [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md), [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md)
 Write there: add how post-incident findings feed back into governance reviews, control owners, and risk register updates.
+
+### Root Cause Analysis
+
+Root Cause Analysis, or **RCA**, identifies the original weakness that allowed the incident.
+
+- **Identifying the "Gap"**: A deep-dive investigation must be conducted to identify the exact vulnerability or security gap that the threat actor exploited.
+- **Eliminating Vulnerabilities**: Before the system can be considered clean, it must be patched or reconfigured to eliminate the original vulnerability.
+- **Preventing Re-incidence**: Without addressing the root cause, any recovery effort is temporary, as the restoration process could inadvertently recreate the same flawed environment that led to the attack in the first place.
+
+### Post-mortem analysis
+
+A post-mortem evaluates the response itself.
+
+- **Response Review**: Assess what worked, what failed, and where coordination or decision-making slowed the response.
+- **Timeline Validation**: Reconstruct the incident and response timeline so the team can verify assumptions against evidence.
+- **Procedure Refinement**: Update playbooks, escalation rules, communications, and tooling based on the incident's actual friction points.
+
+### Preventing recurrence
+
+Keep this section focused on verified remediation actions, not a broad control catalog.
+
+Convert lessons learned into tracked follow-up actions with owners, deadlines, and validation criteria before closing the incident.
+
+Related notes: [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md)
+Write there: add explicit linkage from RCA outputs to remediation backlog, exception handling, and control verification.
 
 ---
 
@@ -413,26 +438,6 @@ Use this structure:
 
 Related notes: [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md)
 Write there: add ransomware-safe restore validation and clean-room rebuild guidance.
-
----
-
-## Root Cause Analysis
-
-Root Cause Analysis, or **RCA**, identifies the original weakness that allowed the incident.
-
- - **Identifying the "Gap"**: A deep-dive investigation must be conducted to identify the exact vulnerability or security gap that the threat actor exploited.
-- **Eliminating Vulnerabilities**: Before the system can be considered clean, it must be patched or reconfigured to eliminate the original vulnerability.
-- **Preventing Re-incidence**: Without addressing the root cause, any recovery effort is temporary, as the restoration process could inadvertently recreate the same flawed environment that led to the attack in the first place.
-## Post-mortem analysis
-
-A post-mortem evaluates the response itself.
-
-## Preventing recurrence
-
-Keep this section focused on verified remediation actions, not a broad control catalog.
-
-Related notes: [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md)
-Write there: add explicit linkage from RCA outputs to remediation backlog, exception handling, and control verification.
 
 ---
 

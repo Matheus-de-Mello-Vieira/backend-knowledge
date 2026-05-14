@@ -54,9 +54,33 @@
               "icon": "lucide-file",
               "title": "Incident Response, Forensics, and Disaster Recovery"
             }
+          },
+          {
+            "id": "f907595d5809f742",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Incident Response, Forensics, and Disaster Recovery"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -124,7 +148,8 @@
               "title": "Outline of Incident Response, Forensics, and Disaster Recovery"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -312,7 +337,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4f61f6fd4ecc7212",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
