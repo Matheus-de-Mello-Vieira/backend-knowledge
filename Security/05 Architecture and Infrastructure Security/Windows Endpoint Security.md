@@ -90,3 +90,6 @@ Microsoft Defender works in conjunction with Windows encryption technologies to 
   - **Pass-the-Ticket Prevention:** Kerberos tickets are protected in the secure environment, preventing their theft and reuse.
   - **Golden Ticket Defense:** Makes it significantly harder for attackers to create forged Kerberos tickets for persistent access.
   - **Memory Dumping Protection:** Prevents credential harvesting tools like Mimikatz from accessing secrets stored in memory.
+<hr>
+
+## Active Directory

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import re
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,8 @@ from pathlib import Path
 
 MARKDOWNLINT = "/usr/local/bin/markdownlint"
 MARKDOWN_SUFFIXES = {".md", ".markdown", ".mdown", ".mkdn", ".mkd"}
+ATX_BOLD_HEADING_RE = re.compile(r"^(#{1,6})\s+\*\*(.*?)\*\*(\s+#+\s*)?$")
+LIST_ITEM_RE = re.compile(r"^[ \t]{0,3}(?:[-+*]|\d+[.)])[ \t]+")
 
 
 def parse_args() -> argparse.Namespace:
@@ -90,6 +93,53 @@ def run(command: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, text=True, check=False)
 
 
+def normalize_heading(line: str) -> str:
+    match = ATX_BOLD_HEADING_RE.match(line)
+    if not match:
+        return line
+
+    heading_text = match.group(2).strip()
+    if not heading_text:
+        return line
+
+    closing = match.group(3) or ""
+    return f"{match.group(1)} {heading_text}{closing}"
+
+
+def normalize_content(content: str) -> str:
+    newline = "\r\n" if "\r\n" in content else "\n"
+    has_trailing_newline = content.endswith(("\n", "\r"))
+    lines = content.splitlines()
+    normalized: list[str] = []
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if (
+            stripped == ""
+            and normalized
+            and index + 1 < len(lines)
+            and LIST_ITEM_RE.match(normalized[-1])
+            and LIST_ITEM_RE.match(lines[index + 1])
+        ):
+            continue
+        normalized.append(normalize_heading(line))
+
+    result = newline.join(normalized)
+    if has_trailing_newline:
+        result += newline
+    return result
+
+
+def normalize_file(path: Path) -> bool:
+    original = path.read_text(encoding="utf-8")
+    normalized = normalize_content(original)
+    if normalized == original:
+        return False
+
+    path.write_text(normalized, encoding="utf-8")
+    return True
+
+
 def main() -> int:
     args = parse_args()
 
@@ -109,6 +159,17 @@ def main() -> int:
     if not files:
         print("No Markdown files matched the provided targets.")
         return 0
+
+    normalized_count = 0
+    for path in files:
+        if normalize_file(path):
+            normalized_count += 1
+
+    if normalized_count:
+        print(
+            f"Applied custom Markdown normalization to {normalized_count} file(s).",
+            flush=True,
+        )
 
     print(f"Running markdownlint --fix on {len(files)} file(s).", flush=True)
     fix_result = run(build_markdownlint_command(args, fix=True, files=files))

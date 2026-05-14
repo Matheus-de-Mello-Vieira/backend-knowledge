@@ -4,6 +4,7 @@
 
 While prevention is a critical first step, modern cybersecurity is built on the principle of resilience: the ability to not only withstand an attack but to effectively bounce back from one. Relying solely on "building higher walls" is no longer sufficient; organizations must operate under the assumption that a breach will eventually occur.
 
+### Core cybersecurity lifecycle
 The core cybersecurity lifecycle transforms "emergency mode" into a structured, repeatable process. By following these stages, an organization ensures that its response to a crisis is calculated rather than chaotic:
 
 1. [**Prepare**](#Preparation): This phase is an ongoing effort to ensure the organization has the necessary tools, procedures, and personnel ready before an incident occurs.
@@ -26,35 +27,30 @@ The core cybersecurity lifecycle transforms "emergency mode" into a structured, 
 	- [**Post-Mortem Analysis**](#Root%20Cause%20Analysis%20and%20Post-Mortem): Conducting a "lessons learned" meeting to evaluate the team's performance and the effectiveness of the response tools.
 	- [**Plan Updates**](#Preventing%20recurrence): Refining the architectural model and updating the IRP to reflect new insights gained from the incident.
 
-<hr>
 ### Why organizations need formal plans
 
-Keep this section focused on why coordinated, documented, and tested response matters under operational, legal, and business pressure.
-
-Related notes: [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md), [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Legal Frameworks and Compliance](Legal%20Frameworks%20and%20Compliance.md)
-Write there: connect governance and compliance guidance more explicitly to incident escalation, crisis communications, and recovery accountability.
+Organizations need formal plans because incidents create time pressure, uncertainty, and competing priorities.
+* [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md) defines who can escalate decisions and lead crisis communications
+* [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md) helps prioritize the systems and business functions that matter most.
+* Formal plans also support [Legal Frameworks and Compliance](Legal%20Frameworks%20and%20Compliance.md) by documenting notification duties, evidence handling, and recovery accountability so the response is coordinated, defensible, and repeatable.
 
 ## Events, Incidents, and Disasters
 
-### Security event
+Distinguishing between these three terms is essential for determining the appropriate level of response and the specific resources required to maintain business continuity.
 
-A security event is a notable occurrence that may or may not require response.
+* **Security Event**: A security event is any occurrence that has significance for an organization's hardware or software.
+	* These are typically minor and do not cause severe impacts on the organization.
+	* For example, a single user being denied access to a requested service is a security event.
+	* While it could indicate a deeper issue, it is often just a signal that requires monitoring rather than an immediate emergency response.
+* **Security Incident**: An incident is a specific type of event that actively disrupts normal operations or violates computer security policies.
+	* The key differentiator between an event and an incident is the degree of severity and the potential risk to the organization.
+	* If the previous example of a login failure escalated into a Distributed Denial of Service (DDoS) attack that blocked access for many users, it would be reclassified as a security incident due to its damaging impact.
+* **Disaster**: A disaster is a serious event of any nature—natural, physical, or technological—that negatively affects operations and the business life cycle. Unlike a standard incident, a disaster is significant enough to completely disrupt critical business operations for an unmeasured period.
+	- **Natural Disasters**: Events like fires, floods, or pandemics that often require changes to workflow and infrastructure.
+	- **Physical Disasters**: Incidents such as power loss, structural failure, or terrorism that may require relocating personnel and technology.
+	- **Technological Disasters**: Large-scale failures such as ransomware attacks or hardware failures that require a high degree of expertise to mitigate.
 
-### Security incident
-
-A security incident is an event that creates real risk or disruption and requires coordinated handling.
-
-### Disaster
-
-A disaster is a major disruption that materially affects critical business operations and recovery priorities.
-
-### Key distinction
-
-|Concept|Scope|Example|
-|---|---|---|
-|Event|Something happened|One failed login|
-|Incident|Response is required|Compromised account or active malware|
-|Disaster|Major business disruption|Critical systems unavailable|
+While incidents are managed through an **[Incident Response Plan (IRP)](#Incident%20Response%20Plan)**, disasters require a formal [Disaster Recovery Plan (DRP)](#Disaster%20Recovery%20Plan) to regain the use of critical IT infrastructure as quickly as possible.
 
 ---
 
@@ -504,11 +500,11 @@ Write there: add service-tiering and dependency mapping that translate business 
 
 ## RPO/RTO table
 
-|System|RPO|RTO|Meaning|
-|---|---|---|---|
-|Payment system|15 minutes|1 hour|Very little data loss or downtime allowed|
-|Internal wiki|24 hours|2 days|Longer outage acceptable|
-|Customer database|30 minutes|2 hours|High business impact|
+| System            | RPO        | RTO     | Meaning                                   |
+| ----------------- | ---------- | ------- | ----------------------------------------- |
+| Payment system    | 15 minutes | 1 hour  | Very little data loss or downtime allowed |
+| Internal wiki     | 24 hours   | 2 days  | Longer outage acceptable                  |
+| Customer database | 30 minutes | 2 hours | High business impact                      |
 
 Related notes: [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md)
 Write there: add how backup frequency, replication, and failover design choices determine achievable RPO and RTO.

@@ -43,6 +43,41 @@ In dynamic environments, **Adaptive Authentication** provides a balance between 
 
 This section details the technical protocols and frameworks selected to handle identity verification and authorization within the system. To ensure a robust security architecture, we utilize a tiered approach that scales from simple credential exchange to complex delegated authorization.
 
+### Cryptographic Authentication
+
+**Cryptographic Authentication** is the use of cryptographic proof to verify identity, message origin, or possession of a secret or private key. Instead of trusting a claim such as "I am client X," the server requires mathematical evidence that only the legitimate party should be able to produce.
+
+This matters because plain credentials are easy to misuse. If a password, API secret, or session token is transmitted or stored poorly, an attacker may replay it directly. Cryptographic authentication reduces that risk by replacing "send the secret" with "prove you know the secret" or "prove you control the private key."
+
+#### What It Can Prove
+
+Considering the [security tenets](../01%20Foundations%20and%20Risk/01%20Security%20Principles.md#The%20tenets), cryptographic authentication primarily strengthens **Authenticity** and often strengthens **Integrity** as well.
+
+- **Authenticity:** The server can verify that the request came from a party that truly possesses the required secret or private key, reducing spoofing and impersonation.
+- **Integrity:** When the authentication proof is bound to the message content, method, headers, timestamp, or challenge, the server can detect whether the request was modified in transit.
+* **Replay Protection**: (Authenticity + Integrity) Some protocols also add **replay resistance** by including a nonce, timestamp, or server challenge. 
+- **Non-repudiation:** In asymmetric systems, digital signatures can also support non-repudiation because a private key holder cannot easily deny having signed the message.
+
+It is important not to confuse this with **Confidentiality**. Encryption protects the *contents* of the message from disclosure, while cryptographic authentication proves *who* sent it and whether it was changed. It also does not directly provide **Availability**, although good authentication design can reduce abuse that would otherwise affect service access.
+#### Symmetric vs. Asymmetric Proof
+
+There are two common ways to build cryptographic authentication:
+
+- **Symmetric authentication:** Both parties share the same secret. The client uses that secret to produce a proof, and the server uses the same secret to verify it. This is the model used by [**HMAC**](#HMAC).
+- **Asymmetric authentication:** The client signs data with a **private key**, and the server verifies it with the corresponding **public key**. This is the model behind **digital signatures**, **client certificates**, and many certificate-based trust systems. Signed tokens such as [**JSON Web Tokens (JWT)**](#JSON%20Web%20Tokens%20%28JWT%29) can also use this model depending on the signing algorithm.
+
+Symmetric approaches are usually simpler and faster for service-to-service integrations. Asymmetric approaches are stronger when systems need scalable trust distribution, identity binding, or proof that does not require sharing the same secret across multiple parties.
+
+#### Common Patterns
+
+Cryptographic authentication appears in many forms:
+
+- **Challenge-response protocols:** The server sends a fresh challenge, and the client proves possession of a secret or private key by answering correctly without revealing the secret itself.
+- **Request signing:** The client signs the HTTP method, path, headers, body, timestamp, or nonce so the server can verify authenticity and detect tampering.
+- **Token signatures:** A token such as a JWT carries claims, and its signature proves the claims were issued by a trusted authority and were not modified.
+- **Certificate-based authentication:** A certificate binds an identity to a public key, allowing the verifier to trust signatures from the matching private key when the certificate chain is valid.
+- **Mutual TLS (mTLS):** Both client and server authenticate each other during the TLS handshake using certificates.
+
 ### API Key & Secret
 
 While usernames and passwords are designed for human memory, **API Keys and Secrets** are designed for system-to-system (M2M) communication. They allow applications to interact securely without human intervention.
@@ -155,10 +190,8 @@ Think of it like a wax seal on a letter. Only the sender and receiver have the u
 2. **Hashing:** The client uses a hashing algorithm (like **SHA-256**) and their **API Secret** to calculate the HMAC.
 
 3. **Transmission:** The client sends the request, including their **API Key** (to tell the server who they are) and the **Signature**, but *not* the Secret.
-
-   * It uses [Keyed-Hashing](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#Keyed-Hashing:%20HMAC).
-   * Encryption should not replace a digital signature; the latter ensures **authenticity** and **integrity**, whereas encryption does not. For example, without a signature, an attacker could replay or concatenate encrypted blobs to impersonate a legitimate party.
-
+	- It uses [Keyed-Hashing](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#Keyed-Hashing:%20HMAC).
+	- Encryption should not replace a digital signature; the latter ensures **authenticity** and **integrity**, whereas encryption does not. For example, without a signature, an attacker could replay or concatenate encrypted blobs to impersonate a legitimate party.
 4. **Verification:** The server looks up the Secret associated with that API Key. It performs the exact same hash calculation on the incoming request data.
 
 5. **Validation:** If the server’s calculated signature matches the one sent by the client, the request is authentic. If even one character in the message was changed, the signatures won't match.
@@ -167,9 +200,8 @@ Think of it like a wax seal on a letter. Only the sender and receiver have the u
 
 * **Integrity**: Ensures the message wasn't tampered with during transit. If a hacker changes the "amount" in a transaction, the signature becomes invalid.
 * **Authenticity**: Proves the request came from someone who possesses the secret.
-* **Replay Protection**: By including a **timestamp** or a **nonce** (a random one-time number) in the signature, you can ensure that an intercepted request cannot be "replayed" by an attacker later.
+* **Replay Protection**: (Authenticity + Integrity) By including a **timestamp** or a **nonce** (a random one-time number) in the signature, you can ensure that an intercepted request cannot be "replayed" by an attacker later.
 * **Secret Privacy**: The secret never leaves the sender's or receiver's environment.
-
 #### Implementation Example
 In a real-world API, the request headers might look like this:
 
@@ -205,7 +237,7 @@ Base64UrlEncode(header) + "." + Base64UrlEncode(payload) + "." + Base64UrlEncode
     "typ": "JWT"
   }
   ```
-- **The Payload:** This section contains the core data regarding the user, which are referred to as "claims".
+- **The Payload:** This section contains the core data regarding the user, which are referred to as "[claims](#Understanding%20Payload%20Claims)".
   ```json
   {
     "sub": "1234567890",
@@ -220,7 +252,7 @@ Base64UrlEncode(header) + "." + Base64UrlEncode(payload) + "." + Base64UrlEncode
 
 The payload carries the claims, which are declarative statements about an entity (typically the user) alongside metadata. There are three primary classifications for these claims:
 
-1. **Registered Claims:** These are a set of optional but highly recommended fields defined by the JWT RFC 7519 specification to provide standardized, interoperable data points. Common examples include:
+1. **Registered Claims:** These are a set of optional but highly recommended fields defined by the [JWT RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519) specification to provide standardized, interoperable data points. Common examples include:
    - `iss` (issuer) Identifies who created and signed the token. It helps verify the token came from a trusted source.
    - `sub` (subject) Identifies the subject of the token — usually a user ID or username. It tells *who* the token is about.
    - `aud` (audience) Specifies the intended recipient(s) of the token. The app or service using the token should check this.
@@ -345,7 +377,7 @@ Identity Federation enables organizations to manage user identities across multi
 
 Identity Federation creates trust relationships between different security domains, allowing users to access resources across organizational boundaries using a single set of credentials.
 
-- **Identity Providers (IdP):** Organizations that maintain and validate user identities, such as corporate Active Directory or cloud identity services.
+- **Identity Providers (IdP):** Organizations that maintain and validate user identities, such as corporate [Active Directory](Windows%20Endpoint%20Security.md#Active%20Directory) or [cloud identity services](Cloud%20Security.md#**Authentication%20and%20Access%20Control**).
 - **Service Providers (SP):** Applications or services that rely on external identity providers for user authentication.
 - **Trust Relationships:** Formal agreements and technical configurations that allow IdPs and SPs to exchange identity information securely.
 - **Federated Identity:** A single digital identity that can be recognized and accepted across multiple organizations or security domains.
@@ -412,17 +444,3 @@ Comprehensive management of identity and access rights throughout their lifecycl
 - **Identity-as-a-Service (IDaaS):** Cloud-based identity management services that provide scalable, managed identity infrastructure.
 
 Identity Federation and SSO represent critical components of modern enterprise security architecture, enabling organizations to maintain security while providing seamless user experiences across complex, distributed environments.
-
-## Implementation Examples
-
-Authentication methods are implemented across different platforms and environments:
-
-**Platform-Specific Implementations:**
-- **Windows:** [Credential Guard and Azure AD](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Endpoint%20Security.md#Windows%20Defender%20Credential%20Guard) - Windows identity protection and enterprise SSO
-- **Linux:** [SSH Key Management](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md#SSH%20%28Secure%20Shell%29%20Protection) - Public key authentication and access control
-- **Cloud Services:** Cloud identity providers and federated authentication systems
-
-**Related Security Concepts:**
-- [Zero Trust Architecture](03%20Zero%20Trust%20Architecture.md) - Identity-centric security framework requiring continuous authentication
-- [Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md) - Digital signatures and certificates used in authentication
-- [Access Control Models](02%20Authorization%20and%20Access%20Control.md) - RBAC, ABAC, and ACL systems for authorization

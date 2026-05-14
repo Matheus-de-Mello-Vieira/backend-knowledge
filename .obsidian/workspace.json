@@ -8,36 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "777c6dcb7b481348",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Incident Response, Forensics, and Disaster Recovery"
-            }
-          },
-          {
             "id": "0c505036ee3d21ac",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,11 +28,58 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Incident Response, Forensics, and Disaster Recovery"
+              "title": "03 Common Threats and Attacks"
+            }
+          },
+          {
+            "id": "5dd902e35379ae99",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/02 Identity and Access/01 Authentication.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "01 Authentication"
+            }
+          },
+          {
+            "id": "f6b1123034a6da67",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Cloud Security"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -115,13 +138,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/06 Security Operations and Governance/02 Incident Response and Recovery.md",
+                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 02 Incident Response and Recovery"
+              "title": "Outline of 03 Common Threats and Attacks"
             }
           }
         ]
@@ -293,11 +316,11 @@
             }
           }
         ],
-        "currentTab": 6
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 749.5
+    "width": 518.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -312,13 +335,20 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "f9632eba1bc24ea7",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Security/02 Identity and Access/01 Authentication.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+    "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
+    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
+    "Security/01 Foundations and Risk/01 Security Principles.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
+    "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
     "Security/99 TODO/Incident Response and Recovery.md",
     "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
     "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
-    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Security/99 TODO/Disaster Recovery Methods.md",
     "Security/99 TODO/Ethics, Policies, and Compliance in Cybersecurity.md",
     "Security/99 TODO/Response and Incident Response Plan.md",
@@ -334,14 +364,7 @@
     "Web APIs/02 REST/07 Advanced Topics.md",
     "Web APIs/02 REST/08 Advanced Topics.md",
     "Web APIs/02 REST/07 Monitoring.md",
-    "Web APIs/02 REST/09 Performance.md",
     "makefile",
-    "Backend Engineering/03 Troubleshooting Performance.md",
-    "Descomplica Enablers.md",
-    "AI Engineering/LLM/Context Engineering.md",
-    "AI Engineering/LLM/LLM Model Selection.md",
-    "AI Engineering/LLM/LLM.md",
-    "AI Engineering/LLM/Prompts Fragments.md",
     "AI Engineering/LLM",
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",

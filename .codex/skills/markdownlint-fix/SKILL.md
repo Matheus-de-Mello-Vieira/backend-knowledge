@@ -19,6 +19,8 @@ The script:
 
 - Requires `/usr/local/bin/markdownlint`.
 - Expands explicit files, directories, and globs into Markdown files.
+- Normalizes bold-only ATX headings such as `# **Title**` into `# Title`.
+- Removes blank lines that appear directly between adjacent list items.
 - Runs `/usr/local/bin/markdownlint --fix` on the selected files.
 - Runs `/usr/local/bin/markdownlint` again to report remaining issues that need manual edits.
 
@@ -52,6 +54,7 @@ If the task requires a specific config or ignore file, pass it through the scrip
 
 - Nested lists must use 4 spaces (enforced by markdownlint).
 - Blank lines before nested lists are not required.
+- Blank lines between adjacent list items are not allowed and should be removed.
 - Blank lines after list blocks are required (not enforced by markdownlint).
 
 ## Manual Follow-Up
