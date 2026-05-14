@@ -13,6 +13,30 @@
             "state": {
               "type": "markdown",
               "state": {
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Incident Response, Forensics, and Disaster Recovery"
+            }
+          },
+          {
+            "id": "5dd902e35379ae99",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
                 "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
                 "mode": "source",
                 "source": false,
@@ -29,54 +53,6 @@
               },
               "icon": "lucide-file",
               "title": "03 Common Threats and Attacks"
-            }
-          },
-          {
-            "id": "5dd902e35379ae99",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/02 Identity and Access/01 Authentication.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "01 Authentication"
-            }
-          },
-          {
-            "id": "f6b1123034a6da67",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Cloud Security"
             }
           }
         ]
@@ -138,13 +114,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 03 Common Threats and Attacks"
+              "title": "Outline of Incident Response, Forensics, and Disaster Recovery"
             }
           }
         ]
@@ -186,12 +162,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Backend Engineering/05 Observability.md",
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from 05 Observability"
+              "title": "Outgoing links from Incident Response, Forensics, and Disaster Recovery"
             }
           },
           {
@@ -320,7 +296,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 518.5
+    "width": 571.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -338,12 +314,13 @@
   "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Backend Engineering/05 Observability.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
     "Security/99 TODO/Incident Response and Recovery.md",
@@ -354,7 +331,6 @@
     "Security/99 TODO/Response and Incident Response Plan.md",
     "Security/99 TODO/Forensic Investigation.md",
     "Security/99 TODO",
-    "Backend Engineering/05 Observability.md",
     "Backend Engineering/04 Release and Rollout Strategies.md",
     "Networking/06 Network Monitoring.md",
     "Networking/99 Proxying and Load Balancing.md",

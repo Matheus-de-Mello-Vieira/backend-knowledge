@@ -45,6 +45,7 @@ Distinguishing between these three terms is essential for determining the approp
 * **Security Incident**: An incident is a specific type of event that actively disrupts normal operations or violates computer security policies.
 	* The key differentiator between an event and an incident is the degree of severity and the potential risk to the organization.
 	* If the previous example of a login failure escalated into a Distributed Denial of Service (DDoS) attack that blocked access for many users, it would be reclassified as a security incident due to its damaging impact.
+	* See the most [common type of threats](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md).
 * **Disaster**: A disaster is a serious event of any nature—natural, physical, or technological—that negatively affects operations and the business life cycle. Unlike a standard incident, a disaster is significant enough to completely disrupt critical business operations for an unmeasured period.
 	- **Natural Disasters**: Events like fires, floods, or pandemics that often require changes to workflow and infrastructure.
 	- **Physical Disasters**: Incidents such as power loss, structural failure, or terrorism that may require relocating personnel and technology.
@@ -52,125 +53,99 @@ Distinguishing between these three terms is essential for determining the approp
 
 While incidents are managed through an **[Incident Response Plan (IRP)](#Incident%20Response%20Plan)**, disasters require a formal [Disaster Recovery Plan (DRP)](#Disaster%20Recovery%20Plan) to regain the use of critical IT infrastructure as quickly as possible.
 
----
-
-## Types of Security Incidents and Disasters
-
-### Cybersecurity incidents
-
-### Malware
-
-Use malware here only as an incident category. Keep the focus on response impact, especially ransomware-driven containment and recovery.
-
-Related notes: [Common Threats and Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md), [Endpoint Security](../05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md), [Linux Endpoint Security](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md), [Windows Endpoint Security](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Endpoint%20Security.md)
-Write there: add incident-response-specific material for ransomware containment, persistence removal, and safe host reintroduction after recovery.
-
-### Phishing
-
-Use phishing here only as an entry point to account compromise and broader incident escalation.
-
-Related notes: [Common Threats and Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md), [Authentication](../02%20Identity%20and%20Access/01%20Authentication.md)
-Write there: add phishing-triggered account takeover response steps such as token revocation, session invalidation, and MFA re-registration.
-
-### Man-in-the-Middle attacks
-
-Use this as a reminder that communication interception can turn into credential theft, session hijacking, or data exposure.
-
-Related notes: [Common Threats and Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md), [Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md), [Network Security](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md), [Mobile Device Security](../05%20Architecture%20and%20Infrastructure%20Security/Mobile%20Device%20Security.md)
-Write there: add detection and containment guidance for certificate abuse, insecure Wi-Fi exposure, and session interception.
-
-### DoS and DDoS
-
-Use this as a service-availability incident category rather than a network-defense deep dive.
-
-Related notes: [Common Threats and Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md), [Network Security](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md), [Firewall](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/Firewall%20Technologies.md), [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md)
-Write there: add response patterns for traffic scrubbing, rate limiting, failover, and provider coordination during service exhaustion incidents.
-
-### SQL Injection
-
-Use this as an example of an application-layer incident that requires both technical containment and impact scoping.
-
-Related notes: [OWASP](../04%20Application%20and%20API%20Security/OWASP.md), [Security Principles](../01%20Foundations%20and%20Risk/01%20Security%20Principles.md)
-Write there: add investigation guidance for database impact scoping, log review, credential rotation, and application rollback after exploitation.
-
-### Zero-day exploits
-
-Use this category to emphasize compensating controls and fast containment when no patch exists yet.
-
-Related notes: [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md), [Emerging Security Challenges](Emerging%20Security%20Challenges.md)
-Write there: add compensating-control guidance for periods when no vendor patch exists.
-
-### IoT attacks
-
-Use this as a fleet-management incident category where scale and device visibility matter.
-
-Related notes: [IoT Security](../05%20Architecture%20and%20Infrastructure%20Security/IoT%20Security.md), [Intrusion Detection and Prevention](01%20Intrusion%20Detection%20and%20Prevention.md), [Emerging Security Challenges](Emerging%20Security%20Challenges.md)
-Write there: add incident-response guidance for device isolation, firmware validation, and fleet-wide compromise assessment.
-
-### Insider threats
-
-Use this as a reminder that valid credentials do not imply safe behavior.
-
-Related notes: [Intrusion Detection and Prevention](01%20Intrusion%20Detection%20and%20Prevention.md), [Authorization and Access Control](../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md), [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md)
-Write there: add evidence-handling and containment guidance for privileged misuse and abnormal but authenticated behavior.
-
----
-
-### Disaster categories
-
+## Categories of Security Disasters
 ### Natural disasters
 
 Environmental disruption affecting operations or facilities.
+
+- **Adaptation Strategies**: When dealing with natural disasters, the focus is generally on infrastructure preservation, potential relocation, and implementing new methods of working.
+- **Workflow Modifications**: A primary example is a pandemic; while the physical technology (routers, servers, workstations) may remain functional, the organization's daily routine and workflow must be modified to ensure continuity.
+- **Common Examples**: This category includes fires, storms, floods, hurricanes, tornadoes, and pandemics.
 
 ### Physical disasters
 
 Facility or infrastructure failure affecting system availability.
 
+- **Operational Flexibility**: Depending on the severity, a physical disaster—such as a power outage—may only require employees to work from home for a short period.    
+- **Resource Relocation**: For more severe structural issues, organizations may be forced to relocate both their personnel and their entire technological infrastructure to a secondary site.
+- **Continuity Planning**: It is essential to understand not only how to recreate work environments temporarily but also to determine exactly how long these temporary measures can be maintained.
+- **Common Examples**: Key physical disasters include power loss, structural failure, extreme temperature fluctuations, physical intrusions, and terrorism.
+
 ### Technological disasters
 
 Technology-driven outage or destructive compromise.
 
----
+- **High Probability**: These are statistically the most likely disasters an organization will face.
+- **Management Complexity**: They vary in impact and typically require a high level of technical expertise to plan for, control, and mitigate effectively.
+- **Cyberattack Integration**: This category includes a broad range of malicious activities that have become increasingly common and easier to execute, including [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware), [Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing), and [Man-in-the-Middle (MitM)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Man-in-the-Middle%20(MitM)) attacks.
+- **Comprehensive Examples**:
+    - **Malware-based Attacks**: [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware), [Spyware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Spyware), and [Computer Viruses](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Computer%20Viruses) designed to steal or encrypt data.
+    - **Infrastructure Failures**: [Hardware and Power Failures](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Hardware%20and%20Power%20Failures) and network infrastructure collapses.
+    - **Network Attacks**: [DoS (Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DoS%20(Denial%20of%20Service)), [DDoS (Distributed Denial of Service)](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20(Distributed%20Denial%20of%20Service)), and [Injection Attacks](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Injection%20Attacks) that overwhelm or compromise databases.
+    - **Modern Threats**: [Zero-Day Vulnerabilities](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Zero-Day%20Vulnerabilities), IoT device compromises, and intentional [Insider Threats](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Insider%20Threats).
 
+---
 ## Incident Response Plan
 
-## What an Incident Response Plan is
+### What an Incident Response Plan is
 
-An **Incident Response Plan**, or **IRP**, defines how the organization handles incidents from detection through closure.
+An **Incident Response Plan**, or **IRP**, is a formal document that describes the procedures, steps, and responsibilities involved in an organization’s incident response program. It serves as a coordinated roadmap to ensure that when a security event disrupts normal operations, the organization can react with speed and precision.
 
-## Purpose of an IRP
+### Purpose of an IRP
 
-Keep this section focused on speed, coordination, evidence handling, and controlled restoration.
+The primary objective of an IRP is to minimize the cost, damage, and business disruption resulting from a cyberattack or technical failure. It focuses on several key functional goals:
 
-## What an IRP should include
+* **Speed and Agility**: Ensuring the organization can regain use of critical systems and IT infrastructure as quickly as possible after a disaster.
+* **Coordinated Action**: Defining a structured process so that security experts, management, and other departments act in unison rather than in isolation.
+* **Evidence Handling**: Preserving digital evidence in its most original form—such as capturing volatile RAM data before a shutdown—to ensure it remains admissible for forensic analysis or legal proceedings.
+* **Controlled Restoration**: Facilitating a recovery process that identifies the root cause of a breach, ensuring the "gap" is patched before systems are brought back online to prevent immediate re-incidence.
 
-### Roles and responsibilities
+### What an IRP should include
 
-Define ownership across security, IT, legal, management, communications, HR, and external responders when needed.
+#### Roles and Responsibilities
 
-### Severity levels
+A comprehensive IRP requires a cross-functional **Incident Response Team (IRT)** with clearly defined ownership:
 
-Keep only a practical severity model.
+* **Security & IT**: Security analysts and system administrators handle the technical identification, containment, and eradication of threats.
+* **Management**: Responsible for coordinating the overall process, providing necessary resources, and ensuring the plan's effectiveness.
+* **Legal Counsel**: Manages regulatory requirements and ensures that evidence collection follows legal guidelines.
+* **Communications**: Manages the flow of information to internal stakeholders, customers, and the media.
+* **Human Resources**: Involved specifically if the incident involves an "insider threat" or a malicious act by an employee.
 
-|Severity|Description|
-|---|---|
-|Low|Minor event with limited impact|
-|Medium|Confirmed issue affecting one system or user group|
-|High|Major incident affecting critical systems or sensitive data|
-|Critical|Business-wide disruption or active large-scale compromise|
+#### Severity Levels
 
-### Escalation procedures
+To prioritize resources, incidents are classified using a practical severity model based on impact and urgency:
 
-Define who is informed, when escalation happens, and which actions need approval.
+- **Low**: Minor event with limited impact; typically handled through standard procedures.
+- **Medium**: Confirmed issue affecting a single system or specific user group; requires active mitigation.    
+- **High**: Major incident affecting critical systems or sensitive data; requires the full IRT (Incident Response Team).
+- **Critical**: Business-wide disruption, large-scale data breach, or active compromise of the entire infrastructure.
 
-### Communication plan
+#### Escalation Procedures
 
-Define internal, customer, regulator, law-enforcement, and public-communications paths.
+The IRP must define clear criteria for when an incident should be escalated to higher management or specialized teams:
 
-### Playbooks
+* **Defined Thresholds**: Triggers for escalation based on severity level, potential financial impact, or regulatory significance.
+* **Approval Paths**: Explicitly stating who has the authority to approve high-impact actions, such as disconnecting a production database from the network.
+* **Communication Chains**: Ensuring the right people are informed at the right time to avoid response delays.
 
-Reference scenario-specific playbooks rather than embedding them here.
+#### Communication Plan
 
+Effective communication prevents panic and preserves the organization's reputation. The plan defines paths for:
+
+* **Internal Stakeholders**: Keeping employees and leadership updated on the status of the response.
+* **Customers & Partners**: Notifying those whose data or services may be compromised as a result of the incident.
+* **Regulators & Law Enforcement**: Providing mandatory reports to comply with data protection laws and assisting in criminal investigations.
+* **Public/Media**: Using pre-defined strategies to manage the external narrative of the incident.
+
+#### Playbooks
+
+The IRP references specialized playbooks that provide step-by-step instructions for common scenarios:
+
+* **[Malware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Malware) & [Ransomware](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Ransomware)**: Steps for isolating infected segments and restoring from offsite backups.
+* **[DDoS](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#DDoS%20(Distributed%20Denial%20of%20Service)) Attacks**: Procedures for filtering malicious traffic and maintaining service availability.
+* **Data Leaks/[Phishing](../01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Phishing)**: Methods for containing compromised credentials and identifying the extent of data exfiltration.
+* **Post-Mortem Analysis**: Standardized procedures for a "lessons learned" meeting to refine the IRP after an incident is resolved.
 ---
 
 ## Incident Response Lifecycle
@@ -573,9 +548,6 @@ Write there: add the distinction between continuity workarounds and full technic
 
 Use the framework here only as an organizing lens: Identify, Protect, Detect, Respond, Recover.
 
-Related notes: [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md), [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md)
-Write there: map the incident-response lifecycle in this note directly to Identify, Protect, Detect, Respond, and Recover.
-
 ## NIST SP 800-34
 
 Reference it as a contingency-planning standard for recovery preparation and system-specific restoration planning.
@@ -595,50 +567,3 @@ Emergency and incident management guidance.
 ## ISO 22300
 
 Vocabulary for security and resilience.
-
----
-
-## Final Integrated Model
-
-Use this as the condensed operating model.
-
-### Before an incident
-
-- Risk analysis.
-- Business impact analysis.
-- IRP.
-- DRP.
-- Backups.
-- SIEM.
-- SOC.
-- Training.
-- Policies.
-- Testing.
-
-### During an incident
-
-- Detect.
-- Classify.
-- Escalate.
-- Communicate.
-- Contain.
-- Preserve evidence.
-- Investigate.
-- Eradicate.
-
-### After containment
-
-- Identify root cause.
-- Validate backups.
-- Patch weaknesses.
-- Restore systems.
-- Monitor.
-- Document.
-
-### After recovery
-
-- Post-mortem.
-- Lessons learned.
-- Update plans.
-- Improve controls.
-- Test again.
