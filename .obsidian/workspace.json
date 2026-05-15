@@ -63,7 +63,7 @@
               "state": {
                 "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "mode": "source",
-                "source": false,
+                "source": true,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -337,7 +337,7 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "f907595d5809f742",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
