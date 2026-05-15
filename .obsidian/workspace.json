@@ -8,54 +8,6 @@
         "type": "tabs",
         "children": [
           {
-            "id": "5bcbbdfe8cde9aae",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Incident Response, Forensics, and Disaster Recovery"
-            }
-          },
-          {
-            "id": "4f61f6fd4ecc7212",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Incident Response, Forensics, and Disaster Recovery"
-            }
-          },
-          {
             "id": "f907595d5809f742",
             "type": "leaf",
             "state": {
@@ -78,9 +30,32 @@
               "icon": "lucide-file",
               "title": "Incident Response, Forensics, and Disaster Recovery"
             }
+          },
+          {
+            "id": "0e568ae9bff613f4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "mode": "source",
+                "source": true,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Common Threats and Attacks"
+            }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -153,7 +128,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 326.5
+    "width": 259.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -169,7 +144,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Backend Engineering/05 Observability.md",
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -179,7 +154,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for 05 Observability"
+              "title": "Backlinks for Incident Response, Forensics, and Disaster Recovery"
             }
           },
           {
@@ -278,7 +253,6 @@
           {
             "id": "f9632eba1bc24ea7",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -312,9 +286,8 @@
                   "serial": null
                 }
               },
-              "pinned": true,
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           }
         ],
@@ -322,7 +295,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 571.5
+    "width": 482.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -337,9 +310,10 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "f907595d5809f742",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Security/99 TODO/Forensic Investigation.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
@@ -356,7 +330,6 @@
     "Security/99 TODO/Disaster Recovery Methods.md",
     "Security/99 TODO/Ethics, Policies, and Compliance in Cybersecurity.md",
     "Security/99 TODO/Response and Incident Response Plan.md",
-    "Security/99 TODO/Forensic Investigation.md",
     "Security/99 TODO",
     "Backend Engineering/04 Release and Rollout Strategies.md",
     "Networking/06 Network Monitoring.md",

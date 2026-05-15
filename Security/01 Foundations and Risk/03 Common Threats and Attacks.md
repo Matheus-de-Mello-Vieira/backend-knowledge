@@ -40,7 +40,7 @@
 - **Prevention:** User education is paramount. Individuals must be trained to verify the source of their software, avoid pirated applications, and never execute unexpected email attachments. Endpoint Detection and Response (EDR) solutions are also crucial for identifying Trojan-like behavior (such as unauthorized outbound connections) after the software has been installed.
 - **Recovery**: While the primary steps of [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through network isolation and data restoration follow the same logic as [**Computer Viruses**](#computer-viruses), Trojan recovery must prioritize **Account Isolation** and a mandatory reset of all credentials.
     - Because Trojans are often used to steal login information or open "backdoors" for future access, simply cleaning the file is insufficient;
-    - security teams must conduct [Live Forensics](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Digital%20Forensics) to identify active remote connections and hunt for persistent payloads.
+    - security teams must conduct [Live Forensics](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Types%20of%20digital%20forensics) to identify active remote connections and hunt for persistent payloads.
     - Restoration is only safe once the specific "entry point"—frequently a social engineering lure or a malicious attachment—has been identified and the vulnerability is closed to prevent the attacker from simply re-entering the system.
 
 ### Zero-Day Vulnerabilities
@@ -75,8 +75,8 @@
 - **Execution Mechanism:** Spyware is commonly installed through bundled software, malicious email attachments, drive-by downloads, or as a secondary payload dropped by other malware such as Trojans.
 - **Impact:** Once installed, spyware can capture credentials, browsing history, keystrokes, screenshots, financial data, or other confidential information, enabling identity theft, fraud, surveillance, or follow-on compromise.
 - **Prevention:** Users should install software only from trusted sources, keep systems patched, use updated anti-malware protection, and remain cautious with unsolicited links, downloads, and attachments.
-- **Recovery**: Following the same logic as [**trojans**](#trojans-trojan-horses), recovery must prioritize [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Account Isolation** and a total reset of all credentials, as the primary goal of spyware is the theft of access data.
-    - Because spyware's main activity is sending data to external servers, security teams should use [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Digital%20Forensics) to analyze volatile RAM data and identify active network connections before shutting down the device.
+- **Recovery**: Following the same logic as [**trojans**](#trojans-trojan-horses), recovery must prioritize [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Account Isolation** and a total reset of all credentials, as the primary goal of spyware is the theft of access data. 
+    - Because spyware's main activity is sending data to external servers, security teams should use [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Types%20of%20digital%20forensics) to analyze volatile RAM data and identify active network connections before shutting down the device.
     - Restoration from clean backups is only effective after a [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis) identifies the entry point—such as a phishing link—and the system is patched to prevent the attacker from immediately harvesting new credentials.
 
 ### Injection Attacks
@@ -157,7 +157,7 @@
     - **Cybersecurity Awareness Training:** Educate staff to reduce **Human Error** and recognize the signs of social engineering.
 - **Recovery:**
     - [**Containment**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Account Isolation**: Immediately revoke all access for the suspected individual and perform a mandatory reset of administrative credentials.
-    - **Forensic Investigation:** Conduct [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Digital%20Forensics) to determine the full scope of the data accessed or modified.
+    - **Forensic Investigation:** Conduct [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Types%20of%20digital%20forensics) to determine the full scope of the data accessed or modified.
     - [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis): Identify whether the breach was due to a process failure (Human Error) or a gap in technical controls (Sabotage).
     - **System Restoration:** Restore any deleted or corrupted data from clean, offsite backups and update access control lists (ACLs) to prevent a re-incidence.
 ### Advanced Topics: Notable Historical Attacks

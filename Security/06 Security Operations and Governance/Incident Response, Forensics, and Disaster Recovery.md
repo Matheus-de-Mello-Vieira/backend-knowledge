@@ -301,296 +301,258 @@ Rather than a broad catalog of controls, prevention focuses on verified, high-im
 - **Verified Remediation**: Ensure that the specific "gap" identified in the RCA is closed—whether through a software patch, network reconfiguration, or physical security update—before the incident is marked as closed.
 - **Tracked Actions**: Convert every lesson learned into a formal follow-up action with an assigned owner, clear deadline, and specific validation criteria.
 - **Ongoing Testing**: Integrate the incident scenario into future disaster recovery tests to ensure that the newly implemented safeguards remain functional over time.
----
-
 ## SOC, SIEM, and Threat Detection
 
 ## Security Operations Center
 
-A **SOC** is the function responsible for continuous monitoring, triage, and escalation.
+A **Security Operations Center (SOC)** acts as the central command hub for an organization's defensive operations, providing a dedicated facility and team for continuous monitoring and incident response.
+- It is essentially the "neighborhood watch" for your infrastructure—if the neighborhood watch had a 24/7 surveillance room and a forensics lab.
+- The SOC is responsible for converting raw security telemetry into a structured pipeline of triage, investigation, and measurable response.
 
-### SOC content to include
+### SOC Operating Model
 
-Keep this section focused on how monitoring turns into triage, escalation, investigation, and measurable response performance.
+The SOC operates through a standardized workflow designed to ensure that no critical alert is missed and that every incident is handled with consistency:
 
-Related notes: [Intrusion Detection and Prevention](01%20Intrusion%20Detection%20and%20Prevention.md), [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md)
-Write there: expand SOC operating model, handoff rules, and SIEM-to-SOAR workflow details in the linked notes.
+- **Continuous Monitoring**: Providing 24/7 surveillance of security events and alerts across the entire organization, including endpoints, servers, and cloud environments.
+- **Event Triage**: Differentiating between standard security events (e.g., a single denied login) and actual security incidents that disrupt normal operations.
+- **Standardized Procedures**: Following pre-defined, step-by-step playbooks to reduce human error and ensure response agility during high-stress situations.
+- **Threat Hunting**: Proactively searching for indicators of advanced threats or "hidden" malicious activity that may have evaded automated detection tools.
+- **Forensic Handoff**: When a breach is confirmed, the SOC facilitates the collection of digital evidence, such as capturing volatile RAM data, while maintaining a clear chain of custody.
 
-## SOC analysis levels
+## SOC Analysis Levels
 
-|Level|Function|
-|---|---|
-|Level 1|Basic alert triage|
-|Level 2|Deeper investigation and containment|
-|Level 3|Advanced threat analysis and hunting|
+To manage the volume of alerts effectively, a SOC typically utilizes a tiered analysis structure:
+
+| **Level**   | **Function**                                                                                                                            |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Level 1** | **Basic Alert Triage**: Responsible for initial event monitoring and determining the severity of incoming alerts.                       |
+| **Level 2** | **Deeper Investigation**: Handles escalated alerts, performing containment actions and detailed analysis of compromised systems.        |
+| **Level 3** | **Advanced Threat Analysis**: Focuses on complex threat hunting, malware forensics, and responding to sophisticated persistent threats. |
 
 ## SIEM
 
-A **SIEM** centralizes and correlates security-relevant telemetry.
+A **SIEM (Security Information and Event Management)** provides the technological backbone for the SOC by centralizing and correlating security-relevant telemetry from across the entire infrastructure. While the SOC is the "team," the SIEM is the "engine" that powers their visibility.
 
-### SIEM content to include
+### Centralized Visibility and Correlation
 
-Keep this section focused on centralized visibility and correlation, not on SIEM feature catalogs.
+The SIEM eliminates visibility gaps by aggregating data into a single pane of glass:
 
-## Important metrics
+- **Log Aggregation**: Centralizing security logs from firewalls, intrusion detection systems, servers, and endpoints to provide a holistic view of the network.
+- **Automated Correlation**: Using specialized rules to identify relationships between seemingly unrelated events across different systems.
+- **Threat Intelligence Integration**: Incorporating real-time external threat intelligence to enhance the system's ability to detect known malicious signatures or behaviors.
+- **Workflow Automation**: Implementing scripted responses for common security events, such as automated network isolation or account lockouts, often referred to as SIEM-to-SOAR (Security Orchestration, Automation, and Response) workflows.
+## Important Metrics
 
-|Metric|Meaning|
-|---|---|
-|MTTD|Mean Time to Detect|
-|MTTR|Mean Time to Respond or Recover|
+The effectiveness of a SOC and its SIEM integration is measured through performance metrics that track the speed and quality of the response:
+- **Mean Time to Detect (MTTD)**: The average time it takes for the security team to become aware of a potential incident.
+- **Mean Time to Respond or Recover (MTTR)**: The average time taken to mitigate a threat and restore systems to normal operations.
 
----
+> **Note**: A successful SOC aims to minimize both metrics. Reducing MTTD limits the attacker's "dwell time," while reducing MTTR minimizes the overall impact and cost to the business.
 
 ## Digital Forensics
 
-## What digital forensics is
+Digital forensics is a specialized branch of forensic science and cybersecurity dedicated to the recovery, investigation, and analysis of material found on electronic devices.
+- While it was once synonymous with "computer forensics," the field has expanded to encompass any device capable of storing digital data—including mobile phones, IoT devices, and cloud infrastructure.
+- It is a structured process of discovering and interpreting electronic data to build a factual account of past actions.
 
-Digital forensics preserves and analyzes digital evidence to reconstruct what happened.
+### Purpose of digital forensics
 
-Related notes: [File and Filesystem Security](../03%20Cryptography%20and%20Data%20Protection/File%20and%20Filesystem%20Security.md), [Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md)
-Write there: add forensic hashing, storage integrity, and evidence-preservation considerations to the linked foundational notes.
+The primary objective of digital forensics is to translate raw digital data into actionable intelligence and legal proof. While the principles define _how_ the work is done, the purpose defines _why_ the organization invests in the process:
 
-## Purpose of digital forensics
+- **Fact-Based Reconstruction**: The core purpose is to build a chronological and factual account of a security event to understand the attacker's methods and movements.
+- **Determining Data Impact**: It identifies the specific scope of a breach, specifically determining if sensitive data or **Personally Identifiable Information (PII)** was accessed, lost, or stolen.
+- **Legal and Regulatory Admissibility**: It ensures that findings meet the evidentiary standards required for use in a court of law, police investigations, or regulatory filings.
+- **Operational Diagnostic Visibility**: It provides the visibility needed to confirm whether a standard security **event** has escalated into a formal **incident**, allowing management to make informed decisions about response levels.
+- **Informing Remediation**: By identifying the technical or procedural "gap" that was exploited, forensics provides the necessary data for a successful **Root Cause Analysis (RCA)**, ensuring that recovery efforts address the actual vulnerability.
+- **Support for Corporate Accountability**: It provides clear evidence for internal disciplinary actions, insurance claims, or the enforcement of service level agreements (SLAs) with third-party partners.
 
-Keep this section focused on reconstructing what happened, preserving evidence, and supporting both legal review and root-cause analysis.
+### Core forensic principles
 
+To ensure that digital evidence is reliable, credible, and admissible in a professional or legal setting, investigators must adhere to five core principles. These principles shift the process from simple "data recovery" to a scientifically sound forensic investigation.
+
+#### 1. Integrity: Maintaining the "Bit-for-Bit" Match
+
+Integrity ensures that the evidence analyzed in the lab is an identical replica of the data found at the scene.
+
+- **[Hashing](01%20Cryptography.md#4.%20Hashing%20The%20"One-Way"%20Trap)**: Investigators use mathematical algorithms (like SHA-256) to create a "digital fingerprint" of the original drive. If even a single character changes, the hash will fail, signaling that the evidence has been tampered with.
+- **Write Blockers**: During collection, specialized hardware is used to prevent the investigator's computer from accidentally writing any data back to the original device.
+
+#### 2. Authenticity: Proving the Source
+
+Authenticity focuses on the origin of the data. It answers the question: _"Can we prove this file actually came from this specific user's computer at this specific time?"_ This involves analyzing metadata, system logs, and digital signatures to confirm that the evidence is what it purports to be.
+
+#### 3. Chain of Custody: The Paper Trail
+
+The **Chain of Custody** is perhaps the most critical principle for legal admissibility. It is a continuous, unbroken record of the life of the evidence.
+
+- **Tracking**: It is a chronological paper trail or audit trail that records the seizure, custody, control, transfer, analysis, and disposition of physical or electronic evidence. It is the process of documenting exactly what happened to a piece of evidence from the moment it was identified at the "crime scene" until it is presented in a courtroom or final report.
+- **Legal Weight**: If there is a "gap" in the timeline—even for a few minutes—the integrity of the evidence can be challenged in court, as there is no proof it wasn't altered during that time.
+    
+
+#### 4. Preservation: The Race Against Time
+
+Preservation involves protecting the digital "crime scene" from environmental or technical factors that could destroy evidence.
+
+- **Order of Volatility**: Investigators must prioritize data that disappears quickly. Data in the **RAM (Volatile Memory)** is collected first, followed by temporary files, and finally the data on hard drives.
+- **Static Imaging**: Once the volatile data is captured, a static image (a forensic copy) of the hard drive is made so the original can be safely stored in a secure, climate-controlled environment.
+    
+
+#### 5. Documentation: The Investigative Roadmap
+
+A forensic investigation is only as good as its documentation. This principle requires that every action taken—from the moment the device is seized to the moment the final report is written—is recorded in detail.
+
+- **Reproducibility**: Documentation must be so thorough that another forensic expert could follow the notes and reach the exact same conclusions.
+- **Transparency**: Clear documentation prevents "black box" accusations, showing that no hidden or biased methods were used to manipulate the findings.
 ---
 
-## Core forensic principles
+### Forensic investigation phases
 
-|Principle|Meaning|
-|---|---|
-|Integrity|Evidence is not altered|
-|Authenticity|Evidence is provably genuine|
-|Chain of custody|Handling is documented|
-|Preservation|Evidence is protected|
-|Documentation|Actions and findings are recorded|
+The forensic investigation process follows a structured sequence to transform raw data into credible evidence:
 
----
+1. **Identify**: Determine what evidence is present, where it is located, and its specific format.
+2. **Preserve**: Isolate and protect the data immediately to prevent tampering or accidental loss.
+3. **Collect**: Acquire the digital evidence, typically by seizing physical assets like hard drives, phones, or capturing volatile RAM.
+4. **Examine**: Perform a precursor inspection to identify secondary details and prepare the data for deeper study.
+5. **Analyze**: Piece together fragments and recover deleted files to prove or refute the case.
+6. **Document**: Maintain a detailed, step-by-step report of the entire investigation and the chain of custody.
+7. **Present**: Summarize the conclusions in clear, natural language for a hearing or court of law.
 
-## Forensic investigation phases
+### Types of digital forensics
 
-Use a simple sequence:
+When selecting the specific type of forensic investigation, the choice is driven by the specific **evidence sources** involved and the **specialized tooling** required to process them:
 
-> Identify → Preserve → Collect → Examine → Analyze → Document → Present
+* **Computer Forensics**: Applied when evidence is found on computers or digital storage media. Tooling must include write-blockers to ensure the act of seizing or acquiring media does not modify the original evidence.
+* **Network Forensics**: Chosen when the incident involves network events, intrusions, or transmitted data packets. This requires tools for analyzing packets and logs from firewalls or intrusion detection systems.
+* **Mobile Device Forensics**: Required for recovering evidence from phones, tablets, or GPS devices. It utilizes sound forensic methods specifically designed for mobile hardware and software.
+* **Malware Forensics**: Used to identify and study malicious code (viruses or worms) to determine its payload and behavior. This often involves specialized reverse engineering tools and isolated sandbox environments.
+* **Live Forensics (Memory Forensics)**: Necessary for capturing **volatile data**—such as active network connections and running processes—stored in RAM or cache. It requires memory imaging tools used while the system is still running to prevent the permanent loss of evidence that occurs during a shutdown.
+* **Forensic Data Analysis**: Focuses on the study of databases and their associated metadata. Tooling is centered on examining data patterns to uncover fraudulent activity.
 
----
+By matching the forensic type to the specific data source, the Incident Response Team ensures they have the correct diagnostic tools to gain visibility and maintain the **chain of custody** throughout the investigation.
 
-## Types of digital forensics
+### Forensic techniques
 
-Mention types only when they affect evidence sources or tooling choices for the incident at hand.
+The selection of forensic techniques is a strategic decision based on the need to maintain system integrity, prevent the loss of fragile evidence, and define the full boundaries of a breach.
 
----
+#### Preservation and Containment Techniques
 
-## Forensic techniques
+- **Live Analysis**: This technique involves extracting volatile data stored in **RAM** or cache while the device is still running. It is a critical preservation step because a "hard shutdown" destroys active network connections, running processes, and decrypted encryption keys. By using live analysis, teams can perform a **Balanced Response**, choosing network isolation over a full power-off to keep the "crime scene" intact for diagnostics.
+- **Forensic Imaging**: This process creates bit-for-bit copies of affected systems and storage devices. It is the primary technique for preservation, ensuring that the original media remains untouched while investigators work on an identical replica to maintain the integrity of the evidence.
 
-Mention techniques only when they materially affect containment, evidence preservation, or scope determination.
+#### Scope Determination Techniques
 
----
+- **Cross-drive Analysis (Anomaly Detection)**: This technique finds similarities and correlates information across multiple data sources. It is used to determine the scope of an incident by identifying lateral movement or hidden connections between seemingly unrelated systems.
+- **Timeline Analysis**: Investigators reconstruct the sequence of events to map out the attack's progression. This is essential for scope determination, as it reveals the duration of the breach and the total impact on business operations.
+- **Deleted File Recovery (Data Carving)**: This involves searching for file fragments that were partially deleted but left traces in unallocated disk space. It materially affects scope determination by uncovering artifacts—such as logs or staging files—that the threat actor intentionally tried to erase to hide their footprint.
 
-## Evidence Preservation During Incidents
+By prioritizing these techniques, the response team ensures that the most time-sensitive evidence is captured and that the remediation plan addresses the full extent of the compromise.
 
-## The response-versus-evidence tension
+## Business Continuity
 
-During an active incident, responders must balance stopping the attack with preserving evidence.
+### What Business Continuity Is
 
-## Volatile evidence
+**Business Continuity (BC)** is the overarching strategy and set of capabilities an organization must possess to respond to and recover from any event that negatively affects operations and the business life cycle.
+- It is a fundamental component of organizational **resilience**, focusing on the ability to survive a crisis with minimal losses.
+- While technical systems may fail, business continuity ensures that the core functions of the organization—its people, processes, and essential services—remain functional or can be quickly restored.
 
-Volatile evidence can disappear when a system is shut down, especially memory, live sessions, active connections, and temporary runtime state.
+### Business Continuity vs. Disaster Recovery
 
-## Safer containment principle
+It is critical to distinguish between business continuity and disaster recovery, as they address different layers of an incident. While they are closely linked, their primary objectives and scopes differ:
 
-Prefer:
+| **Concept** | **Focus** | **Primary Objective** |
+| --- | --- | --- |
+| **Business Continuity** | **The Business Lifecycle**: Managing the organizational impact of a disruption to ensure survival. | Operational survival, loss minimization, and maintaining essential business functions through temporary workarounds. |
+| **Disaster Recovery** | **IT Infrastructure**: Regaining the use of critical systems, hardware, and data. | Technical resolution, restoring IT systems agilely, and returning the environment to its normal state. |
 
-> Isolate the system before destroying the state of the system.
+### Business Continuity Examples
 
-Example:
+Business continuity plans (BCP) are primarily business-oriented, focusing on how work gets done when the primary "technical" path is blocked. These plans often rely on non-technical or redundant strategies:
 
-- Better: disconnect from the network.
-- Riskier: immediately power off the system.
+* **Manual Workarounds**: Establishing paper-based processes or manual entry systems to maintain operations while databases or applications are offline.
+* **Resource Relocation**: Moving essential staff to alternate sites or enabling remote work to bypass physical infrastructure failures.
+* **Redundant Service Delivery**: Utilizing secondary suppliers or failover services to maintain the flow of goods and information.
+* **Communication Fallbacks**: Activating pre-defined, alternate communication channels for internal stakeholders, customers, and regulators.
 
-## Chain of custody
+**Note on Workarounds vs. Recovery:** A clear distinction must be made between **continuity workarounds** and **technical recovery milestones**:
+- Continuity workarounds are designed to allow the business to function in a degraded state temporarily.
+- In contrast, technical recovery milestones—often defined within a **[Disaster Recovery Plan (DRP)](#Disaster%20Recovery%20Plan%20(DRP))**—dictate the specific sequence and timing for bringing actual IT systems back online.
 
-Record who collected the evidence, when, where it was stored, who accessed it, and what changed.
+## Business Impact Analysis (BIA)
 
-Related notes: [Cryptography](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md), [Legal Frameworks and Compliance](Legal%20Frameworks%20and%20Compliance.md)
-Write there: add how hashes, signatures, and documentation practices support admissibility and integrity claims.
+The **Business Impact Analysis (BIA)** is the foundational assessment that bridges the gap between high-level business goals and specific technical requirements for **Business Continuity (BC)** and **Disaster Recovery (DR)**. Its primary purpose is to perform a deep analysis of systems, services, and organizational structure to identify what is truly "critical" for survival.
 
----
+By evaluating the potential consequences of a disruption, the BIA determines the priority of recovery and sets the performance standards that technical teams must meet.
 
-## Backup and Recovery Strategy
+### The Core Metrics: RPO and RTO
 
-## Why backups matter
+The BIA identifies two critical thresholds that define the success or failure of a recovery effort:
 
-Backups make controlled recovery possible after destructive events.
+- **Recovery Point Objective (RPO)**: Defines the **maximum acceptable amount of data loss** measured in time before the disaster occurs. For example, an RPO of 15 minutes means the system must be restored with data that is no older than 15 minutes prior to the outage.
+- **Recovery Time Objective (RTO)**: Defines the **maximum acceptable downtime**, or the duration of time from the moment a disaster strikes to the moment the service is restored to the user.
 
-## Backup principles
+### Architectural Impact on Metrics
 
-Keep this section focused on qualities that make recovery trustworthy: separation, testing, integrity, and resilience against attacker access.
+Achieving low RPO and RTO values is not just a policy decision; it is an architectural challenge. The technical design of the system must support these requirements:
 
-## Recovery risks
+- **Data Protection Strategies**: High-impact systems require preventive measures and recovery strategies tailored to their specific confidentiality, integrity, and availability (CIA) needs.    
+- **Replication Choices**: To achieve near-zero RPO, organizations often use **synchronous replication** (real-time data copying), whereas systems with more flexible RPOs might use **asynchronous replication** or traditional offsite backups.
+- **Failover Design**: Meeting an aggressive RTO (e.g., 1 hour) typically requires automated failover to a secondary site or redundant environment, whereas manual restoration from backups is only suitable for systems with high RTO tolerances.
 
-Recovery fails when backups are stale, unsafe, or restored before the environment is trustworthy.
+### RPO/RTO Table Examples
 
-## Safe recovery process
+The BIA categorizes systems based on their impact level to prioritize resource allocation:
 
-Use this structure:
+|**System**|**RPO**|**RTO**|**Meaning**|
+|---|---|---|---|
+|**Payment System**|15 minutes|1 hour|**Critical Impact**: Requires near-continuous data protection and rapid failover.|
+|**Customer Database**|30 minutes|2 hours|**High Impact**: Requires frequent backups and a structured, tested recovery plan.|
+|**Internal Wiki**|24 hours|2 days|**Low Impact**: Can be restored from daily offsite backups with minimal business disruption.|
 
-1. Confirm threat containment.
-2. Identify root cause.
-3. Patch or reconfigure affected systems.
-4. Validate backup integrity.
-5. Restore systems.
-6. Monitor closely.
-7. Document actions.
-
-Related notes: [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Patch Management and Security Updates](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md)
-Write there: add ransomware-safe restore validation and clean-room rebuild guidance.
+By aligning these technical metrics with business needs, the BIA ensures that the organization invests in the right level of resilience for every system, avoiding the "trap of self-sabotage" where a lack of diagnostic visibility or poor planning leads to unnecessary data loss during a crisis.
 
 ---
 
 ## Disaster Recovery
 
-## What disaster recovery is
+**Disaster Recovery (DR)** is the technical capability an organization must possess to respond to and recover from an event of any nature—natural, technical, or human-driven—that negatively affects operations and the business life cycle. While Business Continuity focuses on high-level organizational survival, DR specifically addresses the ability to regain use of critical systems and IT infrastructure as quickly and agilely as possible.
 
-Disaster Recovery, or **DR**, is the capability to restore critical systems after major disruption.
+### Goals of Disaster Recovery
 
-## Disaster Recovery Plan
+The primary focus of DR is restoring prioritized services within the acceptable downtime (**RTO**) and data-loss (**RPO**) limits established during the Business Impact Analysis.
 
-A **Disaster Recovery Plan**, or **DRP**, defines how restoration will be executed after serious disruption.
+- **System Restoration**: Returning hardware, software, and data to a functional state after a serious disruption.
+- **Minimized Losses**: Ensuring the duration and impact of the outage do not lead to catastrophic business failure.
+- **Accountability and Prioritization**: Establishing a structured approach where the most critical systems, based on their impact level, are recovered first.
+- **Compliance Alignment**: Meeting regulatory and governance requirements for data availability and security.
+- 
+### Disaster Recovery Plan (DRP)
 
-## Goals of disaster recovery
+A **Disaster Recovery Plan (DRP)** is a formalized document created after a deep analysis of an organization's systems, services, and structure.
 
-Keep this section focused on restoring prioritized services within acceptable downtime and data-loss limits.
+- **Document Content**: It involves everything from manual procedures to the specific technologies and services required for restoration. 
+- **Readiness**: For the response to be satisfactory, these plans must be carefully established, tested, and known by everyone in the organization.
+- **Framework Alignment**: Many DRPs utilize the **NIST Cybersecurity Framework**, specifically the "Recover" function, to identify necessary actions for maintaining continuity and initiating restoration.
 
-Related notes: [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md), [Legal Frameworks and Compliance](Legal%20Frameworks%20and%20Compliance.md)
-Write there: add accountability for recovery prioritization, approval paths, and compliance-driven restoration deadlines.
+### Disaster Recovery Methods
 
----
+The choice of methodology depends on the organization's architecture and the technical considerations appropriate to the confidentiality, integrity, and availability (CIA) of the systems.
 
-## Risk Analysis and Business Impact Analysis
-
-## Risk Analysis
-
-Use this section only to connect incident planning with prioritization, not to restate the full risk-management process.
-
-## Business Impact Analysis
-
-Use this section only to justify recovery order and tolerated downtime.
-
-Related notes: [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md), [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md)
-Write there: add service-tiering and dependency mapping that translate business impact into recovery order.
-
-## Difference between Risk Analysis and BIA
-
-|Concept|Main focus|
-|---|---|
-|Risk Analysis|What could happen and how likely it is|
-|BIA|What damage would happen if it occurs|
-
----
-
-## RPO and RTO
-
-## Recovery Point Objective
-
-**RPO** defines the maximum acceptable amount of data loss.
-
-## Recovery Time Objective
-
-**RTO** defines the maximum acceptable downtime.
-
-## RPO/RTO table
-
-| System            | RPO        | RTO     | Meaning                                   |
-| ----------------- | ---------- | ------- | ----------------------------------------- |
-| Payment system    | 15 minutes | 1 hour  | Very little data loss or downtime allowed |
-| Internal wiki     | 24 hours   | 2 days  | Longer outage acceptable                  |
-| Customer database | 30 minutes | 2 hours | High business impact                      |
-
-Related notes: [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md), [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md)
-Write there: add how backup frequency, replication, and failover design choices determine achievable RPO and RTO.
-
----
-
-## Disaster Recovery Methods
-
-## Virtualized Disaster Recovery
-
-Use when workloads can be restored or failed over as portable compute instances.
-
-## Network Disaster Recovery
-
-Focus on recovering the network dependencies that other restoration steps rely on.
-
-Related notes: [Network Security](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md), [Firewall](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/Firewall%20Technologies.md)
-Write there: add recovery sequencing for DNS, VPN, firewall policy restoration, and segmented network bring-up.
-
-## Cloud Disaster Recovery
-
-Use when cloud replication or failover materially reduces downtime.
-
-Related notes: [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md), [Backup and Restore](../03%20Cryptography%20and%20Data%20Protection/Backup%20and%20Restore.md)
-Write there: add shared-responsibility implications for failover, restoration testing, and key/secret recovery in cloud DR.
-
-## Disaster Recovery as a Service
-
-**DRaaS** is a third-party managed disaster recovery service.
-
-Use when recovery capability is outsourced under provider-operated processes and service levels.
-
-## Data Center Disaster Recovery
-
-Focuses on recovering physical facilities and infrastructure.
-
-Use when facility-level failure drives the outage, including power, cooling, hardware, and site access dependencies.
-
----
-
-## Business Continuity
-
-## What business continuity is
-
-Business continuity keeps the organization operating during disruption.
-
-## Difference between business continuity and disaster recovery
-
-|Concept|Focus|
-|---|---|
-|Business Continuity|Keep the business running|
-|Disaster Recovery|Restore IT systems and infrastructure|
-
-## Business continuity examples
-
-Examples should stay business-oriented, such as temporary workarounds, alternate suppliers, fallback communications, or relocation.
-
-Related notes: [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md), [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md)
-Write there: add the distinction between continuity workarounds and full technical recovery milestones.
-
----
+* **Virtualized**: This method allows for the replication of workloads at an alternative site or in the cloud, offering high flexibility, efficiency, and speed through frequent replication and rapid failover.
+* **Network**: This strategy focuses on restoring essential network services—such as internal/external communication, data sharing, and application access—to ensure connectivity to websites and backup data during an incident.
+* **Cloud**: This goes beyond basic cloud backup by configuring the automatic failover of entire workloads to a public cloud platform in the event of an interruption.
+* **DRaaS (Disaster Recovery as a Service)**: A third-party provider replicates and hosts physical and virtual servers, assuming the responsibility for implementing the recovery plan based on a predefined service level agreement (SLA).
+* **Data Center**: This approach focuses on the recovery of the organization’s entire internal IT infrastructure and the physical facility itself.
 
 ## Standards and Frameworks
 
-## NIST Cybersecurity Framework
-
-Use the framework here only as an organizing lens: Identify, Protect, Detect, Respond, Recover.
-
-## NIST SP 800-34
-
-Reference it as a contingency-planning standard for recovery preparation and system-specific restoration planning.
-
-## ISO 22301
-
-Reference it as the business continuity management standard behind recovery governance and continuous improvement.
-
-## ISO 22313
-
-Guidance for applying ISO 22301.
-
-## ISO 22320
-
-Emergency and incident management guidance.
-
-## ISO 22300
-
-Vocabulary for security and resilience.
+- **NIST Cybersecurity Framework (CSF)**: The "Rosetta Stone" of security. It provides a common language for managing cybersecurity risk across the [entire lifecycle.](#Core%20cybersecurity%20lifecycle)
+- **NIST SP 800-34**: The tactical "How-To" for **IT Contingency Planning**. While ISO looks at the whole business, this gets into the weeds of restoring specific IT systems (servers, networks, applications).
+	- Seven-step process including the Business Impact Analysis (BIA), preventive controls, and rigorous testing/maintenance.
+- **ISO 22301**: The **"What"** of Business Continuity Management Systems (BCMS). It is the requirements standard used for certification.
+	- Uses a "Plan-Do-Check-Act" (PDCA) cycle to ensure the organization can continue operating (at a predefined level) following a disruption. It’s about governance, leadership commitment, and setting measurable objectives.
+- **ISO 22313**: The **"How"** of ISO 22301.
+	* Since ISO 22301 is a list of requirements (e.g., "You must have a BIA"), ISO 22313 provides the descriptive guidance and best practices on how to actually implement those requirements effectively.
+- **ISO 22320**: The manual for **Incident Management**.
+	- Focuses on the "heat of the moment." It outlines requirements for incident response, including command and control structures, operational information sharing, and how to coordinate with external agencies or partners.
+- **ISO 22300**: The **Official Dictionary**.
+	- A foundational document that defines the specific terminology used across all ISO security and resilience standards. It ensures that when one person says "Recovery Time Objective," everyone else knows exactly what that means.
