@@ -114,17 +114,15 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Incident Response, Forensics, and Disaster Recovery"
+              "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -144,7 +142,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -154,7 +151,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Incident Response, Forensics, and Disaster Recovery"
+              "title": "Backlinks"
             }
           },
           {
@@ -163,12 +160,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Incident Response, Forensics, and Disaster Recovery"
+              "title": "Outgoing links"
             }
           },
           {
