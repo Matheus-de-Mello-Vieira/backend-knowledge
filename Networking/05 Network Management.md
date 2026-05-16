@@ -18,6 +18,11 @@ The International Organization for Standardization (ISO - /ˈaɪsoʊ/) developed
 - **P — Performance Management** Primarily features functions to measure, quantify, notify, analyze, and control the performance of network links, such as routers and terminals.
 - **S — Security Management** Controls access to network resources strictly according to defined security policies.
 
+> [!architecture] Architectural Synergy: The AAA Core
+> While the FCAPS model splits **Security Management** and **Accounting Management** into separate administrative categories, modern network architecture unifies them using the **AAA framework**. 
+> 
+> As a network grows in scale and complexity, managing access control locally on every individual node becomes impossible. AAA solves this by centralizing the entire lifecycle: **Authentication** identifies who is on the network, **Authorization** dynamically applies the security policy to their connection, and **Accounting** tracks their resource consumption. It transforms isolated device configurations into a cohesive, network-wide management system.
+
 **The Role of the Administrator and Tools**
 
 - **Asset Tracking and Expertise:** Every asset and node is critical to overall network operation and must be inventoried and understood. A network administrator must know the capabilities, limits, and tradeoffs of the hardware and software in the environment in order to scale and operate it correctly.

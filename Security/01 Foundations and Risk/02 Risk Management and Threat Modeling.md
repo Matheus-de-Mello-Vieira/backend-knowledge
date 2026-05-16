@@ -86,23 +86,9 @@ Vulnerabilities are weaknesses within an organization's control. By employing th
 #### **The Cloud Context**
 
 - **Shared Responsibility Model:** In cloud environments, the provider secures the underlying infrastructure, but the organization is responsible for the operating system, applications, and data. Misunderstanding these boundaries often leads to runtime threats and exposed data.
-### **Vulnerability Assessment**
+### Vulnerability Assessment
 
-A **Vulnerability Assessment** is the systematic process of identifying, quantifying, and prioritizing security vulnerabilities in computer networks, systems, hardware, applications, and other elements of the IT ecosystem.
-
-These assessments provide security teams and stakeholders with the necessary data to understand the threat landscape and prioritize remediation efforts before vulnerabilities can be exploited.
-- **Network-Based Assessment:** Used to identify potential network security issues and detect vulnerable systems across both wired and wireless infrastructures.
-- **Host-Based Assessment:** Focuses on locating vulnerabilities within servers, workstations, and other network hosts. It typically evaluates open ports and services and provides visibility into system configuration settings and patch management status.
-- **Wireless Network Assessment:** Involves scanning Wi-Fi networks and infrastructure attack vectors. It validates whether a network is securely configured to prevent unauthorized access and identifies "rogue" access points.
-- **Application Assessment:** The process of identifying security vulnerabilities in web applications and their source code. This is performed using automated scanning tools on the front-end or through **Static Analysis (SAST)** and **Dynamic Analysis (DAST)** of the source code.
-- **Database Assessment:** Analyzes databases and big data systems for vulnerabilities and misconfigurations. It helps identify unauthorized databases, insecure development/test environments, and classifies sensitive data to improve overall data security.
-### **Vulnerability Management**
-
-To stay ahead of malicious attacks, security professionals must maintain a consistent process to monitor and manage known vulnerabilities. As networks increase in complexity, active management becomes fundamental, requiring full visibility into both internal and third-party ecosystems.
-- **Identify Vulnerabilities:** This stage involves analyzing network scans, firewall logs, and penetration test results to find anomalies or weaknesses.
-- **Verify Vulnerabilities:** Once identified, you must determine if a vulnerability is truly exploitable and classify its severity to understand the associated risk level.
-- **Mitigate Vulnerabilities:** If a direct patch is not yet available, you must implement temporary countermeasures and measure their effectiveness to reduce the threat.
-- **Remediate Vulnerabilities:** The final goal is to update or replace the vulnerable software or hardware. This requires establishing a clear work plan and remediation schedule.
+Risk management depends on a repeatable way to identify, validate, and prioritize weaknesses before they become incidents. The dedicated note [Vulnerability Assessment](05%20Vulnerability%20Assessment.md) covers the assessment process, common assessment types, the vulnerability-management lifecycle, and how **CVSS** helps classify severity for remediation planning.
 ## Threats
 
 Threats are factors or actions capable of compromising at least one of the [tenets](01%20Security%20Principles.md#The%20tenets).
@@ -131,6 +117,21 @@ While the security risks for Bob's side mirror Alice's, the attack vectors diffe
 | **Physical Security** | High risk of being **lost/stolen** in public.    | Risk of **unauthorized peripherals** (e.g., malicious USB/Rubber Ducky). |
 | **Connectivity**      | Often on 5G/LTE (more secure than public Wi-Fi). | Often on **Public Wi-Fi** (higher risk of MitM attacks).     |
 | **Software**          | Harder to run "unsigned" scripts.                | Easy to execute **malicious scripts/binaries** (.exe, .sh).  |
+
+### Threat Modeling Framework: STRIDE
+
+To systematically identify threats within an architecture rather than guessing, security teams often utilize the **STRIDE** methodology. Developed by Microsoft, STRIDE breaks down threats into six distinct categories based on the attacker's objective:
+
+| **Threat Category** | **Security Tenet Violated** | **Description & Example** |
+| :--- | :--- | :--- |
+| **S**poofing | Authenticity / Identity | Pretending to be something or someone else. <br>*Example: An attacker spoofing the Cloud Sync server to intercept Alice's data.* |
+| **T**ampering | Integrity | Maliciously modifying data in transit or at rest. <br>*Example: Altering the contents of a file during synchronization.* |
+| **R**epudiation | Non-repudiation | Claiming an action or transaction didn't happen because of poor logging. <br>*Example: A user deleting a critical cloud backup and denying they did it.* |
+| **I**nformation Disclosure | Confidentiality | Exposing sensitive data to unauthorized parties. <br>*Example: Sniffing Alice's unencrypted data over public Wi-Fi.* |
+| **D**enial of Service | Availability | Booting legitimate users off a system or crashing services. <br>*Example: Launching a DDoS attack on the Cloud Sync infrastructure.* |
+| **E**levation of Privilege | Authorization | Gaining a higher level of access than permitted. <br>*Example: Exploiting an unpatched API flaw to gain admin control over the Cloud server.* |
+
+By mapping your architecture's data flows against these six categories, you can uncover hidden vulnerabilities before they are exploited.
 
 ## Risk
 

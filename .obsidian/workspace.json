@@ -4,18 +4,18 @@
     "type": "split",
     "children": [
       {
-        "id": "cf38bda119364d01",
+        "id": "f0781f7c33b74799",
         "type": "tabs",
         "children": [
           {
-            "id": "f907595d5809f742",
+            "id": "17b9f4f8c5fac9e5",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+                "file": "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
                 "mode": "source",
-                "source": true,
+                "source": false,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -28,18 +28,18 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Incident Response, Forensics, and Disaster Recovery"
+              "title": "02 Risk Management and Threat Modeling"
             }
           },
           {
-            "id": "0e568ae9bff613f4",
+            "id": "40d8114325a72530",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "file": "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
                 "mode": "source",
-                "source": true,
+                "source": false,
                 "backlinks": true,
                 "backlinkOpts": {
                   "collapseAll": false,
@@ -52,10 +52,11 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "03 Common Threats and Attacks"
+              "title": "05 Vulnerability Assessment"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -126,7 +127,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 259.5
+    "width": 308.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -142,6 +143,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -151,7 +153,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for Linux Endpoint Security"
             }
           },
           {
@@ -160,11 +162,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from Linux Endpoint Security"
             }
           },
           {
@@ -243,7 +246,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -291,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 482.5
+    "width": 682.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -308,33 +311,34 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
+    "Security/99 TODO.md",
+    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
+    "Networking/05 Network Management.md",
+    "Security/02 Identity and Access/02 Authorization and Access Control.md",
+    "02 Authorization   and Access Control.md",
+    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
+    "Security/02 Identity and Access/01 Authentication.md",
+    "Operating Systems/02 File Systems.md",
+    "Operating Systems/Linux/History.md",
+    "Operating Systems/Linux/Architecture.md",
+    "Networking/01 Introduction.md",
+    "Networking/02 Network Components.md",
+    "Networking/03 Network Models.md",
+    "Networking/04 Network Services.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Operating Systems/Linux",
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/99 TODO/Forensic Investigation.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
     "Backend Engineering/05 Observability.md",
-    "Security/02 Identity and Access/01 Authentication.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Endpoint Security.md",
-    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
     "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
     "Security/99 TODO/Incident Response and Recovery.md",
-    "Security/06 Security Operations and Governance/01 Intrusion Detection and Prevention.md",
-    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
-    "Security/99 TODO/Disaster Recovery Methods.md",
-    "Security/99 TODO/Ethics, Policies, and Compliance in Cybersecurity.md",
-    "Security/99 TODO/Response and Incident Response Plan.md",
     "Security/99 TODO",
-    "Backend Engineering/04 Release and Rollout Strategies.md",
-    "Networking/06 Network Monitoring.md",
-    "Networking/99 Proxying and Load Balancing.md",
-    "Resilience.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
-    "Web APIs/02 REST/08 Performance.md",
-    "Web APIs/02 REST/07 Advanced Topics.md",
-    "Web APIs/02 REST/08 Advanced Topics.md",
     "makefile",
     "AI Engineering/LLM",
     "Security/99 References and Checklists",
@@ -342,7 +346,6 @@
     "Security/05 Architecture and Infrastructure Security/Network Security",
     "Security/05 Architecture and Infrastructure Security",
     "Security/04 Application and API Security",
-    "Security/03 Cryptography and Data Protection",
-    "Security/02 Identity and Access"
+    "Security/03 Cryptography and Data Protection"
   ]
 }
