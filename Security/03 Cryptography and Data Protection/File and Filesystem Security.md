@@ -11,7 +11,7 @@ File protection is a critical component of cybersecurity. Confidential files—s
 
 For the operating-system concepts behind file systems, see:
 
-- [02 File Systems.md](../../Operating%20Systems/02%20File%20Systems.md)
+- [02 File Systems.md](07%20File%20Systems.md)
 
 Security involving the filesystem is about protecting how data is stored, accessed, modified, and recovered on disk. In practice, this means controlling permissions, limiting unauthorized reads and writes, encrypting sensitive data, maintaining backups, and choosing safe operational practices for storage devices.
 
