@@ -4,6 +4,9 @@
 
 ## Practical Security Principles
 
+> [!note] Shift Security Left
+> Security controls should be introduced as early as possible in the software lifecycle, not postponed until deployment or incident response. In practice, that means bringing threat modeling, secure design reviews, dependency checks, code scanning, and security-focused test automation into everyday development and CI/CD workflows.
+
 ### Input Validation and Trust
 - **Never trust user input**: All external data must be validated, sanitized, and verified before processing
 - **Assume malicious intent**: Consider everything from the internet as potentially hostile
