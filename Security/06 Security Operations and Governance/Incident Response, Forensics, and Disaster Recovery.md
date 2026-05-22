@@ -354,7 +354,7 @@ The effectiveness of a SOC and its SIEM integration is measured through performa
 Digital forensics is a specialized branch of forensic science and cybersecurity dedicated to the recovery, investigation, and analysis of material found on electronic devices.
 - While it was once synonymous with "computer forensics," the field has expanded to encompass any device capable of storing digital data—including mobile phones, IoT devices, and cloud infrastructure.
 - It is a structured process of discovering and interpreting electronic data to build a factual account of past actions.
-
+* The activities of a computer forensics laboratory take place within a secure, controlled environment that is protected against external interference. This setup ensures the management and preservation of electronic data with a significantly reduced risk of damage or modification to the evidence.
 ### Purpose of digital forensics
 
 The primary objective of digital forensics is to translate raw digital data into actionable intelligence and legal proof. While the principles define _how_ the work is done, the purpose defines _why_ the organization invests in the process:
@@ -365,7 +365,6 @@ The primary objective of digital forensics is to translate raw digital data into
 - **Operational Diagnostic Visibility**: It provides the visibility needed to confirm whether a standard security **event** has escalated into a formal **incident**, allowing management to make informed decisions about response levels.
 - **Informing Remediation**: By identifying the technical or procedural "gap" that was exploited, forensics provides the necessary data for a successful **Root Cause Analysis (RCA)**, ensuring that recovery efforts address the actual vulnerability.
 - **Support for Corporate Accountability**: It provides clear evidence for internal disciplinary actions, insurance claims, or the enforcement of service level agreements (SLAs) with third-party partners.
-
 ### Core forensic principles
 
 To ensure that digital evidence is reliable, credible, and admissible in a professional or legal setting, investigators must adhere to five core principles. These principles shift the process from simple "data recovery" to a scientifically sound forensic investigation.
@@ -383,19 +382,27 @@ Authenticity focuses on the origin of the data. It answers the question: _"Can w
 
 #### 3. Chain of Custody: The Paper Trail
 
-The **Chain of Custody** is perhaps the most critical principle for legal admissibility. It is a continuous, unbroken record of the life of the evidence.
+The preservation of evidence is a primary activity in cyber forensics. The principal strategy to ensure the legal admissibility in a judicial process is the Evidence Chain of Custody, which consists of a detailed log of how the elements were handled from collection to final results.
 
-- **Tracking**: It is a chronological paper trail or audit trail that records the seizure, custody, control, transfer, analysis, and disposition of physical or electronic evidence. It is the process of documenting exactly what happened to a piece of evidence from the moment it was identified at the "crime scene" until it is presented in a courtroom or final report.
-- **Legal Weight**: If there is a "gap" in the timeline—even for a few minutes—the integrity of the evidence can be challenged in court, as there is no proof it wasn't altered during that time.
-    
+An evidence chain of custody record must contain, at a minimum, the following items:
 
+* Date and time of the evidence collection;
+* Identification of the person from whom the evidence was seized;
+* Hardware information, including manufacturer, model, and serial numbers;
+* Name of the professional responsible for collecting the evidence;
+* Detailed description of the evidence;
+* Name and signature of the individuals involved;
+* Case identification and evidence identification through markings or tags;
+* MD5 or SHA-1 digital signatures of the evidence, whenever possible;
+* Pertinent technical information.
+
+Collection must respect the order of data volatility to mitigate the risk of loss. This process begins with the most ephemeral elements (such as RAM, caches, and command-line shell session variables) and extends to persistent data stored on hardware and printed documents. This ordering enables the reconstruction of user history, running processes, network connections, and audit logs.
 #### 4. Preservation: The Race Against Time
 
 Preservation involves protecting the digital "crime scene" from environmental or technical factors that could destroy evidence.
 
 - **Order of Volatility**: Investigators must prioritize data that disappears quickly. Data in the **RAM (Volatile Memory)** is collected first, followed by temporary files, and finally the data on hard drives.
 - **Static Imaging**: Once the volatile data is captured, a static image (a forensic copy) of the hard drive is made so the original can be safely stored in a secure, climate-controlled environment.
-    
 
 #### 5. Documentation: The Investigative Roadmap
 
@@ -403,8 +410,6 @@ A forensic investigation is only as good as its documentation. This principle re
 
 - **Reproducibility**: Documentation must be so thorough that another forensic expert could follow the notes and reach the exact same conclusions.
 - **Transparency**: Clear documentation prevents "black box" accusations, showing that no hidden or biased methods were used to manipulate the findings.
----
-
 ### Forensic investigation phases
 
 The forensic investigation process follows a structured sequence to transform raw data into credible evidence:
@@ -447,6 +452,31 @@ The selection of forensic techniques is a strategic decision based on the need t
 
 By prioritizing these techniques, the response team ensures that the most time-sensitive evidence is captured and that the remediation plan addresses the full extent of the compromise.
 
+#### File System Analysis
+
+Files represent non-volatile data and constitute fundamental assets for forensic analysis. Every investigation must be conducted on images of the original files (bit-by-bit cloning), since simply copying a file alters its structure, composition, and metadata.
+
+Operating systems record chronological attributes, known as MACtimes, which describe the history of files:
+
+* **mtime (Modification time):** Indicates the last date and time the content of the file was modified.
+* **atime (Access time):** Records the last date and time a file or directory was accessed or read.
+* **ctime (Creation time):** Points to the date and time the file was created.
+
+Journaling techniques, which define how file system updates are performed, are utilized to recover deleted files and substantiate the chain of custody. Analysis also encompasses local logs, configuration files, service files, and the MBR (Master Boot Record).
+
+#### Network and Log Analysis
+
+Network analysis deals with volatile data that circulates during the execution of processes and services. For this monitoring, specific tools are employed, such as Wireshark (for reading MAC addresses, gateways, and packets), Aircrack (focused on Wi-Fi networks), Nessus (a vulnerability scanner), TCPdump (packet capture and hexadecimal display), and Snort (an intrusion detection system). Techniques like Network Sniffing assist in packet capture, user identification, and mapping attack patterns to protect networks.
+
+Log analysis presents performance information and system events in a comprehensible manner, serving as a technique to determine security violations after the fact (*a posteriori*). The types of logs essential for auditing are system, application, firewall, and intrusion detection logs. A structured audit log system is composed of a log generator, an analyzer, and a notifier.
+
+Log management faces challenges such as the massive volume of raw data originating from servers, routers, and firewalls. To mitigate this complexity, automated tools are used to condense duplicate lines and filter out irrelevant events. The primary tools applied include:
+
+* **General systems and services:** Syslogd, Logwatch, and Syslog Summary in Linux;
+* **Firewalls:** PixLog and FWLogWatch;
+* **E-mail:** PFLogSum and SMTPStats;
+* **Web Servers:** Analog;
+* **Alerts:** LogSurf and SWatch.
 ## Business Continuity
 
 ### What Business Continuity Is

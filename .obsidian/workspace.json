@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/01 Security Principles.md",
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 Security Principles"
+              "title": "Incident Response, Forensics, and Disaster Recovery"
             }
           }
         ]
@@ -222,7 +222,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -270,7 +270,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 573.5
+    "width": 648.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,6 +287,9 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "TODO.md",
+    "Descomplica Enablers.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
     "01     Security Principles.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
@@ -308,12 +311,9 @@
     "Networking/04 Network Services.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Operating Systems/Linux",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/99 TODO/Forensic Investigation.md",
     "Security/06 Security Operations and Governance/Emerging Security Challenges.md",
     "Security/06 Security Operations and Governance/Legal Frameworks and Compliance.md",
-    "Backend Engineering/05 Observability.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/99 TODO",
     "makefile",
     "AI Engineering/LLM",
