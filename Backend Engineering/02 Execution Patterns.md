@@ -57,19 +57,10 @@ Previously we talked about how backend communicates with clients. Here the focus
 * More processes or threads usually means more scheduling overhead.
 * A common rule of thumb is to start around `number of cores = number of workers`, then adjust based on workload.
 
-## Connections and Socket I/O
-
-These topics were moved to Networking and are maintained there:
-
-* [How Connections are Established](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md)
-* [Reading and Sending Data](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md)
-* [Nagle's Algorithm](../Networking/03%20Connections/03%20Nagle%27s%20algorithm.md)
-
-From the backend perspective, these notes explain what the kernel is doing before your application logic even starts: creating connections, buffering reads and writes, acknowledging data, and sometimes delaying small writes for efficiency.
 
 ## Architecture
 
-### Definitions
+Backends can [establish connections](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md) and [read and send data](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md)  on many ways, given
 
 * `listener`: the thread or process that calls `listen` on an address and port and gets back a listening socket.
 * `acceptor`: whatever has access to that socket and calls `accept` to turn pending connections into file descriptors.
@@ -103,7 +94,7 @@ RAMCloud uses a related idea with more explicit offloading:
 * NGINX can be configured this way.
 * One listening socket is shared across workers.
 * Multiple threads or workers compete to accept from the same socket.
-* This requires coordination so two workers do not accept the same connection.
+* This requires coordination, so two workers do not accept the same connection.
 * Once a worker accepts a connection, it owns it.
 
 ### Multiple listeners on the same port and address
@@ -122,7 +113,7 @@ RAMCloud uses a related idea with more explicit offloading:
 ## Idempotency
 
 * An idempotent request can be repeated without changing the final backend state after the first successful application.
-* This matters when the server may have processed a request but the client never received the response.
+* This matters when the server may have processed a request, but the client never received the response.
 * In that case, the client or an intermediary may retry.
 
 ### In HTTP
