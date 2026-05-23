@@ -1,5 +1,15 @@
 # Cybersecurity Governance
 
+### Concept and Scope of Information Security
+
+Information Security is the discipline that defines standards, procedures, controls, and tools designed to safeguard strategic data and intangible assets of organizations against theft, unauthorized access, illegitimate modifications, unavailability, or destruction. This discipline applies transversally to all corporate sectors that handle sensitive data, such as human resources, finance, or sales departments.
+
+Information security governance is based on four structural elements:
+
+1. **Policies:** Formal and documented guidelines that establish legal permissions and prohibitions within the corporate environment (for example, restricting the copying of confidential data to removable storage devices, such as pen drives). Violating these rules implies administrative and disciplinary sanctions.
+2. **Mechanisms:** Technical tools of a logical or physical nature used to manage security, including antivirus solutions, firewall systems, and closed-circuit television (CCTV) surveillance.
+3. **Culture:** The level of security maturity within the organization. Institutions with high maturity levels promote continuous training, lectures, and onboarding processes for new employees, aligning them with current standards.
+4. **Conduct and Mindset:** Conduct reflects the practical application of security principles in daily life (such as discretion when sharing civil identification data in commercial establishments). A security *mindset* adopts an analytical perspective similar to that of an auditor or ethical hacker, focusing on anticipating flaws and proactivity mitigating vulnerabilities prior to their potential exploitation.
 ## Cyber Threat Management
 
 Cyber threat management is a framework used to manage the entire lifecycle of a threat, enabling rapid and appropriate identification and response. It relies on the seamless integration of **people, processes, and technology** to stay ahead of adversaries.

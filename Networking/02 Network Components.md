@@ -55,6 +55,19 @@ A hub is a basic connectivity device that operates at the Physical Layer (Layer 
 The switch represents an intelligent evolution of the legacy hub, serving as the core device of the Data Link Layer (Layer 2) in Ethernet networks. While legacy hubs blindly broadcasted data to every port, a switch functions as a sophisticated traffic controller that dynamically learns the  [MAC addresses](02%20Protocols/02%20Ethernet.md#MAC%20Addressing) of all connected hardware to build a dedicated MAC Address Table.
 
 When an Ethernet frame enters the device, the switch reads the destination MAC address in the frame header and forwards the data only to the specific port where the receiving computer is located. This process creates a dedicated path for communication, effectively eliminating data collisions and ensuring that every device on the network can access full speeds simultaneously.
+
+### The Access Point (AP)
+
+An Access Point, or AP, is a critical hardware component that extends a wired network into a wireless one, operating primarily at the Data Link Layer (Layer 2). While a switch connects devices using physical Ethernet cables, an AP acts as a central portal that translates those wired network signals into radio frequencies (such as 2.4 GHz, 5 GHz, or 6 GHz bands) and vice versa. This allows smartphones, laptops, and IoT devices to connect to the local network seamlessly without being tethered by copper wires.
+
+The AP broadcasts a unique identifier known as an **SSID** (Service Set Identifier)—the name you look for when joining a Wi-Fi network—and manages the encryption and authentication protocols (like WPA3) that keep wireless data secure.
+
+> [!note] Standalone AP vs. Home Wireless Router
+> 
+> It is important to note the difference between a standalone AP and a typical home wireless router. In small home setups, the router, switch, and access point are often combined into a single "all-in-one" consumer device.
+> 
+> However, in enterprise environments like offices, universities, or hospitals, a router sits at the core of the network while dozens or hundreds of dedicated, standalone access points are mounted across ceilings and walls. These distributed APs allow users to maintain a stable network connection while physically moving through a large building, a process known as **roaming**, where the device automatically switches from one AP to the next closest one without dropping the connection.
+
 ### The Router
 
 The router is a sophisticated device that operates at the Network Layer (Layer 3). While a switch connects devices to form a local network, a router connects multiple networks together, such as joining a home LAN to the global Internet. Routers use logical addressing—specifically **IP Addresses**—to determine the best path for data to travel across interconnected segments.

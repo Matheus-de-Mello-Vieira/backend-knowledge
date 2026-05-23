@@ -188,3 +188,14 @@ public static String generateResetToken() {
 **Authenticity**: The principle of preventing spoofing/impersonation. In other words, it is the principle of ensuring that all entities (or parties) involved in a communication are who they claim to be.
 
 **Non-repudiation:** The principle of preventing an entity from denying the origin or validity of a message or transaction. In other words, it provides admissible proof to a third party (e.g., the legal system) that the sender is the author and that the message was indeed sent.
+
+
+> [!info] Information Security Frameworks: CIA, CIDA, and CIDAL
+> - **CIA Triad** (/ˌsiː.aɪˈeɪ/): The classic foundational baseline of information security, representing **C**onfidentiality, **I**ntegrosity, and **A**vailability.
+> - **CIDA Framework** (/ˈsiː.də/): An intermediate extension that adds verification of identity to the classic triad, standing for **C**onfidentiality, **I**ntegrosity, **D**isruption prevention (Availability), and **A**uthenticity.
+> - **CIDAL Model** (/ˈsaɪ.dəl/): The fully expanded framework that builds out comprehensive accountability and protection. It stands for: 
+> 	- **C**onfidentiality
+> 	- **I**ntegrosity
+> 	- **D**isruption prevention (Availability)
+> 	- **A**uthenticity
+> 	- **L**egal admissibility (Non-repudiation)
