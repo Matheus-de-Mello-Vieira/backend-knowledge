@@ -1,10 +1,5 @@
 # System Architecture
 
-- **Every system has a limited set of resources.** Because these hardware resources are scarce, they must be carefully managed to keep the system running smoothly.
-- **The kernel is the core component of an Operating System.** It acts as the foundational layer of software; everything else in the system is built directly on top of it.
-- **The primary job of the kernel is resource management.** It directly handles how hardware like the CPU, memory, and storage are allocated to different tasks.
-- **The OS includes additional tools on top of the kernel for usability.** While the kernel handles the low-level hardware communication, the rest of the OS provides user interfaces, libraries, and application management tools to make the computer user-friendly.
-
 ## CPU
 
 The CPU is where actual execution **happens**, making it one of the most valuable resources in a computer system.
@@ -113,3 +108,48 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 - Because of this constant translation layer, every program operates under the illusion that it has the computer's memory entirely to itself, completely preventing address conflicts and securing the data of individual applications.
 - **Virtual memory allows physical RAM to be dynamically shared by scattering and intertwining chunks of data across whatever free space is available.** Even though every individual program thinks it occupies a perfectly sequential, unbroken block of memory from start to finish, the OS breaks that memory down into small units called "pages." The mapping layer allows the OS to take those pages and interleave them across physical RAM, filling in any random gaps left by other applications. Because a program's data doesn't actually need to be kept together in a single, massive continuous block to run, the OS can efficiently piece together physical memory like a mosaic, maximizing RAM utilization without the software ever knowing its data is fragmented.
 - **Virtual memory allows the OS to transparently offload inactive data from RAM to the disk through a process called "paging" or "swapping."** If the physical RAM fills up, the OS identifies blocks of memory (pages) that haven't been used in a while—such as a background application you minimized an hour ago—and copies them onto the much larger, slower SSD or hard drive. It then completely clears those physical RAM slots to make room for your active, demanding tasks.
+	- Because the OS handles all the underlying address translation, the applications themselves remain completely unaware that their data has been moved out of physical memory. From the process's perspective, it appears to have a continuous, uninterrupted hold on its own dedicated space in RAM.
+
+## Storage
+
+- **Persistent Storage:** Unlike volatile RAM, storage retains data permanently, even when the system loses power.
+- **Mainly HDD and SSD:** The two primary architectures used for non-volatile storage.
+- **Hard Disk Drives (HDD):**
+	- *Sector-Level Access:** HDDs are block devices that operate in fixed-size chunks called **sectors** (typically 4KB). To change a single piece of data, the OS must read the entire sector, update it in memory, and rewrite the entire sector back to the disk.
+    - **Sequential Dependency:** HDDs rely on a physical spinning magnetic platter and a mechanical arm. Because the arm must physically move to locate data (seek time), random access is extremely slow. They perform significantly better when reading and writing data **sequentially**.
+- **Slower than Memory:** Both HDDs and SSDs are significantly slower than RAM.
+- **Solid State Drives (SSD):**
+    - **Random Access:** Built with electronic flash memory and no moving parts, SSDs execute fast, **random** reads and writes.
+    - **Pages vs. Blocks:** SSDs read and write data in small units called **pages** (usually 4KB to 16KB). However, flash memory can only _erase_ data in much larger chunks called **blocks** (which contain dozens or hundreds of pages).
+    - **The Update Overhead:** SSDs cannot overwrite a page in place. To update a value, the drive marks the existing page as "stale", finds a brand new empty page, and writes the updated data there.
+    - **Garbage Collection:** As the drive fills up with invalid pages, the controller must occasionally read all the valid pages in a block, copy them to a new block, and erase the entire original block to free up space. This background cleanup process is called **Garbage Collection** and introduces performance overhead and hardware wear.
+    - **The Shift to Integrated Controllers:** Early HDDs lacked built-in "brains," forcing the OS to manually manage physical disk geometry (CHS - Cylinder / Head / Sector), bad sectors, and mechanical timing. The industry solved this by moving the controller directly onto the drive (IDE), which abstracted physical complexities into simple Logical Block Addressing (LBA) and provided the necessary architectural foundation for modern, controller-dependent SSDs to exist.
+	    - **Hardware-OS Coupling:** Under the old model, the Operating System was tightly coupled to the specific hardware it was running on. Because the OS had to be explicitly aware of the drive's physical characteristics, simply swapping or upgrading a drive was extremely difficult; it required manually reconfiguring the OS or BIOS with the new drive's exact physical geometry, making hardware changes rigid, tedious, and highly prone to data corruption.
+
+## Network
+
+- [See more](Networking/01%20Introduction.md)
+## Kernel
+
+- **Every system has a limited set of resources.** Because these hardware resources are scarce, they must be carefully managed to keep the system running smoothly.
+- **The kernel is the core component of an Operating System.** It acts as the foundational layer of software; everything else in the system is built directly on top of it.
+- **The primary job of the kernel is resource management.** It directly handles how hardware like the CPU, memory, and storage are allocated to different tasks.
+- **The OS includes additional tools on top of the kernel for usability.** While the kernel handles the low-level hardware communication, the rest of the OS provides user interfaces, libraries, and application management tools to make the computer user-friendly.
+
+
+## File System
+[07 File Systems](07%20File%20Systems.md)
+
+## Program vs Process
+
+- **Program:** A static, compiled executable file sitting dormant on your storage drive.
+- **Process:** An active, running instance of that program. It is a "program in motion." When the OS launches a program, it creates a process by allocating it a unique identifier (PID) and its own isolated virtual address space to store its state and active data.
+- **One-to-Many Relationship:** A single program can spawn multiple distinct processes. For example, opening three separate terminal windows launches three completely independent processes that all originate from the exact same underlying executable file.
+- **Executable Formats:** Executables are structured in strict formats dictated by the OS (such as **PE** for Windows, **ELF** for Linux, and **Mach-O** for macOS). These formats are not just raw machine code; they contain essential metadata and headers that tell the OS exactly how to load the file into memory, where execution should start, and what external libraries are required.
+## Process Management
+
+- **The Kernel's Role:** Because the kernel is the core component of an Operating System, its primary job is resource management. This includes maintaining the state, tracking the memory space, and overseeing the entire lifecycle of every active process.
+- **CPU Scheduling:** The CPU is where actual execution happens, making it a highly valuable and scarce resource. The kernel acts as a traffic controller (the scheduler), determining exactly which process gets to run on which CPU core, in what order, and for how long.
+- **Context Switching:** To create the illusion that dozens of programs are running at the exact same time, the kernel rapidly swaps processes on and off the CPU cores. During this switch, it must save the current state of the active process (like the data in the CPU registers) and load the saved state of the next process before execution can resume.
+- **Resource Allocation and Access:** Processes are strictly isolated and cannot directly interact with physical hardware. The kernel acts as the secure gatekeeper, granting and mediating access to resources like physical RAM (via the MMU and Page Tables), storage drives, and network interfaces.
+## User space vs Kernel Space
