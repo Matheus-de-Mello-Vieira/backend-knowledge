@@ -243,7 +243,7 @@ Key management is often considered the most challenging aspect of implementing c
 Cryptographic concepts are implemented across different platforms and environments:
 
 **Platform-Specific Implementations:**
-- **Windows:** [BitLocker and EFS](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Endpoint%20Security.md#Microsoft%20Defender%20and%20Encryption) - Windows encryption technologies and certificate management
+- **Windows:** [BitLocker](Windows%20Security.md#BitLocker%20Drive%20Encryption%20Integration) - Windows encryption technologies and certificate management 
 - **Linux:** [SSH and LUKS](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md#SSH%20%28Secure%20Shell%29%20Protection) - SSH key management and disk encryption
 - **Cloud Services:** Cloud-native key management services and hardware security modules
 

@@ -48,6 +48,15 @@ Micro-segmentation is advanced network segmentation that creates granular securi
 - **Application-Centric Policies:** Security policies that follow applications regardless of their network location.
 - **Encrypted Communication:** Internal traffic should be [encrypted in transit](../../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#3.%20The%20States%20of%20Encryption), including service-to-service communication inside the network.
 
+## Wireless Network Security Standards
+
+In the scope of wireless networks (Wi-Fi), perimeter security relies on the continuous technical evolution of encryption protocols. These standards have developed over the decades to mitigate historical vulnerabilities and adapt to increasing adversarial computational power:
+
+- **WEP (Wired Equivalent Privacy - 1997):** The original wireless security standard. It utilized weak, static cryptographic keys (based on the RC4 cipher) that rarely changed. Due to fundamental mathematical flaws in how it generated its encryption variables, attackers can easily capture wireless packets and crack the static key in minutes, rendering it completely obsolete.
+- **WPA (Wi-Fi Protected Access - 2003):** Developed as a rapid, temporary replacement to mitigate WEP's critical flaws without requiring organizations to buy new router hardware. It introduced dynamic security elements (like TKIP) to generate new keys for every packet, significantly raising the difficulty of eavesdropping.
+- **WPA2 (Wi-Fi Protected Access II - 2004):** The long-standing industry standard. It advanced wireless security by abandoning older ciphers and making the highly secure **AES** (Advanced Encryption Standard) algorithm mandatory. While it significantly raised perimeter security, its initial authentication handshake remains vulnerable to offline dictionary and brute-force attacks if weak passwords are used.
+- **WPA3 (Wi-Fi Protected Access III - 2018):** The contemporary standard built to resolve WPA2's lingering vulnerabilities. It implements a new handshake protocol (Simultaneous Authentication of Equals, or SAE) that makes offline brute-force and dictionary attacks mathematically unfeasible, even if users choose weak passwords. For enterprise environments, it mandates highly robust encryption (such as GCMP at 192 or 256 bits), locking down modern wireless perimeters against advanced protocol breaches.
+
 ## Network Access Control (NAC)
 
 Comprehensive systems for controlling device access to network resources:

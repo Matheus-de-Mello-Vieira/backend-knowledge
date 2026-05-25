@@ -39,7 +39,7 @@ Distinguishing between these three terms is essential for determining the approp
 	- **Physical Disasters**: Incidents such as power loss, structural failure, or terrorism that may require relocating personnel and technology.
 	- **Technological Disasters**: Large-scale failures such as ransomware attacks or hardware failures that require a high degree of expertise to mitigate.
 
-While incidents are managed through an **[Incident Response Plan (IRP)](#Incident%20Response%20Plan)**, disasters require a formal [Disaster Recovery Plan (DRP)](#Disaster%20Recovery%20Plan) to regain the use of critical IT infrastructure as quickly as possible.
+While incidents are managed through an **[Incident Response Plan (IRP)](#Incident%20Response%20Plan)**, disasters require a formal [Disaster Recovery Plan (DRP)](#Disaster%20Recovery%20Plan) to regain the use of [critical IT infrastructure](Critical%20Infrastructure%20Security.md) as quickly as possible.
 
 ## Categories of Security Disasters
 ### Natural disasters

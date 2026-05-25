@@ -377,7 +377,7 @@ Identity Federation enables organizations to manage user identities across multi
 
 Identity Federation creates trust relationships between different security domains, allowing users to access resources across organizational boundaries using a single set of credentials.
 
-- **Identity Providers (IdP):** Organizations that maintain and validate user identities, such as corporate [Active Directory](Windows%20Endpoint%20Security.md#Active%20Directory) or [cloud identity services](Cloud%20Security.md#**Authentication%20and%20Access%20Control**).
+- **Identity Providers (IdP):** Organizations that maintain and validate user identities, such as corporate [Active Directory](Windows%20Security.md#Active%20Directory%20(AD)) or [cloud identity services](Cloud%20Security.md#**Authentication%20and%20Access%20Control**).
 - **Service Providers (SP):** Applications or services that rely on external identity providers for user authentication.
 - **Trust Relationships:** Formal agreements and technical configurations that allow IdPs and SPs to exchange identity information securely.
 - **Federated Identity:** A single digital identity that can be recognized and accepted across multiple organizations or security domains.

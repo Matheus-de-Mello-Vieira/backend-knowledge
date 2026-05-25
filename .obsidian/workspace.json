@@ -4,17 +4,55 @@
     "type": "split",
     "children": [
       {
-        "id": "0c14dd991249cccc",
+        "id": "118d05fa8a8878f3",
         "type": "tabs",
         "children": [
           {
-            "id": "584fc9e4d200f1a0",
+            "id": "499b784324c7f0e9",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Security/05 Architecture and Infrastructure Security/Windows Security.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Windows Security"
+            }
+          },
+          {
+            "id": "d33b2f768e9fd96c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "01 Network Security"
             }
           }
         ]
@@ -49,7 +87,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "DHCP",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -273,33 +311,33 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Security/04 Application and API Security/OWASP.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+    "Networking/02 Protocols/16 IPsec.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
+    "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
+    "Networking/02 Protocols/03 Internet Protocol.md",
+    "Security/05 Architecture and Infrastructure Security/Windows Security.md",
+    "Networking/03 Network Models.md",
+    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Networking/02 Network Components.md",
     "Security/02 Identity and Access/03 Zero Trust Architecture.md",
-    "Security/99 References and Checklists/Backend Security Checklist.md",
+    "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
+    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
+    "Security/02 Identity and Access/01 Authentication.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Descomplica Enablers.md",
+    "Security/05 Architecture and Infrastructure Security/Critical Infrastructure Security.md",
+    "Incident Response, Forensics, and Disaster     Recovery.md",
+    "Security/05 Architecture and Infrastructure Security/Critical Infrastructure    Security.md.md",
+    "Security/04 Application and API Security/OWASP.md",
+    "Security/99 References and Checklists/Backend Security Checklist.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
-    "Descomplica Enablers.md",
     "Security/06 Security Operations and Governance/Deception Technologies.md",
     "01 Intrusion Detection and Prevention.md",
-    "Networking/02 Protocols/03 Internet Protocol.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Network Security.md",
-    "Networking/02 Protocols/02 Ethernet.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "AI Engineering/Lexical Information Retrieval.md",
-    "AI Engineering/Model Context Protocol.md",
-    "Backend Engineering/03 Troubleshooting Performance.md",
-    "Backend Engineering/01 Communication Patterns.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "Operating Systems/07 File Systems.md",
     "Pasted image 20260522234743.png",
-    "Backend Engineering/05 Observability.md",
     "Operating Systems/Linux",
     "Security/99 TODO",
     "makefile",
