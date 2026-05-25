@@ -146,10 +146,31 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 - **Process:** An active, running instance of that program. It is a "program in motion." When the OS launches a program, it creates a process by allocating it a unique identifier (PID) and its own isolated virtual address space to store its state and active data.
 - **One-to-Many Relationship:** A single program can spawn multiple distinct processes. For example, opening three separate terminal windows launches three completely independent processes that all originate from the exact same underlying executable file.
 - **Executable Formats:** Executables are structured in strict formats dictated by the OS (such as **PE** for Windows, **ELF** for Linux, and **Mach-O** for macOS). These formats are not just raw machine code; they contain essential metadata and headers that tell the OS exactly how to load the file into memory, where execution should start, and what external libraries are required.
+- 
 ## Process Management
 
 - **The Kernel's Role:** Because the kernel is the core component of an Operating System, its primary job is resource management. This includes maintaining the state, tracking the memory space, and overseeing the entire lifecycle of every active process.
 - **CPU Scheduling:** The CPU is where actual execution happens, making it a highly valuable and scarce resource. The kernel acts as a traffic controller (the scheduler), determining exactly which process gets to run on which CPU core, in what order, and for how long.
 - **Context Switching:** To create the illusion that dozens of programs are running at the exact same time, the kernel rapidly swaps processes on and off the CPU cores. During this switch, it must save the current state of the active process (like the data in the CPU registers) and load the saved state of the next process before execution can resume.
 - **Resource Allocation and Access:** Processes are strictly isolated and cannot directly interact with physical hardware. The kernel acts as the secure gatekeeper, granting and mediating access to resources like physical RAM (via the MMU and Page Tables), storage drives, and network interfaces.
-## User space vs Kernel Space
+
+## User Space vs Kernel Space
+
+- **The Virtual Memory Split:** Every process's private virtual address space is divided into two strict regions: User Space and Kernel Space.
+- **User Space:** The unprivileged region where the application's actual code, libraries, and standard data reside.
+- **Kernel Space:** A reserved, privileged mapping present in the memory layout of every process. It stores the core kernel code, hardware device drivers, and background subsystems like the TCP/IP network stack.
+    - **Virtual, Not Physical:** Addresses in Kernel Space are still **virtual addresses**, mapped to physical RAM via the Page Table. However, the CPU hardware strictly blocks any user-mode code from accessing these specific virtual addresses.
+- **Mode Switching (System Calls):** An application cannot directly read data sitting in kernel memory (such as a [network receiving buffer](02%20Reading%20and%20Sending%20Data.md#Receiving%20buffer)). It must ask the kernel to perform the action on its behalf via a **system call**.
+    - Executing a system call triggers the CPU to change states from User Mode to Kernel Mode.
+    - While faster than a full process context switch, this mode switch is still computationally expensive due to the required security checks, CPU register changes, and boundary crossings.
+- **Bypassing the Boundary (`io_uring`):** To avoid the high overhead of constant mode switching during heavy I/O workloads, modern Linux introduced `io_uring`. It establishes a shared memory ring buffer that is mapped and visible to _both_ User Space and Kernel Space. This allows the application and the kernel to pass data back and forth asynchronously without requiring expensive system calls or redundant data copying.
+
+## Device Drivers
+
+- **Kernel-Level Software:** Drivers are specialized software components that typically reside within the privileged Kernel Space. Because the primary job of the kernel is resource management, drivers act as the essential translators between the OS and the physical hardware.
+- **Hardware Management:** They manage external devices—such as NVMe storage drives, Keyboards, and Network Interface Cards (NICs)—abstracting their proprietary electrical signals into standard, uniform interfaces that the OS and user applications can interact with.
+- **Interrupt Service Routines (ISR):** To handle immediate, unpredictable hardware events, drivers utilize hardware interrupts.
+    - **The Keyboard Example:** When you press a key, the keyboard hardware sends an electrical signal that instantly interrupts the CPU. The CPU pauses its current execution, saves its state, and jumps to a specific function in Kernel Space called the ISR. The kernel quickly reads the keystroke from the hardware buffer, clears the interrupt, and routes the input to the active user application.
+- **Polling and DMA (Direct Memory Access):** Relying strictly on ISRs for high-speed devices (like a 10Gbps NIC or an NVMe drive) would cripple system performance by interrupting the CPU millions of times per second.
+    - **Polling:** Instead of waiting to be interrupted, the driver instructs the CPU to actively check (poll) the device's hardware queues for new data at highly optimized, scheduled intervals.
+    - **DMA:** To further reduce CPU strain, high-speed devices utilize Direct Memory Access. The driver configures the hardware (like the NIC) to write incoming data payloads directly into physical system memory (RAM) entirely on its own. The hardware only sends a single CPU interrupt _after_ a massive batch of data has already been safely delivered to memory.
