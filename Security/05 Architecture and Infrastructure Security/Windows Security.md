@@ -268,7 +268,7 @@ Intune is a cloud-based Unified Endpoint Management (UEM) and Mobile Device Mana
 - **Cross-Platform Health:** Unlike NAP, Intune checks the health of Windows, macOS, iOS, and Android devices natively.
 - **Modern Health Metrics:** It checks for modern security baselines: Is the device encrypted with BitLocker? Is Microsoft Defender active and reporting no current threats? Is the iPhone jailbroken? Is the OS on the latest version? If a device fails, Intune simply flags its cloud status as "Non-Compliant."
 
-#### Conditional Access (The Modern Policy Enforcer)
+#### Conditional Access
 
 Conditional Access is the intelligent policy engine built directly into **Microsoft Entra ID** (formerly Azure AD). It acts as the ultimate gatekeeper for corporate resources, replacing the old NAP IPsec and DHCP enforcement methods.
 
