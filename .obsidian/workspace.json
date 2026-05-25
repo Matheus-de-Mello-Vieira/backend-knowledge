@@ -37,7 +37,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
+                "file": "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Intrusion Detection and Prevention"
+              "title": "NGAV, EDR, and XDR.md"
             }
           },
           {
@@ -148,8 +148,7 @@
               "title": "Outline of System Architecture Overview"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -337,6 +336,8 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
+    "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
     "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
@@ -349,7 +350,6 @@
     "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Networking/02 Protocols/03 Internet Protocol.md",
     "Networking/03 Network Models.md",
-    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Networking/02 Network Components.md",
     "Security/02 Identity and Access/03 Zero Trust Architecture.md",
@@ -362,7 +362,6 @@
     "Security/05 Architecture and Infrastructure Security/Critical Infrastructure    Security.md.md",
     "Security/04 Application and API Security/OWASP.md",
     "Security/99 References and Checklists/Backend Security Checklist.md",
-    "Security/01 Foundations and Risk/01 Security Principles.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",
