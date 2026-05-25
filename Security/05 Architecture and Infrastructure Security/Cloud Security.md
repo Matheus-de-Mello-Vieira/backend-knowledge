@@ -156,6 +156,7 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 - **Network Segmentation:** Virtual Private Clouds (VPCs) with properly configured subnets and security groups
 - **Zero Trust Implementation:** Cloud-native [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) with micro-segmentation and encryption
 - **DDoS Protection:** Cloud-native DDoS mitigation services and rate limiting
+- **WAF**: Cloud provides normally offers serverless [WAF](Firewall%20Technologies.md#Web%20Application%20Firewalls%20(WAF)) products.
 
 **Application Security:**
 - **Secure Development Practices:** DevSecOps integration with automated security testing in CI/CD pipelines

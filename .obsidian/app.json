@@ -3,5 +3,9 @@
   "useMarkdownLinks": true,
   "showInlineTitle": false,
   "tabSize": 2,
-  "promptDelete": false
+  "promptDelete": false,
+  "spellcheckDictionary": [
+    "WAF",
+    "WAFs"
+  ]
 }
