@@ -8,12 +8,34 @@ Firewall-specific concepts are covered in [Firewall Technologies](Firewall%20Tec
 
 ## Network Segmentation Strategies
 
-Network segmentation divides a network into smaller, isolated segments to limit the spread of security breaches and improve overall network security.
+Network segmentation is one of the most effective ways to stop a cyberattack from turning into a company-wide catastrophe. Think of it like the bulkhead doors on a ship: if water floods one compartment, the doors seal it off so the whole ship doesn't sink.
 
-- **VLAN Segmentation:** Using Virtual Local Area Networks to logically separate network traffic based on function, department, or security requirements.
-- **Subnet Segmentation:** Physical or logical division of networks into smaller subnets with controlled inter-subnet communication.
-- **Demilitarized Zones (DMZ):** Isolated network segments that contain public-facing services, separated from internal networks.
-- **[Zero Trust Network Access (ZTNA)](../../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md):** Assumption that no network location is inherently trustworthy, requiring authentication and authorization for all access requests.
+Here is a deeper look into each of those strategies, including how they work, their real-world use cases, and how they fit together.
+
+## VLAN Segmentation (Layer 2)
+
+- It uses [Virtual Local Area Networks (VLANs)](02%20Ethernet.md#VLAN%20Tagging) to segment a network at the Layer 2
+- **Best Used For:** Internal departmental separation (e.g., keeping Guest Wi-Fi, HR, and Engineering traffic completely isolated from each other on the same physical hardware).
+
+## 2. Subnet Segmentation (Layer 3)
+
+- **How it works:** It uses [Subnetting](03%20Internet%20Protocol.md#Subnetting) to segment a network at the Layer 2
+- **Best Used For:** Creating distinct boundaries for different types of infrastructure—for example, putting all IP security cameras on one subnet, VoIP phones on another, and critical database servers on a highly restricted third subnet.
+
+### Demilitarized Zones (DMZ)
+
+A DMZ (`/ˌdiː ɛm ˈziː/`) acts as a neutral buffer zone between your untrusted public internet and your highly trusted internal corporate network.
+
+- **How it works:** Typically structured using a "triple-homed firewall" or two separate firewalls (external and internal). Public-facing servers sit in the middle. If a hacker compromises your public web server in the DMZ, the internal firewall still blocks them from jumping deeper into your private Active Directory or customer databases.
+- **Best Used For:** Hosting external-facing services like web servers, mail gateways, external APIs, and reverse proxies.
+
+## 4. Zero Trust Network Access (ZTNA)
+
+ZTNA shifts the focus from _network location_ to _identity and context_. Traditional segmentation assumes that if you are inside the network, you are safe. ZTNA assumes the network is already hostile, whether you are sitting in the office or at a coffee shop.
+
+- **How it works:** ZTNA creates a "dark network"—infrastructure is invisible to the public internet until a user is authenticated. It uses a trust broker to verify the user's identity, multi-factor authentication (MFA), device health, and location _before_ granting a temporary, encrypted tunnel to just **one specific application**, rather than the whole network.
+- This is part of the broader [Zero Trust Architecture](03%20Zero%20Trust%20Architecture.md).
+- **Best Used For:** Remote workforces, third-party vendor access, and replacing traditional, overly permissive corporate VPNs.
 
 ## Micro-Segmentation
 
@@ -37,7 +59,7 @@ Comprehensive systems for controlling device access to network resources:
 
 ## Intrusion Prevention Systems (IPS)
 
-See [Intrusion Detection and Prevention](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md).
+See [Intrusion Detection and Prevention](Intrusion%20Detection%20and%20Prevention.md).
 
 ## Network Monitoring and Analysis
 
@@ -53,7 +75,7 @@ Continuous surveillance of network traffic for security threats and performance 
 Network defense can be understood in three complementary categories. The goal is not to rely on only one of them, but to combine them so the network can prevent known attacks, identify early warning signs, and reduce damage when an incident succeeds.
 
 - **Preventive Defense:** Used when a type of attack is already known and there are established controls to reduce the probability of compromise. Firewalls, [segmentation](#Micro-Segmentation), [access control](../../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md), [hardening](../../01%20Foundations%20and%20Risk/01%20Security%20Principles.md#System%20Hardening), and patching are preventive because they aim to stop the attack before it succeeds.
-- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection and Prevention](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md).
+- **Predictive Defense:** Used when there is still no confirmed breach, but there are early indicators, anomalies, or suspicious patterns that suggest a potential attack. This includes behavioral baselines, anomaly monitoring, reconnaissance detection, and systems such as [Intrusion Detection and Prevention](Intrusion%20Detection%20and%20Prevention.md).
 - **Reactive Defense:** Used after the attack has already happened and the focus shifts to containment, impact reduction, service restoration, and learning. This includes isolating compromised systems, preserving evidence, and following formal [Incident Response and Recovery](Incident%20Response%20and%20Recovery.md) procedures.
 
 In practice, mature network security combines all three approaches. Preventive controls reduce exposure, predictive controls improve detection speed, and reactive controls limit blast radius and support recovery.

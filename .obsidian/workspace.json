@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "04388c7848daa77d",
+        "id": "06e700e1ecd6ecb9",
         "type": "tabs",
         "children": [
           {
-            "id": "f28d00f05d9bc8e7",
+            "id": "ea946f4b7c65bec2",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+                "file": "Security/06 Security Operations and Governance/Deception Technologies.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,16 +28,16 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "System Architecture Overview"
+              "title": "Deception Technologies"
             }
           },
           {
-            "id": "0178be29239dd199",
+            "id": "01750e9559db52b9",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/07 File Systems.md",
+                "file": "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "07 File Systems"
+              "title": "01 Network Security"
+            }
+          },
+          {
+            "id": "790e758b5aa75827",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/02 Protocols/03 Internet Protocol.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Internet Protocol"
             }
           }
         ]
@@ -87,7 +111,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "invalide",
+                "query": "CSIRT",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -127,7 +151,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 308.5
+    "width": 438.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -294,7 +318,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 498.5
+    "width": 564.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -311,18 +335,26 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "01 Intrusion Detection and Prevention.md",
+    "Security/06 Security Operations and Governance/Deception Technologies.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
+    "Networking/02 Protocols/03 Internet Protocol.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Layered Security Techniques.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Network Security.md",
+    "Networking/02 Protocols/02 Ethernet.md",
+    "Security/02 Identity and Access/03 Zero Trust Architecture.md",
+    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "AI Engineering/Lexical Information Retrieval.md",
     "AI Engineering/Model Context Protocol.md",
     "Backend Engineering/03 Troubleshooting Performance.md",
     "Backend Engineering/01 Communication Patterns.md",
     "Backend Engineering/02 Execution Patterns.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Operating Systems/07 File Systems.md",
-    "Networking/02 Protocols/02 Ethernet.md",
     "Pasted image 20260522234743.png",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Backend Engineering/05 Observability.md",
     "Backend Engineering/04 Release and Rollout Strategies.md",
     "Security/01 Foundations and Risk/01 Security Principles.md",
@@ -330,14 +362,6 @@
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Networking/02 Network Components.md",
     "AI Engineering/Data in the Digital Economy and Industry 4.0.md",
-    "Security/01 Foundations and Risk/04 Cybersecurity Governance.md",
-    "04     Cybersecurity Governance.md",
-    "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
-    "Descomplica Enablers.md",
-    "TODO.md",
-    "01     Security Principles.md",
-    "Security/99 TODO.md",
-    "Networking/05 Network Management.md",
     "Operating Systems/Linux",
     "Security/99 TODO",
     "makefile",

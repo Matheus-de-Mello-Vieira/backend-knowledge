@@ -73,7 +73,7 @@ Traditional firewalls look at "doors" (ports) and "addresses" (IPs). NGFWs shift
 
 The number one job of a firewall is to prevent breaches, but because no defense is 100% effective, modern systems include multi-layered "fail-safes":
 
-- **[Deep Packet Inspection (DPI)](01%20Network%20Security.md#Network%20Monitoring%20and%20Analysis) & [Intrusion Prevention System (IPS)](../../06%20Security%20Operations%20and%20Governance/01%20Intrusion%20Detection%20and%20Prevention.md#Intrusion%20Prevention%20System%20%28IPS%29):** By combining high-speed stateful inspection with a built-in **IPS**, the firewall can detect and stop stealthy, "in-the-flow" attacks.
+- **[Deep Packet Inspection (DPI)](01%20Network%20Security.md#Network%20Monitoring%20and%20Analysis) & [Intrusion Prevention System (IPS)](Intrusion%20Detection%20and%20Prevention.md#Intrusion%20Prevention%20System%20(IPS)):** By combining high-speed stateful inspection with a built-in **IPS**, the firewall can detect and stop stealthy, "in-the-flow" attacks.
 - **Integrated Sandboxing:** This promotes advanced protection by continuously analyzing the behavior of suspicious files in a safe environment to detect and eliminate malware before it spreads.
 - **URL Filtering:** Policies are enforced across hundreds of millions of URLs to prevent users from reaching malicious sites in the first place.
 

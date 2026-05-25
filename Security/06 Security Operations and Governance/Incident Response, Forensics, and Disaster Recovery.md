@@ -305,7 +305,7 @@ Rather than a broad catalog of controls, prevention focuses on verified, high-im
 
 ## Security Operations Center
 
-A **Security Operations Center (SOC)** acts as the central command hub for an organization's defensive operations, providing a dedicated facility and team for continuous monitoring and incident response.
+A **Security Operations Center (SOC - /sɑːk/)** acts as the central command hub for an organization's defensive operations, providing a dedicated facility and team for continuous monitoring and incident response.
 - It is essentially the "neighborhood watch" for your infrastructure—if the neighborhood watch had a 24/7 surveillance room and a forensics lab.
 - The SOC is responsible for converting raw security telemetry into a structured pipeline of triage, investigation, and measurable response.
 
