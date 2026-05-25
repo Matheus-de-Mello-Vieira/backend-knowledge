@@ -779,7 +779,7 @@ Software and data integrity failures relate to code and infrastructure that does
         * Large data transfers go unnoticed.
         * Malware persistence, privilege escalation, and lateral movement are undetected.
     * **Typical failures shown:**
-        * No SIEM rules for high-risk events
+        * No [SIEM](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM) rules for high-risk events
         * Alert thresholds too high or disabled
         * Critical logs not forwarded to monitoring tools
         * No correlation between different event sources
@@ -825,7 +825,7 @@ Software and data integrity failures relate to code and infrastructure that does
     * **Typical failures shown:**
         * Cloud audit trails disabled or never configured
         * Missing logs for object access, API calls, or network flows
-        * No export to SIEM or long-term storage
+        * No export to [SIEM](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM) or long-term storage
         * Overly permissive IAM denying access to logs indirectly
 
 9. Logs are **not reviewed or analyzed**
@@ -835,7 +835,7 @@ Software and data integrity failures relate to code and infrastructure that does
         * Lack of regular review allows silent persistence.
     * **Typical failures shown:**
         * No operational log review process
-        * SIEM alerts ignored or unassigned
+        * [SIEM](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM) alerts ignored or unassigned
         * Manual log review not part of incident response
         * No SLA for investigating security events
 

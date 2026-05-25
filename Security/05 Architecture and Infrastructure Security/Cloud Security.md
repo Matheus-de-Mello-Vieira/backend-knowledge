@@ -165,7 +165,7 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 #### **Operational Security Practices**
 
 **Monitoring and Alerting:**
-- **Security Information and Event Management (SIEM):** Centralized log analysis and correlation
+- **[SIEM](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM)** Centralized log analysis and correlation
 - **User and Entity Behavior Analytics (UEBA):** ML-powered detection of anomalous user behavior
 - **Cloud Security Posture Management (CSPM):** Continuous assessment of cloud configuration compliance
 

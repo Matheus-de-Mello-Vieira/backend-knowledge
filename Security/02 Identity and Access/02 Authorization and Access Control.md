@@ -67,6 +67,12 @@ tangible environments and assets.
 - **Doors and Locks:** The fundamental boundary and restriction mechanism.
 - **Padlocks:** Targeted security for specific assets, such as lockers and cabinets.
 
+In addition, physical access management can be classified into three levels of automation:
+
+- **Manual:** Traditional mechanical solutions, such as doors locked with keys.
+- **Semiautomatic:** Systems that rely on proximity or reading credentials, such as badge readers and RFID technology.
+- **Automatic:** Integrated devices capable of acting without direct human intervention at the endpoint, such as motion sensors linked to alarms that trigger automated alerts via SMS.
+
 #### Logical Access Control
 
 Protocols implemented via hardware or software to manage identification authentication, and monitoring without physical barriers.

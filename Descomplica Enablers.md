@@ -8,7 +8,11 @@ set -euo pipefail
 URLS=(
   "https://url1.m3u8"
   "https://url2.m3u8"
-  ...
+  ""
+  ""
+  ""
+  ""
+  ""
 )
 
 OUTPUT_FILE="${1:-merged.vtt}"
