@@ -113,6 +113,12 @@ To protect against malware and software/firmware vulnerabilities:
 #### **Device Profiling and IoT Baselines**
 Unlike human users, IoT devices typically have highly predictable and "narrow" communication patterns (e.g., a smart light bulb only communicates with a specific controller at fixed intervals). An IDS is essential for identifying compromised IoT devices by flagging any deviation from this baseline—such as a thermostat suddenly performing an internal network scan or attempting to access a laptop's file system. This behavioral detection allows for the immediate isolation of the device, preventing an initial foothold from turning into a full-scale breach.
 
+#### SIEM and IoT support
+
+Manual log correlation across multiple enterprise tools is unfeasible for security teams. Without automated SIEM correlation, infrastructure management remains reactive, addressing threats only after system degradation or breaches occur.
+
+Furthermore, SIEM platforms ingest and secure Internet of Things (IoT) data architectures, allowing centralized oversight of datacenter physical telemetry—such as smoke, temperature, and humidity sensors—alongside traditional network logs.
+
 ### **Insecure Communication Protocols and Cyberattacks**
 
 Insecure communication protocols and cyberattacks are serious threats to Internet of Things (IoT) security:

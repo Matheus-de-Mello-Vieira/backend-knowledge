@@ -333,14 +333,19 @@ To manage the volume of alerts effectively, a SOC typically utilizes a tiered an
 
 A **SIEM (Security Information and Event Management)** provides the technological backbone for the SOC by centralizing and correlating security-relevant telemetry from across the entire infrastructure. While the SOC is the "team," the SIEM is the "engine" that powers their visibility.
 
+> [!info]
+> IoT devices are a strong case for SIEM because they produce a lot of logs. See [SIEM and IoT support](#SIEM%20and%20IoT%20support).
+
 ### Centralized Visibility and Correlation
 
-The SIEM eliminates visibility gaps by aggregating data into a single pane of glass:
+Security Information and Event Management (SIEM) systems function as centralized collectors and correlators for security logs and events. The platform aggregates data streams from diverse network hardware and software applications—including servers, firewalls, switches, antivirus engines, and endpoints—into a unified console.
 
-- **Log Aggregation**: Centralizing security logs from firewalls, intrusion detection systems, servers, and endpoints to provide a holistic view of the network.
-- **Automated Correlation**: Using specialized rules to identify relationships between seemingly unrelated events across different systems.
-- **Threat Intelligence Integration**: Incorporating real-time external threat intelligence to enhance the system's ability to detect known malicious signatures or behaviors.
-- **Workflow Automation**: Implementing scripted responses for common security events, such as automated network isolation or account lockouts, often referred to as SIEM-to-SOAR (Security Orchestration, Automation, and Response) workflows.
+The investigative logic of a SIEM mirrors that of Business Intelligence (BI) platforms. While an individual log entry represents isolated data, the SIEM constructs an integrated security overview through a structured operational funnel:
+
+* **Ingestion and Centralization**: Integrates network assets and devices that support API logs or event forwarding.
+* **Normalization and Sanitization**: Cleanses raw data inputs, eliminating redundant or irrelevant records to isolate actionable events.
+* **Analysis and Correlation**: Applies algorithmic correlation rules to cross-reference data points from separate assets. For instance, if an endpoint antivirus detects malware, the firewall logs port-scanning activity from that same IP, and the switch detects protocol anomalies, the SIEM cross-references these events.
+* **Actionable Insights**: Delivers consolidated alerts indicating a coordinated security incident, allowing analysts to deploy defensive countermeasures immediately.
 ## Important Metrics
 
 The effectiveness of a SOC and its SIEM integration is measured through performance metrics that track the speed and quality of the response:

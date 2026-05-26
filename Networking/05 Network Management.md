@@ -47,3 +47,14 @@ Monitoring is one operational mechanism inside network management:
 * **Management** defines what must be controlled, why it matters, and which actions are available.
 * **Monitoring** collects the measurements, events, and alerts that reveal the current state of the network.
 * Good management depends on good monitoring, but also includes configuration, access control, policy, capacity decisions, and incident response.
+## Network Operations Center (NOC)
+
+A Network Operations Center (NOC) is a dedicated engineering unit tasked with monitoring and managing corporate network infrastructure. Composed of network engineering specialists, a NOC ensures infrastructure uptime, stability, and adherence to Service Level Agreements (SLAs).
+
+The primary responsibilities of a NOC encompass:
+
+* Tracking throughput, latency, and packet performance across data and VoIP networks.
+* Managing critical storage and recovery infrastructure, including Network Attached Storage (NAS) and Disaster Recovery (DR) systems.
+* Preventing downtime and link saturation through real-time traffic analysis and active load balancing.
+
+Organizations lacking the resources to sustain a 24/7 internal network infrastructure team frequently utilize outsourced NOC providers to maintain operational availability.

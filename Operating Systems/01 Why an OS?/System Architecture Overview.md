@@ -141,12 +141,7 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 [07 File Systems](07%20File%20Systems.md)
 
 ## Program vs Process
-
-- **Program:** A static, compiled executable file sitting dormant on your storage drive.
-- **Process:** An active, running instance of that program. It is a "program in motion." When the OS launches a program, it creates a process by allocating it a unique identifier (PID) and its own isolated virtual address space to store its state and active data.
-- **One-to-Many Relationship:** A single program can spawn multiple distinct processes. For example, opening three separate terminal windows launches three completely independent processes that all originate from the exact same underlying executable file.
-- **Executable Formats:** Executables are structured in strict formats dictated by the OS (such as **PE** for Windows, **ELF** for Linux, and **Mach-O** for macOS). These formats are not just raw machine code; they contain essential metadata and headers that tell the OS exactly how to load the file into memory, where execution should start, and what external libraries are required.
-- 
+[Program vs Process](01%20Processes.md#Program%20vs%20Process)
 ## Process Management
 
 - **The Kernel's Role:** Because the kernel is the core component of an Operating System, its primary job is resource management. This includes maintaining the state, tracking the memory space, and overseeing the entire lifecycle of every active process.

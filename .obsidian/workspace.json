@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "32e24ddad28b461c",
+            "id": "ffa490088e8ed85c",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/06 Network Monitoring.md",
+                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,10 +28,35 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "06 Network Monitoring"
+              "title": "System Architecture Overview"
+            }
+          },
+          {
+            "id": "f9ba7432e82246db",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/01 Processes.md",
+                "mode": "source",
+                "source": true,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "01 Processes"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -63,7 +88,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "intrusion detection",
+                "query": "SIEM",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,13 +115,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Networking/06 Network Monitoring.md",
+                "file": "Operating Systems/01 Processes.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 06 Network Monitoring"
+              "title": "Outline of 01 Processes"
             }
           }
         ]
@@ -270,7 +295,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 564.5
+    "width": 414.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -285,14 +310,21 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "78eca375afc2cec9",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "Operating Systems/01 Processes.md",
+    "Networking/05 Network Management.md",
+    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
+    "Security/99 References and Checklists/Backend Security Checklist.md",
+    "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
+    "Networking/06 Network Monitoring.md",
     "Descomplica Enablers.md",
     "JSONL.md",
     "HTTP headers.md",
     "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
     "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
-    "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
     "Security/02 Identity and Access/02 Authorization and Access Control.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
@@ -306,13 +338,6 @@
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Networking/02 Network Components.md",
     "Security/02 Identity and Access/03 Zero Trust Architecture.md",
-    "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
-    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
-    "Security/02 Identity and Access/01 Authentication.md",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-    "Security/05 Architecture and Infrastructure Security/Critical Infrastructure Security.md",
-    "Incident Response, Forensics, and Disaster     Recovery.md",
-    "Security/05 Architecture and Infrastructure Security/Critical Infrastructure    Security.md.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",
