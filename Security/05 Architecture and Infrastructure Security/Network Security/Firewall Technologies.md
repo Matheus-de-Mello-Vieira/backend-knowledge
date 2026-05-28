@@ -51,27 +51,10 @@ Directly addressing the second generation's inability to inspect packet payloads
 
 - **How it works:** These firewalls operate all the way up to OSI Layer 7 (the Application Layer). Instead of just tracking the connection state and routing packets, they act as an intermediary or "proxy" between the internal client and the external server. The firewall intercepts the connection, completely reconstructs and inspects the data payload for malicious content or unauthorized commands, and then establishes a separate connection with the destination on the user's behalf.
 - **The Advantage:** By understanding specific application protocols (like HTTP, FTP, or SMTP), they eliminate the blind spots of the previous generation. They can filter traffic based on actual application commands—for example, allowing a user to read a webpage (HTTP GET) but blocking them from uploading a file to it (HTTP POST). Additionally, by acting as a proxy, they completely hide the internal network's IP structure from the outside world.
-- **Where they live today:** They evolved into specialized devices like **Web Application Firewalls (WAFs)** and Reverse Proxies (like Nginx or HAProxy).
+- **Where they live today:** They evolved into specialized devices like [Web Application Firewalls](Web%20Application%20Security.md#Web%20Application%20Firewalls%20%28WAF%29) and Reverse Proxies (like Nginx or HAProxy).
 - **Why we still use them:** While an NGFW is great for general office traffic, if a company hosts its own web application or API, they will place a dedicated 3rd generation proxy firewall directly in front of that specific server. It is the only way to get the absolute deepest, most specialized inspection of HTTP/HTTPS traffic to prevent things like SQL injection or cross-site scripting.
 - **The Limitation:** Because the firewall must intercept, tear down, deeply inspect, and reconstruct every single connection at the application layer, this generation introduced significant processing overhead and 
 network latency, often creating a performance bottleneck for high-speed networks.
-
-#### Web Application Firewalls (WAF)
-A **Web Application Firewall (WAF - `/ˌdʌbəl.juː eɪ/`)** is a specialized Layer 7 firewall designed specifically to protect web applications and APIs. While a traditional firewall focuses on network-level access control—such as IP addresses, ports, and connection states—a WAF understands **HTTP and HTTPS traffic** and inspects the actual web requests being sent to an application.
-
-A WAF typically sits in front of a web server as a **reverse proxy**. When a client sends a request to a website, the request reaches the WAF first. The WAF analyzes the request, compares it against security rules, and then decides whether to allow, block, log, or challenge the request before it reaches the application.
-
-WAFs are mainly used to defend against application-layer attacks such as:
-
-- **SQL Injection:** Attempts to manipulate database queries through malicious input.
-- **Cross-Site Scripting (XSS):** Attempts to inject malicious scripts into web pages.
-- **Command Injection:** Attempts to execute unauthorized system commands through the application.
-- **Path Traversal:** Attempts to access files outside the intended web directory.
-- **Malicious Bots:** Automated traffic used for scraping, credential stuffing, or abuse.
-
-A WAF can also enforce application-specific policies. For example, it may block requests with suspicious payloads, limit repeated login attempts, restrict access by geography, or require additional verification when traffic appears abnormal.
-
-However, a WAF is not a replacement for secure application development. It acts as a protective layer in front of the application, but vulnerabilities should still be fixed in the code itself. In a Defense in Depth strategy, the WAF protects the exposed web application while other firewall technologies continue to protect the broader network.
 ### Fourth Generation and Beyond: Next-Generation Firewalls (NGFW) (2000s to Present)
 
 To solve the performance limitations of traditional proxies while tackling highly sophisticated modern threats, the industry evolved toward **Unified Threat Management (UTM)** and **Next-Generation Firewalls (NGFW)**. These systems act as a high-speed security detail for your network, combining traditional defenses with advanced intelligence.
@@ -192,9 +175,9 @@ Because this requires more processing power and time, Layer 7 analysis is usuall
 
 The two perspectives overlap, but they answer different questions: generations explain how firewall technology evolved, while OSI layers explain what information a control can inspect.
 
-| Firewall generation | Main inspection level | Typical controls |
-| --- | --- | --- |
-| Stateless packet filters | Layers 3-4 | Source/destination IP addresses, protocols, ports, ACLs |
-| Stateful inspection | Layer 4 | TCP/UDP sessions, connection state tables, directional access control |
-| Application layer firewalls / proxies | Layer 7 | HTTP/FTP/SMTP commands, payload inspection, reverse proxying, WAF-style controls |
-| Next-generation firewalls (NGFW) | Layers 3-7 | Application identity, user identity, DPI, IPS, URL filtering, sandboxing, threat intelligence |
+| Firewall generation                   | Main inspection level | Typical controls                                                                                                    |
+| ------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Stateless packet filters              | Layers 3-4            | Source/destination IP addresses, protocols, ports, ACLs                                                             |
+| Stateful inspection                   | Layer 4               | TCP/UDP sessions, connection state tables, directional access control                                               |
+| Application layer firewalls / proxies | Layer 7               | HTTP/FTP/SMTP commands, payload inspection, reverse proxying, [WAF](Web%20Application%20Security.md#Web%20Application%20Firewalls%20%28WAF%29)-style controls |
+| Next-generation firewalls (NGFW)      | Layers 3-7            | Application identity, user identity, DPI, IPS, URL filtering, sandboxing, threat intelligence                       |

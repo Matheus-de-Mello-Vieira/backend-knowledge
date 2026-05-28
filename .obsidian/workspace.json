@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "f9ba7432e82246db",
+            "id": "529eda88bbffdbf9",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
+                "file": "Security/04 Application and API Security/Web Application Security.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,16 +28,16 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "06 Security Testing.md"
+              "title": "Web Application Security"
             }
           },
           {
-            "id": "4e88b8694354c8b9",
+            "id": "2018137ac7ec4917",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/03 Connections/01 How Connections are Established.md",
+                "file": "Security/04 Application and API Security/Web Application Security.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 How Connections are Established"
+              "title": "Web Application Security"
+            }
+          },
+          {
+            "id": "4743d908a42b10cc",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/02 Protocols/16 IPsec.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "16 IPsec"
             }
           }
         ]
@@ -87,7 +111,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "file descriptors",
+                "query": "waf",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -294,7 +318,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 715.5
+    "width": 604.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -311,7 +335,16 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/04 Application and API Security/Web Application Security.md",
+    "HTTP headers.md",
+    "Security/04 Application and API Security/CORS.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+    "Networking/02 Protocols/16 IPsec.md",
     "Security/01 Foundations and Risk/06 Security Testing.md.md",
+    "Security/04 Application and API Security/CSRF Tokens.md",
+    "Security/04 Application and API Security/OWASP.md",
+    "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
     "Networking/03 Connections/03 Nagle's algorithm.md",
     "Networking/03 Connections/01 How Connections are Established.md",
@@ -328,15 +361,6 @@
     "Networking/06 Network Monitoring.md",
     "Descomplica Enablers.md",
     "JSONL.md",
-    "HTTP headers.md",
-    "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
-    "Security/05 Architecture and Infrastructure Security/Mobile Device Security.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md",
-    "Security/02 Identity and Access/02 Authorization and Access Control.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/05 Architecture and Infrastructure Security/Windows Security.md",
-    "Networking/02 Protocols/16 IPsec.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",

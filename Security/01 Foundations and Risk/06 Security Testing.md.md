@@ -1,22 +1,28 @@
 # Security Testing
 
-This note should stay as an overview and routing note for security testing. It is the right place to explain what testing is, how the major testing modes differ, and how they connect to the rest of the security learning path. Deeper domain content already belongs in the more specialized notes linked below.
+Security testing is a specialized software testing discipline dedicated to evaluating an application, system, or network infrastructure to uncover hidden vulnerabilities, flaws, and security gaps. Unlike standard development practices that focus on making software work, security testing focuses on ensuring the software cannot be intentionally broken or abused by malicious actors.
 
-## Foundations of Security Testing
+In an era of relentless cyber threats and complex compliance regulations, security testing shifts an organization from a reactive posture (responding to a breach) to a proactive posture (hardening defenses in advance).
 
-Study what security testing is, how it differs from QA testing, and why it exists. Focus on the goals: finding weaknesses, reducing risk, validating controls, and preventing abuse before attackers can exploit issues.
+While both Quality Assurance (QA) and Security Testing aim to improve software quality, they operate with fundamentally different mindsets, methodologies, and objectives.
 
-- **Keep here, but only as an introduction.** This note is the right home for what security testing is, why it exists, and how it reduces risk. The deeper assessment process already belongs in [Vulnerability Assessment](05%20Vulnerability%20Assessment.md).
-- **Bring in:** a condensed `discover -> verify -> assess -> prioritize` flow from [Vulnerability Assessment](05%20Vulnerability%20Assessment.md), plus a short `vulnerability / threat / risk` distinction from [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md).
-- **Worth linking:** [Vulnerability Assessment](05%20Vulnerability%20Assessment.md) because it turns the intro into an actionable workflow, [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md) because testing should be framed as risk reduction, and [OWASP](../04%20Application%20and%20API%20Security/OWASP.md) because it is the strongest application-testing baseline already in the vault.
+| **Feature**         | **QA Testing (Functional/Performance)**                                                                | **Security Testing**                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **Primary Focus**   | **What the system _should_ do.** Validates features, user experience, performance, and business logic. | **What the system _should not_ do.** Identifies hidden behaviors, technical vulnerabilities, and logic flaws.               |
+| **Testing Mindset** | Assumes the user acts in good faith, inputting valid data to achieve a standard goal.                  | Assumes the user acts with malice, intentionally entering corrupted data or manipulating parameters to bypass rules.        |
+| **Success Metric**  | The application meets business specifications, functions smoothly, and doesn't crash under load.       | The application successfully resists unauthorized access, protects data integrity, and maintains availability under attack. |
+| **Core Question**   | _"Does the software work correctly for the user?"_                                                     | _"Can the software be exploited or abused by an attacker?"_                                                                 |
 
-## Core Security Concepts
+## Core Goals
 
-Learn the basic vocabulary first: vulnerability, threat, risk, exploit, attack surface, asset, control, authentication, authorization, confidentiality, integrity, and availability. These terms show up everywhere.
+Software systems are inherently complex, and complexity is the enemy of security. Security testing exists to actively simulate the adversarial perspective, focusing heavily on four critical goals:
 
-- **Keep here only as a testing-oriented vocabulary bridge.** The canonical homes are [Security Principles](01%20Security%20Principles.md) and [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md).
-- **Bring in:** the security tenets and key principles most reused in testing from [Security Principles](01%20Security%20Principles.md), plus testing-relevant definitions like `asset`, `attack surface`, `control`, `threat`, `vulnerability`, and `risk` from [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md).
-- **Worth linking:** [Security Principles](01%20Security%20Principles.md) because it is the main home for foundational vocabulary, [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md) because it explains how those concepts drive prioritization, and [Authentication](../02%20Identity%20and%20Access/01%20Authentication.md) plus [Authorization and Access Control](../02%20Identity%20and%20Access/02%20Authorization%20and%20Access%20Control.md) because those terms should be referenced rather than re-explained here.
+- **Identifying Hidden Weaknesses:** Actively uncovers technical flaws, misconfigurations, and architectural gaps buried within the system. This continuous discovery provides the raw data necessary to perform a comprehensive [Vulnerability Assessment](05%20Vulnerability%20Assessment.md), mapping out the software's true attack surface.
+- **Proactively Reducing Risk:** Acts as the practical execution arm of your [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md) strategies. By testing early in the development lifecycle, it proves whether theoretical threat scenarios can actually be realized, allowing teams to prioritize and neutralize risks when they are cheapest to fix.
+- **Preventing System Abuse:** Stops attackers from manipulating application logic, APIs, or data entry points. It ensures the software is hardened against the most critical and statistically common attack vectors, specifically targeting the industry-standard vulnerabilities categorized by [OWASP](../04%20Application%20and%20API%20Security/OWASP.md).
+- **Validating Security Controls:** Stresses your deployed defenses—from firewalls and data encryption to access tokens—under hostile, real-world conditions to definitively prove that your security mechanisms function as intended
+
+<hr>
 
 ## Web Application Security
 
