@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/03 Connections/02 Reading and Sending Data.md",
+                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Reading and Sending Data"
+              "title": "06 Security Testing.md"
             }
           },
           {
@@ -127,7 +127,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 438.5
+    "width": 341.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -294,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 548.5
+    "width": 715.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -309,10 +309,11 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "f9ba7432e82246db",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Networking/03 Connections/03 Nagle's algorithm.md",
+    "Security/01 Foundations and Risk/06 Security Testing.md.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
+    "Networking/03 Connections/03 Nagle's algorithm.md",
     "Networking/03 Connections/01 How Connections are Established.md",
     "Backend Engineering/02 Execution Patterns.md",
     "Operating Systems/01 Processes.md",
@@ -336,7 +337,6 @@
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/05 Architecture and Infrastructure Security/Windows Security.md",
     "Networking/02 Protocols/16 IPsec.md",
-    "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",
