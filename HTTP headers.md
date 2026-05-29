@@ -23,4 +23,4 @@ CORS-related headers let servers declare which cross-origin requests browsers ma
 - `Access-Control-Expose-Headers`: Response headers made readable by JavaScript.
 - `Access-Control-Allow-Credentials`: Whether cookies/credentials may be included and exposed.
 
-For the full CORS guide (how it works, preflight, credentials, threats), see: [CORS](Security/04%20Application%20and%20API%20Security/CORS.md)
+For the full CORS guide (how it works, preflight, credentials, threats), see: [CORS](Security/04%20Application%20and%20API%20Security/Web%20Application%20Security.md#CORS)

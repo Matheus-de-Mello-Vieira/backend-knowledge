@@ -8,7 +8,7 @@
         "type": "tabs",
         "children": [
           {
-            "id": "529eda88bbffdbf9",
+            "id": "ec8ef573fe4e2356",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -29,54 +29,6 @@
               },
               "icon": "lucide-file",
               "title": "Web Application Security"
-            }
-          },
-          {
-            "id": "2018137ac7ec4917",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/04 Application and API Security/Web Application Security.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Web Application Security"
-            }
-          },
-          {
-            "id": "4743d908a42b10cc",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Networking/02 Protocols/16 IPsec.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "16 IPsec"
             }
           }
         ]
@@ -318,7 +270,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 604.5
+    "width": 537.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -335,14 +287,15 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/02 Protocols/16 IPsec.md",
     "Security/04 Application and API Security/Web Application Security.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Security/04 Application and API Security/CSRF Tokens.md",
     "HTTP headers.md",
     "Security/04 Application and API Security/CORS.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Networking/02 Protocols/16 IPsec.md",
     "Security/01 Foundations and Risk/06 Security Testing.md.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
     "Security/04 Application and API Security/OWASP.md",
     "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
@@ -360,7 +313,6 @@
     "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
     "Networking/06 Network Monitoring.md",
     "Descomplica Enablers.md",
-    "JSONL.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",

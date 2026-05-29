@@ -30,7 +30,7 @@ Study common web vulnerabilities such as injection, broken access control, authe
 
 - **Keep here only as a short testing-focused subsection.** The broader subject clusters much better around [OWASP](../04%20Application%20and%20API%20Security/OWASP.md) and the adjacent application-security notes.
 - **Bring in:** the idea that OWASP Top 10 is the baseline checklist for web testing, plus a compact mapping to broken access control, injection, auth/session failures, misconfiguration, and SSRF from [OWASP](../04%20Application%20and%20API%20Security/OWASP.md). It is also worth borrowing the `SAST` / `DAST` framing from [Vulnerability Assessment](05%20Vulnerability%20Assessment.md).
-- **Worth linking:** [OWASP](../04%20Application%20and%20API%20Security/OWASP.md) because it is the main anchor for the topic, [CSRF Tokens](../04%20Application%20and%20API%20Security/CSRF%20Tokens.md) and [CORS](../04%20Application%20and%20API%20Security/CORS.md) because they are focused web-testing targets, and [Backend Security Checklist](../99%20References%20and%20Checklists/Backend%20Security%20Checklist.md) because it translates the topic into concrete checks.
+- **Worth linking:** [OWASP](../04%20Application%20and%20API%20Security/OWASP.md) because it is the main anchor for the topic, [CSRF Tokens](../04%20Application%20and%20API%20Security/Web%20Application%20Security.md#CSRF-Tokens) and [CORS](../04%20Application%20and%20API%20Security/Web%20Application%20Security.md#CORS) because they are focused web-testing targets, and [Backend Security Checklist](../99%20References%20and%20Checklists/Backend%20Security%20Checklist.md) because it translates the topic into concrete checks.
 
 ## API Security Testing
 
