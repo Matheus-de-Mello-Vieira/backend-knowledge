@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/04 Application and API Security/Web Application Security.md",
+                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Web Application Security"
+              "title": "06 Security Testing.md"
             }
           }
         ]
@@ -90,16 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Operating Systems/01 Processes.md",
+                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 01 Processes"
+              "title": "Outline of 06 Security Testing.md"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -285,10 +286,10 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "693fec4cd48f02ad",
   "lastOpenFiles": [
-    "Networking/02 Protocols/16 IPsec.md",
     "Security/04 Application and API Security/Web Application Security.md",
+    "Networking/02 Protocols/16 IPsec.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/04 Application and API Security/CSRF Tokens.md",
     "HTTP headers.md",
