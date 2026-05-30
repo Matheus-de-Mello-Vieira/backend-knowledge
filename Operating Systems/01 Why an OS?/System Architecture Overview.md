@@ -110,6 +110,16 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 - **Virtual memory allows the OS to transparently offload inactive data from RAM to the disk through a process called "paging" or "swapping."** If the physical RAM fills up, the OS identifies blocks of memory (pages) that haven't been used in a while—such as a background application you minimized an hour ago—and copies them onto the much larger, slower SSD or hard drive. It then completely clears those physical RAM slots to make room for your active, demanding tasks.
 	- Because the OS handles all the underlying address translation, the applications themselves remain completely unaware that their data has been moved out of physical memory. From the process's perspective, it appears to have a continuous, uninterrupted hold on its own dedicated space in RAM.
 
+| Level                 | Typical access time | Order of magnitude | Rough CPU cycles at 3 GHz | Notes                            |
+| --------------------- | ------------------: | -----------------: | ------------------------: | -------------------------------- |
+| **Register access**   |             ~0.3 ns |        **10⁻¹⁰ s** |                  ~1 cycle | Fastest storage, inside CPU core |
+| **L1 cache**          |               ~1 ns |         **10⁻⁹ s** |                 ~3 cycles | Very small, per-core cache       |
+| **L2 cache**          |             ~3–5 ns |         **10⁻⁹ s** |             ~10–15 cycles | Larger, still usually per-core   |
+| **L3 cache**          |           ~10–30 ns |         **10⁻⁸ s** |            ~30–100 cycles | Shared across cores on many CPUs |
+| **Main memory / RAM** |          ~50–100 ns |         **10⁻⁷ s** |           ~150–300 cycles | Much slower than CPU caches      |
+| **SSD**               |          ~50–200 µs |         **10⁻⁴ s** |         ~150k–600k cycles | NVMe can be faster; SATA slower  |
+| **HDD**               |            ~5–10 ms |         **10⁻² s** |           ~15M–30M cycles | Mechanical seek + rotation delay |
+
 ## Storage
 
 - **Persistent Storage:** Unlike volatile RAM, storage retains data permanently, even when the system loses power.

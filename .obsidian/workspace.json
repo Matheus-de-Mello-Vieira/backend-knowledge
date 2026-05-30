@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "bd3cb36b931a3df9",
+        "id": "d7bd1bbb9e505f09",
         "type": "tabs",
         "children": [
           {
-            "id": "ec8ef573fe4e2356",
+            "id": "958939679b015598",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
+                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "06 Security Testing.md"
+              "title": "System Architecture Overview"
             }
           }
         ]
@@ -63,8 +63,8 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "waf",
-                "matchingCase": false,
+                "query": "NIST",
+                "matchingCase": true,
                 "explainSearch": false,
                 "collapseAll": false,
                 "extraContext": false,
@@ -90,17 +90,15 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/01 Foundations and Risk/06 Security Testing.md.md",
                 "followCursor": false,
-                "showSearch": false,
+                "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 06 Security Testing.md"
+              "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -223,7 +221,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -271,7 +269,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 537.5
+    "width": 550.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -286,34 +284,34 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "693fec4cd48f02ad",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Security/04 Application and API Security/Web Application Security.md",
-    "Networking/02 Protocols/16 IPsec.md",
+    "Networking/02 Protocols/15 SSH.md",
+    "Networking/02 Protocols/11 gRPC.md",
+    "Networking/02 Protocols/12 WebRTC.md",
+    "Operating Systems/01 Processes.md",
+    "Operating Systems/07 File Systems.md",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
+    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
+    "Descomplica Enablers.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
+    "Networking/02 Protocols/16 IPsec.md",
+    "Security/05 Architecture and Infrastructure Security/Windows Security.md",
+    "Security/01 Foundations and Risk/06 Security Testing.md.md",
     "HTTP headers.md",
+    "JSONL.md",
+    "Security/04 Application and API Security/Web Application Security.md",
+    "Security/04 Application and API Security/CSRF Tokens.md",
     "Security/04 Application and API Security/CORS.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/01 Foundations and Risk/06 Security Testing.md.md",
     "Security/04 Application and API Security/OWASP.md",
     "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
     "Networking/03 Connections/03 Nagle's algorithm.md",
     "Networking/03 Connections/01 How Connections are Established.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Operating Systems/01 Processes.md",
-    "Operating Systems/07 File Systems.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "Networking/05 Network Management.md",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
-    "Security/99 References and Checklists/Backend Security Checklist.md",
-    "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
-    "Networking/06 Network Monitoring.md",
-    "Descomplica Enablers.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",

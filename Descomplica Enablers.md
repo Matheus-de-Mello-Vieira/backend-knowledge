@@ -68,13 +68,14 @@ CORRECTION:
 * Fix transcription errors using the written notes as the primary source of truth
 * When notes and transcript conflict, prefer the notes if clearly more accurate
 * Improve grammar, spelling, punctuation, and capitalization
-* Preserve the original meaning, tone, and technical terminology
+* Preserve the original meaning and technical terminology
+* Remove the conversational tone
 * Do NOT hallucinate or add content not supported by the input or notes
 
 STRUCTURE:
 
 * Produce a coherent, well-flowing text (like a cleaned transcript or lecture notes)
-* Organize into paragraphs
+* Organize into sections, subsections and paragraphs
 * Optionally group ideas into sections if the topic naturally allows it
 
 EDGE CASES:
