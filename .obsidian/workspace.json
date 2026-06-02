@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "958939679b015598",
+            "id": "c0e8afefe37fda6d",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+                "file": "AI Engineering/LLM/Context Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "System Architecture Overview"
+              "title": "Context Engineering"
+            }
+          },
+          {
+            "id": "deaa86aca0c590b4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "AI Engineering/Lexical Information Retrieval.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Lexical Information Retrieval"
             }
           }
         ]
@@ -90,12 +114,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "AI Engineering/LLM/Context Engineering.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of Context Engineering"
             }
           }
         ]
@@ -221,7 +246,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: ⠙ backend-knowledge"
             }
           },
           {
@@ -269,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 550.5
+    "width": 625.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -286,12 +311,23 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "CLAUDE.md.bak",
+    "AGENTS.md",
+    "AI Engineering/Lexical Information Retrieval.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
+    "AI Engineering/Model Context Protocol.md",
+    "AI Engineering/4D Framework for AI Fluency.md",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Networking/02 Protocols/15 SSH.md",
     "Networking/02 Protocols/11 gRPC.md",
     "Networking/02 Protocols/12 WebRTC.md",
     "Operating Systems/01 Processes.md",
     "Operating Systems/07 File Systems.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
     "Security/03 Cryptography and Data Protection/01 Cryptography.md",
@@ -301,17 +337,6 @@
     "Security/05 Architecture and Infrastructure Security/Windows Security.md",
     "Security/01 Foundations and Risk/06 Security Testing.md.md",
     "HTTP headers.md",
-    "JSONL.md",
-    "Security/04 Application and API Security/Web Application Security.md",
-    "Security/04 Application and API Security/CSRF Tokens.md",
-    "Security/04 Application and API Security/CORS.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/04 Application and API Security/OWASP.md",
-    "Security/01 Foundations and Risk/05 Vulnerability Assessment.md",
-    "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Networking/03 Connections/03 Nagle's algorithm.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",
@@ -321,7 +346,6 @@
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security",
     "Security/05 Architecture and Infrastructure Security",
-    "Security/04 Application and API Security",
-    "Security/03 Cryptography and Data Protection"
+    "Security/04 Application and API Security"
   ]
 }

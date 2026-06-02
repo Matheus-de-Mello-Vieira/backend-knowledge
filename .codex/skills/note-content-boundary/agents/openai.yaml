@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Content Boundary"
+  short_description: "Refactor overlapping Markdown note content cleanly."
+  default_prompt: "Use $note-content-boundary to move overlapping content between Markdown notes, leave concise links or callouts behind, and update local links and anchors consistently."

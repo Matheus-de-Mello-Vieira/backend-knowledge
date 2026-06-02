@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with this knowledge repository.
+This file provides repository-level guidance for coding agents working with this knowledge base, including Codex-compatible environments.
 
 ## Repository Overview
 
@@ -99,6 +99,9 @@ This is a study and reference repository focused on backend engineering knowledg
 - **Question-driven analysis**: Security sections use "Is this...?" pattern for threat modeling
 - **Conversational explanations**: Complex topics broken down with analogies and practical examples
 - **Assumption of learning context**: Written for someone actively studying backend engineering
+- **Note-agnostic wording**: Write content as standalone subject matter rather than commentary about the document itself. Avoid meta-referential phrasing such as "this note", "that note", "in this section we will", or similar formulations unless they are explicitly necessary
+- **Neutral cross-note references**: When linking to another note, prefer neutral phrasing such as "For tokenization mechanics, see ..." instead of "this note covers ..." or "that note explains ..."
+- **Verification sentinel**: When explicitly asked to confirm whether repository instructions were loaded from `AGENTS.md`, include the exact token `AGENTS_OK` in the response.
 
 ### Cross-Reference Patterns
 - **Inline linking**: Link related concepts as they naturally appear in the text rather than in separate "Related Concepts" or "See Also" sections at the end

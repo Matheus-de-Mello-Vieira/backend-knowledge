@@ -53,9 +53,6 @@ Both techniques aim to reduce inflectional forms (running, runs, ran) to a commo
 - **Mathematical Implication:**
   - "The dog bit the man" is mathematically identical to "The man bit the dog."
   - Despite this massive loss of context, it remains surprisingly effective for topic classification and basic keyword search.
-
----
-
 ## Term statistics
 
 Once we have valid tokens, we need to determine how "important" they are. In a simple count, the word "the" might appear 100 times, while "cryptography" appears once. If we treated them equally, our search results would be dominated by noise.
@@ -202,24 +199,24 @@ BM25 fixes the two biggest flaws of the baseline model: linear term frequency (s
 
 The relevance score of a document \( D \) with respect to a query \( Q \) is defined as:
 
-\[
+$$
 \text{Score}(D, Q)
 \;=\;
 \sum_{q \in Q}
 \text{IDF}(q)
 \cdot
 \text{TF}_{\text{sat}}(q, D)
-\]
+$$
 
 #### Global Term Weight (Inverse Document Frequency)
 
-\[
+$$
 \text{IDF}(q)
 \;=\;
 \log \left(
 \frac{N - n_q + 0.5}{n_q + 0.5}
 \right)
-\]
+$$
 
 **Where:**
 - \( N \): total number of documents in the corpus  
@@ -227,12 +224,12 @@ The relevance score of a document \( D \) with respect to a query \( Q \) is def
 
 #### Local Term Weight (Saturated Term Frequency)
 
-\[
+$$
 \text{TF}_{\text{sat}}(q, D)
 \;=\;
 \frac{f(q, D)\,(k_1 + 1)}
      {f(q, D) + K}
-\]
+$$
 
 **Where:**
 
@@ -241,7 +238,7 @@ The relevance score of a document \( D \) with respect to a query \( Q \) is def
 
 #### Document Length Normalization
 
-\[
+$$
 K
 \;=\;
 k_1
@@ -249,7 +246,7 @@ k_1
 1 - b
 + b \cdot \frac{|D|}{\text{avgdl}}
 \right)
-\]
+$$
 
 **Where:**
 

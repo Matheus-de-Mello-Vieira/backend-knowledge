@@ -155,17 +155,11 @@ This accumulation introduces opportunities to critical risks:
 - **Context Poisoning (Logic Corruption):** A single piece of incorrect information (e.g., a hallucinated tool output) enters the history and derails all subsequent reasoning. The model treats this error as a fact.
 - **Context Confusion (Dilution):** As unnecessary noise accumulates, the signal-to-noise ratio drops. The model loses track of the original instruction ("Lost in the Middle" phenomenon), leading to vague or irrelevant responses.
 - **Context Clash (Inconsistency):** New information contradicts earlier data in the same session. The model struggles to reconcile these conflicts, often resulting in incoherent or oscillating behavior.
-## Tokens
 
-Tokens are the fundamental units that Generative AI models process, understand, and predict. Rather than reading or generating text word-by-word, models break information down into these smaller fragments, which can be a single letter, a syllable, or a full word.
-
-Token boundaries do not always align perfectly with whole words, and different models use slightly different methods to split text apart.
-
-- **The Rule of Thumb:** In standard natural language, **1 token is roughly ¾ of a word** (meaning 100 tokens is about 75 words). 
-- **The Token Discrepancy**: Tokenization is not a universal standard. Different models use different methodologies to split up text, meaning the exact token count will change depending on the specific model you are using.
-	- **Visualizing Tokens:** If you want to see this in action, OpenAI provides a free online [Tokenizer](https://platform.openai.com/tokenizer) tool that visually highlights how text is spliced.
-	- **Under the Hood:** For developers wanting to explore the mechanics or calculate tokens locally in their applications, OpenAI’s tokenization framework, [Tiktoken](https://github.com/openai/tiktoken), is available open-source on GitHub.
-- **The Code Tax:** A critical detail for developers is that **programming code generally consumes more tokens than standard text**. Because code relies heavily on special characters, indents, and non-standard syntax, it breaks down into more pieces. For example, 1,200 characters of Python code might consume around 300 tokens, whereas the exact same number of characters from a novel might only use 267. As your codebase or prompt grows, keeping an eye on this token gap becomes essential.
+> [!info]
+> In context engineering, tokens matter primarily as a **capacity and budgeting constraint**: the context window is measured in tokens, and both latency and cost scale with token volume.
+>
+> For the mechanics of how raw text is split into model-specific tokens, see [LLM Processing Pipeline](LLM%20Processing%20Pipeline.md#1.%20Tokenization), which covers tokenization itself, why token boundaries vary by model, and why code or structured text often consumes disproportionately more tokens.
 
 ## Context Window
 
@@ -303,4 +297,3 @@ Memories are built to last, generally following a **Durable** lifecycle:
 
     - **Pros:** Reliable and easy to edit or audit.
     - **Cons:** Limited in scale; can't capture the "nuance" of long conversations.
-
