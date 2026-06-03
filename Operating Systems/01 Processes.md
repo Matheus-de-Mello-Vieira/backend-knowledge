@@ -97,3 +97,48 @@ By doing this work at compile time, the resulting program is smaller (takes up l
 	- **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
 - **Memory Representation (Top vs. Bottom):** The first instruction is always stored at the lowest memory address. If you are looking at an academic memory diagram where the lowest address is drawn at the bottom, the machine code is represented **bottom-to-top**. However, if you are looking at a real-world debugger or hex editor where the lowest address starts at the top, it is read **top-to-bottom**.
 - **Little-Endian Storage:** Many CPU architectures (including most x86 and ARM chips) use a format called **Little-Endian**, meaning the least significant _byte_ is stored at the lowest memory address. This means that while humans read the 32-bit instruction `0xE3A00001` left-to-right, physical RAM stores its byte-chunks in reverse order (`01 00 A0 E3`).
+
+## The Stack
+
+- **LIFO Structure:** The Stack in memory operates strictly as a Last-In, First-Out (LIFO) data structure.
+- **Downward Growth:** As established in the memory layout, the stack starts at the highest memory address of its designated virtual space and grows _downwards_ toward the heap.
+- **Function Frames:** Every time a function is called, it gets its own dedicated block of memory on the stack called a **Stack Frame**. This frame stores the function's local variables and execution context.
+- **The "Top" of the Stack:** The currently active function is always located at the active edge (conceptually called the "top" of the stack, even though it sits at the lowest physical memory address). Because functions strictly follow LIFO, no process can accidentally touch or corrupt the frames of paused, parent functions sitting higher up the stack.
+- **Contiguous Memory & Caching:** Stack space is strictly contiguous (sequential). Because the data is packed tightly together, it maximizes **spatial locality**. This makes it incredibly easy for the CPU to predict and load stack data into the ultra-fast L1/L2 caches, making stack memory significantly faster to access than heap memory.
+- **Size Limits:** Stack space is strictly limited in size (typically a few megabytes per thread) because it must remain a continuous block of virtual memory.
+
+### Stack Pointer (`sp`)
+
+- **Definition:** A dedicated CPU register that holds the memory address of the very edge (the lowest address) of the currently active frame.
+- **Allocation via Math:** Creating local variables doesn't require complex system calls. The compiled code simply subtracts bytes from the `sp` to "grow" the frame downwards, reserving the necessary space.
+- **Lazy Deallocation:** When a function finishes, the CPU doesn't waste time physically deleting or wiping the old data. It simply moves the `sp` back upwards. The old data remains in RAM (as garbage) and will just be naturally overwritten the next time the stack grows downwards.
+- **Intra-Frame Deallocation:** Deallocating individual variables inside an active frame is rarely done. The CPU simply waits for the function to return and deallocates the entire frame at once by moving the `sp`.
+
+### Base Pointer (`bp` / Frame Pointer)
+
+- **Definition:** Another dedicated CPU register that holds the starting address (the highest address) of the currently active frame.
+- **The Anchor:** Because the Stack Pointer (`sp`) constantly moves up and down as local variables are pushed or popped, it is a terrible reference point for finding specific data. The Base Pointer (`bp`) solves this by acting as a fixed anchor for the duration of the function.
+- **Variable Referencing:** Once the `bp` is set, the compiler can reliably find any local variable using fixed offsets (e.g., `bp - 8 bytes` or `bp - 16 bytes`), regardless of what the `sp` is currently doing.
+- **Frame Pointer Omission (FPO):** While the Base Pointer is the standard anchor, it is not strictly mandatory. If a function's stack frame has a fixed, known size at compile time, modern compilers can track all local variables simply by calculating offsets directly from the moving Stack Pointer (`sp`). Through an aggressive optimization called Frame Pointer Omission, the compiler discards the Base Pointer entirely, freeing up that valuable CPU register for general computation to improve execution speed—though this trade-off makes debugging and reading stack traces significantly more difficult.
+### Nested Calls & Context Switching
+
+When an active function (`func1`) calls a new function (`func2`), `func2` must become the new active frame. The machine code executes a specific sequence to preserve the state safely:
+
+1. **Save the Return Address:** The system saves the exact instruction address where `func1` left off, so it knows exactly where to resume later.
+    - _Architecture Note:_ On x86 processors, it is pushed directly into the stack memory. On ARM processors, this is stored in a dedicated CPU register called the **Link Register (LR)** - see [Nested Calls in ARM.](#Nested%20Calls%20in%20ARM%20(The%20Link%20Register%20Problem))
+2. **Save the Old Base Pointer:** The current value of `bp` (which anchors `func1`) is pushed onto the stack inside the new `func2` frame.
+3. **Update Pointers:** The `bp` is updated to match the current `sp` (establishing the new anchor for `func2`), and the `sp` is moved down to allocate space for `func2`'s local variables.
+
+**When `func2` returns:**
+
+1. The CPU completely collapses `func2`'s frame by setting the `sp` back to the current `bp`.
+2. It pops the saved `func1` base pointer off the stack and puts it back into the `bp` register, restoring `func1` as the active frame.
+3. It takes the saved Return Address and loads it into the **Instruction Pointer**, seamlessly resuming `func1`'s execution exactly where it paused.
+#### Nested Calls in ARM
+
+- **The Link Register Bottleneck:** ARM processors use a single hardware Link Register (LR) to store the return address when a function is called. If `func1` calls `func2`, the LR holds the return address for `func1`. If `func2` then calls `func3`, the hardware will overwrite the LR, permanently losing the way back to `func1`.
+- **Leaf vs. Non-Leaf Functions:**
+	* A **Leaf Function** is a function that does not call any other functions (it is the end of the branch). It can safely leave its return address in the ultra-fast LR hardware register and use it to return.
+    - A **Non-Leaf Function** (like `func2` in our example) _does_ call other functions.
+- **Spilling to the Stack:** To prevent the return address from being destroyed, the compiled machine code for a non-leaf function will immediately push the current value of the LR onto the Stack the moment the function starts (in a phase called the function prologue). It gets stored in the memory frame right alongside the Base Pointer.
+- **The Return:** When `func2` is finally ready to return to `func1`, it doesn't look at the physical LR hardware register anymore. Instead, it pops the original return address directly off the stack memory and loads it into the Instruction Pointer to safely resume execution.
