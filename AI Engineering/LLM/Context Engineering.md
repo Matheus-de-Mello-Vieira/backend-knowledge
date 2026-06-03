@@ -155,6 +155,7 @@ This accumulation introduces opportunities to critical risks:
 - **Context Poisoning (Logic Corruption):** A single piece of incorrect information (e.g., a hallucinated tool output) enters the history and derails all subsequent reasoning. The model treats this error as a fact.
 - **Context Confusion (Dilution):** As unnecessary noise accumulates, the signal-to-noise ratio drops. The model loses track of the original instruction ("Lost in the Middle" phenomenon), leading to vague or irrelevant responses.
 - **Context Clash (Inconsistency):** New information contradicts earlier data in the same session. The model struggles to reconcile these conflicts, often resulting in incoherent or oscillating behavior.
+- Many mathematical problems, see [Context Window Constraints](LLM%20Processing%20Pipeline.md#Context%20Window%20Constraints)
 
 > [!info]
 > In context engineering, tokens matter primarily as a **capacity and budgeting constraint**: the context window is measured in tokens, and both latency and cost scale with token volume.
