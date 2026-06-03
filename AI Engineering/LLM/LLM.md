@@ -72,9 +72,4 @@ LLM systems are often adapted with a mix of training-time and runtime techniques
 - **Key Innovation:** Advanced vision, 200K token context, "Artifacts" feature, twice the speed of Claude 3 Opus.
 - **Impact:** Superior in coding, reasoning, and visual tasks; sparked discussions on responsible AI in customer support and collaboration.
 
-## Related Notes
 
-* [LLM Model Selection](LLM%20Model%20Selection.md): Use this note when you need to choose between models and reason about deployment, fine-tuning, cost, and benchmark tradeoffs.
-* [Prompt Engineering](Prompt%20Engineering.md): Follow this note for prompt construction techniques, examples, and practical rules for steering model behavior.
-* [Context Engineering](Context%20Engineering.md): Read this note to understand how context windows, retrieval, memory, and context management affect LLM performance.
-* [RAG Fundamentals](../RAG/01%20Fundamentals.md): Go here for the retrieval side of LLM systems, especially when external knowledge is needed at inference time.
