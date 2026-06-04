@@ -79,6 +79,13 @@ By doing this work at compile time, the resulting program is smaller (takes up l
 > - **Debugging Nightmares:** Because the compiler fundamentally changes the structure of the code—removing variables entirely or rearranging logic—the resulting assembly no longer maps 1:1 with your human-readable source code. If you try to step through a highly optimized program with a debugger, variables you want to inspect may simply not exist in memory or CPU registers, making troubleshooting extremely difficult.    
 > - **Breaking Hardware Polling:** As noted in the [Device Drivers](System%20Architecture%20Overview.md#Device%20Drivers) section, high-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume that since the _software_ isn't changing `status` inside the loop, the check is redundant. It will optimize the read away, breaking the driver. To prevent this, developers must use the `volatile` keyword in C, which strictly forbids the compiler from optimizing reads and writes to that specific memory location.
   > - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. In an isolated, single-threaded process, this is perfectly safe. However, if multiple threads are running concurrently across different CPU cores, this reordering can cause disastrous synchronization bugs (data races) if one thread depends on memory being updated in the exact sequential order written in the original source code.
+### SIMD (Single Instruction, Multiple Data)
+
+- **Scalar vs Vector:** The standard assembly instructions (like the `add` example above) are **scalar**; they perform one mathematical operation on one set of numbers at a time. SIMD introduces **vector** processing, allowing the CPU's ∂ to execute the exact same instruction on a large batch of data simultaneously within a single clock cycle.    
+- **Massive Registers:** To achieve this, modern CPUs include specialized, extra-wide hardware registers (often 128, 256, or even 512 bits wide). Instead of loading a single 32-bit integer into a register, the CPU can pack four, eight, or sixteen integers into one giant SIMD register.
+    - _Architecture Note:_ On x86 processors, these SIMD extensions are known as **SSE** or **AVX**. On modern ARM processors, the SIMD architecture is called **NEON**.
+- **Auto-Vectorization (Compiler Optimization):** You rarely write SIMD assembly by hand. If you write a simple `for` loop in C that adds two large arrays together, an optimizing compiler will recognize the pattern. Through a process called auto-vectorization, the compiler completely rips out your scalar loop and replaces it with SIMD machine code, processing the arrays in massive parallel chunks to drastically improve execution speed.
+- **Use Cases:** SIMD is heavily utilized for workloads that require repetitive, predictable math on large datasets, such as graphics rendering, video encoding, cryptography, and machine learning matrices.
 ### Assembling into Machine Code
 
  While assembly language is incredibly low-level, it is still text designed for humans to read. The CPU hardware cannot natively execute a string of characters like `add r3, r0, r1`. A tool called an **Assembler** must translate these textual mnemonics into raw binary machine code (opcodes)—the actual sequence of 1s and 0s that trigger the CPU's physical electrical circuits.
@@ -142,3 +149,33 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
     - A **Non-Leaf Function** (like `func2` in our example) _does_ call other functions.
 - **Spilling to the Stack:** To prevent the return address from being destroyed, the compiled machine code for a non-leaf function will immediately push the current value of the LR onto the Stack the moment the function starts (in a phase called the function prologue). It gets stored in the memory frame right alongside the Base Pointer.
 - **The Return:** When `func2` is finally ready to return to `func1`, it doesn't look at the physical LR hardware register anymore. Instead, it pops the original return address directly off the stack memory and loads it into the Instruction Pointer to safely resume execution.
+### Stack Overflow
+
+- **The Cause:** Because stack memory is a fixed, contiguous block, it has a strict size limit. If a program enters an infinite loop of nested function calls (infinite recursion) or tries to allocate massively oversized local variables inside a single frame, the Stack Pointer (`sp`) will continuously move downwards until it entirely runs out of allocated space.
+- **The OS Limit:** The maximum size of the stack is primarily enforced by the Operating System (e.g., typically 8MB on Linux), though the compiler/linker can embed a requested stack size into the executable's format headers during the build process.
+- **The Guard Page (Protection):** To prevent the downward-growing stack from silently crashing into the upward-growing heap and corrupting application data, the kernel sets up a trap. It places a special, inaccessible memory page at the very boundary of the stack's allowed virtual memory space, known as a **Guard Page**.
+- **The Crash (Segmentation Fault):** If the Stack Pointer (`sp`) reaches the limit and attempts to write data into the Guard Page, the CPU's Memory Management Unit (MMU) instantly detects a permission violation. The hardware triggers an interrupt, and the kernel ruthlessly kills the process to protect the rest of the system memory. This fatal crash is the infamous "Stack Overflow."
+
+## The Data Section
+
+- **Definition & Size:** This section of virtual memory stores global and static variables. Because the compiler knows exactly how many global variables exist in the code, the total size of the Data section is strictly fixed at compile time.
+- **Memory Placement:** It resides in memory immediately above the Text/Code segment.
+- **The Compiler Split (`.data`, `.bss`, `.rodata`):** The OS actually divides this region into optimized sub-sections:
+    - **`.data`:** Stores initialized global variables (e.g., `int x = 100;`). This section is Read/Write.
+    - **`.bss`:** Stores _uninitialized_ global variables (e.g., `int y;`). To save space in the executable file, the OS just zeroes out this memory when the program launches.
+    - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
+- **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
+- **Cache Coherency Penalty:** While reading global variables is fast, _writing_ to them in a modern multi-core system is costly. If Core A updates a global variable, the hardware must instantly trigger "cache invalidation" signals to Cores B, C, and D, forcing them to flush their local caches and fetch the newly updated value from RAM to avoid data corruption.
+
+### Spatial Locality and Caching
+
+Because the Data section is packed sequentially, it heavily benefits from CPU caching behavior.
+
+```armasm
+// Assuming r2 holds the base memory address of the Data section
+ldr r0, [r2, #0]   // Load the first variable into r0
+ldr r1, [r2, #4]   // Load the adjacent variable (4 bytes away) into r1
+```
+
+- **The Cache Line:** When the first instruction (`ldr r0`) executes, the CPU doesn't just fetch 4 bytes from RAM. It fetches an entire **Cache Line** (typically 64 bytes of contiguous memory) and stores it in the ultra-fast L1 Cache.
+- **The "Free" Read:** When the second instruction executes, the CPU realizes the data at `[r2, #4]` was already pulled into the L1 Cache during the previous step. This results in a "Cache Hit," meaning the second variable is loaded almost instantly with zero RAM latency.
