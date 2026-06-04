@@ -161,7 +161,7 @@ To control this randomness and prevent the model from occasionally drawing a non
 
 It is a dangerous engineering mistake to equate high token probability with factual accuracy. A model will happily assign a 99% probability to a heavily hallucinated claim simply because that token fits the grammatical and contextual pattern of the sentence perfectly.
 
-- **The Post-Training Penalty:** While foundational base models are generally well-calibrated, modern models heavily aligned via RLHF (Reinforcement Learning from Human Feedback) are notoriously overconfident. They are trained to sound authoritative, which skews their logits upward even when they are factually incorrect.
+- **The Post-Training Penalty:** While foundational base models are generally well-calibrated, modern models heavily aligned via [RLHF](#The%20Training%20Pipeline) (Reinforcement Learning from Human Feedback) are notoriously overconfident. They are trained to sound authoritative, which skews their logits upward even when they are factually incorrect. 
 - **The Calibration Gap:** In a perfectly calibrated system, outputs assigned 90% confidence should be factually correct exactly 90% of the time. In reality, LLMs suffer from a severe "hard-easy effect"—remaining stubbornly confident on highly complex tasks they fail at, while sometimes showing underconfidence on trivial ones.
 - **The Engineering Reality:** Because raw token probabilities are an unreliable proxy for epistemic uncertainty (whether the model genuinely "knows" the answer), production pipelines often require secondary validation tools. This includes temperature scaling (recalibrating logits downward) or implementing probe classifiers that evaluate the model's hidden states rather than its raw output text.
 
@@ -222,7 +222,7 @@ This entire document has focused on **inference**, which is fundamentally differ
 
 > **Rule of Thumb:** During inference, the model is completely read-only. It is not "learning" new facts into its parameters from your prompt. It is simply applying its previously frozen weights to mathematically route your current context.
 
-### The Training Pipeline (How Weights are Set)
+### The Training Pipeline
 
 To understand why models behave the way they do during inference, engineers must understand the three distinct phases of how those frozen weights were originally configured:
 
@@ -230,7 +230,7 @@ To understand why models behave the way they do during inference, engineers must
 - **2. Supervised Fine-Tuning (SFT):** The model is trained on tens of thousands of high-quality, human-written Q&A pairs. This teaches the model the **dialogue format**. It learns that it should stop acting like a raw text completer and start acting like an agent that directly answers instructions.
 - **3. RLHF (Post-Training Alignment):** Reinforcement Learning from Human Feedback. The model generates multiple answers to a prompt, humans (or other AI models) rank them, and an algorithm mathematically penalizes toxic, unhelpful, or poorly formatted responses. This bakes in the final "tone," safety guardrails, and refusal behaviors.
 
-### In-Context Learning (Why Prompting Works)
+### In-Context Learning
 
 If the weights are completely frozen during inference, how can you paste a brand-new, undocumented API schema into the prompt and have the model instantly write perfect code for it?
 
