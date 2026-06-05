@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Processes.md",
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 Processes"
+              "title": "Prompt Engineering"
             }
           }
         ]
@@ -63,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "\"chain of thought\"",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,16 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Operating Systems/01 Processes.md",
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 01 Processes"
+              "title": "Outline of Prompt Engineering"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -270,7 +271,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 486.5
+    "width": 665.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -285,13 +286,13 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "a336d30df8302c4a",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "Operating Systems/01 Processes.md",
     "Operating Systems/02 Memory Management.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "Operating Systems/01 Processes.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/RAG/01 Fundamentals.md",
     "AI Engineering/RAG/04 Advanced Techniques.md",
