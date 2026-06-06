@@ -214,3 +214,54 @@ go clean -i
 ```
 
 → Removes installed binaries as well.
+
+## `go tool trace`
+
+`go tool trace` is a **powerful profiling and visualization tool** in the Go toolchain.
+
+*   It helps you **see what your Go program was doing over time** — especially how goroutines, threads, and the scheduler interact.
+
+It provides a **timeline view** of:
+
+-   Goroutine creation and execution
+-   Network, syscall, and GC (garbage collection) events
+-   Scheduler activity
+-   Processor usage and work-stealing behavior
+
+You use `go tool trace` to:
+
+-   **Understand performance bottlenecks**
+-   **Visualize concurrency** (when and how goroutines run)
+-   **Debug scheduling issues** (e.g., goroutines blocked on channels or syscalls)
+-   **See GC pauses**
+-   **Inspect parallelism** and CPU utilization
+
+### Basic Workflow
+
+Here’s how you typically use it:
+
+#### 1. Generate a trace file
+
+You run your Go program with tracing enabled:
+
+```
+go test -trace trace.out
+```
+
+or, for a normal Go program:
+
+```
+go run main.go
+```
+
+(inside your code, you can also manually start a trace — more on that below.)
+
+####  2. View the trace
+
+Then, use the tool to analyze it:
+
+```
+go tool trace trace.out
+```
+
+This launches an **interactive web UI** in your browser that looks similar to Chrome’s performance tools.

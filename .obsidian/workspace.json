@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Prompt Engineering.md",
+                "file": "Operating Systems/01 Processes.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Prompt Engineering"
+              "title": "01 Processes"
+            }
+          },
+          {
+            "id": "1067522a3e26bd7c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "System Architecture Overview"
             }
           }
         ]
@@ -90,17 +114,15 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Prompt Engineering"
+              "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -223,7 +245,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -271,7 +293,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 665.5
+    "width": 587.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -288,10 +310,18 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "AI Engineering/LLM/Prompt Engineering.md",
     "Operating Systems/01 Processes.md",
-    "Operating Systems/02 Memory Management.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "Technologies/Golang/01 Essentials/09 Concurrency.md",
+    "Technologies/Golang/99 Misc/Go Internals.md",
+    "Technologies/Golang/99 Misc/GVM.md",
+    "Technologies/Golang/99 Misc/Go CLI.md",
+    "Technologies/Golang/01 Essentials/05 Structs and Custom types.md",
+    "Technologies/Golang/01 Essentials/08 Functions Deep Dive.md",
+    "Operating Systems/02 Memory Management.md",
+    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
+    "Operating Systems/Linux/History.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
     "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/RAG/01 Fundamentals.md",
@@ -300,7 +330,6 @@
     "AI Engineering/LLM/LLM Model Selection.md",
     "Networking/06 Network Monitoring.md",
     "Operating Systems/07 File Systems.md",
-    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "AI Engineering/Lexical Information Retrieval.md",
     "AI Engineering/LLM/LLM.md",
     "CLAUDE.md.bak",
@@ -308,13 +337,6 @@
     "AI Engineering/LLM/Prompts Fragments.md",
     "AI Engineering/Model Context Protocol.md",
     "AI Engineering/4D Framework for AI Fluency.md",
-    "Networking/02 Protocols/15 SSH.md",
-    "Networking/02 Protocols/11 gRPC.md",
-    "Networking/02 Protocols/12 WebRTC.md",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-    "Security/03 Cryptography and Data Protection/01 Cryptography.md",
-    "Descomplica Enablers.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",

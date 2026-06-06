@@ -110,16 +110,32 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 - **Virtual memory allows the OS to transparently offload inactive data from RAM to the disk through a process called "paging" or "swapping."** If the physical RAM fills up, the OS identifies blocks of memory (pages) that haven't been used in a while—such as a background application you minimized an hour ago—and copies them onto the much larger, slower SSD or hard drive. It then completely clears those physical RAM slots to make room for your active, demanding tasks.
 	- Because the OS handles all the underlying address translation, the applications themselves remain completely unaware that their data has been moved out of physical memory. From the process's perspective, it appears to have a continuous, uninterrupted hold on its own dedicated space in RAM.
 
-| Level                 | Typical access time | Order of magnitude | Rough CPU cycles at 3 GHz | Notes                            |
-| --------------------- | ------------------: | -----------------: | ------------------------: | -------------------------------- |
-| **Register access**   |             ~0.3 ns |        **10⁻¹⁰ s** |                  ~1 cycle | Fastest storage, inside CPU core |
-| **L1 cache**          |               ~1 ns |         **10⁻⁹ s** |                 ~3 cycles | Very small, per-core cache       |
-| **L2 cache**          |             ~3–5 ns |         **10⁻⁹ s** |             ~10–15 cycles | Larger, still usually per-core   |
-| **L3 cache**          |           ~10–30 ns |         **10⁻⁸ s** |            ~30–100 cycles | Shared across cores on many CPUs |
-| **Main memory / RAM** |          ~50–100 ns |         **10⁻⁷ s** |           ~150–300 cycles | Much slower than CPU caches      |
-| **SSD**               |          ~50–200 µs |         **10⁻⁴ s** |         ~150k–600k cycles | NVMe can be faster; SATA slower  |
-| **HDD**               |            ~5–10 ms |         **10⁻² s** |           ~15M–30M cycles | Mechanical seek + rotation delay |
+## Memory Access & Caching
 
+When the CPU interacts with system RAM, it is incredibly slow compared to the speed of the processor. To hide this latency, the CPU relies on the L1/L2/L3 hardware caches and two fundamental principles of data access:
+- **The Cache Line:** The CPU never reads a single byte from RAM. When it requests a memory address, the memory controller fetches an entire contiguous block of memory—usually 64 bytes—called a Cache Line. This entire block is copied into the ultra-fast L1 cache.
+
+### Spatial Locality
+
+- **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access the immediately adjacent memory addresses next.
+- **The Benefit:** Because the CPU fetches data in 64-byte Cache Lines, reading sequential memory is essentially "free." The first read suffers RAM latency, but the subsequent adjacent reads result in immediate "Cache Hits" because the data was already pulled into the L1 cache.
+- **Where it Applies:** This is why arrays (on the Heap or Data section) and sequential local variables (packed tightly on the Stack) are incredibly fast to process.
+
+> [!example] Sequential Reads
+>```asmarm
+>ldr r0, [r2, #0]   
+>ldr r1, [r2, #4]
+>```
+>- **The First Read (`ldr r0`):** Assuming the register `r2` holds a base memory address, the CPU attempts to read it. Because the data isn't in the cache yet, the CPU must fetch an entire 64-byte Cache Line from system RAM. This initial read is slow due to memory latency.
+>- **The "Free" Read (`ldr r1`):** The very next instruction requests the data located exactly 4 bytes away from the first read (`#4`). Because the CPU just pulled that entire surrounding 64-byte block into the ultra-fast L1 cache during the previous step, it instantly finds the data. This "Cache Hit" bypasses RAM completely, making the execution nearly instantaneous.
+
+> [!example] Real-World Impact: Linux 6.8 TCP Optimization
+> The sheer power of Spatial Locality and cache line optimization was demonstrated in the Linux 6.8 kernel update. Developers analyzed the core networking data structures and realized that frequently accessed variables were scattered at different memory offsets. By simply rearranging the declaration order of these variables in the source code—packing the "hot" variables tightly together—they ensured the data fit into a single CPU Cache Line. This drastically reduced L1 cache misses and boosted TCP performance for massive concurrent connections by ~40%, entirely through spatial locality.
+### Temporal Locality
+
+- **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access that _exact same_ address again very soon.
+- **The Benefit:** The CPU keeps recently accessed Cache Lines in the L1 cache for as long as possible before evicting them.
+- **Where it Applies:** This is why local loop counters (e.g., `for(int i = 0; ...)`), frequently used global variables, and hot code paths (instructions inside a loop) execute so quickly. The CPU just repeatedly reads the exact same cached data without ever going back to RAM.
 ## Storage
 
 - **Persistent Storage:** Unlike volatile RAM, storage retains data permanently, even when the system loses power.
@@ -166,8 +182,11 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 - **Kernel Space:** A reserved, privileged mapping present in the memory layout of every process. It stores the core kernel code, hardware device drivers, and background subsystems like the TCP/IP network stack.
     - **Virtual, Not Physical:** Addresses in Kernel Space are still **virtual addresses**, mapped to physical RAM via the Page Table. However, the CPU hardware strictly blocks any user-mode code from accessing these specific virtual addresses.
 - **Mode Switching (System Calls):** An application cannot directly read data sitting in kernel memory (such as a [network receiving buffer](02%20Reading%20and%20Sending%20Data.md#Receiving%20data)). It must ask the kernel to perform the action on its behalf via a **system call**.
-    - Executing a system call triggers the CPU to change states from User Mode to Kernel Mode.
-    - While faster than a full process context switch, this mode switch is still computationally expensive due to the required security checks, CPU register changes, and boundary crossings.
+    - **The Shared Mapping:** The actual executable machine code for these system calls resides inside Kernel Space. Because every process has Kernel Space mapped into its own virtual memory layout, the kernel's code is technically "present" within the process's own memory boundaries—it is just strictly walled off by CPU privilege levels.
+	- **The Hardware Trapdoor (`syscall`):** Because the CPU blocks direct execution of that walled-off memory, the application cannot just jump to the function. Instead, it places a specific ID number into a CPU register and executes a special hardware instruction (like `syscall` on x86-64 or `svc` on ARM).
+	- **The System Call Table:** Executing this instruction triggers a secure trapdoor. The CPU instantly elevates its hardware state from User Mode to Kernel Mode, catches the request, and looks up the ID in a secure kernel directory called the **System Call Table**.
+	- **Execution & Return:** The kernel uses its privileged access to safely execute the requested code, places the result back into a CPU register (usually `r0` or `rax`), lowers the CPU privilege back to User Mode, and hands control back to the application.
+	- **The Cost:** While faster than a full process context switch, this mode switch is still computationally expensive due to the required security checks, CPU register swapping, and physical boundary crossings.
 - **Bypassing the Boundary (`io_uring`):** To avoid the high overhead of constant mode switching during heavy I/O workloads, modern Linux introduced `io_uring`. It establishes a shared memory ring buffer that is mapped and visible to _both_ User Space and Kernel Space. This allows the application and the kernel to pass data back and forth asynchronously without requiring expensive system calls or redundant data copying.
 
 ## Device Drivers
