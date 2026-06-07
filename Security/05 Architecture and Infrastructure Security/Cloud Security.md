@@ -10,14 +10,35 @@
 
 #### **Service Models**
 
-Cloud computing delivers technology resources through three primary service models:
+Cloud computing delivers technology resources through these primary service models:
 
-| **Service Model** | **Definition** | **Provider Responsibility** | **Customer Responsibility** |
-|------------------|---------------|---------------------------|---------------------------|
-| **IaaS (Infrastructure as a Service)** | Provides virtualized computing resources like servers, storage, and networking | Hardware, virtualization, physical security | OS, applications, data, access management |
-| **PaaS (Platform as a Service)** | Offers development platforms with runtime environments, databases, and development tools | Infrastructure, runtime, middleware | Applications, data, user access |
-| **SaaS (Software as a Service)** | Delivers fully functional applications accessible via web browsers | Everything except user data and access | User data, access credentials, configuration |
+- **Infrastructure as a Service (IaaS)**: represents the most fundamental layer of cloud computing. It provides users with raw computing resources over the internet, essentially serving as a virtualized data center.
 
+	- **What it provides:** Physical and virtual servers, cloud storage, networking infrastructure (routers, switches), and firewalls.
+	- **How it works:** Instead of buying expensive hardware on-premises, a company rents these resources from a cloud provider. Technologies like hypervisors (e.g., VMware or KVM) are used to split physical hardware into virtual instances.
+	- **Management level:** The developer or system administrator has the highest level of control but also the highest responsibility. The cloud provider manages the physical hardware, but you are responsible for installing, configuring, and maintaining the operating system, databases, runtimes, and software applications.
+	- **Analogy:** Renting an empty apartment. The landlord provides the physical structure, but you must bring all the furniture, appliances, and decorations yourself.
+	
+- **Platform as a Service (PaaS)**: shifts the focus away from infrastructure management, making it an ideal environment for software developers.
+
+	- **What it provides:** Everything included in IaaS, plus operating systems, middleware, database management tools, development kits, and business intelligence services.
+	- **How it works:** The cloud provider manages the underlying hardware, virtualization layer, and operating systems. Developers do not need to worry about OS updates, server maintenance, or hardware scaling. They are given a fully configured environment where they can write, test, deploy, and manage their code through intelligent interfaces.
+	- **Management level:** Medium control. You only manage the application code and data, while the cloud vendor handles the entire platform ecosystem. An example of this is RedHat OpenShift.
+	- **Analogy:** Renting a fully furnished apartment. The basic living utilities and furniture are already set up for you; you just need to bring your personal items and start living there.
+    
+- **Software as a Service (SaaS)**: is the most common cloud market model and represents the top layer of the cloud architecture stack, designed directly for end-user.
+
+	- **What it provides:** Fully functional, ready-to-use software applications hosted entirely in the cloud.
+	- **How it works:** Users do not install software locally on their computers. Instead, the applications are hosted by a provider, and users access them remotely via the internet using a standard web browser or mobile app.
+	- **Management level:** No technical management required. The provider manages everything—from the hardware and servers to the code, updates, data security, and interface. Examples include productivity tools like Google's GSuite or standard social networks.
+	- **Analogy:** Staying in a hotel room. Everything is fully provided, maintained, and cleaned by the hotel management. You simply check in, use the space, and leave when you are done.
+	
+- **Function as a Service (FaaS)**: represents an event-driven computing execution model, often referred to as "Serverless", which takes the abstraction of cloud infrastructure to its absolute extreme.    
+
+    - **What it provides:** On-demand execution environments specifically optimized to run modular, single-purpose blocks of code (functions) triggered by distinct events.
+    - **How it works:** Developers upload individual code snippets or functions without provisioning any servers. The cloud provider automatically spins up a micro-runtime container the exact millisecond an event (like an HTTP request or a file upload) triggers it, executes the code, and immediately tears the environment back down. You only pay for the exact milliseconds the function is executing.
+    - **Management level:** Zero infrastructure control. You have zero visibility or control over servers, operating systems, container scaling, or idle capacity. Your sole responsibility is writing the application logic (the code) and defining its triggers. An example of this is AWS Lambda.
+    - **Analogy:** Ordering a ride via a ridesharing app like Uber. You don't own the car (IaaS), you don't lease a vehicle long-term (PaaS), and you aren't riding a pre-scheduled public bus (SaaS). You simply request a vehicle exactly when you need to go somewhere, pay only for the exact distance of that single trip, and the car vanishes from your concern the moment you step out.
 #### **Deployment Models**
 
 - **Public Cloud:** Services offered by third-party providers (AWS, Microsoft Azure, Google Cloud) and accessible over the internet

@@ -164,7 +164,7 @@ When the CPU interacts with system RAM, it is incredibly slow compared to the sp
 
 
 ## File System
-[07 File Systems](07%20File%20Systems.md)
+[07 Storage Management](07%20Storage%20Management.md)
 
 ## Program vs Process
 [Program vs Process](01%20Processes.md#Program%20vs%20Process)

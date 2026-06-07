@@ -13,30 +13,6 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Processes.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "01 Processes"
-            }
-          },
-          {
-            "id": "1067522a3e26bd7c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
                 "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
                 "mode": "source",
                 "source": false,
@@ -54,8 +30,33 @@
               "icon": "lucide-file",
               "title": "System Architecture Overview"
             }
+          },
+          {
+            "id": "03a631ecb08ff071",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/07 Storage Management.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "07 Storage Management"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -87,7 +88,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "SaaS",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -245,7 +246,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -310,8 +311,18 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Operating Systems/01 Processes.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "Operating Systems/07 Storage Management.md",
+    "Networking/05 Network Management.md",
+    "Security/TODO/02 Cloud Security Infrastructure.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+    "Web APIs/01 Introductions/03 APIs and Business.md",
+    "Security/TODO/01 Cloud Architecture.md",
+    "Security/TODO/04 Asset Identification and Valuation.md",
+    "Security/TODO/03 Security Management and Cloud Computing.md",
+    "Descomplica Enablers.md",
+    "Security/TODO",
+    "Operating Systems/01 Processes.md",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/99 Misc/Go Internals.md",
     "Technologies/Golang/99 Misc/GVM.md",
@@ -327,16 +338,7 @@
     "AI Engineering/RAG/01 Fundamentals.md",
     "AI Engineering/RAG/04 Advanced Techniques.md",
     "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
-    "AI Engineering/LLM/LLM Model Selection.md",
-    "Networking/06 Network Monitoring.md",
-    "Operating Systems/07 File Systems.md",
-    "AI Engineering/Lexical Information Retrieval.md",
-    "AI Engineering/LLM/LLM.md",
     "CLAUDE.md.bak",
-    "AGENTS.md",
-    "AI Engineering/LLM/Prompts Fragments.md",
-    "AI Engineering/Model Context Protocol.md",
-    "AI Engineering/4D Framework for AI Fluency.md",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
     "Security/99 TODO",
@@ -345,7 +347,6 @@
     "Security/99 References and Checklists",
     "Security/06 Security Operations and Governance",
     "Security/05 Architecture and Infrastructure Security/Network Security",
-    "Security/05 Architecture and Infrastructure Security",
-    "Security/04 Application and API Security"
+    "Security/05 Architecture and Infrastructure Security"
   ]
 }
