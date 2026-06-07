@@ -37,7 +37,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/07 Storage Management.md",
+                "file": "Operating Systems/01 Processes.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "07 Storage Management"
+              "title": "01 Processes"
             }
           }
         ],
@@ -309,10 +309,11 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "03a631ecb08ff071",
   "lastOpenFiles": [
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "Operating Systems/02 Memory Management.md",
     "Operating Systems/07 Storage Management.md",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Networking/05 Network Management.md",
     "Security/TODO/02 Cloud Security Infrastructure.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
@@ -329,7 +330,6 @@
     "Technologies/Golang/99 Misc/Go CLI.md",
     "Technologies/Golang/01 Essentials/05 Structs and Custom types.md",
     "Technologies/Golang/01 Essentials/08 Functions Deep Dive.md",
-    "Operating Systems/02 Memory Management.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Operating Systems/Linux/History.md",
     "AI Engineering/LLM/Prompt Engineering.md",
