@@ -37,7 +37,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Processes.md",
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,11 +52,35 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 Processes"
+              "title": "Prompt Engineering"
+            }
+          },
+          {
+            "id": "9d09d8345e378870",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Prompt Engineering"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -115,12 +139,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of Prompt Engineering"
             }
           }
         ]
@@ -246,7 +271,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -309,8 +334,14 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "03a631ecb08ff071",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "AI Engineering/LLM/LLM Model Selection.md",
+    "Operating Systems/01 Processes.md",
     "Operating Systems/02 Memory Management.md",
     "Operating Systems/07 Storage Management.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
@@ -323,7 +354,6 @@
     "Security/TODO/03 Security Management and Cloud Computing.md",
     "Descomplica Enablers.md",
     "Security/TODO",
-    "Operating Systems/01 Processes.md",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/99 Misc/Go Internals.md",
     "Technologies/Golang/99 Misc/GVM.md",
@@ -332,12 +362,7 @@
     "Technologies/Golang/01 Essentials/08 Functions Deep Dive.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Operating Systems/Linux/History.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
-    "AI Engineering/LLM/LLM Processing Pipeline.md",
     "AI Engineering/LLM/Context Engineering.md",
-    "AI Engineering/RAG/01 Fundamentals.md",
-    "AI Engineering/RAG/04 Advanced Techniques.md",
-    "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",

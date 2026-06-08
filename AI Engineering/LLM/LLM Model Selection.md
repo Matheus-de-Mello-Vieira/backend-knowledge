@@ -34,7 +34,7 @@ Consider how much the model needs to learn your specific domain.
 * **Zero-Shot / Few-Shot Capable:** Many powerful models work exceptionally well right out of the box with just a few examples provided in the prompt.
 * **Fine-Tuning:** If you need the model to adopt a highly specific tone of voice, understand deep proprietary jargon, or follow strict output formats consistently, you should look for models that allow for easy and cost-effective fine-tuning. Generally, open-weights models and certain dedicated proprietary tiers offer the best flexibility for this.
 
-Prompt iteration is part of this tradeoff as well. For the deeper prompting note, see [Prompt Engineering](Prompt%20Engineering.md).
+Prompt iteration is part of this tradeoff as well. For the deeper prompting note, see [Prompt Evaluation](Prompt%20Evaluation.md) and [Prompt Engineering](Prompt%20Engineering.md).
 
 ### 6. Cost and Economics
 
