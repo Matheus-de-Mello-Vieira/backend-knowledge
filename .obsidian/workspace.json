@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/02 Memory Management.md",
+                "file": "AI Engineering/RAG/01 Fundamentals.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,16 +28,16 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Memory Management"
+              "title": "01 Fundamentals"
             }
           },
           {
-            "id": "9d09d8345e378870",
+            "id": "6c934291d76c07df",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/02 Memory Management.md",
+                "file": "AI Engineering/LLM/LLM Processing Pipeline.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Memory Management"
+              "title": "LLM Processing Pipeline"
             }
           }
         ]
@@ -87,7 +87,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "SaaS",
+                "query": "TF-IDF",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -114,13 +114,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Operating Systems/02 Memory Management.md",
+                "file": "AI Engineering/RAG/01 Fundamentals.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 02 Memory Management"
+              "title": "Outline of 01 Fundamentals"
             }
           }
         ]
@@ -246,7 +246,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -294,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 587.5
+    "width": 329.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -309,16 +309,20 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "a336d30df8302c4a",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/RAG/04 Advanced Techniques.md",
+    "AI Engineering/RAG/01 Fundamentals.md",
+    "AI Engineering/Lexical Information Retrieval.md",
+    "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "Operating Systems/02 Memory Management.md",
     "Operating Systems/07 Storage Management.md",
     "Operating Systems/01 Processes.md",
-    "Operating Systems/02 Memory Management.md",
     "Cache/Caching.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "AI Engineering/LLM/Prompt Engineering.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "AI Engineering/LLM/LLM Processing Pipeline.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/Prompts Fragments.md",
     "AI Engineering/LLM/LLM Model Selection.md",
@@ -334,10 +338,6 @@
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/99 Misc/Go Internals.md",
     "Technologies/Golang/99 Misc/GVM.md",
-    "Technologies/Golang/99 Misc/Go CLI.md",
-    "Technologies/Golang/01 Essentials/05 Structs and Custom types.md",
-    "Technologies/Golang/01 Essentials/08 Functions Deep Dive.md",
-    "Operating Systems/Linux/History.md",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",

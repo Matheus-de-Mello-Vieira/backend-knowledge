@@ -101,8 +101,6 @@ Once we have valid tokens, we need to determine how "important" they are. In a s
   - A tiny number of words (stop words) make up the vast majority of text.
   - **Why IDF exists:** Without IDF, the top 100 most frequent words (which are mostly noise) would dominate every search score. IDF mathematically cancels out the "head" of the Zipf curve so we can focus on the "tail" (the meaningful content).
 
----
-
 ## TF-IDF (Baseline Model)
 
 **TF-IDF** (Term Frequency-Inverse Document Frequency) transforms raw counts into weighted scores. It operates on the intuition that a word is important if it appears frequently in a document (**TF**), but rare across the entire corpus (**IDF**).
@@ -150,8 +148,6 @@ IDF measures informativeness. While the core concept is constant ($\frac{Total}{
 - **The Result:** Without correction, TF-IDF systematically favors longer documents. A 500-page book mentioning "UFO" once might score higher than a short tweet about "UFOs" simply because the book's vector is "longer" (has more non-zero dimensions) or accumulates more aggregate weight.
 - **The Missing Piece:** TF-IDF lacks **Document Length Normalization**. It does not penalize a document for being verbose, which is the primary problem solved by **BM25**.
 
----
-
 ## Probabilistic IR
 
 This section marks the transition from **Geometry** (vectors and angles) to **Probability** (odds and likelihood). The goal shifts from "how similar is this vector?" to "what is the probability this document is relevant?"
@@ -185,11 +181,9 @@ This section marks the transition from **Geometry** (vectors and angles) to **Pr
   - **1,000 mentions:** The document is *still* just "about the topic." It hasn't become "more relevant" just because it repeated the word 997 more times.
 - **The Outcome:** This insight leads directly to the **BM25 Saturation Curve**, where the score contribution of a term rapidly rises and then plateaus, preventing keyword spamming from breaking the ranking.
 
----
-
 ## BM25
 
-> BM25 is not magic—it is simply **TF-IDF with better assumptions.**
+> [!quote] BM25 is not magic—it is simply **TF-IDF with better assumptions.**
 
 BM25 fixes the two biggest flaws of the baseline model: linear term frequency (spamming works) and the lack of length normalization (long docs always win).
 
@@ -197,7 +191,7 @@ BM25 fixes the two biggest flaws of the baseline model: linear term frequency (s
 
 #### Document–Query Scoring Function
 
-The relevance score of a document \( D \) with respect to a query \( Q \) is defined as:
+The relevance score of a document $D$ with respect to a query $Q$ is defined as:
 
 $$
 \text{Score}(D, Q)
@@ -219,8 +213,8 @@ $$
 $$
 
 **Where:**
-- \( N \): total number of documents in the corpus  
-- \( n_q \): number of documents containing term \( q \)
+- $N$: total number of documents in the corpus  
+- $n_q$: number of documents containing term $q$.
 
 #### Local Term Weight (Saturated Term Frequency)
 
@@ -233,8 +227,9 @@ $$
 
 **Where:**
 
-- \( f(q, D) \): frequency of term \( q \) in document \( D \)  
-- \( k_1 \): term frequency saturation parameter
+- $f(q, D)$: frequency of term $q$ in document $D$  
+- $k_1$: term frequency saturation parameter
+- $K$: the [document length normalization](#Document%20Length%20Normalization).
 
 #### Document Length Normalization
 
@@ -250,9 +245,9 @@ $$
 
 **Where:**
 
-- \( |D| \): length of document \( D \)  
-- \( \text{avgdl} \): average document length in the corpus  
-- \( b \in [0,1] \): document length normalization parameter
+- $|D|$: length of document $D$  
+- $\text{avgdl}$: average document length in the corpus  
+- $b \in [0,1]$: document length normalization parameter
 
 ### **1. TF Saturation (Diminishing Returns)**
 
@@ -260,19 +255,19 @@ $$
 
 **The Fix:** BM25 introduces a **saturation curve**. The score increases rapidly for the first few occurrences but eventually **plateaus** (asymptotes) to a maximum value of $k_1 + 1$.
 
-Given the equation 3, let \( f = f(q, D) \). We compute:
+Given the equation 3:
 
 $$\text{TF}_{\text{sat}}(q, D)\;=\;\frac{f(q, D)\,(k_1 + 1)}{f(q, D) + K}$$
 
-Let \( f = f(q, D) \). We compute:
+Let $f(q, D) = f$. We compute:
 
 $$ \lim_{f \to \infty} \frac{f\,(k_1 + 1)}{f + K} $$
 
-Divide numerator and denominator by \( f \):
+Divide numerator and denominator by $f$:
 
 $$ \lim_{f \to \infty} \frac{k_1 + 1}{1 + \frac{K}{f}} $$
 
-Since \( \frac{K}{f} \to 0 \) as \( f \to \infty \), the limit is:
+Since $\frac{K}{f} \to 0$ as $f \to \infty$, the limit is:
 
 $$ \boxed{ \lim_{f(q,D)\to\infty} \text{TF}_{\text{sat}}(q, D) = k_1 + 1 } $$
 
@@ -296,19 +291,16 @@ $$ \boxed{ \lim_{f(q,D)\to\infty} \text{TF}_{\text{sat}}(q, D) = k_1 + 1 } $$
 These are the "knobs" you can turn to tune the algorithm for your specific dataset.
 
 - **$k_1$ (Term Saturation Control):**
-  - **Typical Value:** 1.2 to 2.0.
-  - **Function:** Controls how quickly the TF curve saturates.
-  - **Low $k_1$ (e.g., 1.2):** Saturation happens fast. A few mentions are enough to reach max score. (Good for short queries/documents).
-  - **High $k_1$ (e.g., 2.0+):** Saturation is slower. We care more about the exact count difference between 10 vs. 20.
+	- **Typical Value:** 1.2 to 2.0.
+	- **Function:** Controls how quickly the TF curve saturates.
+	- **Low $k_1$ (e.g., 1.2):** Saturation happens fast. A few mentions are enough to reach max score. (Good for short queries/documents).
+	- **High $k_1$ (e.g., 2.0+):** Saturation is slower. We care more about the exact count difference between 10 vs. 20.
 - **$b$ (Length Normalization Control):**
-  - **Typical Value:** 0.75.
-  - **Function:** Controls how much we penalize long documents.
-  - **$b = 1$:** Full normalization. We treat length as purely "verbosity" and penalize it heavily.
-  - **$b = 0$:** No normalization. We ignore length entirely (reverts to standard TF behavior).
-  - **Logic:** If your documents are all roughly the same length (e.g., tweets), set $b$ low. If they vary wildly (tweets vs. books), set $b$ high.
-
----
-
+	- **Typical Value:** 0.75.
+	- **Function:** Controls how much we penalize long documents.
+	- **$b = 1$:** Full normalization. We treat length as purely "verbosity" and penalize it heavily.
+	- **$b = 0$:** No normalization. We ignore length entirely (reverts to standard TF behavior).
+	- **Logic:** If your documents are all roughly the same length (e.g., tweets), set $b$ low. If they vary wildly (tweets vs. books), set $b$ high.
 ## Indexing & execution
 
 ### The Inverted Index
@@ -352,9 +344,6 @@ These are the "knobs" you can turn to tune the algorithm for your specific datas
 - **Sparsity:** Most words don’t appear in most documents. If a user searches for "Zebra", the engine only touches the 0.01% of documents containing "Zebra". It completely ignores the other 99.99%.
 - **Memory Efficiency:** The index is compact. We only store counts and IDs, not the full text.
 - **Parallelism:** You can split the index into "shards" (e.g., Docs 1-1M on Server A, Docs 1M-2M on Server B) and query them simultaneously.
-
----
-
 ## Evaluation
 
 How you know one ranking is better than another. This is what turns IR from “math” into “engineering”.

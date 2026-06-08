@@ -363,11 +363,9 @@ flowchart LR
 
 * **Precision Increases:** By layering keyword matching over semantic search, the system filters out results that are "conceptually similar" but "factually distinct."
 
-  - Reduces "semantic drift" (e.g., asking for "Python 3.8 features" and getting "Python 2.7" results because they are semantically close).
-
-  - Eliminates false positives from domain-specific jargon where subtle wording differences change the meaning entirely.
-
-  - Improves ranking robustness via Reciprocal Rank Fusion (RRF), pushing documents that appear in both search methods to the top.
+	- Reduces "semantic drift" (e.g., asking for "Python 3.8 features" and getting "Python 2.7" results because they are semantically close).
+	- Eliminates false positives from domain-specific jargon where subtle wording differences change the meaning entirely.
+	- Improves ranking robustness via Reciprocal Rank Fusion (RRF), pushing documents that appear in both search methods to the top.
 
 * **Token Usage Varies:** The raw number of tokens sent to the LLM depends on the `top_k` setting, but the *information density* per token improves significantly.
   - *However:*
@@ -431,6 +429,18 @@ flowchart LR
 ```
 
 **Why:** retrieval gives you a candidate set; reranking sorts them using a stronger relevance model (cross-encoder or small LLM). This improves *precision*—the top few chunks are more likely to be truly useful.
+
+**Reciprocal Rank Fusion**
+
+In multi-index RAG systems, **Reciprocal Rank Fusion (RRF)** is a widely used algorithm for the reranking stage. Instead of relying on raw, uncalibrated scores from disparate retrieval methods (like keyword and vector search), RRF normalizes and combines the **rank positions** of documents across the different indexes into a single, unified score.
+- **Apples-to-Oranges Solution:** Different indexes produce different scoring scales (e.g., BM25 scores can be any positive number, while Cosine Similarity is between -1 and 1). RRF bypasses this by only looking at the _order_ of the results.
+- **High Quality Consensus:** Documents that perform well across multiple search strategies naturally rise to the top of the final, reranked list.
+
+$$RRF\_score(d) = \sum_{i} \frac{1}{k + rank_i(d)}$$
+- **$d$**: The specific document being scored.
+- **$i$**: The index representing each individual ranking system/retriever being combined.
+- **$rank_i(d)$**: The position (rank) of document $d$ in the $i$-th ranking list.
+- **$k$**: A smoothing constant used to mitigate the undue influence of outlier high rankings from a single retriever. $60$ is the standard default in production systems like Elasticsearch and Hybrid.
 
 **Technical Impact**
 
