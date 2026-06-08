@@ -33,7 +33,7 @@ Store data on the client’s device, such as a web browser.
 
 Defines why data is expected to be reused.
 
-### Spacial caching
+### Spatial caching
 
 When the system loads a block of data from disk, it also loads and caches adjacent blocks because nearby data is likely to be accessed soon. 
 

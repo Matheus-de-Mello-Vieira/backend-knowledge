@@ -177,7 +177,7 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
     - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
 - **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
 - **Cache Coherency Penalty:** While reading global variables is fast, _writing_ to them in a modern multi-core system is costly. If Core A updates a global variable, the hardware must instantly trigger "cache invalidation" signals to Cores B, C, and D, forcing them to flush their local caches and fetch the newly updated value from RAM to avoid data corruption.
-- **Cache Efficiency (Spatial Locality):** Because the compiler packs these global and static variables tightly together in a continuous, fixed-size memory block, reading them sequentially heavily benefits from [Spacial caching](Caching.md#Spacial%20caching). Traversing arrays or adjacent variables in the Data section results in massive CPU cache hit rates, making these reads nearly instantaneous.
+- **Cache Efficiency:** Because the compiler packs these global and static variables tightly together in a continuous, fixed-size memory block, reading them sequentially heavily benefits from [Spatial Locality](02%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables in the Data section results in massive CPU cache hit rates, making these reads nearly instantaneous.
 
 These are excellent notes on the Heap! You have a really strong grasp of how dynamic memory works and the pitfalls that come with it.
 
@@ -238,7 +238,7 @@ While the `brk` system call manages the traditional, upward-growing heap boundar
 ### Performance (Stack vs Heap)
 
 * **Allocation Overhead:** Stack allocation is incredibly fast (just subtracting from the CPU's Stack Pointer register). Heap allocation is drastically slower because `malloc` has to search its internal lists for an appropriately sized free block, and occasionally trigger expensive context switches to Kernel Mode to ask for more memory via `brk`.
-* **Cache Efficiency:** The Stack is tightly packed, resulting in massive CPU Cache hit rates ([Spacial caching](Caching.md#Spacial%20caching)). The Heap, however, is heavily fragmented. Because allocations are scattered randomly across memory, jumping between heap pointers frequently causes CPU cache misses, forcing slow reads from physical RAM.
+* **Cache Efficiency:** The Stack is tightly packed, resulting in massive CPU Cache hit rates ([Spatial Caching](02%20Memory%20Management.md#Spatial%20Locality)). The Heap, however, is heavily fragmented. Because allocations are scattered randomly across memory, jumping between heap pointers frequently causes CPU cache misses, forcing slow reads from physical RAM. 
 ### Bulk Allocations
 
 When writing performance-critical code, allocating one massive block of memory upfront is drastically faster and more efficient than making thousands of tiny allocations. Here is exactly why the hardware and OS favor bulk allocation:
