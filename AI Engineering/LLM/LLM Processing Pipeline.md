@@ -329,3 +329,23 @@ This architecture combines both halves to solve complex transformation tasks. It
 - **Weaknesses:** Computationally heavy and complex. You are essentially running two separate neural networks in tandem.
 - **Primary use cases:** Language translation (e.g., English to French), document summarization, and audio transcription (e.g., Whisper, which encodes audio and decodes text).
 - **The Industry Consensus:** While Encoder-Decoder architectures are elegant, the industry realized around 2020 that if you simply scale up a Decoder-only model with enough parameters and training data, it becomes incredibly proficient at translation and summarization anyway. This is why almost all modern frontier models (OpenAI, Anthropic, Meta) have abandoned the Encoder and are strictly **Decoder-only**.
+
+## Multi-Turn Conversations & Tool Calling
+
+The jump from a single text completion to a dynamic, multi-turn AI agent is entirely an engineering trick. At the neural network level, a language model is entirely stateless and does not possess an ongoing internal memory. Once the generation loop finishes outputting a response, the context window is wiped clean. To create a continuous conversation, the system relies on the host application to maintain a rolling transcript.
+
+### The Append-Only Transcript
+
+- **The Brute Force Loop:** When a user sends a third message in a chat, the application does not just send that single sentence. It takes the System Prompt, the user's first message, the AI's first reply, the user's second message, the AI's second reply, and the new third message, concatenates them into one massive string, and submits the entire transcript back to the API from scratch.
+- **Chat Formatting Tokens:** To prevent the model from confusing its own past words with the user's instructions, the raw text is wrapped in specialized, invisible control tokens during training and inference (e.g., `<|im_start|>user`, `<|im_start|>assistant`). This acts as a rigid script, mathematically teaching the model exactly which lines it "spoke" and which lines it needs to respond to.
+### Prefix Caching
+
+- **The Recompute Problem:** Because the entire transcript is submitted every single turn, the $O(N^2)$ Self-Attention matrix grows rapidly. Recomputing the dense math for the entire history on every single turn would crush server latency and waste immense compute.
+- **Prefix Caching:** Modern inference servers use **Prefix Caching** to solve this. The server recognizes that the first 2,000 tokens of a new prompt are perfectly identical to the prompt submitted moments prior. It retrieves the already-computed Key and Value vectors for those 2,000 tokens directly from VRAM. The GPU only has to execute the heavy math for the newest sentence, seamlessly picking up exactly where it left off.
+
+### Tool Calling
+
+- **The Orchestration Boundary:** The model itself cannot execute code, query a database, or search the web. It is mathematically confined to predicting the next token. Tool calling is an orchestration handshake between the model and the host application.
+- **The Syntax Trigger:** During the System Prompt phase, the host application provides a list of available tools formatted as JSON schemas. If the model determines a tool is needed, it stops writing conversational text and instead generates a perfectly formatted JSON object matching the requested tool's schema.
+- **The Halting Phase:** The inference server detects this specific JSON structure, immediately halts the generation loop, and passes the JSON payload back to the host application (e.g., a Python backend).
+- **The Injection Phase:** The host application actually executes the API call or database query. It takes the raw data returned by that external tool, appends it to the rolling transcript under a new `<|im_start|>tool` role, and sends the entire massive prompt back to the LLM to read the data and summarize the final answer for the user.

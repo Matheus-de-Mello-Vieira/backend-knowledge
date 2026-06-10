@@ -11,7 +11,7 @@ To build robust AI systems, engineering teams must transition from subjective ma
 Instead of guessing if a prompt is ready, you run it through a systematic framework that scores its outputs against a diverse dataset of test cases. By treating prompts with the same rigor as traditional software components, you generate objective, quantifiable metrics. This data-driven approach allows you to:
 
 - **Identify Failures Proactively:** Catch hallucinations, broken formatting, and logic gaps during development rather than waiting for your users to discover them in production.
-- **A/B Test Objectively:** Compare different prompt versions, model architectures, or temperature settings using hard data (like accuracy scores or relevance percentages) rather than relying on gut feelings.
+- **A/B Test Objectively:** Compare different prompt versions, model providers, temperature settings, or advanced compute features (like "extended thinking" or reasoning tokens) using hard data rather than relying on gut feelings.
 - **Prevent Regressions:** Ensure that tweaking a prompt to fix one specific corner case does not accidentally destroy the core functionality of the system elsewhere.
 - **Iterate with Confidence:** Move from continuous, blind prompt tweaking to a structured engineering cycle where every change is validated by measurable improvements.
 
@@ -192,5 +192,5 @@ You then run the _exact same dataset_ through the pipeline again using the updat
 This systematic loop fundamentally changes how you engineer AI. By tying prompt performance to hard numbers rather than intuition, you can:
 
 - **Compare objectively:** Look at Version 1 vs. Version 2 numerically to guarantee you are deploying the strongest prompt.
-- **A/B Test Models:** Run the exact same prompt and dataset through Claude, Llama, and OpenAI models to definitively see which architecture handles your specific use case best.
+- **A/B Test Models & Compute Features:** Run the exact same prompt and dataset through different models (like Claude, Llama, and OpenAI) or toggle advanced reasoning features (like "extended thinking"). This allows you to mathematically prove whether the increased latency and token cost of a "smarter" model actually yields a measurable improvement for your specific use case.
 - **Eliminate Guesswork:** Deploy changes to production with empirical confidence rather than blind hope.

@@ -114,13 +114,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/RAG/01 Fundamentals.md",
+                "file": "AI Engineering/Claude Code/03 Skills.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 01 Fundamentals"
+              "title": "Outline of 03 Skills"
             }
           }
         ]
@@ -294,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 329.5
+    "width": 577.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -311,19 +311,20 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "AI Engineering/RAG/04 Advanced Techniques.md",
     "AI Engineering/RAG/01 Fundamentals.md",
-    "AI Engineering/Lexical Information Retrieval.md",
     "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/Claude Code/03 Skills.md",
+    "AI Engineering/RAG/04 Advanced Techniques.md",
+    "AI Engineering/Lexical Information Retrieval.md",
     "Operating Systems/02 Memory Management.md",
     "Operating Systems/07 Storage Management.md",
     "Operating Systems/01 Processes.md",
     "Cache/Caching.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/Prompts Fragments.md",
     "AI Engineering/LLM/LLM Model Selection.md",
     "Networking/05 Network Management.md",
@@ -337,7 +338,6 @@
     "Security/TODO",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/99 Misc/Go Internals.md",
-    "Technologies/Golang/99 Misc/GVM.md",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",

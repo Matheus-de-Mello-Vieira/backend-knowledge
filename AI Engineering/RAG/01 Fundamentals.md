@@ -442,6 +442,11 @@ $$RRF\_score(d) = \sum_{i} \frac{1}{k + rank_i(d)}$$
 - **$rank_i(d)$**: The position (rank) of document $d$ in the $i$-th ranking list.
 - **$k$**: A smoothing constant used to mitigate the undue influence of outlier high rankings from a single retriever. $60$ is the standard default in production systems like Elasticsearch and Hybrid.
 
+> [!info] Why RRF Uses Reciprocal Ranks Instead of an Average:
+> - **Rewards the Top Spots:** The reciprocal scale ($\frac{1}{\text{rank}}$) drops exponentially, ensuring that jumping from Rank 2 to Rank 1 yields a massive score boost, while the difference between Rank 50 and 100 is safely ignored.
+> - **Protects Against Outliers:** A standard average allows a single poor ranking to completely tank a document's position. RRF acts as an "optimistic consensus"—if a document places near the top in even one index, the reciprocal math ensures it stays highly ranked overall. 
+> - **Gracefully Handles Missing Results:** If an index fails to retrieve a document entirely, it can't be averaged. In RRF, a missing document simply contributes a score of `0` ($\frac{1}{\infty} = 0$), allowing the math to function seamlessly without arbitrary penalties.
+
 **Technical Impact**
 
 - **Recall Increases (Indirectly):** Reranking allows the initial retrieval stage to cast a much wider net (increasing the initial `top_k`) without polluting the final context. This ensures that relevant documents, which might have low vector similarity scores due to embedding limitations, are still captured for evaluation.
