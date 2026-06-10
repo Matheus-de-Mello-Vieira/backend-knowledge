@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/RAG/01 Fundamentals.md",
+                "file": "AI Engineering/Agents and Workflows.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "01 Fundamentals"
+              "title": "Agents and Workflows"
             }
           },
           {
@@ -114,16 +114,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/Claude Code/03 Skills.md",
+                "file": "AI Engineering/Agents and Workflows.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 03 Skills"
+              "title": "Outline of Agents and Workflows"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -311,6 +312,7 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/Agents and Workflows.md",
     "AI Engineering/RAG/01 Fundamentals.md",
     "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
@@ -337,7 +339,6 @@
     "Descomplica Enablers.md",
     "Security/TODO",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
-    "Technologies/Golang/99 Misc/Go Internals.md",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
