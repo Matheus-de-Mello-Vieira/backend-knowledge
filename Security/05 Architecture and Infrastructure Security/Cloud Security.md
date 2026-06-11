@@ -201,6 +201,27 @@ The **Shared Responsibility Model** defines distinct security domains between cl
 - **Vulnerability Assessments:** Automated and manual testing for security vulnerabilities
 - **Red Team Exercises:** Simulated attacks to test detection and response capabilities
 
+## Auditing Cloud Computing Environments
+
+Compliance requires robust logs to validate methods and processes. In cloud environments, organizations must address whether provider risk translates to client risk, and if a provider's error impacts client liability.
+
+According to ISACA, information systems auditing in cloud computing must identify provider risks, monitor them continuously, and evaluate IT governance metrics. Audits assess whether the client failed to monitor the provider. If the client monitors and reports an issue, they remain compliant. Failing to monitor shifts the liability to the client for governance failures.
+
+For organizations operating under strict compliance and corporate governance, auditing cloud contracts, security levels, and monitoring systems is essential. This provides assurance to internal and external stakeholders, supported by frameworks like COBIT.
+
+Key audit objectives include:
+*   Aligning information systems with organizational mission, vision, values, and strategies.
+*   Complying with legal, environmental, fiduciary, security, and privacy requirements.
+*   Achieving performance targets and system objectives.
+*   Managing IT investments by leveraging cloud flexibility.
+*   Analyzing and evaluating risks inherent to the information systems environment.
+
+Cloud auditing spans the entire organization and focuses on compliance (adhering to policies and regulations to protect information assets) and performance (the value IT generates for the organization). This rests on three pillars:
+*   **Security:** Ensuring sensitive corporate data remains under managerial control.
+*   **Compliance:** Adhering fully to all applicable standards and regulations.
+*   **Privacy:** Managing data handling in compliance with regulations like LGPD (Brazil) and GDPR (Europe).
+
+As a third-party service, cloud computing requires continuous auditing to protect operations. COBIT 5 emphasizes that assessing risks in cloud-hosted services mitigates events that threaten organizational goals. Organizations must thoroughly understand their SLAs and establish monitoring mechanisms. Additionally, building a relationship of trust with the provider is critical; contractual agreements should not replace active relationship management.
 ### **Advanced Cloud Security Topics**
 
 #### **Hybrid and Multi-Cloud Security Architecture**

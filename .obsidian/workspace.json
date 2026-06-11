@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "a336d30df8302c4a",
+            "id": "218a4974e601c7b2",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/Agents and Workflows.md",
+                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,31 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Agents and Workflows"
-            }
-          },
-          {
-            "id": "6c934291d76c07df",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "AI Engineering/LLM/LLM Processing Pipeline.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "LLM Processing Pipeline"
+              "title": "Cloud Security"
             }
           }
         ]
@@ -87,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "TF-IDF",
+                "query": "temperature",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -114,17 +90,16 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/Agents and Workflows.md",
+                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Agents and Workflows"
+              "title": "Outline of Cloud Security"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -312,12 +287,22 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/02 Identity and Access/01 Authentication.md",
+    "Security/TODO/04 Secure Cloud Operations.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+    "Security/TODO/03 Cloud Identity Management.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "Security/TODO/02 Cloud Application Security.md",
+    "Security/TODO/01 Cloud Data Security.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "Security/TODO",
+    "Security/TODO/04 Introduction and Considerations in Cloud Service Procurement.md",
+    "Security/TODO/03 Cloud providers like AWS offer free tiers for 12 months, which is highly beneficial for businesses. However, as a company grows, multiple employees need access to these cloud.md",
+    "Security/TODO",
     "AI Engineering/Agents and Workflows.md",
     "AI Engineering/RAG/01 Fundamentals.md",
     "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
-    "AI Engineering/LLM/LLM Processing Pipeline.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "AI Engineering/Claude Code/03 Skills.md",
     "AI Engineering/RAG/04 Advanced Techniques.md",
     "AI Engineering/Lexical Information Retrieval.md",
@@ -330,15 +315,7 @@
     "AI Engineering/LLM/Prompts Fragments.md",
     "AI Engineering/LLM/LLM Model Selection.md",
     "Networking/05 Network Management.md",
-    "Security/TODO/02 Cloud Security Infrastructure.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Web APIs/01 Introductions/03 APIs and Business.md",
-    "Security/TODO/01 Cloud Architecture.md",
-    "Security/TODO/04 Asset Identification and Valuation.md",
-    "Security/TODO/03 Security Management and Cloud Computing.md",
-    "Descomplica Enablers.md",
     "Security/TODO",
-    "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",
@@ -346,8 +323,6 @@
     "makefile",
     "AI Engineering/LLM",
     "Security/99 References and Checklists",
-    "Security/06 Security Operations and Governance",
-    "Security/05 Architecture and Infrastructure Security/Network Security",
-    "Security/05 Architecture and Infrastructure Security"
+    "Security/06 Security Operations and Governance"
   ]
 }
