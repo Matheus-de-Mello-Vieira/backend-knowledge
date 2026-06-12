@@ -60,55 +60,48 @@ Previously we talked about how backend communicates with clients. Here the focus
 
 ## Architecture
 
-Backends can [establish connections](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md) and [read and send data](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md)  on many ways, given
+Backends can [establish connections](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md) and [read and send data](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md) in several ways, depending on how they distribute three core roles:
 
-* `listener`: the thread or process that calls `listen` on an address and port and gets back a listening socket.
-* `acceptor`: whatever has access to that socket and calls `accept` to turn pending connections into file descriptors.
-* `worker`: the code responsible for reading, processing, and writing data.
+- **`listener`:** The thread or process that binds to an address/port, calls `listen()`, and manages the listening socket.
+- **`acceptor`:** The thread or process that calls `accept()` on the listening socket, turning pending network connections into dedicated file descriptors (connected sockets).
+- **`worker`:** The code responsible for reading the request, executing the business logic, and writing the response.
 
-A single thread can do all three jobs, or you can split them strategically.
+A single thread can do all three jobs simultaneously, or the backend can split them strategically to scale.
 
-### Single listener, single worker thread
+### 1. Single Listener, Single Worker Thread
 
-* Node.js is a common example.
-* One single thread is the listener, acceptor, and reader.
-* You can still scale by running multiple Node processes.
-* If there are many active connections, that single thread can become overloaded.
+- **Example:** Node.js, Redis.
+- **How it works:** One single main thread acts as the listener, acceptor, and worker, relying heavily on non-blocking I/O and an Event Loop to juggle connections.
+- **Pros:** Extremely simple to reason about; no data locking or thread synchronization issues.
+- **Cons:** If there is a massive spike in active connections (or if the business logic requires heavy CPU computation), that single thread becomes a bottleneck.
+- **Scaling:** You scale horizontally by running multiple isolated processes (e.g., using Node's `cluster` module) rather than spawning threads.
 
-### Single listener, multiple worker threads
+### 2. Single Listener, Multiple Worker Threads
 
-* Memcached is an example.
-* A single process owns listening and accepting.
-* Worker threads each handle a set of accepted connections.
-* The main process effectively load-balances connections across threads.
-* This can be tricky because connection cost and duration vary a lot.
+- **Example:** Memcached.
+- **How it works:** A single main process/thread owns the listening and accepting phases. Once it accepts a connection, it hands off the file descriptor to a pool of worker threads.
+- **Pros:** The main thread effectively acts as an internal load balancer, distributing connections across the workers.
+- **Cons:** Load balancing connections can be tricky because connection lifespan and CPU cost vary wildly.
+- **Variation (RAMCloud):** The main process listens, accepts, _and_ reads the raw network data, only offloading the actual request processing to the worker threads. However, the central accepting process can still become a bottleneck under heavy connection loads.
 
-RAMCloud uses a related idea with more explicit offloading:
+### 3. Multiple Threads, Single Shared Socket
 
-* A process listens, accepts, and reads.
-* It then offloads requests to worker threads.
-* That central process can still become a bottleneck.
+- **Example:** NGINX (older configurations) or standard Apache worker models.
+- **How it works:** The OS maintains one listening socket, but multiple worker threads/processes all share it and actively compete to call `accept()` on it.
+- **Pros:** Once a worker successfully accepts a connection, it fully owns the file descriptor and handles all the work.
+- **Cons:** Requires strict locking and coordination. If a new connection arrives and wakes up _all_ sleeping workers to accept it, but only one succeeds, it causes a massive spike in wasted CPU cycles (a classic issue known as the **Thundering Herd** problem).
 
-### Multiple threads, single socket
+### 4. Multiple Listeners (Same Port and Address)
 
-* NGINX can be configured this way.
-* One listening socket is shared across workers.
-* Multiple threads or workers compete to accept from the same socket.
-* This requires coordination, so two workers do not accept the same connection.
-* Once a worker accepts a connection, it owns it.
-
-### Multiple listeners on the same port and address
-
-* The OS creates separate accept paths for each listener and distributes incoming work between them.
-* This is common in proxies, including NGINX.
-* `SO_REUSEPORT` is the key socket option for this design.
-* Advantages:
-  * Workers do not step on each other while accepting.
-  * It removes some locking around a single shared acceptor.
-* Problems:
-  * OS-level balancing can be unfair because it does not understand actual request cost.
-  * With UDP and QUIC, datagrams from the same application-level exchange can be distributed awkwardly.
-  * Port hijacking is a risk if unrelated processes can bind the same port.
+- **Example:** NGINX (modern configurations), HAProxy.
+- **How it works:** Uses the `SO_REUSEPORT` socket option. The OS allows multiple independent worker processes to bind to the exact same port. The OS kernel creates separate accept queues for each listener and distributes incoming connections between them.
+- **Pros:**
+    - Completely eliminates the "Thundering Herd" problem because workers no longer step on each other competing for a single socket.
+    - Removes the need for locking mechanisms around a shared acceptor.
+- **Cons:**
+    - **Unfair Balancing:** The OS-level load balancer uses a simple hash algorithm; it does not understand the actual CPU cost of requests, so some workers might get overloaded while others sit idle.
+    - **UDP/QUIC Issues:** With connectionless protocols, datagrams belonging to the same application-level session can sometimes be routed to different workers awkwardly.
+    - **Security Risk:** Port hijacking is a risk if unrelated, malicious processes are allowed to bind to the same active port.
 
 ## Idempotency
 

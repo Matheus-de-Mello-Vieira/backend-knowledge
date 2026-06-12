@@ -8,7 +8,79 @@
         "type": "tabs",
         "children": [
           {
-            "id": "513731e777c008be",
+            "id": "596099ee8dfe222c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/02 Protocols/05 TCP.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "05 TCP"
+            }
+          },
+          {
+            "id": "276a3c9c7e3150f2",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Networking/02 Protocols/07 HTTP1.1.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "07 HTTP1.1"
+            }
+          },
+          {
+            "id": "5855f835639e482b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Common Threats and Attacks"
+            }
+          },
+          {
+            "id": "dc4ed4196bfc76a1",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -31,7 +103,8 @@
               "title": "02 Reading and Sending Data"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -63,7 +136,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "syn flood",
+                "query": "\"receive buffer\"",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,16 +163,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Networking/03 Connections/02 Reading and Sending Data.md",
+                "file": "Networking/02 Protocols/07 HTTP1.1.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 02 Reading and Sending Data"
+              "title": "Outline of 07 HTTP1.1"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -270,7 +344,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 577.5
+    "width": 572.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,14 +361,17 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Networking/03 Connections/01 How Connections are Established.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Networking/02 Protocols/05 TCP.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Networking/02 Protocols/07 HTTP1.1.md",
+    "Backend Engineering/02 Execution Patterns.md",
+    "Networking/02 Protocols/05 TCP.md",
+    "Networking/02 Protocols/16 IPsec.md",
+    "Backend Engineering/03 Troubleshooting Performance.md",
+    "Networking/03 Connections/01 How Connections are Established.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
     "Networking/02 Protocols/09 HTTP2.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Networking/02 Network Components.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/02 Identity and Access/01 Authentication.md",
@@ -312,9 +389,6 @@
     "AI Engineering/RAG/01 Fundamentals.md",
     "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
-    "AI Engineering/Claude Code/03 Skills.md",
-    "AI Engineering/RAG/04 Advanced Techniques.md",
-    "AI Engineering/Lexical Information Retrieval.md",
     "Security/TODO",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",

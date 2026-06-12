@@ -372,5 +372,6 @@ We can also classify them by their impact on the physical flow of information be
     - Because data may have been redirected through a malicious gateway, teams must enforce a global **Session Termination** to invalidate all active bearer tokens and perform an audit to verify that no core configuration data was exfiltrated during the diversion window.
 
 ## Specifics Threats
-- TCP: [SYN flood](01%20How%20Connections%20are%20Established.md#SYN%20flood)
+- TCP: [SYN flood](01%20How%20Connections%20are%20Established.md#SYN%20flood), [Sockstress](02%20Reading%20and%20Sending%20Data.md#Sockstress) and [Optimistic ACKing](05%20TCP.md#Optimistic%20ACKing).
+- HTTP1.1: [Slowloris](07%20HTTP1.1.md#The%20Slowloris%20Attack)
 - HTTP2: [The HPACK Bomb](09%20HTTP2.md#The%20HPACK%20Bomb) and [The HPACK Bookkeeping Bomb](09%20HTTP2.md#The%20HPACK%20Bookkeeping%20Bomb)
