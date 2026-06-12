@@ -370,3 +370,7 @@ We can also classify them by their impact on the physical flow of information be
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) by isolating the node transmitting the unauthorized protocol traffic and issuing global commands to flush the corrupted routing tables and host caches across all impacted network segments.
     - Security operations must run a **Root Cause Analysis (RCA)** to identify the lack of protocol boundaries that allowed internal routing tables to accept unauthenticated external inputs, updating network Access Control Lists (ACLs) to block rogue routing updates.
     - Because data may have been redirected through a malicious gateway, teams must enforce a global **Session Termination** to invalidate all active bearer tokens and perform an audit to verify that no core configuration data was exfiltrated during the diversion window.
+
+## Specifics Threats
+- TCP: [SYN flood](01%20How%20Connections%20are%20Established.md#SYN%20flood)
+- HTTP2: [The HPACK Bomb](09%20HTTP2.md#The%20HPACK%20Bomb) and [The HPACK Bookkeeping Bomb](09%20HTTP2.md#The%20HPACK%20Bookkeeping%20Bomb)

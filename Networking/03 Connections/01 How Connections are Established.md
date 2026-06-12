@@ -1,5 +1,7 @@
 # How connections are Established
 
+This note covers how a server and the OS kernel establish a TCP connection and hand it off to a backend process. For TCP segment structure, flags, retransmission, and transport-level guarantees, see [TCP](../02%20Protocols/05%20TCP.md).
+
 - **The TCP 3-Way Handshake (Network Perspective):** To establish a reliable connection, the client and server must exchange three specific packets.
     - **Client → Server (`SYN`):** The client requests to synchronize and open a connection.
     - **Server → Client (`SYN-ACK`):** The server acknowledges the request and synchronizes its own connection state.
@@ -18,7 +20,7 @@
 
 A SYN flood is a denial-of-service attack that abuses the TCP handshake. The attacker sends many `SYN` packets but does not finish the handshake with the final `ACK`, forcing the server or firewall to keep half-open connection state until the `SYN` queue or state table is exhausted.
 
-Modern [Firewall Technologies](../../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/Firewall%20Technologies.md#Fourth%20Generation%20and%20Beyond:%20Next-Generation%20Firewalls%20%28NGFW%29%20%282000s%20to%20Present%29) can mitigate SYN floods with techniques like SYN proxying, SYN cookies, and hardware acceleration.
+Modern [Firewall Technologies](../../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/Firewall%20Technologies.md#Fourth%20Generation%20and%20Beyond:%20Next-Generation%20Firewalls%20%28NGFW%29%20%282000s%20to%20Present%29) can mitigate SYN floods with [techniques](Firewall%20Technologies.md#SYN%20Flood%20Mitigation%20(The%20Defensive%20Shield)) like SYN proxying, SYN cookies, and hardware acceleration. 
 
 ## Connection Establishment
 
@@ -51,4 +53,5 @@ Modern [Firewall Technologies](../../Security/05%20Architecture%20and%20Infrastr
     - **The Reverse Proxy Solution:** This queue saturation bottleneck is the primary problem reverse proxies and API gateways (like Nginx or HAProxy) are designed to solve. Sitting at the network edge, their main job is to execute `accept()` as fast as possible to keep the OS queues empty, hold the active connections, and then safely route them to the slower backend services.
 - **File Descriptor Creation:** Upon a successful `accept()`, a unique file descriptor is generated in User Space. This descriptor uniquely identifies the active connection and allows the backend code to finally read and write data to the client.
 
+For what happens after `accept()` returns, including receive buffers, send buffers, blocking reads, and `send()`, see [Reading and Sending Data](02%20Reading%20and%20Sending%20Data.md).
 

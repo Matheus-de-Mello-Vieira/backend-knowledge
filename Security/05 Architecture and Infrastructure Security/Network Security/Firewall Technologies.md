@@ -101,7 +101,6 @@ While earlier stateful firewalls were revolutionary, they were vulnerable to **s
 - **SYN Proxying (TCP Intercept):** The firewall acts as a shield, completing the 3-way handshake with the client itself. It only opens a connection to the internal server after the client proves it is legitimate.
 - **SYN Cookies:** A cryptographic method that allows the firewall to handle connection requests without allocating memory until the connection is fully validated.
 - **Hardware Acceleration (ASICs):** Specialized chips process and drop millions of fake packets per second at wire-speed, ensuring the main CPU remains available for critical tasks.
-    
 
 #### Faster Detection and Automated Intelligence
 

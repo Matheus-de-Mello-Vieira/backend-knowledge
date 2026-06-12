@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "218a4974e601c7b2",
+            "id": "513731e777c008be",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+                "file": "Networking/03 Connections/02 Reading and Sending Data.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Cloud Security"
+              "title": "02 Reading and Sending Data"
             }
           }
         ]
@@ -63,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "temperature",
+                "query": "syn flood",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,13 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
+                "file": "Networking/03 Connections/02 Reading and Sending Data.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Cloud Security"
+              "title": "Outline of 02 Reading and Sending Data"
             }
           }
         ]
@@ -287,9 +287,18 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Networking/03 Connections/01 How Connections are Established.md",
+    "Networking/03 Connections/02 Reading and Sending Data.md",
+    "Networking/02 Protocols/05 TCP.md",
+    "Networking/02 Protocols/07 HTTP1.1.md",
+    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
+    "Networking/02 Protocols/09 HTTP2.md",
+    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Networking/02 Network Components.md",
+    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Security/TODO/04 Secure Cloud Operations.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/TODO/03 Cloud Identity Management.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
     "Security/TODO/02 Cloud Application Security.md",
@@ -306,15 +315,6 @@
     "AI Engineering/Claude Code/03 Skills.md",
     "AI Engineering/RAG/04 Advanced Techniques.md",
     "AI Engineering/Lexical Information Retrieval.md",
-    "Operating Systems/02 Memory Management.md",
-    "Operating Systems/07 Storage Management.md",
-    "Operating Systems/01 Processes.md",
-    "Cache/Caching.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "AI Engineering/LLM/Prompts Fragments.md",
-    "AI Engineering/LLM/LLM Model Selection.md",
-    "Networking/05 Network Management.md",
     "Security/TODO",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
