@@ -1,6 +1,6 @@
 # Large Language Models (LLMs)
 
-LLMs are AI models designed to understand and generate human-like text, playing a critical role in natural language processing (NLP) by enabling machines to interpret, analyze, and generate human language.
+LLMs (`/ˌɛl.ɛl.ˈɛm/`) are AI models designed to understand and generate human-like text, playing a critical role in natural language processing (NLP) by enabling machines to interpret, analyze, and generate human language.
 
 ## Key Capabilities
 

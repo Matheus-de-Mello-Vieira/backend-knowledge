@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "bc1b471e77825988",
+        "id": "23fcdaa430937a89",
         "type": "tabs",
         "children": [
           {
-            "id": "596099ee8dfe222c",
+            "id": "3e73d53a5335f5be",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/02 Protocols/05 TCP.md",
+                "file": "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,16 +28,16 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "05 TCP"
+              "title": "05 Tool Design and Operational Risks"
             }
           },
           {
-            "id": "276a3c9c7e3150f2",
+            "id": "cbafcd095de87dbb",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/02 Protocols/07 HTTP1.1.md",
+                "file": "Backend Engineering/05 Observability.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,59 +52,10 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "07 HTTP1.1"
-            }
-          },
-          {
-            "id": "5855f835639e482b",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "03 Common Threats and Attacks"
-            }
-          },
-          {
-            "id": "dc4ed4196bfc76a1",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Networking/03 Connections/02 Reading and Sending Data.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "02 Reading and Sending Data"
+              "title": "05 Observability"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -163,17 +114,16 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Networking/02 Protocols/07 HTTP1.1.md",
+                "file": "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 07 HTTP1.1"
+              "title": "Outline of 05 Tool Design and Operational Risks"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -344,7 +294,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 572.5
+    "width": 693.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -361,34 +311,35 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Backend Engineering/05 Observability.md",
+    "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
+    "AI Engineering/Model Context Protocol/02 Architecture.md",
+    "AI Engineering/Model Context Protocol/03 Core Primitives.md",
+    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
+    "AI Engineering/Model Context Protocol/04 Advanced Primitives and Boundaries.md",
+    "Networking/02 Protocols/09 HTTP2.md",
+    "AI Engineering/Model Context Protocol/01 Overview.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/Model Context Protocol.md",
+    "AI Engineering/Model Context Protocol",
+    "AI Engineering/LLM/Context Engineering.md",
+    "Networking/02 Protocols/07 HTTP1.1.md",
+    "Networking/02 Protocols/05 TCP.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Networking/02 Protocols/07 HTTP1.1.md",
     "Backend Engineering/02 Execution Patterns.md",
-    "Networking/02 Protocols/05 TCP.md",
     "Networking/02 Protocols/16 IPsec.md",
     "Backend Engineering/03 Troubleshooting Performance.md",
     "Networking/03 Connections/01 How Connections are Established.md",
     "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
-    "Networking/02 Protocols/09 HTTP2.md",
     "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
     "Networking/02 Network Components.md",
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Security/TODO/04 Secure Cloud Operations.md",
     "Security/TODO/03 Cloud Identity Management.md",
-    "AI Engineering/LLM/LLM Processing Pipeline.md",
-    "Security/TODO/02 Cloud Application Security.md",
-    "Security/TODO/01 Cloud Data Security.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "Security/TODO",
-    "Security/TODO/04 Introduction and Considerations in Cloud Service Procurement.md",
-    "Security/TODO/03 Cloud providers like AWS offer free tiers for 12 months, which is highly beneficial for businesses. However, as a company grows, multiple employees need access to these cloud.md",
     "Security/TODO",
-    "AI Engineering/Agents and Workflows.md",
-    "AI Engineering/RAG/01 Fundamentals.md",
-    "AI Engineering/RAG/02 Vector Databases & Embeddings.md",
-    "AI Engineering/LLM/Prompt Evaluation.md",
     "Security/TODO",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
@@ -396,7 +347,6 @@
     "Security/99 TODO",
     "makefile",
     "AI Engineering/LLM",
-    "Security/99 References and Checklists",
-    "Security/06 Security Operations and Governance"
+    "Security/99 References and Checklists"
   ]
 }

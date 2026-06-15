@@ -86,11 +86,6 @@ Logs are the ultimate source of truth for exactly _what_ happened at a specific 
 Here are the core principles for building a robust logging strategy:
 
 - **Structured Logging:** Instead of writing plain-text strings like `"User 123 failed to login from IP 192.168.1.1"`, logs should be emitted in a machine-readable format—almost universally **JSON**. Structured logging transforms that text into key-value pairs (e.g., `{"event": "login_failed", "user_id": 123, "ip": "192.168.1.1"}`). This allows modern log management tools to instantly parse, index, and query your data, so you can easily filter for all failed logins from a specific IP address without writing complex regex scripts.
-- **Log Levels:** Every log must be tagged with a severity level to filter out noise during an incident. The standard hierarchy is:
-    - **ERROR:** The system failed to perform a requested operation (e.g., database connection dropped). _Requires immediate attention._
-    - **WARN:** An unexpected state occurred, but the system recovered or degraded gracefully (e.g., an API call timed out, but the system used a cached response). _Needs investigation later._
-    - **INFO:** High-level, normal business events (e.g., service started, user completed checkout). _Useful for auditing and general state tracking._
-    - **DEBUG:** Granular, step-by-step diagnostic information. _Used by developers during active troubleshooting; usually turned off in production to save costs._
 - **Request IDs and Correlation IDs:** In a distributed system, a single user action might hit five different microservices. To tie those isolated logs together, you inject a unique identifier at the very edge of your architecture (like the API Gateway).
     - **Request ID:** Tracks the lifecycle of a request within a single service.
     - **Correlation ID:** Passed along in the HTTP headers to every subsequent service. When debugging, searching for a specific Correlation ID instantly pulls up every log from every service that participated in that exact transaction.
@@ -98,6 +93,25 @@ Here are the core principles for building a robust logging strategy:
 - **Avoiding Noisy Logs:** Logging is not free; it consumes CPU, network bandwidth, and expensive storage. Furthermore, a noisy log stream makes finding the actual root cause of an issue like finding a needle in a haystack. Avoid logging inside tight `for` loops, logging massive payloads (like raw base64 images), or spamming `INFO` logs for trivial operations. If a log does not help you debug an issue, audit user behavior, or track a business metric, delete it.
 - **Sensitive Data Masking:** Logs are often highly accessible to a wide range of employees. It is a critical security mandate to ensure that logs never contain **Personally Identifiable Information (PII)** (like social security numbers or full credit card details) or **Secrets** (like passwords, API keys, or OAuth tokens). Backend systems must use log sanitization libraries to automatically redact or hash these fields before they are written to disk.
 - **Log Aggregation:** In modern cloud environments, backend servers (like Kubernetes pods) are ephemeral—they spin up, do their job, and are destroyed. If your logs are only saved to the local file system of a container, they will be lost forever when that container dies. Log aggregation tools (like the ELK stack, Datadog, or Splunk) utilize sidecar agents to constantly forward logs from all your disparate services into a single, centralized, searchable database.
+
+### Syslog Severity Levels
+
+Many backend systems use the shorter application-level set (`debug`, `info`, `warn`, `error`), but transports and protocols often inherit the fuller [RFC 5424](https://www.rfc-editor.org/info/rfc5424/) syslog taxonomy.
+
+Every emitted log should carry a severity level so operators can filter noise during an incident, tune dashboards, and enforce minimum log thresholds at ingestion or transport boundaries.
+
+- **`debug`:** Highly detailed diagnostic output, such as function boundaries, intermediate values, or retry decisions.
+- **`info`:** Normal operational progress and expected state transitions.
+- **`notice`:** Significant but expected operational events, such as a config reload or a mode change.
+- **`warning`:** Unexpected conditions that did not fully fail the operation, but may require follow-up.
+- **`error`:** A request, job, or subsystem operation failed.
+- **`critical`:** A severe failure is affecting core system functionality.
+- **`alert`:** Immediate human intervention is required to prevent or limit major damage.
+- **`emergency`:** The system is unusable.
+
+In many application codebases, `warn` is used as a shorter label for `warning`. A simplified set like `debug` / `info` / `warn` / `error` is common in app-level logging libraries, but the operational semantics still map onto the broader syslog model.
+
+When a platform or protocol supports minimum log thresholds, it typically means "emit this level and everything more severe." For example, a threshold of `warning` includes `warning`, `error`, `critical`, `alert`, and `emergency`, while dropping `notice`, `info`, and `debug`.
 
 ## Metrics
 
