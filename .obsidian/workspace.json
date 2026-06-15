@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
+                "file": "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "05 Tool Design and Operational Risks"
+              "title": "04 Advanced Primitives"
             }
           },
           {
@@ -114,20 +114,19 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 05 Tool Design and Operational Risks"
+              "title": "Outline"
             }
           }
         ]
       }
     ],
     "direction": "horizontal",
-    "width": 341.5
+    "width": 485.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -246,7 +245,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: ⠋ backend-knowledge"
             }
           },
           {
@@ -290,7 +289,7 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -309,14 +308,15 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "0395dbd7cb92c024",
   "lastOpenFiles": [
-    "Backend Engineering/05 Observability.md",
-    "AI Engineering/Model Context Protocol/05 Tool Design and Operational Risks.md",
-    "AI Engineering/Model Context Protocol/02 Architecture.md",
+    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+    "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
+    "Networking/04 Network Services.md",
     "AI Engineering/Model Context Protocol/03 Core Primitives.md",
+    "Backend Engineering/05 Observability.md",
+    "AI Engineering/Model Context Protocol/02 Architecture.md",
     "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
-    "AI Engineering/Model Context Protocol/04 Advanced Primitives and Boundaries.md",
     "Networking/02 Protocols/09 HTTP2.md",
     "AI Engineering/Model Context Protocol/01 Overview.md",
     "AI Engineering/LLM/LLM.md",
@@ -337,7 +337,6 @@
     "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "Security/TODO/04 Secure Cloud Operations.md",
-    "Security/TODO/03 Cloud Identity Management.md",
     "Security/TODO",
     "Security/TODO",
     "Security/TODO",
