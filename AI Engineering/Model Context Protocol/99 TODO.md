@@ -1,0 +1,2 @@
+- https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/completion
+- https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/pagination

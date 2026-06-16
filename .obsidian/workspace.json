@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "23fcdaa430937a89",
+        "id": "091f45819165bc0b",
         "type": "tabs",
         "children": [
           {
-            "id": "3e73d53a5335f5be",
+            "id": "5cbcafc245606c9c",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+                "file": "AI Engineering/Model Context Protocol/02 Architecture.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,31 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "04 Advanced Primitives"
-            }
-          },
-          {
-            "id": "cbafcd095de87dbb",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Backend Engineering/05 Observability.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "05 Observability"
+              "title": "02 Architecture"
             }
           }
         ]
@@ -87,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "\"receive buffer\"",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -114,12 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "AI Engineering/Model Context Protocol/02 Architecture.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 02 Architecture"
             }
           }
         ]
@@ -245,7 +222,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: ⠋ backend-knowledge"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -289,11 +266,11 @@
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 693.5
+    "width": 487.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -308,19 +285,27 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "0395dbd7cb92c024",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
     "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
     "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
-    "Networking/04 Network Services.md",
     "AI Engineering/Model Context Protocol/03 Core Primitives.md",
-    "Backend Engineering/05 Observability.md",
     "AI Engineering/Model Context Protocol/02 Architecture.md",
-    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
-    "Networking/02 Protocols/09 HTTP2.md",
+    "AI Engineering/Model Context Protocol/07 MCP Development Tools.md.md",
     "AI Engineering/Model Context Protocol/01 Overview.md",
-    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "Backend Engineering/05 Observability.md",
+    "AI Engineering/Model Context Protocol/99 TODO.md",
+    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
+    "AI Engineering/Lexical Information Retrieval.md",
     "AI Engineering/Model Context Protocol.md",
+    "AGENTS.md",
+    "Descomplica Enablers.md",
+    "Patterns.md",
+    "README.md",
+    "Networking/04 Network Services.md",
+    "Networking/02 Protocols/09 HTTP2.md",
+    "AI Engineering/LLM/LLM.md",
     "AI Engineering/Model Context Protocol",
     "AI Engineering/LLM/Context Engineering.md",
     "Networking/02 Protocols/07 HTTP1.1.md",
@@ -329,14 +314,6 @@
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Backend Engineering/02 Execution Patterns.md",
     "Networking/02 Protocols/16 IPsec.md",
-    "Backend Engineering/03 Troubleshooting Performance.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
-    "Security/01 Foundations and Risk/02 Risk Management and Threat Modeling.md",
-    "Security/05 Architecture and Infrastructure Security/Network Security/Firewall Technologies.md",
-    "Networking/02 Network Components.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/02 Identity and Access/01 Authentication.md",
-    "Security/TODO/04 Secure Cloud Operations.md",
     "Security/TODO",
     "Security/TODO",
     "Security/TODO",
