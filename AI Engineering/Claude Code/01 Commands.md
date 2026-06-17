@@ -1,4 +1,4 @@
-# Essentials
+# Commands
 
 ## Slash commands
 
@@ -54,40 +54,8 @@
     | `SessionEnd`         | When a session terminates                                    |
 
 * `/memory` manage memory
-
-  * Just like settings, there are many `CLAUDE.MD` or `CLAUDE.local.md` for project memory, user memory or local project memory.
-
-    * You can place multiple memory files within the same repository. The system aggregates all `CLAUDE.MD` files found along the directory path, starting from the repository root and continuing through each subfolder up to the current folder.
-
-    * You can use hooks to switch the `CLAUDE.md` content, for example an script that append its contents based on key words form user input.
-
-      ```json
-      {
-        "hooks": {
-          "UserPromptSubmit": {
-            "command": "./scripts/context-switcher.sh",
-            "description": "Dynamically load relevant context based on user query"
-          }
-        }
-      }
-      ```
-
-      ```sh
-      #!/bin/bash
-      # Analyze user input and load appropriate context
-      user_input="$1"
-      
-      if [[ $user_input == *"database"* || $user_input == *"migration"* ]]; then
-        echo "@./context/database-context.md" >> CLAUDE.md
-      elif [[ $user_input == *"API"* || $user_input == *"endpoint"* ]]; then
-        echo "@./context/api-context.md" >> CLAUDE.md
-      elif [[ $user_input == *"frontend"* || $user_input == *"component"* ]]; then
-        echo "@./context/frontend-context.md" >> CLAUDE.md
-      fi
-      ```
-
-  * You can select which one you want to open.
-
+  * For memory scopes, `CLAUDE.md` layering, and dynamic context loading, see [04 Persistent Context](./04%20Persistent%20Context.md).
+  * You can select which memory file you want to open.
   * You can type `#` with some info to include it on the memory, selecting which one.
 
 * `/init` will create a new `CLAUDE.MD` file with codebase documentation.
@@ -131,26 +99,3 @@
 
   * install the equivalent plugin `/plugin` searching by `lsp`
 
-## **Project-Specific `settings.json` vs. `CLAUDE.md`**
-
-This is a comparison of **Machine-Readable Config** versus **Human-Readable Instructions**.
-
-- **Project `settings.json` = The Engine Room:** Located in `.claude/settings.json`, this file is for "Hard Config." It tells the Claude Code *binary* how to behave in this specific folder. It’s best for technical flags: which MCP servers to auto-connect, which files to ignore, and which specific "Rules" should be hard-coded into the system prompt.
-- **`CLAUDE.md` = The Team Handbook:** This is a Markdown file meant to be read by both humans and Claude. It’s more "conversational" and better for explaining *why* we do things a certain way. If a rule is complex or requires a brief explanation (e.g., "We use Pydantic because our legacy database requires strict validation"), it belongs here.
-
-| **Feature**     | **Project settings.json**            | **CLAUDE.md**                           |
-| --------------- | ------------------------------------ | --------------------------------------- |
-| **Format**      | **JSON.** Strict and structured.     | **Markdown.** Flexible and descriptive. |
-| **Primary Use** | Tooling config (MCP, Ignore rules).  | Coding style and build/test commands.   |
-| **Visibility**  | Hidden in the `.claude` folder.      | Visible in the root of the project.     |
-| **Best For**    | "Always-On" logic & Technical setup. | Onboarding & Architecture overviews.    |
-
-## **The Final Priority Stack (The "Overriding" Order)**
-
-When you give Claude a command, it scans its instructions in this specific order. **Top levels override bottom levels:**
-
-1. **The Prompt:** What you just typed (Highest priority).
-2. **Active Skills:** If a Skill is triggered, its `SKILL.md` is injected here.
-3. **Project `settings.json`:** The rules you've defined for this specific repo.
-4. **`CLAUDE.md`:** The local project laws.
-5. **Global `settings.json`:** Your "Global Persona" (Lowest priority).

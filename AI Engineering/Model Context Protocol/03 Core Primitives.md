@@ -50,14 +50,46 @@ A standard tool definition requires three primary components:
 }
 ```
 
-### Engineering Best Practice: Descriptions _Are_ Prompts
+### Engineering Best Practice: Designing Effective Tool Interfaces
 
-When building standard REST APIs, developers often write lazy descriptions (e.g., _"Gets the data"_), relying on human developers to read the documentation. In Agentic and MCP architectures, **the description is the prompt.**
+When building standard REST APIs, developers often write lazy descriptions (e.g., _"Gets the data"_), relying on human engineers to read external documentation. In MCP and agentic architectures, **the description is the prompt.** Tool descriptions are the primary, and often only, mechanism an LLM uses for tool selection. If your descriptions are minimal, ambiguous, or overlapping, your agent's routing and execution will be fundamentally unreliable.
 
-- **The Anti-Pattern (Vague Description):** `"Searches data."`
-    - _The Risk:_ The model lacks boundary awareness. It may attempt to use this tool to calculate math, search the public web, or look up live stock prices, resulting in wasted compute and constant failure loops.
-- **The Golden Path (Constrained Description):** `"Searches the internal wiki. ONLY use this for questions about company policy. Do NOT use for general web knowledge or math calculations."`
-    - _The Benefit:_ The model understands the strict boundaries of the tool. It knows exactly when to trigger it and, more importantly, when to ignore it.
+#### 1. The Anatomy of a Perfect Description
+
+A robust tool description must serve as a complete, self-contained micro-prompt. To guarantee predictable LLM behavior, your description must explicitly define:
+
+- **Purpose & Boundaries:** What the tool does and, critically, what it _cannot_ do.
+- **Input Formats:** The exact shape of the data the model needs to provide (e.g., _"Provide dates in ISO 8601 format"_).
+- **Edge Cases:** How the model should react if the tool fails or returns empty data.
+- **Example Queries:** Brief examples to ground the model's understanding of intent.
+    
+
+> **The Anti-Pattern (Vague):** `"Searches data."`
+> 
+> _The Risk:_ The model lacks boundary awareness. It may attempt to use this tool to calculate math, search the public web, or look up live stock prices, resulting in wasted compute and constant failure loops.
+> 
+> **The Golden Path (Constrained):** `"Searches the internal corporate wiki. ONLY use this for questions about HR and company policy. Do NOT use for general web knowledge or math calculations. Input must be a 2-3 word keyword string (e.g., 'PTO policy')."`
+
+#### 2. Eliminating Ambiguity and Functional Overlap
+
+If you provide an LLM with two tools named `analyze_content` and `analyze_document` with similar descriptions, you are forcing the model to guess. LLMs are highly keyword-sensitive; vague naming creates unintended tool associations and guarantees misrouting.
+
+- **The Fix (Domain-Specific Renaming):** Rename tools to reflect their exact execution domains. Rename the generic `analyze_content` to `extract_web_results`.
+- **The Fix (Explicit Contrast):** In the tool description itself, explicitly tell the LLM when to use this tool _versus_ its alternatives. For example: _"Use this tool to extract text from live URLs. If you need to read a local PDF, use the `read_local_document` tool instead."_
+
+#### 3. Splitting Generic Tools (Contract Decomposition)
+
+Do not create "God Tools" that attempt to handle multiple drastically different tasks via complex parameter flags. A generic `analyze_document` tool with a massive, highly variable input/output contract severely dilutes the LLM's attention.
+
+Instead, split generic concepts into **purpose-specific tools** with rigidly defined input/output schemas.
+
+For example, decompose `analyze_document` into three distinct tools:
+
+- `extract_data_points`: Strictly returns raw JSON key-value pairs from a text.
+- `summarize_content`: Strictly returns a 3-sentence markdown paragraph.
+- `verify_claim`: Takes a specific string claim and a document ID, strictly returning a boolean `true` or `false`.
+
+By narrowing the scope of each tool, you drastically improve the LLM's ability to confidently select the right tool for the exact sub-task at hand.
 
 ### The Tool Discovery Process
 

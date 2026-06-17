@@ -152,6 +152,68 @@ Here is how the interaction looks in the **Claude Code CLI**:
 - **No Context Bloat:** If you were just asking Claude to "refactor a backend function," the `brand-guardian` instructions and the heavy `design-tokens.json` file would **never** be loaded, saving you thousands of tokens.
 - **Consistency:** Every developer on the team who clones this repo gets the same `.claude/skills` folder, ensuring the AI behaves identically for everyone.
 
+## Skill Priority
+
+If you clone a repository that has a skill with the same name as one of your personal skills, which one wins? There's a clear priority order:
+
+1. **Enterprise** — managed settings, highest priority
+2. **Personal** — your home directory (`~/.claude/skills`)
+3. **Project** — the `.claude/skills` directory inside a repository
+4. **Plugins** — installed plugins, lowest priority
+
+This lets organizations enforce standards through enterprise skills while still allowing individual customization. If your company has an enterprise "code-review" skill and you create a personal "code-review" skill with the same name, the enterprise version takes precedence.
+
+To avoid conflicts, use descriptive names. Instead of just "review," use something like "frontend-review" or "backend-review."
+
+## Advanced Skill Configuration and Isolation
+
+While the basic metadata and logic of a skill reside in its `SKILL.md` file, you can heavily customize how that skill executes by leveraging YAML frontmatter. This configuration layer dictates the skill's operational boundaries, execution context, and tool access.
+
+### Execution Context: Forking Sub-Agents
+
+By default, when Claude triggers a skill, it injects the `SKILL.md` instructions and any subsequent outputs directly into your main conversation window. For simple tasks, this is efficient. However, for verbose operations—like a deep codebase analysis or brainstorming divergent architectures—this clutters your primary context window and dilutes the AI's reasoning on your core task.
+
+Use the `context: fork` frontmatter option to isolate the skill's execution.
+
+```
+---
+name: deep-analysis
+description: Analyzes the entire repository for security vulnerabilities.
+context: fork
+---
+```
+
+When a skill is configured with `context: fork`, Claude spawns an isolated sub-agent to execute the task. The sub-agent performs the heavy lifting, processes the verbose outputs, and only returns the final, summarized result to your main session. This prevents the exploratory or verbose context generated during the skill's execution from polluting your main conversational memory.
+
+### Restricting Tool Access
+
+To adhere to the principle of least privilege, use the `allowed-tools` frontmatter to strictly bind the capabilities of the skill during its execution.
+
+```
+---
+name: format-code
+description: Formats code according to style guidelines.
+allowed-tools:
+  - Read
+  - Write
+---
+```
+
+If a formatting skill should never be allowed to execute arbitrary shell commands or perform web searches, omit those tools from the `allowed-tools` list. By explicitly defining which tools the skill can access, you prevent destructive actions (like accidental deletions via the Bash tool) if the model hallucinates or misunderstands the prompt while the skill is active.
+
+### Enforcing Parameter Inputs
+
+When building slash commands for other developers on your team, you often need specific inputs before the skill can run. Use the `argument-hint` frontmatter to prompt users for required parameters if they invoke the skill without them.
+
+```
+---
+name: generate-component
+description: Scaffolds a new React component.
+argument-hint: "Please provide the component name (e.g., /generate-component Button)"
+---
+```
+
+If a developer types `/generate-component` and hits enter, Claude Code intercepts the execution and displays the string defined in `argument-hint`, ensuring the skill has the exact data it needs to function correctly without failing silently.
 ## Navigating the Claude Code Ecosystem
 
 To understand how Skills fit into your development environment, it helps to see them as the "connective tissue" between your instructions and your tools.

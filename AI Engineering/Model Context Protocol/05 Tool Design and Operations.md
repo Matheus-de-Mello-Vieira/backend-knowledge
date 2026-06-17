@@ -68,24 +68,50 @@ An MCP tool result returns an array of `content` blocks. This modular design all
 
 - **Return JSON-in-Text:** It is notoriously difficult for an LLM to reliably extract exact values from conversational prose. Returning structured JSON strings inside the text block makes it vastly easier for the model to parse the data and reuse it as an argument in a subsequent tool call.
 - **Visual Feedback:** If you build a Python tool that generates a matplotlib graph, return it as an image content block. The LLM can then visually inspect the plot or directly present it to the user in the Host Application's UI.
+#### Structured Error Handling (The "Soft Fail" Pattern)
 
-#### Error Handling
+When an MCP tool fails—whether due to a network timeout, a SQL syntax error, or a business logic violation—**never crash the server.** Instead, the tool must return an application-level "soft fail" using the `isError: true` flag.
 
-When a tool fails (e.g., an API is down, or a SQL query has a syntax error), **do not crash the server.** Instead, return a structured error result using the `isError` flag.
+However, returning a generic _"Operation failed"_ text string is an anti-pattern. If the LLM does not understand _why_ the tool failed, it cannot make an intelligent decision about how to recover, leading to wasted retry loops.
+
+Instead, you must return **structured error metadata** directly inside the text payload so the agent can parse the failure state programmatically.
 
 ```json
 {
   "content": [
     {
       "type": "text",
-      "text": "Error: Weather API is currently unreachable. Please try again later or check a different city."
+      "text": "{\"errorCategory\": \"business_policy\", \"isRetryable\": false, \"message\": \"Transaction denied. User account balance is insufficient for this refund.\", \"human_explanation\": \"The refund exceeds the customer's available balance.\"}"
     }
   ],
   "isError": true
 }
 ```
 
-- **Why:** This "soft fail" pattern feeds the error string directly back into the LLM's context window. It allows the model to autonomously read the error log, attempt to fix its parameters, or gracefully explain the backend outage to the user instead of hallucinating a successful response.
+##### The Error Taxonomy
+
+To enable autonomous recovery, your structured errors should classify failures into distinct categories with an explicit `isRetryable` boolean:
+
+- **Transient Errors (Timeouts, 502/503s):** * `isRetryable: true`
+    - _Behavior:_ Tells the agent that the input was correct, but the downstream service blipped. The agent knows it can safely re-attempt the exact same call.
+- **Validation Errors (Invalid Input):** * `isRetryable: true`
+    - _Behavior:_ The agent formatted a parameter incorrectly (e.g., passing a string instead of an integer). The agent can read the error, fix its payload, and retry.
+- **Business / Policy Errors:** * `isRetryable: false`
+    - _Behavior:_ The tool executed perfectly, but the action was denied by business rules (e.g., trying to refund an order over 90 days old). The agent must immediately stop trying and use the `human_explanation` to relay the policy block to the user.
+- **Permission Errors:** * `isRetryable: false`
+    - _Behavior:_ The user's token lacks access to the requested resource.
+
+> **Crucial Distinction: Errors vs. Empty Results**
+> 
+> Do not use `isError: true` when a database query successfully runs but finds zero matches. An empty result is a _valid state_. Return `isError: false` with text like `"Query executed successfully. 0 records found."` Misclassifying empty results as errors will trick the agent into unnecessary debugging loops.
+
+##### Error Routing in Multi-Agent Architectures
+
+In a [Coordinator-Subagent architecture](Agents%20and%20Workflows.md#Multi-Agent%20Orchestration%20The%20Coordinator-Subagent%20Pattern), error handling becomes a distributed problem. You must strictly control how errors bubble up:
+
+- **Local Subagent Recovery:** Subagents should attempt to handle `transient` and `validation` errors locally. If the Web Scraper subagent hits a 503, it should autonomously trigger its own retry loop without bothering the Coordinator.
+- **Coordinator Escalation:** If an error is `isRetryable: false` (or if the subagent exhausts its local retry limits), it must propagate the failure back up to the Coordinator.
+- **Passing Partial Context:** When escalating to the Coordinator, the subagent should not just pass the error code. It must return **partial results** and an explanation of what was attempted (e.g., _"I successfully scraped pages 1 and 2, but page 3 threw a permanent permission error"_). This allows the Coordinator to decide if the partial data is sufficient to answer the user, or if it needs to trigger a completely different subagent to fill the gap.
 
 ### The Bottlenecks of MCP Architectures
 

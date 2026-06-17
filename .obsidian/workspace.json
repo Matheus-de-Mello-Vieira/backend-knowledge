@@ -8,12 +8,12 @@
         "type": "tabs",
         "children": [
           {
-            "id": "5cbcafc245606c9c",
+            "id": "80e6b97b29de68c1",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/Model Context Protocol/02 Architecture.md",
+                "file": "AI Engineering/LLM/Agents and Workflows.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Architecture"
+              "title": "Agents and Workflows"
             }
           }
         ]
@@ -90,13 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/Model Context Protocol/02 Architecture.md",
+                "file": "AI Engineering/LLM/Agents and Workflows.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 02 Architecture"
+              "title": "Outline of Agents and Workflows"
             }
           }
         ]
@@ -222,7 +222,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -270,7 +270,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 487.5
+    "width": 573.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,33 +287,33 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+    "AI Engineering/Claude Code/99 Others.md",
+    "AI Engineering/99 TODO.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/Claude Code/04 Persistent Context.md",
+    "AI Engineering/LLM/LLM Model Selection.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/Claude Code/05 Tools.md",
+    "AI Engineering/Claude Code/03 Skills.md",
+    "AI Engineering/Claude Code/02 MCP on Claude code.md",
+    "AI Engineering/Claude Code/01 Commands.md",
     "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
     "AI Engineering/Model Context Protocol/03 Core Primitives.md",
-    "AI Engineering/Model Context Protocol/02 Architecture.md",
-    "AI Engineering/Model Context Protocol/07 MCP Development Tools.md.md",
-    "AI Engineering/Model Context Protocol/01 Overview.md",
-    "AI Engineering/LLM/Prompts Fragments.md",
-    "Backend Engineering/05 Observability.md",
-    "AI Engineering/Model Context Protocol/99 TODO.md",
-    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
-    "AI Engineering/Lexical Information Retrieval.md",
-    "AI Engineering/Model Context Protocol.md",
     "AGENTS.md",
     "Descomplica Enablers.md",
-    "Patterns.md",
-    "README.md",
-    "Networking/04 Network Services.md",
-    "Networking/02 Protocols/09 HTTP2.md",
-    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
+    "AI Engineering/Model Context Protocol/07 MCP Development Tools.md.md",
+    "HTTP headers.md",
+    "Resilience.md",
+    "AI Engineering/4D Framework for AI Fluency.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
+    "AI Engineering/Model Context Protocol/02 Architecture.md",
     "AI Engineering/Model Context Protocol",
-    "AI Engineering/LLM/Context Engineering.md",
-    "Networking/02 Protocols/07 HTTP1.1.md",
-    "Networking/02 Protocols/05 TCP.md",
-    "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Networking/02 Protocols/16 IPsec.md",
     "Security/TODO",
     "Security/TODO",
     "Security/TODO",
