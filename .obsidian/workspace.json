@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Agents and Workflows.md",
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,10 +28,35 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Agents and Workflows"
+              "title": "Prompt Engineering"
+            }
+          },
+          {
+            "id": "90170dacb6c63baf",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "AI Engineering/Claude Code/04 Persistent Context.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "04 Persistent Context"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -63,7 +88,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "human-in-the-loop",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,13 +115,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/LLM/Agents and Workflows.md",
+                "file": "AI Engineering/Claude Code/04 Persistent Context.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Agents and Workflows"
+              "title": "Outline of 04 Persistent Context"
             }
           }
         ]
@@ -287,19 +312,23 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "AI Engineering/Claude Code/99 Others.md",
-    "AI Engineering/99 TODO.md",
-    "AI Engineering/LLM/Agents and Workflows.md",
-    "AI Engineering/LLM/Context Engineering.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
-    "AI Engineering/Claude Code/04 Persistent Context.md",
-    "AI Engineering/LLM/LLM Model Selection.md",
-    "AI Engineering/LLM/LLM.md",
     "AI Engineering/Claude Code/05 Tools.md",
-    "AI Engineering/Claude Code/03 Skills.md",
-    "AI Engineering/Claude Code/02 MCP on Claude code.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "AI Engineering/Claude Code/04 Persistent Context.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/LLM/LLM Model Selection.md",
     "AI Engineering/Claude Code/01 Commands.md",
+    "AI Engineering/98 Insights.md",
+    "AI Engineering/Claude Code/99 Others.md",
     "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
+    "AI Engineering/Model Context Protocol/02 Architecture.md",
+    "AI Engineering/99 TODO.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/Claude Code/02 MCP on Claude code.md",
+    "Networking/01 Introduction.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/Claude Code/03 Skills.md",
     "AI Engineering/Model Context Protocol/03 Core Primitives.md",
     "AGENTS.md",
     "Descomplica Enablers.md",
@@ -308,11 +337,7 @@
     "HTTP headers.md",
     "Resilience.md",
     "AI Engineering/4D Framework for AI Fluency.md",
-    "AI Engineering/LLM/LLM Processing Pipeline.md",
     "AI Engineering/LLM/Prompts Fragments.md",
-    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
-    "AI Engineering/LLM/Prompt Evaluation.md",
-    "AI Engineering/Model Context Protocol/02 Architecture.md",
     "AI Engineering/Model Context Protocol",
     "Security/TODO",
     "Security/TODO",

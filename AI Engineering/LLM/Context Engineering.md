@@ -359,8 +359,8 @@ Instead, the Coordinator must spawn ephemeral subagents to investigate highly sp
 Codebase exploration usually happens in phases (e.g., Phase 1: Map the database schema; Phase 2: Audit the API routes). Do not rely on the chat history to carry the context from Phase 1 into Phase 2.
 
 - **Scratchpad Files:** Force the agents to maintain physical markdown scratchpad files (e.g., `architecture_notes.md` or `dependency_graph.md`) on the local disk. As they discover key findings, they must write to these files.
-    
 - **Phase Injection:** Before spawning subagents for the next exploration phase, the Coordinator should summarize the key findings from the previous phase and inject that summary—along with the contents of the relevant scratchpad files—directly into the new subagent's initial system prompt. This guarantees the new worker has the exact architectural context it needs, independent of the session history.
+- This technique is also called "structured context layer" or "state management"
     
 
 ### 3. Manual Context Pruning (The `/compact` Command)

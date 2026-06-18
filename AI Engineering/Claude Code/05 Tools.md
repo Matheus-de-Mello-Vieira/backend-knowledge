@@ -25,22 +25,23 @@ Control how aggressively the model reaches for tools and enforce rigid payload s
 - **Enforce strict schemas:** Set `strict: true` in the tool definition. This guarantees the model's output will exactly match your JSON schema, preventing downstream validation errors and type panics in your backend.
 - **Control the trigger conditions:** By default, `tool_choice` is set to `{"type": "auto"}`, letting the model organically decide when a tool is appropriate. To force the model to use a specific tool, set `tool_choice` to `{"type": "tool", "name": "my_function"}`. To force it to use _any_ tool before answering, use `{"type": "any"}`.
 - **Tweak the system prompt:** If the model hesitates to use a tool, add an explicit directive like "Always investigate the database using tools before responding."
-## Threat Modeling and System Security
 
-When giving an LLM the ability to trigger backend functions, strictly isolate its execution environment and treat its output as untrusted input.
+### Handling Interruption and Behavioral Pivots
 
-**Is this vulnerable to indirect prompt injection?**
+During complex agentic loops, you may need to interrupt the model's current trajectory. For example, if a model triggers a database query that returns an overwhelmingly large dataset, you might want to pivot its original plan and instruct it to merely summarize the findings instead of performing a deep analysis.
 
-Yes. If the model uses a tool to fetch a webpage or an external database record, a malicious payload inside that external data can hijack the model's instructions. Never grant a tool destructive capabilities (like `DROP TABLE` or `refund_customer`) without a human-in-the-loop review step or strict, hardcoded parameter boundary checks.
+**Can you ignore a pending tool call to pivot the conversation?**
 
-**Does the model validate the tool's execution authority?**
+No. The API operates as a strict state machine. If the model emits a `stop_reason` of `tool_use`, your next request must contain a `tool_result` block resolving that specific execution. Sending a standard text prompt without resolving the pending tool call breaks the sequence and will throw a 400 API error.
 
-No. The model does not understand your IAM roles or RBAC policies. If you expose an `admin_delete_user` tool to the model in a customer-facing chatbot, the model will attempt to use it if requested. Always enforce authorization at the application layer, validating that the user interacting with the model actually has permission to execute the triggered tool.
+**Implementing the Pivot**
 
-**Are tool schemas retained in the context window?**
+To successfully interrupt the model, you must fulfill the API contract while simultaneously injecting the new directive. Do this by combining multiple content blocks within the same user turn:
 
-Yes. Every tool definition you pass consumes input tokens and occupies the context window. Passing hundreds of unused tools degrades reasoning performance and inflates costs. Use dynamic tool fetching or semantic tool search with vector embeddings to inject only the necessary tool schemas into the prompt based on the user's initial query.
+1. **Resolve the state:** Append the required `tool_result` block containing the function's output to satisfy the API's sequence requirements and provide the requested data.
+2. **Inject the pivot:** In the exact same `content` array, append a `text` block containing the new instruction (e.g., "Summarize this data and halt further tool use").
 
+By providing both blocks in a single request, you successfully steer the model's next generation—pivoting its behavior—while maintaining the full context of the session and satisfying the rigid tool execution loop.
 ## The Task Tool: Orchestrating Subagents
 
 Think of the Task tool as a dispatch system for multi-agent architectures. Instead of a primary coordinator model attempting to execute a sprawling, multi-domain workflow synchronously, it uses the Task tool to spawn specialized child processes. It is the backend equivalent of a lead software architect handing off a highly specific database migration ticket to a dedicated DBA rather than writing the SQL themselves.
@@ -109,3 +110,56 @@ When dealing with complex architectures that wrap underlying libraries, trace us
 
 **Implement reliable fallbacks:**
 `Edit` frequently fails if the text you are trying to replace is too generic (like `return true;` or `</div>`), because the tool cannot determine the unique anchor point. When `Edit` fails due to non-unique text matches, immediately fall back to using `Read` to load the full file contents, apply the logical changes internally, and use `Write` to safely overwrite the file.
+
+## Code Execution (Programmatic Tool Calling)
+
+The Claude API includes built-in Code Execution, an Anthropic-provided server-side tool that allows the model to write, execute, and analyze Python code directly within its reasoning loop. Instead of relying on your backend to run custom logic, the model runs short scripts in a secure, ephemeral container hosted by Anthropic.
+
+> [!example] Orchestrating Heterogeneous Pagination
+> 
+> Imagine building a legal e-discovery agent with Claude that needs to search through multiple document databases. These databases rely on heterogeneous pagination schemas: Database A uses a `next_page_token`, Database B uses `offset` and `limit`, and Database C uses a `page_number`. When trying to manage these varying schemas manually within its standard context window, the model frequently struggles, resulting in infinite loops or skipped pages.
+> 
+> **The Solution: Programmatic Tool Calling (PTC)**
+> 
+> The officially recommended approach to handle this complexity is Programmatic Tool Calling. You allow the model to write and execute Python orchestration code inside a sandbox. This code implements the exact loops and conditional logic needed to manage the different pagination states and aggregate the results. By processing intermediate results directly within the sandbox, the model only returns the final aggregated output, which drastically reduces token consumption and latency.
+> 
+> **Why not use a `PostToolUse` hook?**
+> 
+> You might consider implementing a `PostToolUse` hook to intercept every tool response, abstract the pagination metadata, and automatically issue follow-up requests. While this could theoretically manage pagination, it is not the recommended approach. A hook requires custom implementation entirely outside of the model's internal orchestration. Anthropic emphasizes PTC for these scenarios because external hooks may not be as efficient or flexible when dealing with complex, multi-step workflows that heavily rely on conditional logic.
+### Why Use Code Execution?
+
+Code Execution bridges the gap between text generation and precise computation. It is crucial for tasks where LLMs traditionally hallucinate or fail.
+
+- **Complex Math:** LLMs struggle with large-number arithmetic or calculus. By writing a Python script to calculate the result, the model guarantees mathematical accuracy.
+- **Data Analysis:** If you pass a large CSV file in the context window, the model can use Pandas or NumPy to filter, aggregate, and visualize the data rather than attempting to parse the string text directly.
+- **Algorithmic Reasoning:** For complex logic puzzles or sorting tasks, the model can draft an algorithm, test it, read the error output, and refine its logic before delivering the final answer.
+### Enabling the Tool
+
+To grant the model access to this capability, you must explicitly pass the built-in tool configuration in your API request.
+
+**Inject the definition:** In your `tools` array, include the Anthropic-defined Code Execution tool block:
+```json
+{
+	"name": "computer_use", 
+	"type": "computer_20241022" 
+}
+```
+
+### Execution Loop and Limitations
+
+When the model decides to use the tool, it generates the Python code and pauses.
+
+**How does the code actually run?**
+
+Anthropic's servers intercept the request, spin up an isolated, sandboxed Python environment, execute the code, and automatically inject the stdout (or stderr) back into the prompt as a `tool_result` block. The model reads the output and continues its reasoning.
+
+**Are there limitations to the sandbox?**
+
+Yes. The environment is strictly sandboxed.
+
+- **No internet access:** The code cannot make external HTTP requests or download new packages.
+- **Pre-installed libraries:** The environment only contains a specific list of pre-installed data science libraries (like `pandas`, `numpy`, and `matplotlib`).
+- **Timeout constraints:** Scripts that run too long or consume too much memory are killed automatically, returning a timeout error to the model.
+
+If you require external network access, custom dependencies, or heavy computation, you must build Client-side tools and execute the Python code on your own backend infrastructure.
+

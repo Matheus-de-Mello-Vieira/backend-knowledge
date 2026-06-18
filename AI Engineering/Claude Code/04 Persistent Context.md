@@ -96,3 +96,21 @@ If yes, use Path-Scoped Rules (`.claude/rules/*.md`). Use these for modular, top
 
 **Is this a procedural workflow?**
 If the context is only relevant during a specific operation—like executing a multi-step database migration or diagnosing a staging deployment—use Skills. When a skill is triggered, its specific context via `SKILL.md` is injected directly into the active priority stack. This context remains active only for the duration of the skill execution. Rely on skills to keep your baseline memory clean while providing deep, task-specific instructions exactly when the agent needs them.
+
+## Path-Scoped Rules vs. Subdirectory `CLAUDE.md`
+
+While both mechanisms allow you to scope context to specific parts of your project to keep your baseline memory clean, they trigger differently during the agent's lifecycle. Understanding this distinction is critical for preventing architecture deviations during code generation.
+
+### When to use Path-Scoped Rules (`.claude/rules/*.md`)
+
+Use path-scoped rules for modular, topic-specific instructions that apply to specific file types or granular directories.
+
+- **The Trigger Mechanism:** Rules are evaluated and injected into the priority stack _only_ when Claude reads a file that matches the `paths:` YAML frontmatter.
+- **Best For:** Enforcing strict validation constraints or coding styles on existing files you are asking Claude to edit, such as API routes or specific backend controllers.
+
+### When to use `CLAUDE.md` in Subdirectories
+
+Use a directory-level `CLAUDE.md` when an entire module, package, or architectural layer shares a unified set of conventions that must be known unconditionally when working within that specific folder.
+
+- **The Scaffolding Caveat:** The crucial limitation of path-scoped rules is that they do not trigger when Claude creates a brand new file.
+- **Pre-Scaffold Knowledge:** If a rigid constraint must be known _before_ scaffolding a brand new file, place it in a `CLAUDE.md` instead. By placing a `CLAUDE.md` file directly inside the target subdirectory, you ensure the agent reads the necessary architectural overviews and baseline coding styles before it begins generating new code in that location.
