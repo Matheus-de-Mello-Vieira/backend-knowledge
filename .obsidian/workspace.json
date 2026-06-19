@@ -37,7 +37,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/Claude Code/04 Persistent Context.md",
+                "file": "AI Engineering/Claude Code/05 Tools.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "04 Persistent Context"
+              "title": "05 Tools"
             }
           }
         ],
@@ -115,13 +115,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/Claude Code/04 Persistent Context.md",
+                "file": "AI Engineering/Claude Code/05 Tools.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 04 Persistent Context"
+              "title": "Outline of 05 Tools"
             }
           }
         ]
@@ -310,12 +310,12 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "90170dacb6c63baf",
   "lastOpenFiles": [
-    "AI Engineering/Claude Code/05 Tools.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
-    "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/Claude Code/04 Persistent Context.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/Claude Code/05 Tools.md",
+    "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/LLM/Agents and Workflows.md",
     "AI Engineering/LLM/LLM Model Selection.md",
     "AI Engineering/Claude Code/01 Commands.md",

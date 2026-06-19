@@ -104,6 +104,8 @@ This pattern is ideal when a complex decision or generation task can be cleanly 
 The primary architectural requirement is that **each sub-task must be able to operate independently** without needing information or context from the other parallel tracks to complete its job.
 - **Separate tasks by their final output artifact, not just their logical domain.** Parallelization is perfect when each track produces its own distinct evaluation (e.g., three different risk reports). However, if these distinct criteria all require modifying the exact same file or code template, this pattern isn't suitable.
 
+
+
 ## Chaining Workflows
 
 
@@ -390,7 +392,7 @@ To maximize the reliability and efficiency of a Coordinator-Subagent architectur
 
 Implement the following four strategies to build a production-grade orchestration layer.
 
-#### 1. Dynamic Subagent Selection
+#### Dynamic Subagent Selection
 
 A naive coordinator executes tasks by running the user's query through the entire available pipeline (e.g., always triggering the Researcher, then the Analyst, then the Writer). This wastes compute and increases latency.
 
@@ -399,7 +401,7 @@ A mature Coordinator is engineered to analyze the query requirements upfront and
 - **The Mechanism:** The Coordinator is provided with a registry of available subagents, complete with descriptions of their capabilities. It evaluates the prompt and builds a custom execution path on the fly.
 - **Example:** If a user asks, _"Format this raw JSON into a Markdown table,"_ the Coordinator recognizes that no research or data analysis is required. It dynamically bypasses the Scraper and Analyst subagents entirely, routing the data directly to the Formatting Subagent.
 
-#### 2. Scoped Research Partitioning
+#### Scoped Research Partitioning
 
 When a Coordinator does need to invoke multiple research subagents in parallel, it risks burning tokens on duplicate work. Left unguided, two subagents might run the exact same web searches.
 
@@ -408,7 +410,7 @@ To solve this, the Coordinator must enforce **Scoped Partitioning**.
 - **The Mechanism:** The Coordinator explicitly divides the research landscape and assigns strict, non-overlapping boundaries to each subagent.
 - **Example:** When researching a competitor, the Coordinator assigns Subagent A exclusively to "Financial Filings (SEC/10-K)" and Subagent B exclusively to "Social Media Sentiment." By partitioning the source types or subtopics, the Coordinator ensures maximum coverage with zero duplication of effort.
 
-#### 3. Iterative Refinement Loops
+#### Iterative Refinement Loops
 
 Even with perfect partitioning, the initial data returned by subagents may be incomplete. Instead of blindly passing a flawed synthesis to the user, the Coordinator should utilize an internal Evaluator-Optimizer loop.
 
@@ -423,7 +425,7 @@ flowchart TD
     B -->|No: Coverage is Sufficient| E[Final Output to User]
 ```
 
-#### 4. Centralized Coordination (The Hub-and-Spoke Mandate)
+#### Centralized Coordination (The Hub-and-Spoke Mandate)
 
 In a multi-agent system, engineers are often tempted to let subagents communicate directly with one another (e.g., the Scraper passing data directly to the Writer). You must explicitly prevent this. **All communication must route through the Coordinator.**
 
@@ -431,7 +433,7 @@ In a multi-agent system, engineers are often tempted to let subagents communicat
 - **Consistent Error Handling:** If the Scraper fails to find a website, it shouldn't crash the Writer. It returns the error to the Coordinator, which can gracefully decide to either skip that data point or try a different source.
 - **Controlled Information Flow:** Centralization prevents "context window blowout." The Coordinator acts as an information firewall, sanitizing and summarizing the Scraper's output before passing it to the Writer, ensuring downstream agents only receive the exact tokens they need.
 
-####  5. Provenance and Multi-Source Synthesis
+####  rovenance and Multi-Source Synthesis
 
 When a Coordinator agent aggregates data from multiple specialized subagents (e.g., combining web search results with internal RAG data), the synthesis process introduces a high risk of data corruption. If not strictly engineered, the LLM will flatten nuances, lose citations, and arbitrarily resolve contradictions.
 
@@ -442,7 +444,7 @@ To build a trustworthy synthesis pipeline, you must enforce strict provenance an
 The fundamental law of LLM summarization is that **compression destroys attribution**. If a subagent discovers a fact and passes it to the Coordinator as a plain text summary, the claim-source mapping is permanently lost. The Coordinator cannot verify the fact or cite it for the user.
 
 - **The Implementation:** Never allow subagents to return unstructured prose. Require all research and extraction subagents to return data using a rigid JSON schema that enforces **claim-source mapping**.
-    
+  
 ```json
 {
   "findings":[
@@ -474,6 +476,32 @@ When aggregating diverse data streams—such as financial metrics, news articles
 
 *   **The Implementation:** Engineer your final synthesis prompt to apply specific rendering rules based on the content type. Instruct the model: *"Render financial or statistical comparisons exclusively as Markdown tables. Render narrative news as standard prose. Render technical configurations or requirements as bulleted lists."* 
 *   **The Benefit:** This preserves the readability and analytical utility of the data, ensuring the human user can quickly scan the complex, multi-source report.
+
+### Managing Shared Context in Parallel Agent Workflows
+
+When a complex task is decomposed into parallel sub-tasks (like the `RiskAnalyzer` and `StockRecommender` working simultaneously), multiple agents frequently require access to the exact same foundational data. The decision of *where* and *when* to fetch this data fundamentally impacts the reliability and performance of your system.
+
+#### The Anti-Pattern: Decentralized Data Fetching
+
+This pattern occurs when you allow each parallel subagent to independently query the database or API for the shared context during its own execution loop.
+
+**Why this is an architectural risk:**
+
+- **Data Inconsistency (The Race Condition):** If the underlying data changes between the exact milliseconds that Agent A and Agent B perform their fetches, the agents will operate on different versions of reality. This introduces the risk of data inconsistency. The final aggregated output will likely contain contradictions.
+- **Latency and Resource Waste:** Querying the exact same data multiple times is redundant and inefficient. It forces your system to pay the network latency and compute "toll" twice, unnecessarily increasing database load.
+- **Violation of Agent Isolation:** By forcing the subagents to fetch the data, you must equip them with the database-querying tools and credentials. This bloats the subagent's prompt and responsibilities, violating the principle of single responsibility.
+
+#### The Best Practice: Orchestrator-Led State Injection
+
+Also known as "Fetch Once, Inject Many," this pattern relies on the orchestration layer (the Coordinator) to gather all necessary shared context *before* spinning up the parallel worker agents.
+
+Fetching the data once at the orchestration layer and injecting it into parallel agents is the most efficient and reliable pattern.
+
+**Why this is the engineering standard:**
+
+- **Snapshot Consistency:** By pulling the data once at the orchestrator level, you guarantee that every downstream agent receives the exact same, frozen snapshot of the data. It ensures both agents work from an identical snapshot, which is essential for consistent multi-step task execution.
+- **Maximized Efficiency:** You eliminate redundant API calls and database hits. The data is fetched once and efficiently passed in memory to the subagents.
+- **Dumb Pipes, Smart Endpoints (Decoupling):** The subagents do not need to know *how* to query the database. They simply receive the data passively in their system prompts. This keeps the subagents strictly focused on their specific analytical tasks, requiring fewer tools and reducing the risk of hallucinated tool calls.
 
 ### Architectural Anti-Pattern: Premature Transformation
 

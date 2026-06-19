@@ -108,10 +108,7 @@ Never read the entire codebase upfront. Start by using `Grep` to find the execut
 **Trace wrapper modules:**
 When dealing with complex architectures that wrap underlying libraries, trace usage by first reading the wrapper file to identify all exported names. Then, iterate with `Grep` to search for each of those exported names across the rest of the codebase.
 
-**Implement reliable fallbacks:**
-`Edit` frequently fails if the text you are trying to replace is too generic (like `return true;` or `</div>`), because the tool cannot determine the unique anchor point. When `Edit` fails due to non-unique text matches, immediately fall back to using `Read` to load the full file contents, apply the logical changes internally, and use `Write` to safely overwrite the file.
-
-## Code Execution (Programmatic Tool Calling)
+### Code Execution (Programmatic Tool Calling)
 
 The Claude API includes built-in Code Execution, an Anthropic-provided server-side tool that allows the model to write, execute, and analyze Python code directly within its reasoning loop. Instead of relying on your backend to run custom logic, the model runs short scripts in a secure, ephemeral container hosted by Anthropic.
 
@@ -126,14 +123,14 @@ The Claude API includes built-in Code Execution, an Anthropic-provided server-si
 > **Why not use a `PostToolUse` hook?**
 > 
 > You might consider implementing a `PostToolUse` hook to intercept every tool response, abstract the pagination metadata, and automatically issue follow-up requests. While this could theoretically manage pagination, it is not the recommended approach. A hook requires custom implementation entirely outside of the model's internal orchestration. Anthropic emphasizes PTC for these scenarios because external hooks may not be as efficient or flexible when dealing with complex, multi-step workflows that heavily rely on conditional logic.
-### Why Use Code Execution?
+#### Why Use Code Execution?
 
 Code Execution bridges the gap between text generation and precise computation. It is crucial for tasks where LLMs traditionally hallucinate or fail.
 
 - **Complex Math:** LLMs struggle with large-number arithmetic or calculus. By writing a Python script to calculate the result, the model guarantees mathematical accuracy.
 - **Data Analysis:** If you pass a large CSV file in the context window, the model can use Pandas or NumPy to filter, aggregate, and visualize the data rather than attempting to parse the string text directly.
 - **Algorithmic Reasoning:** For complex logic puzzles or sorting tasks, the model can draft an algorithm, test it, read the error output, and refine its logic before delivering the final answer.
-### Enabling the Tool
+#### Enabling the Tool
 
 To grant the model access to this capability, you must explicitly pass the built-in tool configuration in your API request.
 
@@ -145,7 +142,7 @@ To grant the model access to this capability, you must explicitly pass the built
 }
 ```
 
-### Execution Loop and Limitations
+#### Execution Loop and Limitations
 
 When the model decides to use the tool, it generates the Python code and pauses.
 
@@ -163,3 +160,12 @@ Yes. The environment is strictly sandboxed.
 
 If you require external network access, custom dependencies, or heavy computation, you must build Client-side tools and execute the Python code on your own backend infrastructure.
 
+### Implementing Reliable Fallbacks and Structurally-Aware Edits
+
+The built-in file system tools are powerful, but they operate primarily on raw text. When dealing with complex structures or non-unique strings, you must implement reliable fallback strategies to prevent corruption.
+
+**When to fall back to Read + Write:** The `Edit` tool frequently fails if the text you are trying to replace is too generic (like `return true;` or `</div>`), because the tool cannot determine a unique anchor point within the file. When `Edit` fails due to non-unique text matches, immediately fall back to using `Read` to load the full file contents into the context window, apply the logical changes internally, and use `Write` to safely overwrite the file entirely.
+
+**When to fall back to Programmatic Tool Calling (PTC):** While `Read` and `Write` are great for plain text, they become risky when editing highly structured data files (like large JSON arrays or complex YAML configurations) where a simple text-based search-and-replace could modify incorrect entries or fail due to formatting inconsistencies.
+
+For example, if you need to update a specific `tax_rate` for the state of "NY" inside a massive `state_taxes.json` file. Instead of using `Grep` to find the line and `Edit` to change the text, the most robust and structurally-aware approach is to use Programmatic Tool Calling. Instruct the agent to generate and execute a Python script that reads the JSON file, parses it into an actual object, updates the specific key programmatically, and writes the modified, properly formatted data back to the file.
