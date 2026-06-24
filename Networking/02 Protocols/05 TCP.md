@@ -74,7 +74,7 @@ The strategy the kernel uses to adjust `cwnd` shifts dynamically based on a thre
 
 - **Objective:** Discover the available network bandwidth quickly on a brand-new connection or after a severe timeout.
 - **The ssthresh Initialization:** Because the kernel has zero historical data about the network path's capacity on startup, `ssthresh` is initialized to an arbitrarily large, near-infinite value (such as 64KB or the maximum system buffer limit). This keeps the safety ceiling out of the way so the connection can ramp up speed instantly.
-- **Behavior:** `cwnd` starts low (typically 10 segments). For every individual standard ACK received, `cwnd` increases additively by 1 Maximum Segment Size (MSS).
+- **Behavior:** `cwnd` starts low (typically 10 segments). For every individual standard ACK received, `cwnd` increases additively by 1 [MSS](#Maximum%20Segment%20Size%20(MSS)).
 - **Exponential Growth:** Even though the kernel applies a simple additive rule per ACK, the window size effectively doubles every Round Trip Time (RTT). This happens because the total number of ACKs generated in the current round matches the current window size, injecting exactly enough new capacity to double the window for the next flight of packets. This aggressive doubling continues until `cwnd` reaches or exceeds `ssthresh`.
 
 **Phase B: Congestion Avoidance**

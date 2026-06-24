@@ -52,7 +52,7 @@ Communication
 * "Can the attacker launch an availability attack (e.g. DDoS) on the network link?"
 * "Can the attacker reroute the communication, to spoof the cloud?"
 
-IoT devices can materially expand this kind of attack surface. For the device-specific risks behind that concern, see [IoT Security](../05%20Architecture%20and%20Infrastructure%20Security/IoT%20Security.md#IoT%20Attack%20Surface%20Risk).
+IoT devices can materially expand this kind of attack surface. For the device-specific risks behind that concern, see [IoT Security](IoT%20Security.md#IoT%20Attack%20Surface%20Risk).
 ### Causes of Vulnerability
 
 Vulnerabilities can originate from a wide variety of sources, ranging from software flaws to human behavior. An organization's cybersecurity leaders must strive to maintain maximum visibility and control over these potentially vulnerable vectors.

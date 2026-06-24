@@ -4,9 +4,6 @@ Even when perimeter defenses like firewalls and authentication are successful, a
 
 **Detecting the "Insider" Threat:** The primary strength of anomaly detection is its ability to detect an attacker even when they possess correct credentials. By identifying that a specific user's behavior has become highly irregular, the system can trigger alerts or automated responses to mitigate the impact of a potential breach.
 
-> [!info]
-> IoT devices are a strong case for baseline-based detection because their normal communication patterns are often narrow. See [IoT Security](../05%20Architecture%20and%20Infrastructure%20Security/IoT%20Security.md#Device%20Profiling%20and%20IoT%20Baselines).
-
 It is a common misconception that Intrusion Detection Systems (IDS) and Intrusion Prevention Systems (IPS) use different methods to find threats. In reality, both systems share the exact same "brain"—they utilize the identical set of core detection engines to monitor the network:
 
 - **Behavioral and Anomaly Detection:** Instead of just checking "keys," the system analyzes behavior. It establishes a baseline of "normal" activity and flags deviations that could indicate an intruder impersonating a legitimate user. Key indicators include:  
