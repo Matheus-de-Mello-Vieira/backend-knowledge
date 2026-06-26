@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "f9b5f7dd02e1fd0c",
+        "id": "ceac960737243700",
         "type": "tabs",
         "children": [
           {
-            "id": "5605fd39d6f94bbe",
+            "id": "dbb0656f09ae60aa",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
+                "file": "Operating Systems/02 Memory Management.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Intrusion Detection and Prevention"
+              "title": "02 Memory Management"
             }
           }
         ]
@@ -90,16 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
+                "file": "Operating Systems/02 Memory Management.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Intrusion Detection and Prevention"
+              "title": "Outline of 02 Memory Management"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -222,7 +223,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -285,8 +286,18 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "5605fd39d6f94bbe",
+  "active": "dbb0656f09ae60aa",
   "lastOpenFiles": [
+    "Operating Systems/01 Processes.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "Operating Systems/02 Memory Management.md",
+    "AI Engineering/Model Context Protocol/03 Core Primitives.md",
+    "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
+    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+    "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
+    "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/TODO/06 IoT Endpoint Security.md",
@@ -303,16 +314,6 @@
     "Security/TODO/08 Practical Examples of Attacks in IoT Environments.md",
     "Networking/03 Connections/02 Reading and Sending Data.md",
     "Networking/02 Protocols/05 TCP.md",
-    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
-    "Security/TODO/09 Fundamentals of Operational Resilience, Incident Management, and CSIRT.md",
-    "Descomplica Enablers.md",
-    "Security/05 Architecture and Infrastructure Security/Linux Endpoint Security.md",
-    "Security/05 Architecture and Infrastructure Security/Cloud Security.md",
-    "Security/05 Architecture and Infrastructure Security/03 Workstation Security.md",
-    "Security/05 Architecture and Infrastructure Security/02 Endpoint Security.md",
-    "Security/TODO/07 IoT Ecosystem Security Networks, Cloud, and Endpoints.md",
-    "Security/TODO/03 Security, Threats, and Risks in the IoT Ecosystem.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "Security/TODO",
