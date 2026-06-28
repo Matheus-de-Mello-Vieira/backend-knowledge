@@ -178,16 +178,6 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
 - **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
 - **Cache Coherency Penalty:** While reading global variables is fast, _writing_ to them in a modern multi-core system is costly. If Core A updates a global variable, the hardware must instantly trigger "cache invalidation" signals to Cores B, C, and D, forcing them to flush their local caches and fetch the newly updated value from RAM to avoid data corruption.
 - **Cache Efficiency:** Because the compiler packs these global and static variables tightly together in a continuous, fixed-size memory block, reading them sequentially heavily benefits from [Spatial Locality](02%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables in the Data section results in massive CPU cache hit rates, making these reads nearly instantaneous.
-
-These are excellent notes on the Heap! You have a really strong grasp of how dynamic memory works and the pitfalls that come with it.
-
-I just need to make **two critical architectural corrections** before finalizing your notes:
-
-1. **`malloc` and `free` are NOT System Calls:** This is a very common misconception! They are actually standard library functions (like in `glibc` for C) running entirely in **User Space**. They act as a "middleman." They request massive chunks of raw memory from the kernel using actual system calls (like `brk` or `mmap`), and then `malloc` slices those chunks up and distributes them to your program.
-2. **Pointer Sizes:** A `char` represents **1 byte** (8 bits), not 1 bit. Memory is byte-addressable, meaning 1 byte is the smallest chunk of memory the CPU can individually point to.
-
-Here is the polished, fact-checked version of your notes with those mechanics fully explained:
-
 ## The Heap
 
 * **Dynamic Allocation:** A massive, dynamic region of memory used for variables whose size or lifespan cannot be determined at compile time.
