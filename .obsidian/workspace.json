@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "ceac960737243700",
+        "id": "2dd6d6544f99089d",
         "type": "tabs",
         "children": [
           {
-            "id": "dbb0656f09ae60aa",
+            "id": "a9bb733a89471311",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/02 Memory Management.md",
+                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "02 Memory Management"
+              "title": "System Architecture Overview"
             }
           }
         ]
@@ -63,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "\"Trusted Computing Base\"",
+                "query": "kernel",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,17 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Operating Systems/02 Memory Management.md",
+                "file": "AI Engineering/LLM/Context Engineering.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 02 Memory Management"
+              "title": "Outline of Context Engineering"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -286,19 +286,26 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "dbb0656f09ae60aa",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Operating Systems/01 Processes.md",
-    "Operating Systems/02 Memory Management.md",
+    "Networking/02 Protocols/04 UDP.md",
+    "Networking/03 Connections/01 How Connections are Established.md",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/LLM/Prompts Fragments.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/Prompt Engineering.md",
+    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
+    "Operating Systems/02 Memory Management.md",
+    "Operating Systems/01 Processes.md",
     "AI Engineering/Model Context Protocol/03 Core Primitives.md",
     "AI Engineering/Model Context Protocol/06 Recommended MCPs.md",
     "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
     "AI Engineering/Model Context Protocol/05 Tool Design and Operations.md",
-    "AI Engineering/LLM/Agents and Workflows.md",
     "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
     "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
-    "Security/05 Architecture and Infrastructure Security/IoT Security.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Security/TODO/06 IoT Endpoint Security.md",
     "Security/TODO/IoT Security.md",
@@ -307,13 +314,6 @@
     "Networking/02 Protocols/09 HTTP2.md",
     "Networking/02 Protocols/07 HTTP1.1.md",
     "Security/TODO/02 IoT Architecture and Devices.md",
-    "Security/TODO/01 Overview and Characteristics of the Internet of Things (IoT).md",
-    "Security/05 Architecture and Infrastructure Security/Critical Infrastructure Security.md",
-    "common.md",
-    "Security/TODO/05 Key Threats and Risk Mitigation in IoT.md",
-    "Security/TODO/08 Practical Examples of Attacks in IoT Environments.md",
-    "Networking/03 Connections/02 Reading and Sending Data.md",
-    "Networking/02 Protocols/05 TCP.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "Security/TODO",

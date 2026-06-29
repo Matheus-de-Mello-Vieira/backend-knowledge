@@ -250,6 +250,7 @@ IoT devices are notoriously difficult to patch, making structured vulnerability 
 - **Verification:** Verify signed and encrypted update packages before installation.
 - **Legacy tracking:** Track unsupported, unpatched, and legacy devices as explicit risk items, and either isolate, replace, or tightly monitor end-of-life assets.
 - **Rollback support:** Maintain clear rollback paths to the last known good state if an update fails or is malicious.
+- **Automation and Frequency:** Automatic updates should be enabled by default. Update checks should occur frequently but at randomized intervals to mitigate targeted attack risks during the update window.
 - **Supply chain awareness:** Include third-party components and supply-chain dependencies in your vulnerability tracking.
 
 ### Monitoring and Detection
