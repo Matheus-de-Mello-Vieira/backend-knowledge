@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "2dd6d6544f99089d",
+        "id": "847265260d0f6d69",
         "type": "tabs",
         "children": [
           {
-            "id": "a9bb733a89471311",
+            "id": "98a7cf6871d3bf4c",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/01 Why an OS?/System Architecture Overview.md",
+                "file": "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "System Architecture Overview"
+              "title": "01 Fundamentals of Resilience Engineering and CSIRT"
             }
           }
         ]
@@ -99,8 +99,7 @@
               "title": "Outline of Context Engineering"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -187,7 +186,7 @@
             }
           },
           {
-            "id": "0395dbd7cb92c024",
+            "id": "739823449ca9b395",
             "type": "leaf",
             "state": {
               "type": "terminal:terminal",
@@ -227,13 +226,14 @@
             }
           },
           {
-            "id": "f9632eba1bc24ea7",
+            "id": "1f1dae04e68fc1bc",
             "type": "leaf",
+            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
                 "terminal:terminal": {
-                  "cwd": "/Users/matheusmv/Documents/estudo/backend-knowledge",
+                  "cwd": "/Users/matheusmv/Documents/estudo/backend-knowledge/",
                   "focus": false,
                   "profile": {
                     "args": [
@@ -262,16 +262,17 @@
                   "serial": null
                 }
               },
+              "pinned": true,
               "icon": "terminal",
               "title": "Terminal: zsh"
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
-    "width": 573.5
+    "width": 707.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -286,11 +287,19 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "739823449ca9b395",
   "lastOpenFiles": [
+    "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
+    "Security/TODO/05 Security Incident Management and Response.md",
+    "Security/99 References and Checklists/Backend Security Checklist.md",
+    "Security/TODO/06 Advanced Incident Handling.md",
+    "Security/TODO/04 Incident Management Process.md",
+    "Security/TODO/03 CSIRT Operational Management.md",
+    "Security/TODO/02 CSIRT Creation and Structure.md",
+    "Security/TODO",
+    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Networking/02 Protocols/04 UDP.md",
     "Networking/03 Connections/01 How Connections are Established.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/LLM/Agents and Workflows.md",
     "AI Engineering/LLM/LLM Processing Pipeline.md",
@@ -307,18 +316,7 @@
     "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
     "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "Security/TODO/06 IoT Endpoint Security.md",
-    "Security/TODO/IoT Security.md",
-    "Security/TODO/04 IoT Security Best Practices.md",
-    "Networking/02 Protocols/06 TLS.md",
-    "Networking/02 Protocols/09 HTTP2.md",
-    "Networking/02 Protocols/07 HTTP1.1.md",
-    "Security/TODO/02 IoT Architecture and Devices.md",
-    "Security/TODO",
     "AI Engineering/Model Context Protocol",
-    "Security/TODO",
-    "Security/TODO",
-    "Security/TODO",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
     "Operating Systems/Linux",

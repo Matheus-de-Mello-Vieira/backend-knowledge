@@ -5,3 +5,12 @@ args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
 [mcp_servers.qmd]
 command = "npx"
 args = ["-y", "@tobilu/qmd", "mcp"]
+
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "/usr/bin/python3 .codex/hooks/python_interceptor.py"
+timeout = 30
+statusMessage = "Validating Python environment"
