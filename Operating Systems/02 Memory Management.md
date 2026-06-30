@@ -143,3 +143,91 @@ To understand why this matters, think of the CPU and RAM as a frontend and backe
 - **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access that _exact same_ address again very soon.
 - **The Benefit:** The CPU keeps recently accessed Cache Lines in the L1 cache for as long as possible before evicting them.
 - **Where it Applies:** This is why local loop counters (e.g., `for(int i = 0; ...)`), frequently used global variables, and hot code paths (instructions inside a loop) execute so quickly. The CPU just repeatedly reads the exact same cached data without ever going back to RAM.
+### Memory Alignment
+
+Processors do not read memory one byte at a time; they fetch it in fixed-size hardware chunks (such as 4-byte words or 64-byte cache lines). If a variable is placed randomly and happens to cross the boundary between two of these chunks, the CPU is forced to perform two separate memory reads and artificially stitch the data together. To prevent this severe performance penalty and ensure every variable can be fetched in a single hardware cycle, compilers explicitly align variables in memory.
+
+Variables are placed at memory addresses that are **divisible by their size**.
+
+- `char` (1 byte): Any address.
+- `short` (2 bytes): Even addresses (divisible by 2).
+- `int` (4 bytes): Addresses divisible by 4.
+- `double` (8 bytes): Addresses divisible by 8.
+
+If the next available memory address does not satisfy a variable's alignment requirement, the compiler inserts empty, unused bytes (padding) until the requirement is met.
+
+### Memory Optimization: The "Sort by Size" Rule
+
+To minimize wasted memory due to padding, the standard best practice is to order struct members in descending order based on their data type size.
+
+**Inefficient Layout (Wastes 8 bytes):**
+
+```c
+struct Inefficient {
+    char c;
+    double d;
+    short s;
+    int i;
+};
+```
+
+uses a total of 24 bytes:
+```mermaid
+block-beta
+  columns 8
+
+  c["c (0)"]:1
+  p1["padding (1–7)"]:7
+
+  d["d double (8–15)"]:8
+
+  s["s short (16–17)"]:2
+  p2["padding (18–19)"]:2
+  i["i int (20–23)"]:4
+
+  classDef field fill:#1f2937,stroke:#9ca3af,color:#ffffff
+  classDef padding fill:#7f1d1d,stroke:#fca5a5,color:#ffffff
+
+  class c,d,s,i field
+  class p1,p2 padding
+```
+
+**Optimized Layout (Zero wasted internal bytes):**
+
+```c
+struct Optimized {
+    double d;
+    int i; 
+    short s;
+    char c;
+};
+```
+uses a total of 16 bytes:
+```mermaid
+block-beta
+  columns 8
+
+  d["d double (0–7)"]:8
+
+  i["i int (8–11)"]:4
+  s["s short (12–13)"]:2
+  c["c char (14)"]:1
+  p1["padding (15)"]:1
+
+  classDef field fill:#1f2937,stroke:#9ca3af,color:#ffffff
+  classDef padding fill:#7f1d1d,stroke:#fca5a5,color:#ffffff
+
+  class d,i,s,c field
+  class p1 padding
+```
+### Advanced Hardware Optimizations
+
+While saving memory footprint is good, prioritizing CPU cache efficiency is often more important in high-performance computing.
+
+> **Optimization 1: Spatial Locality (Ignoring the Size Rule)**
+> 
+> If variables are frequently accessed together in the same loop (e.g., `x_velocity` and `y_velocity`), they should be placed next to each other in the struct—even if it means intentionally wasting a few bytes of padding. This guarantees one cache fetch brings all necessary data to the CPU, preventing expensive secondary memory reads.
+
+> **Optimization 2: Preventing False Sharing (Intentional Wasting)**
+> 
+> In multithreaded environments, if Thread A modifies `Var1` and Thread B modifies `Var2`, placing them on the _same_ 64-byte cache line will cause the CPU cores to constantly invalidate each other's caches, severely degrading performance. Engineers will intentionally insert large blocks of padding (e.g., `char padding[64];`) between these variables to force them onto separate cache lines.

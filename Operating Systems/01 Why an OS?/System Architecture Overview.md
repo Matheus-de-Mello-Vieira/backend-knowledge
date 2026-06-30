@@ -105,6 +105,24 @@ Every CPU family has its own unique set of machine-level instructions.
 - **The primary job of the kernel is resource management.** It directly handles how hardware like the CPU, memory, and storage are allocated to different tasks.
 - **The OS includes additional tools on top of the kernel for usability.** While the kernel handles the low-level hardware communication, the rest of the OS provides user interfaces, libraries, and application management tools to make the computer user-friendly.
 
+### Where the Kernel Comes From: The Boot Chain
+
+The kernel does not simply exist in memory when a machine powers on; it must be fetched from persistent storage and initialized through a strict, cooperative multi-layered boot process.
+
+1. **Firmware Initialization (BIOS/UEFI):** When the system powers up, the CPU is completely blank and executes its first hardcoded instructions out of non-volatile flash memory on the motherboard. This low-level code is the **firmware**. It runs a Power-On Self-Test (POST) to inventory and test the physical hardware (RAM, CPU cores, storage controllers).
+2. **The Bootloader:** Once the firmware ensures the hardware is stable, it searches the persistent storage drives for a small, specialized program called a **bootloader** (e.g., GRUB, systemd-boot). The firmware loads this bootloader into RAM and hands over execution control.
+3. **Loading the Kernel:** The bootloader's sole job is to locate the compiled kernel binary on the storage drive, load it into physical memory, and jump execution to the kernel's initialization entry point.
+4. **Kernel Takeover & OS Initialization:** The kernel wakes up, takes full control of the CPU, initializes its internal memory management systems (like Page Tables), loads essential device drivers, and finally spawns the very first user-space process (e.g., `init` or `systemd`), which boots the rest of the **Operating System**.
+
+### Differentiating Firmware, Kernel, and the Operating System
+
+To understand how physical hardware transitions into a usable software environment, it helps to view the system as a cooperative stack:
+
+|**Component**|**Where It Resides**|**Primary Responsibility**|**Privilege Level**|
+|---|---|---|---|
+|**Firmware** (BIOS/UEFI)|Non-volatile flash memory soldered onto the motherboard.|Initializes and tests physical hardware components at power-on; handles low-level hardware configurations before any OS boots.|Highest (Runs beneath/before the kernel).|
+|**Kernel**|Stored on persistent media; loaded into privileged RAM during the boot sequence.|Managing active hardware resources (CPU scheduling, memory management, I/O coordination) and providing secure isolation via System Calls.|Privileged (Kernel Space / Mode 0).|
+|**Operating System (OS)**|Stored on persistent media; loaded into user RAM as needed.|The complete software suite built around the kernel, providing user interfaces (GUI/CLI), system utilities, package managers, and runtime libraries.|Unprivileged (User Space).|
 
 ## File System
 [07 Storage Management](07%20Storage%20Management.md)
