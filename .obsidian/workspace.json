@@ -90,16 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/LLM/Context Engineering.md",
+                "file": "Operating Systems/02 Memory Management.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Context Engineering"
+              "title": "Outline of 02 Memory Management"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -188,6 +189,7 @@
           {
             "id": "739823449ca9b395",
             "type": "leaf",
+            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -221,6 +223,7 @@
                   "serial": null
                 }
               },
+              "pinned": true,
               "icon": "terminal",
               "title": "Terminal: zsh"
             }
@@ -272,7 +275,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 411.5
+    "width": 605.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,13 +290,14 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "3474e112458a29d7",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Operating Systems/02 Memory Management.md",
+    "Operating Systems/07 Storage Management.md",
     "Operating Systems/01 Why an OS?/System Architecture Overview.md",
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Operating Systems/01 Processes.md",
     "Operating Systems/Linux/History.md",
-    "Operating Systems/02 Memory Management.md",
     "Resilience.md",
     "Technologies/NodeJS/04 Database Connection/PostgreSQL.md",
     "Cache/Redis/02 Data Management.md",
@@ -315,7 +319,6 @@
     "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/Prompt Engineering.md",
     "Security/05 Architecture and Infrastructure Security/IoT Security.md",
-    "AI Engineering/Model Context Protocol/03 Core Primitives.md",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
