@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 # Constants
 HOOK_EVENT = "PreToolUse"
@@ -29,8 +29,8 @@ def main() -> None:
         if needs_pyenv_wrapper(command):
             validate_and_rewrite_python_command(command)
 
-    # Allow command to proceed unchanged
-    send_response(create_response("allow"))
+    # Command doesn't need modification - exit silently
+    sys.exit(0)
 
 
 def needs_pyenv_wrapper(command: str) -> bool:
@@ -45,20 +45,20 @@ def validate_and_rewrite_python_command(command: str) -> None:
 
     venv_name = read_virtualenv_name()
     if not venv_name:
-        send_response(create_response(
+        send_response(
             "deny",
             f"{PYTHON_VERSION_FILE} file not found in project root."
-        ))
+        )
 
     if not ensure_virtualenv_exists(venv_name):
-        send_response(create_response(
+        send_response(
             "deny",
             f"Failed to create pyenv virtualenv '{venv_name}'. "
             f"Please create it manually: pyenv virtualenv <version> {venv_name}"
-        ))
+        )
 
     updated_command = rewrite_python_command(command)
-    send_response(create_response("allow", updated_command=updated_command))
+    send_response("allow", updated_command=updated_command)
 
 
 def is_pyenv_installed() -> bool:
@@ -155,23 +155,23 @@ def rewrite_python_command(command: str) -> str:
     )
 
 
-def create_response(decision: str, reason: str = None, updated_command: str = None) -> dict:
-    """Build a hook response."""
-    output = {"hookEventName": HOOK_EVENT}
+def send_response(decision: Literal["allow", "deny"], reason: str = None, updated_command: str = None) -> None:
+    """Build and send hook response, then exit."""
+    assert decision in ("allow", "deny"), f"Invalid decision: {decision}"
+
+    # If allow without modification, exit silently
+    if decision == "allow" and not updated_command:
+        sys.exit(0)
+
+    # Build response
+    output = {"hookEventName": HOOK_EVENT, "permissionDecision": decision}
 
     if decision == "deny":
-        output["permissionDecision"] = "deny"
         output["permissionDecisionReason"] = reason
-    elif decision == "allow":
-        output["permissionDecision"] = "allow"
-        if updated_command:
-            output["updatedInput"] = {"command": updated_command}
+    else:  # decision == "allow" with updated_command
+        output["updatedInput"] = {"command": updated_command}
 
-    return {"hookSpecificOutput": output}
-
-
-def send_response(response: dict) -> None:
-    """Send response and exit."""
+    response = {"hookSpecificOutput": output}
     print(json.dumps(response))
     sys.exit(0)
 

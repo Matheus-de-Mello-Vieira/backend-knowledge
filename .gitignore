@@ -1,3 +1,4 @@
 .DS_Store
 *.local.*
 **/TODO
+**/__pycache__
