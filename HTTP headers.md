@@ -24,3 +24,11 @@ CORS-related headers let servers declare which cross-origin requests browsers ma
 - `Access-Control-Allow-Credentials`: Whether cookies/credentials may be included and exposed.
 
 For the full CORS guide (how it works, preflight, credentials, threats), see: [CORS](Security/04%20Application%20and%20API%20Security/Web%20Application%20Security.md#CORS)
+
+## Referer and Origin Headers
+
+These headers provide servers with context about the source of a request, which is essential for analytics, logging, and security mechanisms like CSRF protection. Core pieces include:
+
+- `Referer`: Contains the absolute or partial address of the previous web page from which a link was followed (note the historic misspelling of "referrer").
+- `Referrer-Policy`: Controls how much referrer information (sent via the `Referer` header) should be included with requests. Common values include `no-referrer`, `same-origin`, and `strict-origin-when-cross-origin`.
+- `Origin`: Indicates the origin (protocol, host, and port) that initiated the request. Unlike `Referer`, it does not include the path or query string, making it a more privacy-focused alternative used heavily in CORS and state-changing requests (like `POST`).
