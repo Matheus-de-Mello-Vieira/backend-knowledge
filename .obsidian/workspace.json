@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Networking/02 Protocols/06 TLS.md",
+                "file": "AI Engineering/LLM/Prompt Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,16 +28,16 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "06 TLS"
+              "title": "Prompt Engineering"
             }
           },
           {
-            "id": "91a678198cb83e1a",
+            "id": "2056dfe3421d55a9",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "file": "AI Engineering/LLM/Agents and Workflows.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "03 Common Threats and Attacks"
+              "title": "Agents and Workflows"
             }
           }
         ]
@@ -87,7 +87,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "mutual tls",
+                "query": "response priming",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -246,7 +246,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: backend-knowledge"
+              "title": "Terminal: zsh"
             }
           },
           {
@@ -313,8 +313,14 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Security/Referrer and Origin Policies.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
+    "Patterns.md",
+    "README.md",
+    "Resilience.md",
     "Networking/02 Protocols/06 TLS.md",
+    "Security/Referrer and Origin Policies.md",
     "TODO.md.md",
     "Security/02 Identity and Access/01 Authentication.md",
     "HTTP headers.md",
@@ -325,7 +331,6 @@
     "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
     "Operating Systems/01 Processes.md",
     "Operating Systems/Linux/History.md",
-    "Resilience.md",
     "Technologies/NodeJS/04 Database Connection/PostgreSQL.md",
     "Cache/Redis/02 Data Management.md",
     "AI Engineering/LLM/LLM.md",
@@ -334,12 +339,7 @@
     "Security/99 References and Checklists/Backend Security Checklist.md",
     "Security/TODO/06 Advanced Incident Handling.md",
     "Security/TODO/04 Incident Management Process.md",
-    "Security/TODO/03 CSIRT Operational Management.md",
-    "Security/TODO/02 CSIRT Creation and Structure.md",
     "Security/TODO",
-    "Networking/02 Protocols/04 UDP.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
-    "AI Engineering/LLM/Context Engineering.md",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",

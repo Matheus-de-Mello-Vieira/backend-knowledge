@@ -50,6 +50,12 @@ flowchart TD
 * **Feedback loop**: If the grader rejects the output, it sends specific, targeted feedback back to the producer so it can attempt a fix.
 * **Iteration**: This cycle repeats until the grader accepts the output (or a maximum retry threshold is reached).
 
+> [!note] Be extremely careful with "Self-Correction."
+> 
+> Research shows that if you simply ask an LLM, _"Are you sure that answer is correct? Review your work,"_ without providing an external, deterministic error (like a compiler failure or a schema mismatch), the model's performance often _degrades_. It will frequently second-guess a correct answer and hallucinate a worse one.
+
+**Rule of Thumb:** Only trigger an auto-correction loop when you have a deterministic, programmatic error string to feed back into the prompt. Do not ask the LLM to vibe-check its own work.
+
 ## Parallelization Workflows
 
 ```mermaid
