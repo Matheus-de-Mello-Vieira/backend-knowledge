@@ -37,7 +37,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Prompt Evaluation.md",
+                "file": "AI Engineering/LLM/Agents and Workflows.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -52,7 +52,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Prompt Evaluation"
+              "title": "Agents and Workflows"
             }
           }
         ],
@@ -115,21 +115,21 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Engineering/LLM/Prompt Evaluation.md",
+                "file": "AI Engineering/LLM/Agents and Workflows.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Prompt Evaluation"
+              "title": "Outline of Agents and Workflows"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
-    "width": 348.5,
-    "collapsed": true
+    "width": 348.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -296,7 +296,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 645.5
+    "width": 631.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -313,10 +313,10 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "AI Engineering/LLM/Agents and Workflows.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/LLM Model Selection.md",
     "AI Engineering/LLM/Prompt Engineering.md",
-    "AI Engineering/LLM/Agents and Workflows.md",
     "AI Engineering/99 TODO.md",
     "AI Engineering/LLM/LLM.md",
     "AI Engineering/Claude Code/05 Tools.md",
