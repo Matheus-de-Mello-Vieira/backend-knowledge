@@ -89,3 +89,19 @@ documents to human review, prioritizing limited reviewer capacity
 escalation
 - While identity verification is critical for destructive actions, forcing a user through an automated MFA workflow after they have explicitly requested a human agent is considered a 'bot trap.' Verification should be handled, but it should not serve as a gatekeeper that delays a requested human escalation.
 - Best practices for escalation design state that once a user explicitly requests a human agent, the bot should honor that request immediately and without friction. In high-risk security scenarios, the safest and most responsive pattern is to transfer the context to a human who can then oversee the secure verification and approval protocols.
+
+<hr>
+
+#### 3.1 The Tool Explosion Problem
+
+When agents are designed to interact with complex datasets, such as corporate spreadsheets or relational databases, developers often start by creating highly specific, atomic tools. For example, a system engineered to analyze coffee machine sales records might be given tools like `get_column_max`, `get_column_mean`, `filter_rows`, `get_column_min`, `get_column_median`, and `sum_rows`.
+
+While a query like _"Which month had the highest sales of hot chocolate?"_ can technically be answered using these tools, the resulting plan is incredibly inefficient. The LLM must loop through a repetitive process: filtering rows for January, calculating statistics, repeating for February through December, and then finding the maximum value across those data points.
+
+This approach becomes brittle when the agent encounters novel queries. If a user asks, _"How many unique transactions were there last week?"_, the existing tools are insufficient, forcing developers to build a new `get_unique_entries` tool. A follow-up query requesting the details of the last five transactions requires yet another tool. This pattern causes an unsustainable "tool explosion," where engineering teams must constantly write and maintain custom tools to handle edge cases.
+
+#### 3.2 Embracing Code-As-Action with Python and Pandas
+
+A more scalable alternative is to have the LLM express its plan directly as executable software code. Instead of relying on a rigid menu of custom APIs, the system prompts the LLM to solve the user's query by writing a Python script, often enclosed in specialized XML delimiters like `<execute_python>`.
+
+When given access to a rich data processing framework like the `pandas` library, the LLM can leverage thousands of built-in functions that it has already analyzed extensively during pre-training. In this paradigm, the code _is_ the plan. The inline comments written by the LLM detail the conceptual steps, while the code blocks implement them directly. For example, to find unique weekly transactions or extract the last five entries, the model writes a script to read the CSV, parse timestamps, establish a target window, drop duplicate records, and compute counts using native pandas commands.

@@ -8,12 +8,36 @@
         "type": "tabs",
         "children": [
           {
+            "id": "301c2be74e1af2eb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "AI Engineering/LLM/Prompt Evaluation.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "Prompt Evaluation"
+            }
+          },
+          {
             "id": "3474e112458a29d7",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Prompt Engineering.md",
+                "file": "AI Engineering/LLM/Prompt Evaluation.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,34 +52,11 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Prompt Engineering"
-            }
-          },
-          {
-            "id": "2056dfe3421d55a9",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "AI Engineering/LLM/Agents and Workflows.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "Agents and Workflows"
+              "title": "Prompt Evaluation"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -114,20 +115,21 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "HTTP headers.md",
+                "file": "AI Engineering/LLM/Prompt Evaluation.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of HTTP headers"
+              "title": "Outline of Prompt Evaluation"
             }
           }
         ]
       }
     ],
     "direction": "horizontal",
-    "width": 348.5
+    "width": 348.5,
+    "collapsed": true
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -252,7 +254,6 @@
           {
             "id": "1f1dae04e68fc1bc",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -286,7 +287,6 @@
                   "serial": null
                 }
               },
-              "pinned": true,
               "icon": "terminal",
               "title": "Terminal: zsh"
             }
@@ -296,7 +296,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 628.5
+    "width": 645.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -313,9 +313,20 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "AI Engineering/LLM/Agents and Workflows.md",
-    "AI Engineering/LLM/Prompt Engineering.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
+    "AI Engineering/LLM/LLM Model Selection.md",
+    "AI Engineering/LLM/Prompt Engineering.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/99 TODO.md",
+    "AI Engineering/LLM/LLM.md",
+    "AI Engineering/Claude Code/05 Tools.md",
+    "AI Engineering/LLM/LLM Processing Pipeline.md",
+    "AI Engineering/Model Context Protocol/04 Advanced Primitives.md",
+    "AI Engineering/Model Context Protocol/03 Core Primitives.md",
+    "AI Engineering/05-agentic-ai-evaluations-error-analysis-and-optimization.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "AI Engineering/4D Framework for AI Fluency.md",
+    "AI Engineering/98 Insights.md",
     "Patterns.md",
     "README.md",
     "Resilience.md",
@@ -327,18 +338,6 @@
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Operating Systems/02 Memory Management.md",
     "Operating Systems/07 Storage Management.md",
-    "Operating Systems/01 Why an OS?/System Architecture Overview.md",
-    "Operating Systems/01 Why an OS?/01 Why do we need an OS.md",
-    "Operating Systems/01 Processes.md",
-    "Operating Systems/Linux/History.md",
-    "Technologies/NodeJS/04 Database Connection/PostgreSQL.md",
-    "Cache/Redis/02 Data Management.md",
-    "AI Engineering/LLM/LLM.md",
-    "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
-    "Security/TODO/05 Security Incident Management and Response.md",
-    "Security/99 References and Checklists/Backend Security Checklist.md",
-    "Security/TODO/06 Advanced Incident Handling.md",
-    "Security/TODO/04 Incident Management Process.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",
