@@ -279,7 +279,7 @@ Historically, batching LLM requests was highly inefficient because generation ta
 ### PagedAttention
 
 Even with Continuous Batching, production servers hit a massive memory wall. Because the exact length of a user's generated response is unknown, traditional systems had to pre-allocate massive, contiguous blocks of VRAM for each user's KV Cache just in case they generated a long response. This led to massive memory fragmentation (wasting up to 60% of available VRAM).
-- **The Solution:** Inspired by [how operating systems manage RAM](02%20Memory%20Management.md), engines like vLLM use **PagedAttention**. It chops the KV Cache into small, fixed-size blocks (pages). The system dynamically allocates new memory pages on the fly only as the model actually generates new tokens. This entirely eliminates fragmentation, allowing the server to squeeze significantly more concurrent users into the same GPU.
+- **The Solution:** Inspired by [how operating systems manage RAM](03%20Memory%20Management.md), engines like vLLM use **PagedAttention**. It chops the KV Cache into small, fixed-size blocks (pages). The system dynamically allocates new memory pages on the fly only as the model actually generates new tokens. This entirely eliminates fragmentation, allowing the server to squeeze significantly more concurrent users into the same GPU.
 
 ### Security & Privacy
 

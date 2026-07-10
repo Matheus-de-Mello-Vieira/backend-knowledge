@@ -54,7 +54,7 @@ A Network Operations Center (NOC) is a dedicated engineering unit tasked with mo
 The primary responsibilities of a NOC encompass:
 
 * Tracking throughput, latency, and packet performance across data and VoIP networks.
-* Managing critical storage and recovery infrastructure, including [Network-Attached Storage (NAS)](07%20Storage%20Management.md#NAS%20(Network-Attached%20Storage)) and Disaster Recovery (DR) systems. 
+* Managing critical storage and recovery infrastructure, including [Network-Attached Storage (NAS)](08%20Storage%20Management.md#NAS%20(Network-Attached%20Storage)) and Disaster Recovery (DR) systems. 
 * Preventing downtime and link saturation through real-time traffic analysis and active load balancing.
 
 Organizations lacking the resources to sustain a 24/7 internal network infrastructure team frequently utilize outsourced NOC providers to maintain operational availability.

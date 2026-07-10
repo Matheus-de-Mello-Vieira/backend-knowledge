@@ -125,10 +125,10 @@ To understand how physical hardware transitions into a usable software environme
 |**Operating System (OS)**|Stored on persistent media; loaded into user RAM as needed.|The complete software suite built around the kernel, providing user interfaces (GUI/CLI), system utilities, package managers, and runtime libraries.|Unprivileged (User Space).|
 
 ## File System
-[07 Storage Management](07%20Storage%20Management.md)
+[08 Storage Management](08%20Storage%20Management.md)
 
 ## Program vs Process
-[Program vs Process](01%20Processes.md#Program%20vs%20Process)
+[Program vs Process](02%20Processes.md#Program%20vs%20Process)
 ## Process Management
 
 - **The Kernel's Role:** Because the kernel is the core component of an Operating System, its primary job is resource management. This includes maintaining the state, tracking the memory space, and overseeing the entire lifecycle of every active process.

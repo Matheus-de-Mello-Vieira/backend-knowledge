@@ -141,7 +141,7 @@ To understand why this matters, think of the CPU and RAM as a frontend and backe
 
 - **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access the immediately adjacent memory addresses next.
 - **The Benefit:** Because the CPU fetches data in 64-byte Cache Lines, reading sequential memory is essentially "free." The first read suffers RAM latency, but the subsequent adjacent reads result in immediate "Cache Hits" because the data was already pulled into the L1 cache.
-- **Where it Applies:** This is why arrays (on the [Heap](01%20Processes.md#The%20Heap) and [Data Section](01%20Processes.md#The%20Data%20Section)) and sequential local variables (packed tightly on the [Stack](01%20Processes.md#The%20Stack)) are incredibly fast to process.
+- **Where it Applies:** This is why arrays (on the [Heap](02%20Processes.md#The%20Heap) and [Data Section](02%20Processes.md#The%20Data%20Section)) and sequential local variables (packed tightly on the [Stack](02%20Processes.md#The%20Stack)) are incredibly fast to process.
 
 > [!example] Sequential Reads
 >```asmarm

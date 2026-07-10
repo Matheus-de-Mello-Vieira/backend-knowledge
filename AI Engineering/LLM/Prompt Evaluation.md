@@ -108,7 +108,13 @@ Regardless of how you structure the rubric, a robust evaluation balances three d
 - **Functional Execution (Did it work?):** Verify that the output successfully accomplished the core objective and followed hard negative constraints (e.g., staying under a word count, calling the correct tool).
 - **Truthfulness & Safety (Is it accurate?):** Ensure the model did not invent information (hallucinate) or violate safety guardrails (e.g., exposing internal system prompts).
 - **Formatting & Style (Is it usable?):** Enforce structural compliance required by downstream applications (e.g., valid JSON, specific headers, or tone).
+#### Evaluating the Evaluator
 
+Because an LLM-as-a-judge is inherently subjective and never 100% accurate, developers must periodically evaluate the evaluator itself (a process known as meta-evaluation).
+
+- **The Methodology:** Run an experiment that pits the LLM judge's scores against a highly curated, 100% accurate code-based ground truth dataset. This allows developers to statistically measure how closely the judge aligns with human reality.
+- **Optimization Strategies:** If the judge's accuracy is drifting or lacking, developers must refine the judge's specific evaluation prompt or inject **few-shot examples** (explicit examples of previous correct judgments) directly into its context to tightly calibrate its behavior.
+- **Handling Subjective Ground Truth:** In scenarios where the ground truth is itself a subjective text (rather than a binary fact), developers can utilize semantic similarity metrics to mathematically compare the judge's output to the human-expected evaluation.
 ### Human Graders (Ground Truth)
 
 Human Graders involve manual human review and scoring. While humans provide the highest fidelity for judging comprehensiveness, depth, and creative nuance, they are slow, expensive, and cannot scale to real-time continuous integration (CI) pipelines.
@@ -379,3 +385,11 @@ For workflow steps driven by large language models, engineers should follow a st
 2. **Model Architecture Swapping:** Sometimes the prompt is fine, but the model is structurally incapable of the task. Using multi-model interface toolkits (like **AI Suite**) allows developers to seamlessly swap the underlying LLM with a single line of code, running comparative E2E evaluations to identify the best model for the job.
 3. **Task Decomposition:** If a task's instructions are too complex for a single LLM call to process reliably, split it. Break a single massive prompt into two sequential calls, or introduce a dedicated _Critique and Reflection_ step where a second LLM double-checks the work of the first.
 4. **Supervised Fine-Tuning (SFT):** The final escalation. SFT requires significant developer time, high-quality data preparation, and higher inference costs. It should be reserved exclusively for mature applications where you need to eke out the final few percentage points of accuracy—pushing a stable pipeline from 92% up to 99% production-grade reliability.
+### Agent Trajectories and Convergence
+
+An agent's trajectory is the specific path it takes through various routers, tools, and logic steps to answer a query. While simpler queries might involve the router consulting two tools in one step and returning an answer, complex queries—especially in production systems containing dozens of tools or multi-agent architectures—can result in highly convoluted trajectories. Tracking this path is crucial because efficiency matters. If an agent can correctly answer a query in 6 steps rather than 11, it utilizes fewer LLM calls, directly reducing variability, latency, and overall operating costs.
+
+To measure trajectory efficiency, developers can compute a **Convergence Score**. This score represents how closely and how often an agent follows the optimal path for a given type of query.
+
+- **The Methodology:** Developers pass a batch of similar queries through the agent, record the number of steps each takes, and determine the optimal path (the absolute minimum number of steps required to successfully resolve the query). The convergence score is a value between 0 and 1, measuring the percentage of time the agent successfully executes that optimal path.    
+- **The Caveats:** Convergence evaluations have two major blind spots. First, they typically fail to catch _systemic_ inefficiencies if the agent takes the exact same unnecessary step across every single run in the test set. Second, convergence evaluators must only be run on fully completed runs; failed runs that error out prematurely will skew the data with artificially low step counts.
