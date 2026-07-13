@@ -1,4 +1,4 @@
-# Why do we need an OS
+# Why an OS?
 
 Strictly speaking, you don’t actually need an operating system; we use them to make interacting with hardware much simpler. An OS abstracts away technical complexities, providing a uniform interface that works across a vast range of hardware.
 

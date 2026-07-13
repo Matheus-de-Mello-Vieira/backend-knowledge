@@ -1,4 +1,4 @@
-## Storage Management
+# Storage Management
 ## File Systems
 
 A file system is the method and data structure used by an operating system (OS) to store, organize, and access files on a storage device.
