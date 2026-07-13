@@ -1,7 +1,7 @@
 interface:
   display_name: "Note Home Finder"
-  short_description: "Choose note homes with qmd search"
-  default_prompt: "Use $note-home-finder to choose the best location for a new note about a topic with qmd search."
+  short_description: "Choose note homes or split plans"
+  default_prompt: "Use $note-home-finder to decide whether a topic belongs in one note or should be split across several notes with qmd search."
 
 dependencies:
   tools:

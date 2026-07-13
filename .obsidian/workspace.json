@@ -4,21 +4,31 @@
     "type": "split",
     "children": [
       {
-        "id": "3c7dd13641d9c7bb",
+        "id": "bf37d7cabea0041a",
         "type": "tabs",
         "children": [
           {
-            "id": "2bd8ffa6cfd3bf6d",
+            "id": "6be4fa881155c450",
             "type": "leaf",
             "state": {
-              "type": "split-diff-view",
+              "type": "markdown",
               "state": {
-                "aFile": "Operating Systems/00 System Architecture Overview.md",
-                "bFile": "Operating Systems/00 System Architecture Overview.md",
-                "aRef": ""
+                "file": "TODO.local.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
               },
-              "icon": "diff",
-              "title": "Diff: 00 System Architecture Overview  (Working Tree)"
+              "icon": "lucide-file",
+              "title": "TODO.local"
             }
           }
         ]
@@ -88,8 +98,7 @@
               "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -258,11 +267,11 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
-    "width": 482.5
+    "width": 611.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -277,8 +286,9 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "2bd8ffa6cfd3bf6d",
+  "active": "d17063465a1e1752",
   "lastOpenFiles": [
+    "TODO.local.md",
     "Operating Systems/02 The Anatomy of a Process.md",
     "Operating Systems/03 Memory Management.md",
     "Operating Systems/06 Storage Management.md",
@@ -298,7 +308,6 @@
     "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
     "Security/TODO.local.md",
     "Security/TODO",
-    "TODO.local.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
     "AI Engineering/LLM/Agents and Workflows.md",
     "Descomplica Enablers.md",
