@@ -185,7 +185,7 @@
             }
           },
           {
-            "id": "d17063465a1e1752",
+            "id": "3e75e98817e721b3",
             "type": "leaf",
             "state": {
               "type": "terminal:terminal",
@@ -225,7 +225,7 @@
             }
           },
           {
-            "id": "3e75e98817e721b3",
+            "id": "a8a8327c89333e5f",
             "type": "leaf",
             "pinned": true,
             "state": {
@@ -271,7 +271,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 493.5
+    "width": 663.5
   },
   "left-ribbon": {
     "hiddenItems": {
