@@ -46,38 +46,25 @@ To maintain security and isolation, your program never holds the actual resource
 1. **The File Descriptor Table (Per-Process):** An array completely isolated to your specific process. The integer (e.g., `5`) is just the index in this array. 
 2. **The Open File Table (System-Wide):** The process's array index points here. This kernel table tracks the "state" of the connection, such as your Read/Write offset and access permissions.
 3. **The Inode Table (System-Wide):** The final destination. This points to the actual metadata of the underlying physical or virtual resource.
-    
-
+  
 ### Types of File Descriptors
 
 Because the OS routes the data behind the scenes, your code can use the exact same `read()` and `write()` system calls regardless of what the underlying resource actually is.
 
 - **Regular Files:** The most common type. An FD pointing to an Inode that represents a literal block of data on your physical hard drive (e.g., `database.db` or `config.json`).
-    
 - **Standard Streams (0, 1, 2):** When a process launches, the kernel pre-allocates three FDs automatically.
-    
     - `0` (**stdin**): Reads input, defaulting to the user's keyboard.
-        
     - `1` (**stdout**): Writes output, defaulting to the terminal screen.
-        
     - `2` (**stderr**): Writes error messages, also defaulting to the screen but kept logically separate so it can be routed elsewhere if the program crashes.
-        
 - **Network Sockets:** FDs created via the `socket()` system call. Instead of pointing to a disk, the Open File Table points directly to a massive kernel-space TCP/IP data structure. When you execute `write(fd, data)`, the kernel intercepts it, wraps the data in TCP headers using the IP/Port stored in its internal structure, and fires it out of the physical Network Interface Card (NIC).
-    
 - **Pipes (IPC):** FDs used for Inter-Process Communication. When you pipe commands in a terminal (e.g., `cat logs | grep error`), the OS creates a unidirectional, purely in-RAM data channel. It hands a "write-end" FD to the first process and a "read-end" FD to the second. There is no disk and no network involved.
-    
 - **Device Files (`/dev`):** Hardware components are abstracted as files. If you open `/dev/urandom`, the kernel hands you an FD. When you `read()` from it, you aren't reading a file—the OS hardware dynamically generates random numbers and streams them into your buffer. Writing to `/dev/null` simply tells the kernel to instantly discard the data.
-    
 - **Event Monitors (`epoll` / `kqueue`):** Advanced system calls allow you to create a special FD whose sole purpose is to monitor _other_ FDs. High-performance web servers use an `epoll` FD to watch thousands of network socket FDs simultaneously, waiting for the kernel to notify them the exact millisecond one receives new network data.
-    
 
 ### The Universal Interface
 
 Because all these diverse resources are wrapped in the exact same integer abstraction, low-level C code can handle them identically:
-
-C
-
-```
+```c
 // This function doesn't care WHAT the fd is.
 // It could be a text file, a TCP socket to Japan, or a local pipe.
 void stream_data(int read_fd, int write_fd) {
@@ -98,9 +85,9 @@ void stream_data(int read_fd, int write_fd) {
 ## Producing machine code
 
 During compilation, high-level human-readable code is translated into low-level assembly language. Given this C code:
+
 ```c
 #include <stdio.h>
-
 int main ()
 {
     int a = 1;
@@ -160,7 +147,7 @@ By doing this work at compile time, the resulting program is smaller (takes up l
 
 - **Direct-to-Binary (Skipping the Assembly File):** While compilation is conceptually a multi-step pipeline (Source Code -> Assembly -> Machine Code), modern compilers (like Clang or GCC) often skip generating a physical, intermediate assembly text file. To optimize the build process and reduce disk I/O, they translate the high-level code directly into binary object files in memory.
 - **Read-Only Text Segment (Security & Caching):** Once the machine code (the Text/Code segment) is loaded into virtual memory, the OS enforces strict hardware-level protection marking that region as **read-only** and **executable** (a principle known as Write XOR Execute, or W^X).
-	- **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like buffer overflows) to inject and execute their own rogue machine instructions.
+	- **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#Buffer%20Overflow)) to inject and execute their own rogue machine instructions.
 	- **Cache Coherency:** Because the CPU knows the instructions will never change, it can aggressively load them into the L1 cache without ever worrying about complex cache coherency issues or invalidating the data.
 - **Just-In-Time (JIT) and Interpreted Languages:** The traditional ahead-of-time (AOT) assembly step is bypassed entirely by languages like Python, JavaScript, and Java. Instead of pre-compiling a static executable bound to a specific CPU architecture, these languages rely on a runtime engine. The engine either interprets the code line-by-line or uses a JIT compiler to generate the necessary raw machine instructions on the fly, right as the program is executing.
 	- **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
@@ -228,7 +215,18 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
 - **The OS Limit:** The maximum size of the stack is primarily enforced by the Operating System (e.g., typically 8MB on Linux), though the compiler/linker can embed a requested stack size into the executable's format headers during the build process.
 - **The Guard Page (Protection):** To prevent the downward-growing stack from silently crashing into the upward-growing heap and corrupting application data, the kernel sets up a trap. It places a special, inaccessible memory page at the very boundary of the stack's allowed virtual memory space, known as a **Guard Page**.
 - **The Crash (Segmentation Fault):** If the Stack Pointer (`sp`) reaches the limit and attempts to write data into the Guard Page, the CPU's Memory Management Unit (MMU) instantly detects a permission violation. The hardware triggers an interrupt, and the kernel ruthlessly kills the process to protect the rest of the system memory. This fatal crash is the infamous "Stack Overflow."
+### Buffer Overflow
 
+- **The Concept:** A buffer overflow occurs when a program attempts to write more data into a fixed-size block of memory (a buffer) than it was allocated to hold. Because low-level languages (like C and C++) trust the programmer implicitly, the CPU does not automatically check if the data fits. It simply continues writing the excess bytes sequentially into the adjacent memory addresses.
+- **The Mechanism (No Bounds Checking):** If you allocate a 10-byte array on the Stack to hold user input, but the user submits a 50-character string, legacy standard library functions like `strcpy()` or `gets()` will write the first 10 bytes into the array, and "overflow" the remaining 40 bytes directly over whatever happens to be sitting next to it in memory.
+- **Stack Smashing (The Security Exploit):** As established in the Stack memory layout, a function's local variables (the buffer) sit in the exact same memory frame as critical control data—specifically, the saved Return Address (the value destined for the Instruction Pointer).
+    - Hackers actively exploit buffer overflows by carefully crafting an oversized input. They overflow the array just enough to overwrite the saved Return Address with a new memory address of their choosing.
+    - When the function finishes and attempts to return, the CPU pops the corrupted address off the stack and blindly jumps to it. This allows the attacker to fully hijack the execution flow, often forcing the program to execute rogue machine instructions they injected into memory themselves.
+- **Modern Mitigations:** To combat this massive security vulnerability, modern compilers and operating systems enforce several layers of defense:
+    - **W^X (Write XOR Execute):** Enforcing strict hardware-level permissions so that writable memory (like the Stack or Heap) cannot be executed, and executable memory (like the Text segment) cannot be written to. If an attacker injects their own machine code into an overflowing buffer, the CPU will refuse to execute it.
+    - **Stack Canaries:** The compiler automatically injects a secret, random value (a "canary") onto the Stack between the local variables and the Return Address. Before the function returns, it checks if the canary is still intact. If a buffer overflow overwrites the return address, it inherently must overwrite the canary first, allowing the program to detect the tampering and instantly crash itself safely.
+    - **ASLR (Address Space Layout Randomization):** The OS randomizes the starting virtual memory addresses of the Stack, Heap, and standard libraries every single time the process launches. Even if an attacker successfully hijacks the Instruction Pointer, they have no idea what memory address to point it to.
+    - **Memory-Safe Languages:** Modern languages (like Python, Java, Go, or Rust) eliminate this entire class of vulnerabilities by enforcing strict, automatic bounds-checking at runtime. If an array is 10 bytes long and you attempt to write an 11th byte, the runtime instantly throws a safe exception instead of blindly corrupting the adjacent memory.
 ## The Data Section
 
 - **Definition & Size:** This section of virtual memory stores global and static variables. Because the compiler knows exactly how many global variables exist in the code, the total size of the Data section is strictly fixed at compile time.
@@ -394,3 +392,22 @@ When writing performance-critical code, allocating one massive block of memory u
 - **Massive Metadata Bloat:** Because every object is its own tiny allocation, every object requires its own hidden metadata header.
     - For example, in Java, wrapping a simple primitive 4-byte integer inside an `Integer` object class adds up to 16 bytes of metadata overhead. You are using 20 bytes of RAM just to store the number `5`!
 - **The Garbage Collection Burden:** OOP design patterns create millions of these tiny, short-lived objects. This puts immense pressure on the Garbage Collector, which now has to constantly pause your program to traverse millions of scattered pointers to figure out which tiny objects are safe to delete.
+
+## Processes vs. Threads
+
+- **The Container vs. The Execution:**
+    - **Process:** The ultimate resource container. It holds the isolated virtual memory space, the Per-Process File Descriptor Table, and the Process Control Block (PCB). By itself, a process doesn't "do" anything; it is simply the bounded environment in which code runs.
+    - **Thread:** The actual active unit of execution. Every process starts with exactly one main thread, but it can spawn multiple child threads. The OS scheduler does not actually schedule processes; it schedules _threads_ onto physical CPU cores.
+- **Resource Sharing:** Because threads exist _within_ the same parent process, they inherently share almost all system resources, completely bypassing the need for complex Inter-Process Communication (IPC) like pipes or shared `mmap` files.
+    - **Shared:** All threads within a process read from the exact same Text/Code segment, the Data/BSS segments (global variables), the Heap (dynamic memory), and the File Descriptor array.
+    - **Isolated:** Each thread must maintain its own independent execution state. Therefore, the OS allocates every thread its own private **Stack** memory (to track its own function calls and local variables) and saves its own dedicated copy of the CPU registers (including its own Instruction Pointer, Base Pointer, and Stack Pointer).
+- **Context Switching Overhead:**
+    - **Process Switch (Heavy):** Switching the CPU from Process A to Process B is incredibly computationally expensive. The kernel must physically swap out the entire virtual memory mapping (updating the CPU's Memory Management Unit) and flush the CPU's Translation Lookaside Buffer (TLB). This forces a massive wave of L1/L2 cache misses as the new process is forced to pull its data all the way from system RAM.
+    - **Thread Switch (Lightweight):** Switching from Thread 1 to Thread 2 _within the exact same process_ is drastically faster. Because they share the same virtual memory space, the kernel does not need to touch the MMU or flush the TLB. It simply swaps the hardware registers (saving Thread 1's Instruction/Stack Pointers and loading Thread 2's) and execution resumes almost instantly.
+- **Multi-Core Parallelism:** The primary physical purpose of threading is true parallel hardware execution. If a single-threaded process runs on an 8-core CPU, 7 cores sit completely idle. If that process spawns 8 threads, the OS can assign one thread to each physical CPU core, allowing them to execute machine instructions simultaneously and divide the workload.
+### Multi-Threaded Memory Layout
+
+- **The Single-Thread Illusion:** The classic memory layout—where the Stack starts at the absolute maximum address and grows downwards toward the Heap—technically represents a purely single-threaded process. 
+- **The Collision Problem:** Because threads within the same process share the exact same virtual memory space, they cannot all share the Main Thread's top-level Stack. If they did, their independent Last-In, First-Out (LIFO) function frames would instantly collide and corrupt one another.
+- **Parachuting Stacks via `mmap`:** To provide each newly spawned thread with its own isolated execution state, the kernel utilizes the `mmap` system call. It allocates new, fixed-size blocks of memory and parachutes them directly into the massive gulf of empty virtual addresses residing in the "middle space" between the upward-growing Heap and the Main Thread's Stack.
+- - **Guard Pages (Preventing Silent Corruption):** While any `mmap` allocation can suffer from a software [buffer overflows](#Buffer%20Overflow), stacks are uniquely dangerous because their growth is implicit. The CPU hardware blindly decrements the Stack Pointer (`sp`) as functions are called, never checking if memory limits have been reached. Because these mapped thread stacks float dangerously close to one another in virtual memory, the OS places a Read/Write-protected [**Guard Page**](#Stack%20Overflow) at the absolute bottom of each thread's block. Just like the Main Thread's boundary, if a runaway thread's `sp` hits this hardware tripwire, the MMU triggers an instant Segmentation Fault, killing the process before it can silently overwrite an adjacent thread's function frames. 

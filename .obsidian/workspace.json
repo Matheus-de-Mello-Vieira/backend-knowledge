@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "TODO.local.md",
+                "file": "AI Engineering/LLM/Context Engineering.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,10 +28,59 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "TODO.local"
+              "title": "Context Engineering"
+            }
+          },
+          {
+            "id": "40ac12294ee15983",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/03 Memory Management.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Memory Management"
+            }
+          },
+          {
+            "id": "4f2d6866cc427c0d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/02 The Anatomy of a Process.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "02 The Anatomy of a Process"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -63,7 +112,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "response priming",
+                "query": "file descriptor",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -98,7 +147,8 @@
               "title": "Outline"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -271,7 +321,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 611.5
+    "width": 655.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -288,18 +338,20 @@
   },
   "active": "d17063465a1e1752",
   "lastOpenFiles": [
-    "TODO.local.md",
-    "Operating Systems/02 The Anatomy of a Process.md",
     "Operating Systems/03 Memory Management.md",
-    "Operating Systems/06 Storage Management.md",
+    "Operating Systems/02 The Anatomy of a Process.md",
     "Operating Systems/05 Process Management.md",
-    "Operating Systems/04 Inside The CPU.md",
+    "Operating Systems/06 Storage Management.md",
     "Operating Systems/07 Socket Management.md",
+    "AI Engineering/LLM/Agentic Memory Systems.md",
+    "AI Engineering/LLM/Context Engineering.md",
+    "Networking/03 Connections/01 How Connections are Established.md",
+    "TODO.local.md",
+    "Operating Systems/04 Inside The CPU.md",
     "Operating Systems/08 More OS Concepts.md",
     "Operating Systems/02 Processes.md",
     "Operating Systems/01 Why an OS.md",
     "Operating Systems/01 Why do we need an OS.md",
-    "AI Engineering/LLM/Context Engineering.md",
     "Security/TODO/06 Advanced Incident Handling.md",
     "Security/TODO/05 Security Incident Management and Response.md",
     "Security/TODO/04 Incident Management Process.md",
@@ -313,8 +365,6 @@
     "Descomplica Enablers.md",
     "Patterns.md",
     "Operating Systems/08 Storage Management.md",
-    "Web APIs/02 REST/01 Introduction.md",
-    "AI Engineering/LLM/LLM Model Selection.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",

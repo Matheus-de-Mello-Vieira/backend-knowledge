@@ -240,69 +240,8 @@ Scratchpads are generally categorized by how long they "live":
      }
     ```
 
-#### Memories
-
-While a scratchpad is for the "here and now," **Memories** represent the long-term, durable storage that allows an AI to evolve from a stateless tool into a personalized collaborator.
-
-Memories bridge the gap between individual sessions, ensuring that the model doesn't "forget" who you are or what you’ve achieved once the current window is closed.
-
-**Why Memories are Essential**
-
-Without a long-term memory layer, every interaction with an AI starts from zero. Memories solve the "Goldfish Effect":
-
-- **Deep Personalization:** The model learns your coding style, communication preferences, and specific constraints over weeks or months.
-- **Knowledge Accumulation:** It retains the outcomes of past experiments or decisions, preventing you from repeating the same mistakes.
-- **Relationship Continuity:** It tracks the "story" of a project across hundreds of different chat sessions.
-
-**Anatomy of a Memory**
-
-Unlike the operational data in a scratchpad, memories are typically categorized by their utility:
-
-- **User Preferences:** High-level settings like "Always use Python for data tasks" or "Keep explanations brief and technical."
-- **Episodic Memories:** Records of specific past events or milestones, such as "On Oct 12, we decided to use PostgreSQL instead of MongoDB."
-- **Semantic Knowledge:** A custom library of facts the model has learned about your specific business, codebase, or hobby.
-- **Relational Context:** Understanding how different entities (people, projects, or servers) interact within your specific ecosystem.
-
-**Lifecycle and Scope**
-
-Memories are built to last, generally following a **Durable** lifecycle:
-
-- **Cross-Session:** Data persists indefinitely unless explicitly deleted or updated.
-- **Global vs. User-Specific:** Memories can be tied to a single user profile or shared across an entire organization as a "collective brain."
-- **Decaying Importance:** Advanced systems use "forgetting algorithms" where rarely accessed memories fade, while frequently used ones are "consolidated" (weighted more heavily).
-
-**Implementation Strategies**
-
-1.	**Vector Databases (RAG)**: This is the industry standard for long-term AI memory.
-    - **Methods:** Using tools like Pinecone, Weaviate, or Milvus to store "embeddings" (mathematical representations) of past conversations.
-    - **Pros:** Can store millions of memories; extremely efficient at finding "relevant" info based on current context.
-    - **Cons:** Requires a retrieval step that can occasionally pull in irrelevant "fuzzy" matches.
-
-2.	**Knowledge Graphs**: A more structured approach that maps relationships between concepts.
-    
-    - **Methods:** Using Neo4j or similar graph databases to store "Triples" (e.g., *User* -> *Works On* -> *Project X*).
-    - **Pros:** Excellent for complex reasoning and maintaining factual integrity.
-    - **Cons:** Difficult to build and maintain automatically from raw text.
-    
-3.	**Profile-Based Metadata**: Simple key-value pairs stored in a traditional database.
-
-    ```json
-     {
-         "user_profile": {
-             "id": "dev_01",
-             "expertise": ["Rust", "Kubernetes"],
-             "tone_preference": "concise",
-             "past_milestones": [
-                 "Migration to AWS completed Jan 2025",
-                 "Deprecated legacy Ruby API"
-             ]
-         }
-     }
-    ```
-
-    - **Pros:** Reliable and easy to edit or audit.
-    - **Cons:** Limited in scale; can't capture the "nuance" of long conversations.
-
+> [!info]
+> Scratchpads are only one part of the broader memory picture. For durable cross-session memory, memory tiers, self-editing memory, and frameworks such as MemGPT and Letta, see [Agentic Memory Systems](Agentic%20Memory%20Systems.md).
 
 
 ### Compress context
@@ -348,11 +287,8 @@ Never allow your primary Coordinator agent to execute raw file reads or recursiv
 Instead, the Coordinator must spawn ephemeral subagents to investigate highly specific questions.
 
 - **The Workflow:** The Coordinator asks, _"Find all test files related to the authentication module,"_ or _"Trace the dependency flow for the `process_refund()` function."_
-    
 - **The Execution:** The subagent receives this prompt, runs the verbose `grep` or `read_file` tools, navigates the noise within its own isolated context window, and returns _only_ a concise, structured summary of its findings back to the Coordinator.
-    
 - **The Result:** The Coordinator maintains a high-level understanding of the system architecture without ever touching the raw, token-heavy file contents.
-    
 
 ### 2. Phase Summarization & Persistent Scratchpad Files
 
@@ -361,14 +297,12 @@ Codebase exploration usually happens in phases (e.g., Phase 1: Map the database 
 - **Scratchpad Files:** Force the agents to maintain physical markdown scratchpad files (e.g., `architecture_notes.md` or `dependency_graph.md`) on the local disk. As they discover key findings, they must write to these files.
 - **Phase Injection:** Before spawning subagents for the next exploration phase, the Coordinator should summarize the key findings from the previous phase and inject that summary—along with the contents of the relevant scratchpad files—directly into the new subagent's initial system prompt. This guarantees the new worker has the exact architectural context it needs, independent of the session history.
 - This technique is also called "structured context layer" or "state management"
-    
 
 ### 3. Manual Context Pruning (The `/compact` Command)
 
 During extended exploration sessions, even with subagents, the primary session history will eventually bloat with tool schemas, conversational turns, and intermediate reasoning.
 
 - If you are using an advanced CLI or agent framework (like Claude Code), rely on commands like `/compact` to routinely prune the session. This actively strips away the verbose back-and-forth discovery chatter while retaining the core system prompts and the most recent, relevant context blocks.
-    
 
 ### 4. Structured State Persistence for Crash Recovery
 
@@ -377,7 +311,6 @@ Long-running codebase explorations are prone to network timeouts, API limits, or
 You must design for crash recovery using **Structured Agent State Exports**:
 
 - **Continuous Export:** Program the Coordinator to periodically export its current state (active goals, completed phases, and a list of paths to its scratchpad files) into a structured JSON manifest (e.g., `.agent_state/manifest.json`) stored in a known local directory.
-    
 - **Resume Logic:** When the agent runtime is restarted, the Coordinator's very first action should be to check for this manifest. If found, it loads the JSON, injects the state and scratchpad references back into its primary prompt, and seamlessly resumes the exploration exactly where it left off, entirely bypassing the need to rescan the codebase.
 ## TODO
   
