@@ -1,3 +1,6 @@
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+
 [mcp_servers.file-system]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
