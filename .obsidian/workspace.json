@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "8be47871f1ab085f",
+        "id": "330cd645e4d54ed3",
         "type": "tabs",
         "children": [
           {
-            "id": "574cabc4c0d1ad21",
+            "id": "b97f7862b9f5f3cf",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Technologies/Golang/01 Essentials/09 Concurrency.md",
+                "file": "Operating Systems/03 Memory Management.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,31 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "09 Concurrency"
+              "title": "03 Memory Management"
+            }
+          },
+          {
+            "id": "f82c560005523ab0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Common Threats and Attacks"
             }
           }
         ]
@@ -90,13 +114,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Technologies/Golang/01 Essentials/09 Concurrency.md",
+                "file": "Operating Systems/03 Memory Management.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 09 Concurrency"
+              "title": "Outline of 03 Memory Management"
             }
           }
         ],
@@ -273,7 +297,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 663.5
+    "width": 461.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -288,8 +312,12 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "574cabc4c0d1ad21",
+  "active": "b97f7862b9f5f3cf",
   "lastOpenFiles": [
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "Operating Systems/03 Memory Management.md",
+    "Operating Systems/02 The Anatomy of a Process.md",
+    "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/01 Essentials/01 Introduction.md",
     "AI Engineering/LLM/Agents and Workflows.md",
     "AI Engineering/LLM/Prompt Evaluation.md",
@@ -297,8 +325,6 @@
     "AI Engineering/LLM/Agentic Memory Systems.md",
     "TODO.local.md",
     "AI Engineering/LLM/Context Engineering.md",
-    "Operating Systems/03 Memory Management.md",
-    "Operating Systems/02 The Anatomy of a Process.md",
     "Operating Systems/05 Process Management.md",
     "Operating Systems/06 Storage Management.md",
     "Operating Systems/07 Socket Management.md",
@@ -314,9 +340,7 @@
     "Security/TODO/03 CSIRT Operational Management.md",
     "Security/TODO/02 CSIRT Creation and Structure.md",
     "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
-    "Security/TODO.local.md",
     "Security/TODO",
-    "Descomplica Enablers.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",
