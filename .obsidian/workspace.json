@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Operating Systems/03 Memory Management.md",
+                "file": "AI Engineering/LLM/Spec-Driven Development.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "03 Memory Management"
+              "title": "Spec-Driven Development"
             }
           },
           {
@@ -114,13 +114,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Operating Systems/03 Memory Management.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 03 Memory Management"
+              "title": "Outline"
             }
           }
         ],
@@ -297,7 +296,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 461.5
+    "width": 640.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -312,10 +311,11 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "b97f7862b9f5f3cf",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
+    "AI Engineering/LLM/Spec-Driven Development.md",
     "Operating Systems/03 Memory Management.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Operating Systems/02 The Anatomy of a Process.md",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/01 Essentials/01 Introduction.md",
@@ -339,7 +339,6 @@
     "Security/TODO/04 Incident Management Process.md",
     "Security/TODO/03 CSIRT Operational Management.md",
     "Security/TODO/02 CSIRT Creation and Structure.md",
-    "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
     "Security/TODO",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
