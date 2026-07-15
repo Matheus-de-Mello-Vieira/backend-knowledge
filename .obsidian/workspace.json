@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "330cd645e4d54ed3",
+        "id": "88ca1542cbf27ebd",
         "type": "tabs",
         "children": [
           {
-            "id": "b97f7862b9f5f3cf",
+            "id": "eb16d2b511c61c61",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Spec-Driven Development.md",
+                "file": "Backend Engineering/99 Miscellaneous.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,31 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Spec-Driven Development"
-            }
-          },
-          {
-            "id": "f82c560005523ab0",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
-              "icon": "lucide-file",
-              "title": "03 Common Threats and Attacks"
+              "title": "99 Miscellaneous"
             }
           }
         ]
@@ -122,8 +98,7 @@
               "title": "Outline"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "horizontal",
@@ -296,7 +271,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 640.5
+    "width": 648.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -313,9 +288,10 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Backend Engineering/99 Miscellaneous.md",
+    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "AI Engineering/LLM/Spec-Driven Development.md",
     "Operating Systems/03 Memory Management.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "Operating Systems/02 The Anatomy of a Process.md",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/01 Essentials/01 Introduction.md",
@@ -338,7 +314,6 @@
     "Security/TODO/05 Security Incident Management and Response.md",
     "Security/TODO/04 Incident Management Process.md",
     "Security/TODO/03 CSIRT Operational Management.md",
-    "Security/TODO/02 CSIRT Creation and Structure.md",
     "Security/TODO",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
