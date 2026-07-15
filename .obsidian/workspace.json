@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "bf37d7cabea0041a",
+        "id": "8be47871f1ab085f",
         "type": "tabs",
         "children": [
           {
-            "id": "6be4fa881155c450",
+            "id": "574cabc4c0d1ad21",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AI Engineering/LLM/Agentic Memory Systems.md",
+                "file": "Technologies/Golang/01 Essentials/09 Concurrency.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "Agentic Memory Systems"
+              "title": "09 Concurrency"
             }
           }
         ]
@@ -90,15 +90,17 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Technologies/Golang/01 Essentials/09 Concurrency.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 09 Concurrency"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -286,8 +288,12 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "574cabc4c0d1ad21",
   "lastOpenFiles": [
+    "Technologies/Golang/01 Essentials/01 Introduction.md",
+    "AI Engineering/LLM/Agents and Workflows.md",
+    "AI Engineering/LLM/Prompt Evaluation.md",
+    "TODO.local.md",
     "AI Engineering/LLM/Agentic Memory Systems.md",
     "TODO.local.md",
     "AI Engineering/LLM/Context Engineering.md",
@@ -310,11 +316,7 @@
     "Security/TODO/01 Fundamentals of Resilience Engineering and CSIRT.md",
     "Security/TODO.local.md",
     "Security/TODO",
-    "AI Engineering/LLM/Prompt Evaluation.md",
-    "AI Engineering/LLM/Agents and Workflows.md",
     "Descomplica Enablers.md",
-    "Patterns.md",
-    "Operating Systems/08 Storage Management.md",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",

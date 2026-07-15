@@ -758,6 +758,106 @@ func processRequest(ctx context.Context) {
   - That’s better handled by function parameters or struct fields.
 - **Keys should be unexported custom types** to avoid collisions.
 
+### `context.Background`
+
+`context.Background()` returns a non-nil, empty context.
+
+- It is typically used as the **root context** of an application.
+- It is never cancelled.
+- It has no deadline.
+- It contains no values.
+
+```go
+func main() {
+    ctx := context.Background()
+    processRequest(ctx)
+}
+
+func processRequest(ctx context.Context) {
+    // work
+}
+```
+
+#### When to Use:
+
+- At the entry point of an application, such as `main`.
+- At the beginning of a request-processing chain when no parent context exists.
+- In initialization code, background jobs, tests, or command-line applications.
+
+```go
+func main() {
+    ctx := context.Background()
+
+    if err := run(ctx); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+#### When NOT to Use:
+
+- Do not replace an existing context with `context.Background()`.
+- Do not use it inside a call chain when the caller already provides a context.
+- Creating a new background context discards cancellation, deadlines, and request-scoped values from the parent.
+
+```go
+// bad: discards the caller's context
+func handleRequest(ctx context.Context) {
+    process(context.Background())
+}
+
+// better: propagates the existing context
+func handleRequest(ctx context.Context) {
+    process(ctx)
+}
+```
+
+### `context.TODO`
+
+`context.TODO()` returns a non-nil, empty context.
+
+- It is used when a function requires a `context.Context`, but the correct context has not been decided yet.
+- It behaves like `context.Background()`:
+    - It is never cancelled.
+    - It has no deadline.
+    - It contains no values.
+
+```go
+func process(ctx context.Context) {
+    // work
+}
+
+func main() {
+    process(context.TODO())
+}
+```
+
+#### When to Use:
+
+- During development when context propagation has not been implemented yet.
+- As a temporary placeholder while refactoring code to accept a context.
+- When it is unclear which parent context should be used.
+#### When NOT to Use:
+
+- Do not use it as a permanent replacement for a request-scoped context.
+- Do not use it when an existing context is already available.
+- Prefer passing the caller’s context so cancellation, deadlines, and values can propagate correctly.
+
+```go
+// bad: discards cancellation and deadline information
+func handleRequest(ctx context.Context) {
+    process(context.TODO())
+}
+
+// better: propagates the existing context
+func handleRequest(ctx context.Context) {
+    process(ctx)
+}
+```
+
+The difference is primarily **intent**:
+- `context.Background()` indicates an intentionally selected root context.
+- `context.TODO()` indicates that the correct context still needs to be determined.
 ## `errgroup`
 
 `errgroup` is a wrapper around goroutines + WaitGroup + context, simplifying concurrent task execution and error collection.

@@ -134,6 +134,8 @@ While parallelization handles independent tasks simultaneously, **Chaining** is 
 
 Instead of asking the model to perform a massive, multi-step logical leap in a single prompt, you force it to pause, output its intermediate work, and pass the baton to the next prompt in the pipeline.
 
+While effective for simple pipelines, this approach has a noticeable consequence: the initial context and overarching goals can slowly fade away as information is iteratively passed down a long chain of agents.
+
 > [!EXAMPLE] Legacy Code Modernization
 > Imagine you are tasked with migrating a massive, 2,000-line legacy SQL Stored Procedure into a modern Python REST API. If you pass the entire SQL file to an LLM and prompt, _"Rewrite this as a Python microservice,"_ the model will attempt a literal line-by-line translation, resulting in terrible, unidiomatic Python that fails to capture the actual business intent.
 > 
