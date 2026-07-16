@@ -78,6 +78,14 @@ void stream_data(int read_fd, int write_fd) {
     }
 }
 ```
+### Manipulating the Open File Table
+
+While the file descriptor itself is just a static integer array index, the system calls that act upon it are what drive actual state changes within the kernel's underlying Open File Table.
+
+- **Stateful Operations (`read` & `write`):** When you execute a standard `read()` or `write()`, the kernel processes the requested bytes and automatically advances a hidden **File Offset** pointer stored inside the system-wide Open File Table. This means sequential calls to `read()` will naturally walk forward through a file, pulling the next continuous chunk of data each time without the programmer needing to manually track their position.
+- **Manual Navigation (`lseek`):** If you need to jump to a specific location in a regular file (e.g., to read a specific database record or rewrite a specific header), you use `lseek()`. This system call does not transfer any data; it simply tells the kernel to fast-forward or rewind the File Offset pointer to a specific byte index. _(Note: `lseek` only works on physical/block resources; you cannot seek a network socket or a pipe)._
+- **Stateless Operations (`pread` & `pwrite`):** In multi-threaded applications, relying on the shared Open File Table's hidden offset is highly dangerous. If Thread A and Thread B both call `read()` on the same file descriptor simultaneously, a data race occurs, and they will scramble the file offset. `pread()` (positional read) and `pwrite()` solve this by requiring you to pass an explicit byte offset as an argument. They perform the I/O at that exact physical location and **do not** update the shared Open File Table offset, allowing thousands of concurrent threads to safely hammer the exact same file descriptor without requiring expensive mutex locks.
+- **Resource Duplication (`dup` & `dup2`):** These system calls allow a process to clone a file descriptor. The kernel simply takes a new integer index in your Per-Process File Descriptor Table and points it to the exact same entry in the Open File Table. This is the underlying magic of terminal redirection (like `ls > output.txt`)—the shell opens the text file, uses `dup2()` to overwrite standard output (`fd 1`) with the text file's descriptor, and instantly tricks the child process into writing to the disk instead of the screen.
 
 > [!note] FD Exhaustion (FD Leaks)
 > 

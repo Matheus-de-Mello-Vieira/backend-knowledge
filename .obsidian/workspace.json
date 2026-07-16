@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "88ca1542cbf27ebd",
+        "id": "73977abd492e9d63",
         "type": "tabs",
         "children": [
           {
-            "id": "eb16d2b511c61c61",
+            "id": "9f82ea87d53642dc",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Backend Engineering/99 Miscellaneous.md",
+                "file": "Operating Systems/02 The Anatomy of a Process.md",
                 "mode": "source",
                 "source": false,
                 "backlinks": true,
@@ -28,7 +28,7 @@
                 }
               },
               "icon": "lucide-file",
-              "title": "99 Miscellaneous"
+              "title": "02 The Anatomy of a Process"
             }
           }
         ]
@@ -63,7 +63,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "round_robin",
+                "query": "O_DIRECT",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,12 +90,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "Backend Engineering/99 Miscellaneous.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 99 Miscellaneous"
             }
           }
         ]
@@ -267,7 +268,7 @@
             }
           }
         ],
-        "currentTab": 4
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -286,13 +287,21 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "4753236ff4888337",
+  "active": "3e75e98817e721b3",
   "lastOpenFiles": [
+    "Operating Systems/02 The Anatomy of a Process.md",
+    "Descomplica Enablers.md",
+    "TODO.1.local.md",
+    "Operating Systems/03 Memory Management.md",
+    "Backend Engineering/02 Execution Patterns.md",
+    "Operating Systems/01 Why an OS.md",
+    "Operating Systems/00 System Architecture Overview.md",
+    "TODO.2.local.md",
+    "Networking/06 Network Monitoring.md",
+    "Networking/02 Protocols/02 Ethernet.md",
     "Backend Engineering/99 Miscellaneous.md",
     "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
     "AI Engineering/LLM/Spec-Driven Development.md",
-    "Operating Systems/03 Memory Management.md",
-    "Operating Systems/02 The Anatomy of a Process.md",
     "Technologies/Golang/01 Essentials/09 Concurrency.md",
     "Technologies/Golang/01 Essentials/01 Introduction.md",
     "AI Engineering/LLM/Agents and Workflows.md",
@@ -306,14 +315,6 @@
     "Operating Systems/07 Socket Management.md",
     "Networking/03 Connections/01 How Connections are Established.md",
     "Operating Systems/04 Inside The CPU.md",
-    "Operating Systems/08 More OS Concepts.md",
-    "Operating Systems/02 Processes.md",
-    "Operating Systems/01 Why an OS.md",
-    "Operating Systems/01 Why do we need an OS.md",
-    "Security/TODO/06 Advanced Incident Handling.md",
-    "Security/TODO/05 Security Incident Management and Response.md",
-    "Security/TODO/04 Incident Management Process.md",
-    "Security/TODO/03 CSIRT Operational Management.md",
     "Security/TODO",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",

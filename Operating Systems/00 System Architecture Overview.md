@@ -118,11 +118,11 @@ The kernel does not simply exist in memory when a machine powers on; it must be 
 
 To understand how physical hardware transitions into a usable software environment, it helps to view the system as a cooperative stack:
 
-|**Component**|**Where It Resides**|**Primary Responsibility**|**Privilege Level**|
-|---|---|---|---|
-|**Firmware** (BIOS/UEFI)|Non-volatile flash memory soldered onto the motherboard.|Initializes and tests physical hardware components at power-on; handles low-level hardware configurations before any OS boots.|Highest (Runs beneath/before the kernel).|
-|**Kernel**|Stored on persistent media; loaded into privileged RAM during the boot sequence.|Managing active hardware resources (CPU scheduling, memory management, I/O coordination) and providing secure isolation via System Calls.|Privileged (Kernel Space / Mode 0).|
-|**Operating System (OS)**|Stored on persistent media; loaded into user RAM as needed.|The complete software suite built around the kernel, providing user interfaces (GUI/CLI), system utilities, package managers, and runtime libraries.|Unprivileged (User Space).|
+| **Component**             | **Where It Resides**                                                             | **Primary Responsibility**                                                                                                                           | **Privilege Level**                       |
+| ------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Firmware** (BIOS/UEFI)  | Non-volatile flash memory soldered onto the motherboard.                         | Initializes and tests physical hardware components at power-on; handles low-level hardware configurations before any OS boots.                       | Highest (Runs beneath/before the kernel). |
+| **Kernel**                | Stored on persistent media; loaded into privileged RAM during the boot sequence. | Managing active hardware resources (CPU scheduling, memory management, I/O coordination) and providing secure isolation via System Calls.            | Privileged (Kernel Space / Mode 0).       |
+| **Operating System (OS)** | Stored on persistent media; loaded into user RAM as needed.                      | The complete software suite built around the kernel, providing user interfaces (GUI/CLI), system utilities, package managers, and runtime libraries. | Unprivileged (User Space).                |
 
 ## File System
 [06 Storage Management](06%20Storage%20Management.md)
