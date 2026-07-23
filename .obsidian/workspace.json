@@ -4,20 +4,131 @@
     "type": "split",
     "children": [
       {
-        "id": "0d4594d7a7841381",
+        "id": "3bfb888cdcd9b5d0",
         "type": "tabs",
         "children": [
           {
-            "id": "23298e5b47103537",
+            "id": "eac576e732c4d375",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/04 Inside The CPU.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "04 Inside The CPU"
+            }
+          },
+          {
+            "id": "6bfd55a4f22999db",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/02 The Anatomy of a Process.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "02 The Anatomy of a Process"
+            }
+          },
+          {
+            "id": "a80e9323566ab649",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/02 The Anatomy of a Process.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "02 The Anatomy of a Process"
+            }
+          },
+          {
+            "id": "502656dc28be29ed",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/03 Memory Management.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "03 Memory Management"
+            }
+          },
+          {
+            "id": "620dada08532cffb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Operating Systems/02 The Anatomy of a Process.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "02 The Anatomy of a Process"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -49,7 +160,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "WPA2",
+                "query": "garba",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -84,11 +195,12 @@
               "title": "Outline"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
-    "width": 360.5
+    "width": 270.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -207,7 +319,7 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
@@ -255,7 +367,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 653.5
+    "width": 651.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -272,6 +384,12 @@
   },
   "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Operating Systems/02 The Anatomy of a Process.md",
+    "Operating Systems/04 Inside The CPU.md",
+    "Operating Systems/03 Memory Management.md",
+    "Technologies/Golang/01 Essentials/01 Introduction.md",
+    "AI Engineering/RAG/01 Fundamentals.md",
+    "Operating Systems/00 System Architecture Overview.md",
     "Networking/02 Protocols/17 DNS.md",
     "TODO/CSIRT/07 Checklist for Creating and Operating a CSIRT.md",
     "TODO/CSIRT/05 Security Incident Management and Response.md",
@@ -291,13 +409,7 @@
     "TODO/CSIRT/03 CSIRT Operational Management.md",
     "TODO/CSIRT/02 CSIRT Creation and Structure.md",
     "TODO/CSIRT/01 Fundamentals of Resilience Engineering and CSIRT.md",
-    "Operating Systems/04 Inside The CPU.md",
     "Networking/99 Proxying and Load Balancing.md",
-    "Technologies/NGINX/01 Introduction.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Technologies/NGINX/02 Nginx Configuration.md",
-    "Technologies/NGINX/04 Horizontally Scaling Nginx.md",
-    "Operating Systems/03 Memory Management.md",
     "TODO/AI1/Untitled",
     "TODO/AI1",
     "TODO/05",

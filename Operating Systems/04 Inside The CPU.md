@@ -225,10 +225,184 @@ graph LR
 	* Enterprise databases like PostgreSQL, MySQL, or SAP HANA handle massive concurrency by partitioning data.
 	* When a database is NUMA-aware, it creates buffer pools per node. A thread processing a query for Partition A runs on Node A's CPU and fetches from Node A's RAM.
 	* Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
+### Case Study: Python’s `None` and the Cache Invalidation Storm
+
+To see how devastating cache invalidation can be in the real world, we can look at a massive performance bottleneck that plagued the Python programming language for years, finally fixed in Python 3.12 (via PEP 683).
+#### The Architecture of the Problem
+
+Python uses **Reference Counting** for garbage collection. Every object in memory has an internal integer (`ob_refcnt`). Whenever a variable points to an object, the CPU increments that counter. When the variable is destroyed, the CPU decrements it. If the counter hits zero, the memory is freed.
+
+Python also uses **Singletons** for its most common values: `None`, `True`, and `False`. There is only one physical instance of `None` in an entire Python process. Every time your code says `x = None`, it points to that exact same memory address.
+
+#### The Hardware Collision
+
+Because `None` is used constantly in almost every Python script, it is heavily accessed by multithreaded applications.
+
+Imagine Thread 1 (on Core 1) and Thread 2 (on Core 2) are doing completely different background tasks, but they both occasionally assign variables to `None`.
+
+- Thread 1 assigns `a = None`. Core 1 fetches the cache line containing `None`, increments the reference count, and marks the cache line as **Modified (M)**.
+- Instantly, the MESI protocol broadcasts an invalidation signal. Core 2's cached copy of `None` is marked **Invalid (I)**.
+- A microsecond later, Thread 2 assigns `b = None`. Core 2 suffers a cache miss, forces Core 1 to flush its data back to L3, fetches the fresh cache line, increments the counter, marks it **Modified**, and invalidates Core 1.
+
+#### The MESI Nightmare
+
+This is a textbook example of **Cache Thrashing** (specifically, _True Sharing_ contention). Even though the threads were doing completely separate work, simply referencing `None` forced the CPU cores to violently fight over the exact same 64-byte cache line. The L1 caches were effectively disabled for Python's most heavily used object, forcing the processor to constantly suffer ~80-nanosecond trips to the L3 cache.
+
+Furthermore, it was entirely pointless overhead: `None`, `True`, and `False` are core language constructs. They are _never_ meant to be garbage collected, meaning tracking their reference counts was a complete waste of hardware cycles.
+
+#### The Fix: Immortal Objects
+
+In Python 3.12, engineers introduced **Immortal Objects**. They hardcoded the reference count for `None`, `True`, and `False` to a special, massive value that the interpreter knows never to change.
+
+Because the reference count is no longer modified, the CPU cores can pull the cache line containing `None` into their L1 caches and leave it permanently in the **Shared (S)** state. Core 1 and Core 2 can now read `None` simultaneously in 1 nanosecond with zero cross-talk on the system bus.
+## Registers
+
+The absolute fastest storage in the machine, built directly into the execution core. Registers operate with zero latency (0 clock cycles) because they hold the exact values the CPU is actively using at this exact nanosecond. They have microscopic capacity (typically 32 or 64 bits per register).
+
+- **Instruction Pointer (IP) / Program Counter (PC):** Holds the virtual address of the next instruction to execute. For process state and context switching, see [Process Execution and State](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
+- **Stack Pointer (`sp`):** Points to the active edge of the current stack frame. See [Stack Pointer](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Pointer%20(`sp`)).
+- **Base Pointer (`bp`) / Frame Pointer:** Anchors the current stack frame when one is used. See [Base Pointer](02%20The%20Anatomy%20of%20a%20Process.md#Base%20Pointer%20(`bp`%20/%20Frame%20Pointer)).
+- **Link Register (LR):** On ARM, holds a function's return address until it must be saved to the stack. See [Nested Calls in ARM](02%20The%20Anatomy%20of%20a%20Process.md#Nested%20Calls%20in%20ARM).
+- **Page Table Base Register (PTBR):** Points to the active process's page table, allowing the MMU to translate virtual addresses. See [The Page Table & Hardware Translation](03%20Memory%20Management.md#The%20Page%20Table%20%26%20Hardware%20Translation).
+- **General-purpose registers:** Hold operands, intermediate values, function arguments, and return values, such as ARM's `r0`–`r3` and x86-64's `rax`. For examples, see [Producing machine code](02%20The%20Anatomy%20of%20a%20Process.md#Producing%20machine%20code) and [Calling Conventions](02%20The%20Anatomy%20of%20a%20Process.md#Calling%20Conventions%20(Parameters%20%26%20Returns)).
+
+The registers listed above are the primary architectural registers a software engineer interacts with during debugging, reverse engineering, or standard systems programming. However, to understand how the hardware actually executes code and manages the system, we must look at the specialized and hidden registers:
+
+- **Status / Flags Register (`FLAGS` on x86, `CPSR` on ARM):** Holds 1-bit boolean switches (Zero, Carry, Overflow) that record the physical result of the ALU's last calculation. This register is the hardware mechanism that drives all conditional branching in your software, such as `if` statements and loops.
+- **Vector / SIMD Registers:** Massive registers (ranging from 128-bit to 512-bit, such as AVX-512 or ARM NEON) designed for [Single Instruction, Multiple Data (SIMD)](02%20The%20Anatomy%20of%20a%20Process.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) operations. They allow the CPU to execute math on large arrays of numbers simultaneously rather than one by one. 
+- **System and Control Registers (e.g., `CR0`, `CR3`):** Privileged hardware levers accessible only by the OS kernel (Ring 0). They toggle fundamental CPU states, such as physically enabling the MMU or altering CPU cache behavior.
+- **Physical Register File (Shadow Registers):** Hidden hardware registers completely invisible to your software. Even if the architecture only exposes 16 general-purpose registers to the programmer, the physical core holds 100+ shadow registers used to dynamically rename variables and execute instructions out of order.
+### The Case Study: Optimizing `memchr()` in the Linux Kernel
+
+The `memchr` function is a fundamental Linux utility used to search a block of memory to find the first occurrence of a specific character (byte).
+
+#### The Problem: Wasting the Register
+
+The original implementation used a simple `while` loop to check the memory **byte-by-byte** (8 bits at a time):
+
+```c
+void *memchr(const void *s, int c, size_t n)
+{
+    const unsigned char *p = s;
+
+    while (n-- != 0) {
+        if ((unsigned char)c == *p++) {
+            return (void *)(p - 1);
+        }
+    }
+
+    return NULL;
+}
+
+EXPORT_SYMBOL(memchr);
+#endif
+```
+
+While this is easy for humans to read, it is horribly inefficient for modern hardware. A standard general-purpose register on a 64-bit CPU holds 64 bits (8 bytes). By checking only 1 byte at a time, the original code was leaving $1 - \frac{1}{8} = 87.5\%$ of the register's capacity empty. Furthermore, it forced the CPU's Control Unit to evaluate a branch instruction (`if character == target`) for every single byte, wasting thousands of clock cycles on long strings.
+
+#### The Solution: Word-Wise Processing and "Bit-Twiddling"
+
+To fix this, kernel developers rewrote the function to process a full 64-bit "word" (8 bytes) per CPU cycle. This makes it 4x faster on long strings.
+
+To accomplish this without writing 8 separate `if` statements, they used a mathematical ALU trick known as **Zero-Byte Detection**:
+```c
+void *memchr(const void *p, int c, unsigned long length)
+{
+    u64 mask, val;
+    const void *end = p + length;
+
+    c &= 0xff;
+    if (p <= end - 8) {
+        mask = c;
+        MEMCHR_MASK_GEN(mask);
+
+        for (; p <= end - 8; p += 8) {
+            val = *(u64 *)p ^ mask;
+            if ((val + 0xfefefefefefefeffu) &
+                (~val & 0x8080808080808080u))
+                break;
+        }
+    }
+
+    for (; p < end; p++)
+        if (*(unsigned char *)p == c)
+            return (void *)p;
+}
+```
+
+1. **Broadcast the Target**: If the function is looking for the letter 'A' (`0x41` in hex), the code first creates a 64-bit mask where that byte is repeated 8 times: `mask = 0x4141414141414141`
+2. **The XOR Check**: The CPU fetches 8 bytes of memory at once and places them into a 64-bit register. It then applies a bitwise XOR (`^`) against the mask: `val = *(u64 *)p ^ mask;` Because XOR outputs `0` when two bits match, if the letter 'A' exists anywhere in those 8 bytes, that specific byte's position in `val` will become exactly `0x00`.
+3. **Alan Mycroft's Bithack:** To find out if _any_ of the 8 bytes in `val` are exactly `0x00` without using a slow loop, the kernel uses this single-cycle mathematical trap: `if ((val + 0xfefefefefefefeffu) & (~val & 0x8080808080808080u))`
+	- **The Subtraction (`val + 0xfefe...`):** This magic number mathematically subtracts `1` from all 8 bytes simultaneously without the carry-over ruining adjacent bytes. If a byte is exactly `0x00`, its underflows to `0xFF`, flipping its highest bit from `0` to `1`.
+	- **The False-Positive Filter (`~val`):** Large numbers (like `0x81`) will _also_ have a highest bit of `1` after subtraction. Inverting the original bits (`~val`) filters these out, guaranteeing we only keep bytes that originally started with a highest bit of `0`.
+	- **The Mask (`& 0x8080...`):** The final bitwise AND isolates just those highest bits. The ALU flags a match _only_ if a byte started with a `0` high-bit but ended with a `1` high-bit—a mathematical condition entirely unique to `0x00`.
+4. **The Cleanup Loop**: Because strings aren't always perfectly divisible by 8 bytes, the optimized code finishes with a standard byte-by-byte `for` loop to check the final 1 to 7 leftover bytes at the very end of the memory block.
+
+**The Result:** Instead of 8 memory fetches and 8 branch evaluations, the CPU fetches 8 bytes once, runs a single line of math through the ALU, and knows instantly if the target character is inside that block.
+
+## CPU Instruction Set Architectures (ISA)
+
+At the hardware level, there are two primary design philosophies for how a CPU understands code. This mirrors a classic software engineering pattern: "verbose and simple" vs. "concise and complex." This tradeoff revolves entirely around how the CPU's Arithmetic Logic Unit (ALU) is allowed to interact with memory.
+
+### RISC (Reduced Instruction Set Computer)
+
+- **The Philosophy:** "Verbose and simple." Keep instructions atomic, predictable, and fast. Ideally, one instruction executes in exactly one clock cycle.
+- **The Memory Model (Load/Store):** The ALU is physically barred from touching RAM. It can only perform math on data that is already sitting inside the CPU's internal registers. Memory access is strictly separated into dedicated `LOAD` and `STORE` commands.
+- **The Trade-off:** Less variety of instructions. Software binaries are larger and more verbose (more lines of assembly required), but the hardware decoder is incredibly small, fast, and power-efficient.
+- **Examples:** ARM (Apple Silicon, Mobile devices), RISC-V.
+### CISC (Complex Instruction Set Computer)
+
+- **The Philosophy:** "Concise and complex." Do as much work as possible with as few lines of code as possible, saving memory and bandwidth.
+- **The Memory Model (Read-Modify-Write):** Instructions are allowed to reach directly into RAM, perform math on the data, and write it back to RAM, all within a single command.
+- **The Trade-off:** Software binaries are tiny and highly concise. However, executing a single instruction might take multiple clock cycles, and the hardware decoder required to understand these complex commands is massive and power-hungry.
+- **Examples:** x86-64 (Intel, AMD desktops and servers).
+
+### The Classic Example: `a = a + b`
+
+To see the difference, look at how the two architectures compile a simple addition where `a` is a location in memory, and `b` is a value already in a register.
+
+**CISC (x86 style) — 1 Instruction:**
+
+The CPU does the memory fetch, the math, and the memory save all at once.
+
+```armasm
+ADD [a], r1   ; "Go to memory address [a], add register r1 to it, and save it back to [a]"
+```
+
+**RISC (ARM style) — 3 Instructions:**
+
+The CPU must manually break the process into explicit, single-cycle steps.
+
+```armasm
+LDR r0, [a]      ; Step 1: Fetch the value from memory [a] into register r0
+ADD r0, r0, r1   ; Step 2: Add r0 and r1, store the result in r0
+STR r0, [a]      ; Step 3: Store the new value of r0 back into memory [a]
+```
+
+### The Modern Reality: The Micro-Op Secret
+
+While the RISC vs. CISC distinction is crucial for understanding compilers and assembly code, modern hardware has blurred the line.
+
+Today, a modern x86 CPU (Intel/AMD) is actually **a RISC processor wearing a CISC disguise**. Because CISC instructions are too complex to pipeline efficiently at 5GHz, modern x86 processors have a massive translation layer built into the front of the chip. When it receives a complex CISC instruction like `ADD [a], r1`, a hardware decoder instantly shreds it into smaller, RISC-like instructions called **Micro-Operations (μops)** before handing them to the execution cores.
+
+## Clock Speed
+
+The clock speed is the physical heartbeat of the CPU, dictating how many internal synchronizations (**cycles**) the core performs per second. A clock speed of **3.0 GHz** means the CPU core pulses **3 billion times per second**.
+
+However, measuring a CPU's actual performance requires understanding that **one clock cycle does not always equal one instruction executed.** The true speed of a CPU is defined by its Clock Speed multiplied by its **IPC (Instructions Per Cycle)**.
+
+- **Varying Latency:** Depending on the complexity of the math, an instruction might take vastly different amounts of time. Adding two registers might take 1 cycle. Dividing two 64-bit numbers might take 15 cycles. Fetching from RAM takes ~400 cycles.
+- **RISC vs. CISC:** Historically, RISC architectures aimed for a strict 1-to-1 ratio (1 instruction = 1 cycle). CISC instructions inherently took multiple cycles because a single command included fetching, calculating, and storing.
+- **Superscalar Execution:** Modern processors (both RISC and CISC) are "superscalar." They have multiple ALUs inside a single core. If two instructions don't depend on each other, a modern core can actually execute 4 to 6 instructions simultaneously in a _single_ clock cycle (an IPC > 1).
+- **The SIMD Multiplier:** Features like [Single Instruction, Multiple Data (SIMD)](02%20The%20Anatomy%20of%20a%20Process.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) don't necessarily reduce the number of cycles an instruction takes, but they drastically increase the _amount of data_ processed per cycle (e.g., adding 16 pairs of numbers in the same 1-cycle heartbeat). 
+- **The Overhead Bottleneck:** Actually fetching the code from memory and decoding it into electrical signals takes several clock cycles on its own. If the execution core has to wait for the decoder, billions of cycles are wasted. This is solved by **Instruction Pipelining**.
+## Display CPU info
+
+- Show L caches: `sysctl -a | grep cachesize`
+- Show number of cores: `sysctl -n hw.physicalcpu`
+- Show CPU architecture: `uname -m`
 ## ...
 
-Each core operates at a specific clock speed, which dictates how many **cycles per second** it can execute.
-- Depending on the CPU architecture and the specific type of instruction, a single operation may take less than, exactly, or more than one clock cycle to complete.
+### Multi level threading
 
-Every CPU family has its own unique set of machine-level instructions.
-- Because your source code must ultimately be translated into these specific machine instructions, the **compilation process is highly dependent on the target CPU architecture** (e.g., x86 vs. ARM).
+Also called hypervisor, that transform each physical core into two virtual cores, with another set of registers. They share everything else (ALU, CU, MMU, etc). Without that, the cores would wait after executing certain instruction, wasting precious cycles.
