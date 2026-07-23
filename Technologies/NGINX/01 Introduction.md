@@ -1,81 +1,34 @@
 # Introduction
 
-* NGINX is a open source web server written in C, also can be used as a reserve proxy and load-balancer.
+NGINX is an open-source web server written in C. It can also act as a reverse proxy and load balancer.
 
-We will talk about:
+* **Web server:** serves static content and can route HTTP requests.
+* **Reverse proxy:** receives client traffic and forwards it to upstream services. It can route by host, path, headers, or other HTTP information; cache responses; and distribute traffic across backends.
+* **Traffic boundary:** exposes a client-facing interface while upstream services communicate through a separate backend interface.
 
-* What is Nginx
-* Current and Desired Architecture
-* Layer 4 and Layer 7 Proxying in Nginx
-* TLS Termination vs TLS Passthough
-* Timeouts in NGINX
-* Example
-  * Nginx as a Web Server, Layer 7 and Layer 4 Proxy
-  * Enable HTTPS, TLS 1.3 and HTTP/2 on Nginx
+NGINX can proxy at Layer 4 or Layer 7:
 
-## What is NGINX?
+* Use the `stream` context for TCP or UDP proxying, including protocols NGINX does not interpret, such as a database protocol.
+* Use the `http` context for HTTP-aware proxying, including request routing, response caching, and TLS termination.
 
-* Web server: serves web content
-* Reverse Proxy
-  * Load balancing
-  * Backend Routing
-    * Redirect a request according to layer 7 info, as the path or host.
-    * it can change the request
-    * Fail-over
-    * Cache
-    * API Gateway
-* The Nginx have to parts:
-  * frontend: the interfaces that handles the communications Nginx <-> clients
-  * backend;  the interfaces that handles the communication Nginx <-> servers
+For the general proxy, reverse-proxy, TLS, and load-balancing model, see [Proxying and Load Balancing](../../Networking/99%20Proxying%20and%20Load%20Balancing.md). For NGINX directives and configuration examples, see [NGINX Configuration](02%20Nginx%20Configuration.md).
 
-## Layer 4 vs Layer 7 proxying
+## NGINX Internal Architecture
 
-* In layer 4 we see TCP/IP stack only nothing about the app, we have access to
-  * Source IP, Source IP
-  * Destination IP, Destination Port
-  * Simple packet inspection (SYN/TLS hello)
-    * it is not default, but you can log when these events happens.
-  * no cache
-* In layer 7 we see the application, HTTP/gRPC etc
-  * We have access to more context
-  * I know where the client is going, which page they are visiting
-  * Require decryption, that can be a security problem.
-    * for example, CDNs decrypt the data
+_See also: [Backend Execution Patterns](../../Backend%20Engineering/02%20Execution%20Patterns.md) for broader context on connection handling._
 
-Nginx can operate in L4 or L7.
+### The Worker Process Model
 
-* Layer 4 proxying is useful when Nginx doesn't understand the protocol, for example MySQL database protocol.
-  * the layer 4 are always sticky, each client connection sticks with only one backend connection.
-  * use `stream` for layer 4 proxyd 
-* Layer 7 proxying is useful when Nginx want to share backend connections and cache results.
-  * use `http` for layer 7 proxy
+- **Multi-Process Architecture:** NGINX relies on a multi-process model rather than spawning new threads per connection.
+- **Hardware Thread Mapping:** By default (when set to auto-mode), NGINX spins up exactly one worker process per available hardware thread (CPU core).
+- **High Concurrency:** Because of its non-blocking, event-driven nature, a single NGINX worker process can simultaneously handle thousands of active client connections.
+- **CPU Efficiency:** Workers are designed to stay active on the CPU for the maximum time possible to process requests efficiently.
+- **Context Switching:** A worker only exits the CPU (yields) when it is forced to wait on a blocking I/O operation, such as reading content from a physical disk or waiting for a response from an upstream backend server.
 
-## TLS Termination and TLS Pass-through
+### Connection Acceptance and Socket Management
 
-* TLS termination is someone on the middle of connection pass its own keys, pretending to be the server or client.
-  * Layer 7
-  * Nginx can do it, for example Nginx has TLS (e.g. HTTPs) and backend is not (http).
-    * Nginx terminates TLS and decrypts and send unenctypted.
-  * Nginx is TLS and backend is also TLS 
-    * recommended at the cloud, because you share the same machines with many other people, so can exists a security fault on your private net.
-    * Nginx terminates TLS and decrypted, optionally rewrite and then re-encrypt the content to the backend
-      * additional latency.
-  * Nginx needs the backend certificate or at least has its own
-* TLS Pass-through
-  * Layer 4
-  * more secure, NGINX doesn't need the backend certificate.
-
-## Internal Architecture
-
-* Nginx uses worker process
-  * Nginx spins up a worker process per hardware thread on auto-mode, that is default
-  * the kernel sit right behind on worker process
-  * the nginx tries to accept the connections as fast as possible. So one worker become its reader. [see more](../../Backend%20Engineering/02%20Execution%20Patterns.md)
-    
-    * you choose "Multiple Threads Multiple Acceptors Architecture" or "Multiple Threads with Socket Sharding"
-      * until version 1.9.1, the default is the first one, otherwise it is the second one.
-  * the workers will read the connection.
-  * Ideally, each worker need to stay on the CPU maximum possible.
-  * the worker takes a action, for example read a content from disk or read from upstream backend
-    * at this time, the worker can exit from the CPU, because it is only waiting.
-  * each worker can have thousands of clients.
+- **Kernel Handoff:** The operating system kernel sits directly behind the worker processes, maintaining the queues for incoming network traffic.
+- **Rapid Acceptance:** NGINX aims to accept incoming connections as quickly as possible. Once a connection is accepted, a specific worker becomes the dedicated reader for that connection's lifecycle.
+- **Pre-1.9.1 (Single Shared Socket / Multiple Acceptors):** In older versions, NGINX used a shared socket approach where multiple worker processes actively competed to call `accept()` on a single listening socket. This required strict locking and often caused the "Thundering Herd" problem, wasting CPU cycles.
+- **Post-1.9.1 (Socket Sharding / Multiple Listeners):** Modern NGINX uses socket sharding by leveraging the `SO_REUSEPORT` kernel feature. Multiple independent worker processes bind to the exact same port.
+- **Kernel Load Balancing:** With socket sharding enabled, the OS kernel creates separate accept queues for each worker process and handles the distribution of incoming connections, completely eliminating the Thundering Herd problem and the need for internal locking.

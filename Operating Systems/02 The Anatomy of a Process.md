@@ -28,7 +28,7 @@
     - **Namespaces:** The kernel uses Namespaces to isolate PID lists. This allows multiple processes across different Docker containers and the host system to all possess the exact same PID (e.g., PID `700`) simultaneously. The kernel internally pairs the Namespace + PID to uniquely isolate and identify them, completely hiding them from one another.
 - **Instruction Pointer (Program Counter):**
     - The Instruction Pointer (IP) tracks the exact virtual address of the next instruction to be executed from the Text/Code segment.
-    - **Hardware Register Execution:** The IP is an ultra-fast hardware register located physically inside the CPU. Because it is a CPU register, it increments automatically with every single execution cycle at zero performance penalty.
+    - **Hardware Register Execution:** The IP is a hardware register located inside the CPU. Updating it is part of normal instruction execution and has lower latency than accessing cache or RAM.
 - **Process Control Block (PCB):**
     - The PCB is a vital data structure residing securely in Kernel Space memory. It acts as the process's master metadata record, storing its PID, open file descriptors, memory limits, and state.
     - **Context Switching Overhead:** Because the PCB lives in system memory (RAM), reading and writing to it involves latency. When the kernel performs a context switch, it must physically copy the current value of the CPU's Instruction Pointer register—and all other working registers—into the PCB in memory to save the process's state. This RAM-dependent save/load cycle is a primary reason context switching is computationally expensive.
@@ -116,7 +116,7 @@ add r3, r0, r1
 str r3, #0xffeeddcc
 ```
 
-- **CPU Registers (`r0`, `r1`, `r3`):** Notice that the assembly code does not use variable names like `a` or `b`. Instead, it uses **registers**. These are the ultra-fast, temporary storage locations physically built directly into the CPU core. Before the CPU can do math on data, that data must be loaded into a register.
+- **CPU Registers (`r0`, `r1`, `r3`):** Notice that the assembly code does not use variable names like `a` or `b`. Instead, it uses **registers**. These are temporary storage locations built directly into the CPU core, with lower access latency than cache or RAM. Before the CPU can do math on data, that data must be loaded into a register.
 - **Instruction Breakdown**
 	- `mov r0, #1` **and** `mov r1, #3`: The `mov` (move) instruction loads the literal, hardcoded numbers (`#1` and `#3`) directly into the CPU registers `r0` and `r1`.
 	- `add r3, r0, r1`: The CPU's computation hardware (the ALU) reads the values held inside `r0` and `r1`, adds them together, and immediately saves the resulting sum into a new register, `r3`.
@@ -169,7 +169,7 @@ By doing this work at compile time, the resulting program is smaller (takes up l
 - **Downward Growth:** As established in the memory layout, the stack starts at the highest memory address of its designated virtual space and grows _downwards_ toward the heap.
 - **Function Frames:** Every time a function is called, it gets its own dedicated block of memory on the stack called a **Stack Frame**. This frame stores the function's local variables and execution context.
 - **The "Top" of the Stack:** The currently active function is always located at the active edge (conceptually called the "top" of the stack, even though it sits at the lowest physical memory address). Because functions strictly follow LIFO, no process can accidentally touch or corrupt the frames of paused, parent functions sitting higher up the stack.
-- **Contiguous Memory & Caching:** Stack space is strictly contiguous (sequential). Because the data is packed tightly together, it maximizes **spatial locality**. This makes it incredibly easy for the CPU to predict and load stack data into the ultra-fast L1/L2 caches, making stack memory significantly faster to access than heap memory.
+- **Contiguous Memory & Caching:** Stack space is strictly contiguous (sequential). Because the data is packed tightly together, it often has good **spatial locality**, which can increase cache-hit rates. Stack allocation does not inherently make every access faster than heap access; access latency depends primarily on cache residency and the access pattern.
 - **Size Limits:** Stack space is strictly limited in size (typically a few megabytes per thread) because it must remain a continuous block of virtual memory.
 
 ### Stack Pointer (`sp`)
@@ -203,14 +203,14 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
 
 - **The Link Register Bottleneck:** ARM processors use a single hardware Link Register (LR) to store the return address when a function is called. If `func1` calls `func2`, the LR holds the return address for `func1`. If `func2` then calls `func3`, the hardware will overwrite the LR, permanently losing the way back to `func1`.
 - **Leaf vs. Non-Leaf Functions:**
-	* A **Leaf Function** is a function that does not call any other functions (it is the end of the branch). It can safely leave its return address in the ultra-fast LR hardware register and use it to return.
+	* A **Leaf Function** is a function that does not call any other functions (it is the end of the branch). It can safely leave its return address in the LR hardware register and use it to return without loading the address from memory.
     - A **Non-Leaf Function** (like `func2` in our example) _does_ call other functions.
 - **Spilling to the Stack:** To prevent the return address from being destroyed, the compiled machine code for a non-leaf function will immediately push the current value of the LR onto the Stack the moment the function starts (in a phase called the function prologue). It gets stored in the memory frame right alongside the Base Pointer.
 - **The Return:** When `func2` is finally ready to return to `func1`, it doesn't look at the physical LR hardware register anymore. Instead, it pops the original return address directly off the stack memory and loads it into the Instruction Pointer to safely resume execution.
 ### Calling Conventions (Parameters & Returns)
 
 - **The Rulebook:** A Calling Convention is a standardized set of rules (an ABI - Application Binary Interface) that dictates exactly how the compiler should pass variables into a function and how that function should send its result back.
-- **Passing Parameters (Registers First):** Accessing RAM is slow, so modern calling conventions try to avoid using the Stack for parameters whenever possible. Instead, they pass arguments using the ultra-fast CPU registers.
+- **Passing Parameters (Registers First):** Accessing RAM has higher latency than accessing a register, so modern calling conventions pass the first arguments in CPU registers when possible and use the Stack for additional arguments.
     - _ARM Architecture:_ The first four parameters of a function are placed directly into registers `r0`, `r1`, `r2`, and `r3` before the `call` instruction is executed.
     - _x86-64 Architecture:_ Uses a similar trick, placing the first six parameters into specific registers (like `rdi`, `rsi`, `rdx`, etc.).
 - **Stack Spilling (Too Many Parameters):** What happens if your function takes 8 parameters, but ARM only allocates 4 registers for them? The CPU "spills" the excess. The first 4 parameters go into registers, and the remaining 4 are pushed directly onto the **Stack memory** just before the function is called. The new function frame will then read those extra parameters by calculating an offset from the Base Pointer (`bp`).
@@ -245,8 +245,8 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
     - **`.bss`:** Stores _uninitialized_ global variables (e.g., `int y;`). To save space in the executable file, the OS just zeroes out this memory when the program launches.
     - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
 - **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
-- **Cache Coherency Penalty:** While reading global variables is fast, _writing_ to them in a modern multi-core system is costly. If Core A updates a global variable, the hardware must instantly trigger "cache invalidation" signals to Cores B, C, and D, forcing them to flush their local caches and fetch the newly updated value from RAM to avoid data corruption.
-- **Cache Efficiency:** Because the compiler packs these global and static variables tightly together in a continuous, fixed-size memory block, reading them sequentially heavily benefits from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables in the Data section results in massive CPU cache hit rates, making these reads nearly instantaneous.
+- **Cache Coherency Penalty:** Reads of global variables can be cache hits, but writes in a modern multi-core system can be costly. If Core A updates a global variable, the hardware invalidates copies held by other cores. A later access on another core may need to obtain the updated cache line, potentially from another cache or RAM.
+- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
 ## The Heap
 
 * **Dynamic Allocation:** A massive, dynamic region of memory used for variables whose size or lifespan cannot be determined at compile time.
@@ -260,7 +260,7 @@ When an active function (`func1`) calls a new function (`func2`), `func2` must b
 * **The Program Break (`brk`):** The absolute "top" boundary of the heap's available memory is called the Program Break.
 	* To request more raw memory from the kernel, the allocator uses the `brk` or `sbrk` system calls to push the Program Break upwards.
 	* Unlike the Stack Pointer, we cannot simply lower the Program Break to deallocate memory, because heap allocations are completely out of order (fragmented).
-* **Escape Analysis:** Some modern languages (like Go) attempt to keep all variables on the ultra-fast Stack by default. The compiler performs [Escape Analysis](Go%20Internals.md#Escape%20Analysis)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
+* **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [Escape Analysis](Go%20Internals.md#Escape%20Analysis)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
 ### The `mmap` System Call (Memory Mapping)
 
 While the traditional Heap grows sequentially via the `brk` system call, modern allocators use `mmap` (Memory Map) to parachute chunks of memory directly into the wide-open virtual address space between the Stack and the Heap.
@@ -316,7 +316,7 @@ Because the `mmap` system call allows the kernel to parachute these virtual addr
 Mapping a file creates the illusion that the entire file is just a standard array sitting in RAM.
 
 * **Bypassing Syscalls:** `mmap` entirely eliminates the overhead of copying data back and forth between the physical disk, the kernel, and user space.
-* **Lazy Loading & Page Faults:** Mapping a 1GB file does not immediately load 1GB of data; it only configures the virtual addresses. When the CPU touches an unmapped address, it triggers a hardware trap called a **Page Fault**. The OS pauses execution, fetches that specific 4KB chunk from the hard drive into the Page Cache, and resumes execution at native RAM speed.
+* **Lazy Loading & Page Faults:** Mapping a 1GB file does not immediately load 1GB of data; it only configures the virtual addresses. When the CPU touches an unmapped address, it triggers a hardware trap called a **Page Fault**. The OS pauses execution, fetches the required page into the Page Cache, and then resumes execution; the faulting access is much slower than an access to a resident page.
 
 #### Anonymous Mapping (`MAP_ANONYMOUS`)
 
@@ -365,11 +365,11 @@ Because `mmap` controls how virtual addresses route to physical RAM, it is the u
 
 ### Performance (Stack vs Heap)
 
-* **Allocation Overhead:** Stack allocation is incredibly fast (just subtracting from the CPU's Stack Pointer register). Heap allocation is drastically slower because `malloc` has to search its internal lists for an appropriately sized free block, and occasionally trigger expensive context switches to Kernel Mode to ask for more memory via `brk`.
-* **Cache Efficiency:** The Stack is tightly packed, resulting in massive CPU Cache hit rates ([Spatial Caching](03%20Memory%20Management.md#Spatial%20Locality)). The Heap, however, is heavily fragmented. Because allocations are scattered randomly across memory, jumping between heap pointers frequently causes CPU cache misses, forcing slow reads from physical RAM. 
+* **Allocation Overhead:** Stack allocation commonly requires only an adjustment to the Stack Pointer. Heap allocation generally performs more allocator bookkeeping and may request additional memory from the OS, so it can cost more than stack allocation.
+* **Cache Efficiency:** The Stack is tightly packed and can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Heap allocations may be scattered, so pointer-heavy access patterns can produce more cache misses and more RAM accesses. This depends on the allocator and workload.
 ### Bulk Allocations
 
-When writing performance-critical code, allocating one massive block of memory upfront is drastically faster and more efficient than making thousands of tiny allocations. Here is exactly why the hardware and OS favor bulk allocation:
+For workloads that create many short-lived objects, allocating a larger block up front can reduce allocation overhead and improve locality compared with many separate allocations. The benefit depends on object lifetimes, allocator behavior, and access patterns:
 - **Eliminating Metadata Bloat:** Every single time you call `malloc`, it writes a hidden metadata header (usually 8 to 16 bytes) to track the size of that specific block.
     - If you allocate 10,000 individual 4-byte integers, you are also secretly allocating up to 160,000 bytes of pure metadata overhead!
     - If you allocate one massive array of 10,000 integers in a single `malloc` call, there is only _one_ header. You save huge amounts of RAM.
@@ -412,7 +412,7 @@ When writing performance-critical code, allocating one massive block of memory u
     - **Isolated:** Each thread must maintain its own independent execution state. Therefore, the OS allocates every thread its own private **Stack** memory (to track its own function calls and local variables) and saves its own dedicated copy of the CPU registers (including its own Instruction Pointer, Base Pointer, and Stack Pointer).
 - **Context Switching Overhead:**
     - **Process Switch (Heavy):** Switching the CPU from Process A to Process B is incredibly computationally expensive. The kernel must physically swap out the entire virtual memory mapping (updating the CPU's Memory Management Unit) and flush the CPU's Translation Lookaside Buffer (TLB). This forces a massive wave of L1/L2 cache misses as the new process is forced to pull its data all the way from system RAM.
-    - **Thread Switch (Lightweight):** Switching from Thread 1 to Thread 2 _within the exact same process_ is drastically faster. Because they share the same virtual memory space, the kernel does not need to touch the MMU or flush the TLB. It simply swaps the hardware registers (saving Thread 1's Instruction/Stack Pointers and loading Thread 2's) and execution resumes almost instantly.
+    - **Thread Switch (Lightweight):** Switching from Thread 1 to Thread 2 _within the same process_ can require less work than switching between processes because they share a virtual address space. The kernel still saves and restores register state, and the exact cost depends on the scheduler and architecture.
 - **Multi-Core Parallelism:** The primary physical purpose of threading is true parallel hardware execution. If a single-threaded process runs on an 8-core CPU, 7 cores sit completely idle. If that process spawns 8 threads, the OS can assign one thread to each physical CPU core, allowing them to execute machine instructions simultaneously and divide the workload.
 ### Multi-Threaded Memory Layout
 

@@ -4,31 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "73977abd492e9d63",
+        "id": "b4e0ef6b6b9b8e19",
         "type": "tabs",
         "children": [
           {
-            "id": "9f82ea87d53642dc",
+            "id": "372982d2088feb72",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Operating Systems/02 The Anatomy of a Process.md",
-                "mode": "source",
-                "source": false,
-                "backlinks": true,
-                "backlinkOpts": {
-                  "collapseAll": false,
-                  "extraContext": false,
-                  "sortOrder": "alphabetical",
-                  "showSearch": false,
-                  "searchQuery": "",
-                  "backlinkCollapsed": false,
-                  "unlinkedCollapsed": true
-                }
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "02 The Anatomy of a Process"
+              "title": "New tab"
             }
           }
         ]
@@ -63,7 +49,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "O_DIRECT",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,13 +76,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Backend Engineering/99 Miscellaneous.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 99 Miscellaneous"
+              "title": "Outline"
             }
           }
         ]
@@ -268,11 +253,11 @@
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 648.5
+    "width": 526.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -287,42 +272,44 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "3e75e98817e721b3",
+  "active": "372982d2088feb72",
   "lastOpenFiles": [
-    "Operating Systems/02 The Anatomy of a Process.md",
-    "Descomplica Enablers.md",
-    "TODO.1.local.md",
-    "Operating Systems/03 Memory Management.md",
-    "Backend Engineering/02 Execution Patterns.md",
-    "Operating Systems/01 Why an OS.md",
-    "Operating Systems/00 System Architecture Overview.md",
-    "TODO.2.local.md",
-    "Networking/06 Network Monitoring.md",
-    "Networking/02 Protocols/02 Ethernet.md",
-    "Backend Engineering/99 Miscellaneous.md",
-    "Security/01 Foundations and Risk/03 Common Threats and Attacks.md",
-    "AI Engineering/LLM/Spec-Driven Development.md",
-    "Technologies/Golang/01 Essentials/09 Concurrency.md",
-    "Technologies/Golang/01 Essentials/01 Introduction.md",
-    "AI Engineering/LLM/Agents and Workflows.md",
-    "AI Engineering/LLM/Prompt Evaluation.md",
-    "TODO.local.md",
-    "AI Engineering/LLM/Agentic Memory Systems.md",
-    "TODO.local.md",
-    "AI Engineering/LLM/Context Engineering.md",
-    "Operating Systems/05 Process Management.md",
-    "Operating Systems/06 Storage Management.md",
-    "Operating Systems/07 Socket Management.md",
-    "Networking/03 Connections/01 How Connections are Established.md",
     "Operating Systems/04 Inside The CPU.md",
+    "Networking/99 Proxying and Load Balancing.md",
+    "Technologies/NGINX/01 Introduction.md",
+    "Backend Engineering/02 Execution Patterns.md",
+    "Technologies/NGINX/02 Nginx Configuration.md",
+    "Technologies/NGINX/04 Horizontally Scaling Nginx.md",
+    "Operating Systems/03 Memory Management.md",
+    "Operating Systems/00 System Architecture Overview.md",
+    "TODO/CSIRT/01 Fundamentals of Resilience Engineering and CSIRT.md",
+    "TODO/AI1/05.md",
+    "TODO/AI1/04.md",
+    "TODO/AI1/03.md",
+    "TODO/AI1/02.md",
+    "TODO/AI1/Untitled",
+    "TODO/AI1/01.md",
+    "Writing Enablers.md",
+    "TODO/AI1",
+    "TODO/Untitled.md",
+    "TODO/10.md",
+    "TODO/09.md",
+    "TODO/08.md",
+    "TODO/07.md",
+    "TODO/06.md",
+    "TODO/04.md",
+    "TODO/05.md",
+    "TODO/05",
+    "prompt_example.md",
+    "prompt_example.txt",
+    "TODO/03.md",
+    "TODO/02.md",
+    "TODO",
     "Security/TODO",
     "Security/TODO",
     "AI Engineering/Model Context Protocol",
     "CLAUDE.md.bak",
     "Pasted image 20260522234743.png",
-    "Operating Systems/Linux",
-    "Security/99 TODO",
-    "makefile",
-    "AI Engineering/LLM"
+    "Operating Systems/Linux"
   ]
 }

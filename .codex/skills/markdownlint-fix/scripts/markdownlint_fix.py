@@ -16,6 +16,11 @@ MARKDOWNLINT = "/usr/local/bin/markdownlint"
 MARKDOWN_SUFFIXES = {".md", ".markdown", ".mdown", ".mkdn", ".mkd"}
 ATX_BOLD_HEADING_RE = re.compile(r"^(#{1,6})\s+\*\*(.*?)\*\*(\s+#+\s*)?$")
 LIST_ITEM_RE = re.compile(r"^[ \t]{0,3}(?:[-+*]|\d+[.)])[ \t]+")
+CODE_SNIPPET_RE = re.compile(
+    r"^\s*(?:Code snippet|Snippet de código)\s*$",
+    re.IGNORECASE,
+)
+CODE_FENCE_RE = re.compile(r"^```\s*$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,22 +111,77 @@ def normalize_heading(line: str) -> str:
     return f"{match.group(1)} {heading_text}{closing}"
 
 
+def detect_code_language(next_lines: list[str]) -> str:
+    """Detect code block language based on content heuristics."""
+    # Join a few lines to analyze
+    sample = "\n".join(next_lines[:10]).lower()
+
+    # Check for mermaid diagram keywords
+    if any(keyword in sample for keyword in ["flowchart", "graph", "sequencediagram", "classDiagram", "stateDiagram", "erDiagram"]):
+        return "mermaid"
+
+    # Check for common programming language patterns
+    if any(keyword in sample for keyword in ["def ", "import ", "from ", "class ", "if __name__"]):
+        return "python"
+    elif any(keyword in sample for keyword in ["function ", "const ", "let ", "var ", "=>", "console.log"]):
+        return "javascript"
+    elif any(keyword in sample for keyword in ["public class", "private ", "protected ", "void ", "static "]):
+        return "java"
+    elif any(keyword in sample for keyword in ["package ", "func ", "import (", ":="]):
+        return "go"
+    elif "```" in sample or "{" in sample or "[" in sample:
+        # Generic code-like content
+        return "text"
+
+    return "text"
+
+
+def find_next_non_blank_line(lines: list[str], start_index: int) -> str | None:
+    """Find the next non-blank line after the given index."""
+    for i in range(start_index + 1, len(lines)):
+        if lines[i].strip():
+            return lines[i]
+    return None
+
+
 def normalize_content(content: str) -> str:
     newline = "\r\n" if "\r\n" in content else "\n"
     has_trailing_newline = content.endswith(("\n", "\r"))
     lines = content.splitlines()
     normalized: list[str] = []
+    in_code_block = False
 
     for index, line in enumerate(lines):
         stripped = line.strip()
-        if (
-            stripped == ""
-            and normalized
-            and index + 1 < len(lines)
-            and LIST_ITEM_RE.match(normalized[-1])
-            and LIST_ITEM_RE.match(lines[index + 1])
-        ):
+
+        # Skip lines that are just "Code snippet"
+        if CODE_SNIPPET_RE.match(line):
             continue
+
+        # Toggle code block state
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+            # Check if this is an opening fence without language
+            if CODE_FENCE_RE.match(line) and not in_code_block:
+                # This is a closing fence, just add it
+                normalized.append(line)
+                continue
+            elif CODE_FENCE_RE.match(line) and in_code_block:
+                # This is an opening fence without language, try to detect it
+                remaining_lines = lines[index + 1:]
+                language = detect_code_language(remaining_lines)
+                normalized.append(f"```{language}")
+                continue
+
+        # Remove blank lines between list items (handles multiple consecutive blank lines)
+        if stripped == "" and normalized and LIST_ITEM_RE.match(normalized[-1]):
+            # Look ahead to find the next non-blank line
+            next_non_blank = find_next_non_blank_line(lines, index)
+            if next_non_blank and LIST_ITEM_RE.match(next_non_blank):
+                # Skip this blank line if the next non-blank line is also a list item
+                continue
+
         normalized.append(normalize_heading(line))
 
     result = newline.join(normalized)

@@ -44,7 +44,6 @@ When configuring your network architecture, it is important to remember that the
 
 - **Layer 4:** Use this when you want simple, efficient, and application-level-protocol-agnostic traffic distribution.
 - **Layer 7:** Use this when you need intelligent routing and policy decisions based on application data, making it the standard for HTTP-based systems, APIs, and microservice platforms.
-- 
 ### Layer 4 Load Balancing
 
 Layer 4 load balancers route traffic by evaluating transport-level metadata, such as IP addresses and port numbers. Because they do not decrypt the payload or parse application data (like HTTP headers), they offer incredibly high throughput and extremely low latency.
