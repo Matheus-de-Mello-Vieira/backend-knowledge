@@ -11,10 +11,24 @@
             "id": "372982d2088feb72",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Incident Response, Forensics, and Disaster Recovery"
             }
           }
         ]
@@ -88,7 +102,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 348.5
+    "width": 360.5
   },
   "right": {
     "id": "03d510d1195aab8d",
@@ -207,13 +221,12 @@
                 }
               },
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           },
           {
             "id": "a8a8327c89333e5f",
             "type": "leaf",
-            "pinned": true,
             "state": {
               "type": "terminal:terminal",
               "state": {
@@ -247,9 +260,8 @@
                   "serial": null
                 }
               },
-              "pinned": true,
               "icon": "terminal",
-              "title": "Terminal: zsh"
+              "title": "Terminal: backend-knowledge"
             }
           }
         ],
@@ -257,7 +269,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 526.5
+    "width": 653.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -272,8 +284,22 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "372982d2088feb72",
+  "active": "4753236ff4888337",
   "lastOpenFiles": [
+    "Security/05 Architecture and Infrastructure Security/NGAV, EDR, and XDR.md.md",
+    "Security/06 Security Operations and Governance/Incident Response, Forensics, and Disaster Recovery.md",
+    "TODO/CSIRT/06 Advanced Incident Handling.md",
+    "Security/06 Security Operations and Governance/Malware Analysis.md",
+    "Security/01 Foundations and Risk/Advanced Persistent Threats.md",
+    "Security/03 Cryptography and Data Protection/Data Loss Prevention.md",
+    "prompt_example.md",
+    "Writing Enablers.md",
+    "TODO/CSIRT/05 Security Incident Management and Response.md",
+    "TODO/CSIRT/04 Incident Management Process.md",
+    "TODO/CSIRT/01 Vulnerability Management.md",
+    "TODO/CSIRT/03 CSIRT Operational Management.md",
+    "TODO/CSIRT/02 CSIRT Creation and Structure.md",
+    "TODO/CSIRT/01 Fundamentals of Resilience Engineering and CSIRT.md",
     "Operating Systems/04 Inside The CPU.md",
     "Networking/99 Proxying and Load Balancing.md",
     "Technologies/NGINX/01 Introduction.md",
@@ -282,28 +308,14 @@
     "Technologies/NGINX/04 Horizontally Scaling Nginx.md",
     "Operating Systems/03 Memory Management.md",
     "Operating Systems/00 System Architecture Overview.md",
-    "TODO/CSIRT/01 Fundamentals of Resilience Engineering and CSIRT.md",
     "TODO/AI1/05.md",
     "TODO/AI1/04.md",
     "TODO/AI1/03.md",
     "TODO/AI1/02.md",
     "TODO/AI1/Untitled",
-    "TODO/AI1/01.md",
-    "Writing Enablers.md",
     "TODO/AI1",
-    "TODO/Untitled.md",
-    "TODO/10.md",
-    "TODO/09.md",
-    "TODO/08.md",
-    "TODO/07.md",
-    "TODO/06.md",
-    "TODO/04.md",
-    "TODO/05.md",
     "TODO/05",
-    "prompt_example.md",
     "prompt_example.txt",
-    "TODO/03.md",
-    "TODO/02.md",
     "TODO",
     "Security/TODO",
     "Security/TODO",

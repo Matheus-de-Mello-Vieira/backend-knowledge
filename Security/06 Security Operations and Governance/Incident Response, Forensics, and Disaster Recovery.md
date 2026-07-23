@@ -210,6 +210,16 @@ Analysis is the deep-dive phase where the team pieces together fragments to prov
 
 The accuracy of this phase is critical; if the analysis is flawed, the subsequent **Containment** steps may fail to stop the spread of the threat or inadvertently tip off the attacker.
 
+### Malware Analysis
+
+Malware analysis determines whether a suspicious file or artifact is malicious, what it does, and how far the compromise may have spread. Never execute a suspicious sample in production; preserve the original, record its hash, and work from controlled copies.
+
+- **Static analysis**: Inspect file properties, metadata, hashes, strings, and threat-intelligence results without running the sample.
+- **Dynamic analysis**: When necessary, observe the sample only in an isolated sandbox to identify process, file-system, and network behavior.
+- **Response outcome**: Use the resulting indicators and observed behavior to scope the incident, guide containment and eradication, and escalate advanced reverse engineering to specialist responders when needed.
+
+For endpoint capabilities that support this work—NGAV/EDR behavioral detection, cloud sandboxing, quarantine, and automatic host isolation—see [NGAV, EDR, and XDR](../05%20Architecture%20and%20Infrastructure%20Security/NGAV,%20EDR,%20and%20XDR.md.md#Behavioral%20Analysis%20and%20Cloud%20Integration).
+
 ## Containment
 
 The **Containment** phase is a critical turning point where the focus shifts from observation to active mitigation. The primary goal is to stop the effects of an incident before it causes further damage while simultaneously ensuring that the team avoids losing evidence that could help identify future attack patterns. During this stage, the attack is actively neutralized, and specific components are "cut off" to protect the remaining infrastructure.
