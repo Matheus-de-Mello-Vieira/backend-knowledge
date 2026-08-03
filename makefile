@@ -22,7 +22,7 @@ define upload_vault_subset
 		-p "$(FTP_PORT)" \
 		"$(FTP_HOST)" \
 		-e "set cmd:fail-exit yes; \
-		    mkdir -p \"$(FTP_DEST)\"; \
+		    mkdir -p -f \"$(FTP_DEST)\"; \
 		    mirror \
 		        --reverse \
 		        --verbose \

@@ -349,3 +349,64 @@ The jump from a single text completion to a dynamic, multi-turn AI agent is enti
 - **The Syntax Trigger:** During the System Prompt phase, the host application provides a list of available tools formatted as JSON schemas. If the model determines a tool is needed, it stops writing conversational text and instead generates a perfectly formatted JSON object matching the requested tool's schema.
 - **The Halting Phase:** The inference server detects this specific JSON structure, immediately halts the generation loop, and passes the JSON payload back to the host application (e.g., a Python backend).
 - **The Injection Phase:** The host application actually executes the API call or database query. It takes the raw data returned by that external tool, appends it to the rolling transcript under a new `<|im_start|>tool` role, and sends the entire massive prompt back to the LLM to read the data and summarize the final answer for the user.
+
+Here is the complete, integrated content for **Model Parameters & Memory Footprint**, **Mixture of Experts (MoE) Architecture**, and **Quantization**.
+
+This draft adopts the structure, formatting, technical depth, and tone of your existing notes—utilizing high-level summary bullets (`What it does`, `Why it matters`, `Mental model`), bold emphasis, callout-style notes, inline LaTeX math, and explicit sub-sections.
+
+## Mixture of Experts (MoE) Architecture
+
+The **Mixture of Experts (MoE)** architecture is an engineering solution designed to decouple a model's knowledge capacity from its generation latency.
+
+### The Problem: Compute Scaling and the Dense Bottleneck
+
+In a neural network, a **parameter** is an individual learned mathematical value (a weight or a bias) that stores the model's understanding of language. When a model is labeled "70B," it means it contains 70 billion of these parameters.
+
+However, in a standard **Dense** Transformer (such as Llama 3 70B), every single token in a prompt must be evaluated against 100% of these parameters. When processing a trivial token (like a comma), a dense model still executes matrix operations across massive layers dedicated to complex logic or coding. Because the inference compute cost (FLOPs per token) scales linearly, $O(P)$, with the parameter count, making a dense model mathematically smarter uniformly crushes its generation speed.
+- **FLOPs** stands for **Floating-Point Operations**
+
+### The Solution: Sparse Routing
+
+MoE models solve this compute bottleneck by making the Feed-Forward Network (FFN) layers **sparse**. The Multi-Head Attention layers remain shared, but the FFN block is duplicated into multiple parallel "Experts."
+
+- **The Router (Gating Network):** Placed directly before the FFN layer, a lightweight routing network analyzes the token's hidden state vector and computes a probability score across all available experts.
+- **Top-$K$ Routing:** The router selects only the top-$K$ highest-scoring experts (typically $K=1$ or $K=2$) to process that specific token. The unselected experts remain completely uncomputed (zeroed out) for that cycle.
+- **Mathematical Specialization:** Experts organize automatically during pre-training based on abstract statistical distribution patterns (e.g., one expert may naturally specialize in syntax structure, while another activates for numerical processing).
+
+### Active vs. Total Parameters
+
+This architecture splits the parameter metric into two distinct operational values, effectively solving the compute bottleneck:
+
+- **Total Parameters (The Knowledge Base):** The combined parameter count of all experts. For example, Mixtral 8x7B has roughly **47B** total parameters.
+- **Active Parameters (The Compute Cost):** Because the router only activates 2 experts per token, the actual mathematical operations executed during the forward pass only use **13B** active parameters. The model generates text at the blazing speed of a 13B model, while pulling from the vast intelligence of a 47B model.
+
+## Quantization
+
+Quantization is the process of compressing a model's parameters by mapping high-precision floating-point numbers to lower-precision integers, solving the severe hardware limitations of large models.
+
+### The Problem: The VRAM Wall and Floating-Point Math
+
+Loading a model requires physical GPU memory (VRAM). The total parameter count directly dictates this static VRAM footprint based on the precision of the numbers.
+
+During **pre-training**, neural networks strictly require floating-point numbers (FP32 or FP16). Floating-point formats split bits into a Sign, an Exponent, and a Mantissa, providing the massive **dynamic range** needed to simultaneously represent huge activation values alongside microscopic gradient updates during backpropagation.
+
+Because 16 bits equal 2 bytes, every single parameter occupies exactly 2 bytes of memory.
+
+- **The Static VRAM Formula:** $\text{Total Parameters} \times 2 \text{ bytes}$
+- **The Hardware Wall:** A dense 70B parameter model ($70,000,000,000 \times 2$) requires roughly **140 GB of VRAM** just to load the static weights. Because enterprise GPUs (like the NVIDIA H100) max out at 80 GB of VRAM, standard high-parameter models physically cannot fit on a single GPU.
+
+### The Solution: Integer Compression
+
+During **inference**, the model's weights are permanently frozen. Because the system is no longer calculating microscopic gradients, the extreme dynamic range requirement drops, allowing the model to tolerate mathematical compression.
+
+Quantization maps the continuous floating-point range to a discrete integer grid. It takes the 16-bit floats, multiplies them by a scaling factor, rounds them off, and packs them into smaller formats.
+
+- **INT8 Quantization:** Converts 16-bit floats to 8-bit integers (1 byte). Reduces static VRAM requirements by **50%** with near-zero loss in benchmark accuracy.
+- **INT4 Quantization:** Converts 16-bit floats to 4-bit integers (0.5 bytes). Reduces static VRAM requirements by **75%**. The 140 GB model now drops to ~35 GB, allowing it to easily fit on a single consumer-grade GPU.
+### Quantization Methodologies
+
+Applying naive quantization introduces rounding errors that can degrade the model's logic. To mitigate this, engineers use sophisticated compression frameworks:
+
+- **Post-Training Quantization (PTQ):** Applied after the FP16 base model is fully trained. Frameworks like **AWQ** (Activation-Aware Weight Quantization) measure activation channels during a brief calibration run, identify the top 1% of the most critical weights, and protect them from aggressive quantization while compressing the remaining 99% down to 4-bit.
+- **Quantization-Aware Training (QAT):** Simulates quantization errors during the actual training or fine-tuning process. This forces the network to adapt its parameters natively to compensate for precision loss, producing higher accuracy at ultra-low bit rates.
+- **MoE Quantization Risks:** Quantizing MoE architectures requires extreme care. The lightweight Router relies on precise numerical differences to choose experts. If quantized too aggressively, rounding errors can flip routing decisions. Inference engines often apply **mixed-precision quantization**, keeping the sensitive Router at FP16 while compressing the heavy Expert blocks to INT4.

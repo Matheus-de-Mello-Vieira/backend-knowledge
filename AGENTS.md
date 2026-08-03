@@ -1,109 +1,90 @@
-# CLAUDE.md
+# Repository Instructions
 
-This file provides repository-level guidance for coding agents working with this knowledge base, including Codex-compatible environments.
+## Context7 documentation
 
-## Repository Overview
+Use Context7 MCP to fetch current documentation whenever a request concerns a library, framework, software development kit (SDK), application programming interface (API), command-line interface (CLI), or cloud service. This requirement applies even to familiar tools such as React, Next.js, Prisma, Express, Tailwind CSS, Django, and Spring Boot because their documentation can change after model training.
 
-This is a personal backend engineering knowledge base structured as an Obsidian vault. It contains study notes, concepts, and reference materials covering backend technologies, system design patterns, security, networking, and related engineering topics.
+Use Context7 for API syntax, configuration, setup, version migrations, library-specific debugging, and CLI usage. Prefer it to web search for library documentation.
 
-## Note Structure
+Do not use Context7 for general programming concepts, business-logic debugging, code review, refactoring, or scripts written from scratch without a library-specific question.
 
-- **Technologies/**: Study notes on specific technologies and frameworks
-  - **NodeJS/**: Node.js fundamentals, Express framework, authentication methods, database integration
-  - **Golang/**: Go language concepts and patterns
-  - **Typescript/**: TypeScript basics and type system
-  - **NGINX/**: Web server configuration and usage
-- **Backend Engineering/**: System design and engineering pattern notes
-  - Communication patterns (request-response, messaging, etc.)
-  - Execution models (synchronous, asynchronous, concurrent)
-  - Performance analysis and troubleshooting approaches
-- **Security/**: Information security concepts and best practices
-- **Networking/**: Network protocols, connection management, infrastructure concepts
-- **Web APIs/**: API design patterns including REST and GraphQL
-- **Cache/**: Caching strategies and Redis usage patterns
-- **Operating Systems/**: OS fundamentals and system-level concepts
-- **AI Engineering/**: Modern AI development patterns and RAG implementations
+Follow this retrieval sequence:
 
-## Key Documented Concepts
+1. Call `resolve-library-id` with the library name and the user's full question unless the user supplied an exact `/org/project` library ID.
+2. Select the best result by exact name match, relevance, snippet count, source reputation, and benchmark score. Prefer version-specific IDs when the user names a version. If the results are weak, retry with an alternate spelling or a more precise query.
+3. Call `query-docs` with the selected library ID and the user's full question rather than isolated keywords.
+4. Base the answer or repository edit on the retrieved documentation.
 
-### Design Patterns
-The notes document several important patterns:
-- **Repository Pattern**: Data access layer abstraction with standard CRUD operations
-- **Slug Generation**: URL-safe identifier creation with Unicode normalization
-- **Resilience Engineering**: System availability principles using MTTF/MTTR calculations
+## Repository purpose
 
-### Core Topics
-- **HTTP Headers**: Reference material for common HTTP headers and their usage
-- **JSONL**: JSON Lines format specifications and use cases
-- **Resilience**: Comprehensive coverage of failure types and recovery strategies
+This repository is a personal backend-engineering knowledge base organized as an Obsidian vault. It contains durable study notes and reference material about backend technologies, system design, security, networking, operating systems, web APIs, caching, and artificial intelligence engineering. Treat it as a documentation repository rather than an executable application.
 
-## Note Organization
+## Content organization
 
-- Numbered prefixes indicate learning sequence (01, 02, etc.)
-- "99 Misc" folders contain supplementary and reference materials
-- Cross-references between related concepts throughout the notes
-- Code examples primarily in TypeScript/JavaScript with some other languages
-- Theoretical concepts paired with practical implementation details
+- **`Technologies/`:** Notes about specific languages, frameworks, and infrastructure tools.
+    - **`NodeJS/`:** Node.js fundamentals, Express, authentication, and database integration.
+    - **`Golang/`:** Go concepts and patterns.
+    - **`Typescript/`:** TypeScript fundamentals and type-system concepts.
+    - **`NGINX/`:** Web-server configuration and operation.
+- **`Backend Engineering/`:** Communication patterns, execution models, performance analysis, and general engineering patterns.
+- **`Security/`:** Information-security concepts and practices.
+- **`Networking/`:** Protocols, connection management, and infrastructure concepts.
+- **`Web APIs/`:** API design, including REST and GraphQL.
+- **`Cache/`:** Caching strategies and Redis patterns.
+- **`Operating Systems/`:** Operating-system and systems-level concepts.
+- **`AI Engineering/`:** AI-development patterns, including retrieval-augmented generation.
 
-## Working with These Notes
+Numbered file or directory prefixes indicate a learning sequence. Directories prefixed with `99` contain supplementary or miscellaneous material. Follow the existing sequence and nearby naming conventions when adding content.
 
-When exploring concepts:
-- Follow the numbered sequence within each topic for structured learning
-- Check cross-references in core files like **Patterns.md** and **Resilience.md**
-- Look for related concepts in parallel directories (e.g., security implications of networking topics)
-- The NodeJS section contains the most practical implementation examples
-- Use the .obsidian configuration for proper link management and navigation
+Before creating a note, search for existing coverage in the repository. Extend the most appropriate existing note when the topic already has a natural home, and inspect nearby notes for terminology, links, depth, and formatting conventions. Core files such as `Patterns.md` and `Resilience.md` may provide useful cross-topic context.
 
-## Obsidian Configuration
+## Writing principles
 
-- Configured for Markdown links with automatic updates
-- Git integration for version control of note changes
-- Terminal plugin available for any command-line operations needed
+Write self-contained explanations for someone actively studying backend engineering.
 
-This is a study and reference repository focused on backend engineering knowledge rather than executable code.
+- **Define before elaborating:** Introduce each central concept in plain language before using its terminology.
+- **Explain causally:** Prefer problem → mechanism → consequence → optimization → trade-off over disconnected facts.
+- **Progress from simple to advanced:** Begin with the smallest useful example, then introduce variants, failure paths, and operational concerns.
+- **Connect theory to practice:** Pair conceptual explanations with realistic examples, verified commands, code, diagrams, or calculations when they materially improve understanding.
+- **Expose constraints:** Explain where state lives, who owns it, what changes over time, and where latency, memory, contention, complexity, or risk enters.
+- **Cover boundaries:** Include relevant trade-offs, failure modes, edge cases, and implementation-specific variation.
+- **Avoid unsupported precision:** Do not invent versions, figures, limits, commands, paths, quotations, or behavior. Qualify claims that vary by platform or implementation.
 
-## Writing Patterns and Style Guide
+Use direct, instructional language and active verbs. Keep the writing note-agnostic: explain the subject itself instead of saying “this note explains” or “in this section.” Avoid filler, generic conclusions, unexplained jargon, and vague words such as “things” or “stuff.”
 
-### Structure and Organization
-- **Clear hierarchical headings**: Uses `#` for main topics, `##` for sections, `###` for subsections
-- **Numbered sequencing**: Files prefixed with numbers (01, 02, etc.) indicate learning progression
-- **"99 Misc" convention**: Miscellaneous and supplementary content organized under "99" prefix
-- **Non-enumerated headings**: Do not use numbered or sequentially prefixed headings (e.g., "01", "1.", "Step 1") unless the content has a clear, inherent order, progression, or dependency. For topics that are independent, unordered, or equally weighted, use descriptive, non-enumerated headings instead
+## Markdown conventions
 
-### Content Formatting
-- **Definition-first approach**: Concepts start with clear, bold definitions followed by explanations
-- **Bullet-driven explanations**: Heavy use of bullet points for breaking down complex concepts
-- **Code-example heavy**: Most technical concepts include practical code examples in fenced blocks
-- **Cross-referencing**: Liberal use of markdown links to related concepts, often in `[concept] -> ../path/file.md` form
+- Use exactly one `#` heading for a note title, `##` for major sections, and deeper headings only when their content justifies them.
+- Do not number headings unless the material has an inherent order, progression, lifecycle, or dependency.
+- Open with a clear definition and establish why the subject matters.
+- Use paragraphs for causal explanations and bullets for related, independently scannable ideas.
+- Prefer labeled bullets such as **Constraint:**, **Mechanism:**, and **Practical implication:** when the label improves navigation.
+- Use numbered lists for chronological procedures, protocols, algorithms, or state transitions.
+- Use fenced code blocks with the correct language identifier. Keep examples minimal, valid, and relevant.
+- Define every symbol in an equation and explain its operational meaning.
+- Use tables for concise comparisons across shared dimensions. Interpret the important pattern after the table.
+- Use small Mermaid diagrams when relationships, pipelines, or state transitions are harder to understand in prose.
+- Use Obsidian callouts sparingly for genuine caveats, warnings, or implementation variance.
 
-### Code and Technical Content
-- **Multi-language examples**: Primarily JavaScript/TypeScript, with examples in other languages as needed
-- **Inline code emphasis**: Important terms, functions, and parameters wrapped in backticks
-- **Command blocks**: Shell commands and installation instructions in dedicated code blocks
-- **API patterns**: Consistent format showing request/response examples and HTTP methods
+Preserve useful existing content when editing. Integrate missing explanations at the earliest point where a reader would need them, then remove nearby repetition or contradictions.
 
-### Explanatory Style
-- **Problem-solution format**: Many sections start with "To solve this..." or "When working with..."
-- **Progressive complexity**: Simple examples first, followed by advanced use cases
-- **Practical focus**: Emphasis on "how to" rather than just theory
-- **Real-world context**: Examples often reference actual APIs (LinkedIn, Meetup) and practical scenarios
+## Cross-references
 
-### Visual Elements
-- **Mathematical notation**: Uses LaTeX-style math formatting for formulas (e.g., availability calculations)
-- **Mermaid diagrams**: Complex system relationships illustrated with flowcharts
-- **Tables**: Comparison tables for different approaches or technologies
-- **Emphasized terminology**: Key terms often in **bold** for easy scanning
+Add links where a related concept naturally enters the explanation rather than collecting links in a generic “Related concepts” or “See also” section.
 
-### Voice and Tone
-- **Direct and instructional**: Uses imperative voice for actionable steps
-- **Question-driven analysis**: Security sections use "Is this...?" pattern for threat modeling
-- **Conversational explanations**: Complex topics broken down with analogies and practical examples
-- **Assumption of learning context**: Written for someone actively studying backend engineering
-- **Note-agnostic wording**: Write content as standalone subject matter rather than commentary about the document itself. Avoid meta-referential phrasing such as "this note", "that note", "in this section we will", or similar formulations unless they are explicitly necessary
-- **Neutral cross-note references**: When linking to another note, prefer neutral phrasing such as "For tokenization mechanics, see ..." instead of "this note covers ..." or "that note explains ..."
-### Cross-Reference Patterns
-- **Inline linking**: Link related concepts as they naturally appear in the text rather than in separate "Related Concepts" or "See Also" sections at the end
-- **Parenthetical links**: Related concepts linked in parentheses after key terms
-- **Directory-aware linking**: Links follow the actual file structure with relative paths
-- **Topic clustering**: Related concepts grouped together with extensive internal linking
-- **Contextual references**: Links should enhance the reading flow by appearing where concepts are naturally discussed
+- Use paths relative to the current note and confirm that every target exists.
+- Preserve valid internal links when revising content.
+- Follow the vault's existing Markdown-link conventions and directory structure.
+- Prefer neutral wording, such as “For tokenization mechanics, see …,” over references to “this note” or “that note.”
+- Update affected links and anchors when moving or renaming content.
+
+## Editing workflow
+
+1. Inspect the target file and all directly relevant local sources before drafting.
+2. Search the vault for overlapping coverage and established terminology.
+3. Make the smallest coherent edit that fully resolves the request; avoid leaving duplicated explanations in multiple notes.
+4. Validate links, code fences, heading hierarchy, Mermaid syntax, and any commands or code examples that can be checked locally.
+5. Inspect the final diff and reread the surrounding material as a first-time reader.
+6. Run the repository's Markdown lint workflow when appropriate and resolve introduced findings.
+
+When a user asks a question about an existing note and requests a rewrite, treat the question as a documentation defect. Insert the missing definition, assumption, distinction, or causal link where the ambiguity first arises instead of appending a reactive FAQ or disconnected clarification.
