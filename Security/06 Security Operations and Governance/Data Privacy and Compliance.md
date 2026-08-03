@@ -85,12 +85,11 @@ Pseudonymization is designed to protect data at rest or in transit while ensurin
     - _How it works:_ The data is useless to an attacker without the decryption key. However, because the organization holds the key, the data is still considered personal and regulated.
 - **Tokenization:** Sensitive data is completely removed from a system and replaced with a randomly generated, non-sensitive string of characters (a "token").
     - _How it works:_ Unlike encryption (where the math is reversible), tokens have no mathematical relationship to the original data. The actual sensitive data is stored in a highly secure, isolated "token vault." When the system needs the real data, it passes the token to the vault, which looks up the original value and returns it. This is widely used in payment processing (PCI-DSS compliance).
-- **Keyed Hashing (HMAC) / Salted Hashing:** While basic hashing is weak, adding a secret cryptographic key (HMAC) or a massive, secret string of random data (a "pepper") to the input before hashing makes it impossible for attackers to use dictionary attacks.
+- **[Keyed-Hashing: HMAC](03%20Hashing%20and%20Password%20Storage.md#Keyed-Hashing%20HMAC) / [Salted Hashing](03%20Hashing%20and%20Password%20Storage.md#Salting):** While basic hashing is weak, adding a secret cryptographic key (HMAC) or a massive, secret string of random data (a "pepper") to the input before hashing makes it impossible for attackers to use [dictionary attacks](03%20Hashing%20and%20Password%20Storage.md#Dictionary%20attacks).
     - _How it works:_ It allows systems to compare records (e.g., checking if an email address already exists in the database) without storing the actual email address in plain text.
-        
 - **Dynamic Data Masking:** The original data remains intact in the database, but the system obscures it on the fly when presenting it to unauthorized users.
-    
     - _Example:_ A customer service representative sees a credit card number as `****-****-****-1234`. The underlying data is still there, but the application layer pseudonymizes it for that specific viewer.
+
 ## Processing, legal bases, and actors
 
 Processing covers the full operational life of personal data, not just storage. Collection, reception, classification, use, access, reproduction, transmission, distribution, storage, modification, communication, transfer, dissemination, evaluation, control, extraction, and deletion all count as processing.

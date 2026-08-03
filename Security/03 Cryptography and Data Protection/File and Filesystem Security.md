@@ -1,33 +1,54 @@
 # File and Filesystem Security
 
+File security protects the data objects people actually use: documents, configuration files, databases, keys, logs, and executables. Filesystem security protects the storage layer that holds those objects: directories, permissions, mounts, removable media, and disk-level handling.
+
+The distinction matters because a file can be sensitive even when the disk is healthy, and a filesystem can be dangerous even when the files themselves look ordinary. Security failures happen at both layers: a confidential file may be exposed through weak permissions, while a whole storage environment may be compromised through unsafe mounting, legacy formats, or poor recovery practices.
+
+These controls sit close to the operating system boundary. For the storage mechanics behind file systems, see [Storage Management](../../Operating%20Systems/06%20Storage%20Management.md).
+
 ## File Protection
 
-File protection is a critical component of cybersecurity. Confidential files—such as financial records, personal data, and business information—must be strictly protected against unauthorized access or data leaks.
+File protection focuses on the individual object and who can do what to it.
 
-* **Protective Techniques:** To secure files, organizations implement techniques like data encryption, access management, and rigorous security policies to control who can access the information.
-* **Backups:** It is essential for organizations to perform regular backups and maintain these security copies in separate, isolated locations. This guarantees data recovery in the event of hardware failures or cyberattacks (like ransomware).
+- **Access control:** Permissions on files and directories form one of the first security boundaries on any endpoint.
+- **Confidentiality:** Sensitive files may need encryption at rest so physical theft or offline disk access does not immediately expose their contents.
+- **Integrity:** Executables, configuration files, and records must be protected against unauthorized modification.
+- **Availability:** Important files need recoverable copies so corruption, deletion, or ransomware does not become permanent loss.
 
 ## Filesystem Security
 
-For the operating-system concepts behind file systems, see:
+Filesystem security focuses on the behavior and administration of the storage environment.
 
-- [Storage Management](../../Operating%20Systems/06%20Storage%20Management.md)
+- **Permission inheritance and ownership:** Misconfigured directory structures can leak access far beyond the intended users.
+- **Mounting and removable media:** External drives and mounted volumes introduce both malware risk and data-leak paths.
+- **Operational actions:** Formatting disks, changing filesystem types, or using legacy filesystems can introduce reliability and security problems.
+- **Recovery posture:** A filesystem is safer when backup and restore procedures exist before an outage or compromise occurs.
 
-Security involving the filesystem is about protecting how data is stored, accessed, modified, and recovered on disk. In practice, this means controlling permissions, limiting unauthorized reads and writes, encrypting sensitive data, maintaining backups, and choosing safe operational practices for storage devices.
+## Core Control Areas
 
-- **Access Control:** File and directory permissions are one of the first security boundaries on an endpoint. Misconfigured permissions can expose confidential data or allow unauthorized modification of executables and configuration files.
-- **Data Protection:** Encryption at rest helps protect sensitive files if a device is stolen or if an attacker gains physical access to the storage medium.
-- **Recovery and Resilience:** Backups reduce the impact of corruption, accidental deletion, hardware failure, and ransomware attacks.
-- **Operational Risks:** Actions like formatting disks, mounting removable media, or using legacy file systems can introduce security and reliability risks if done carelessly.
+### Permissions and access management
 
-## Cryptographic Foundations
+Least privilege matters at the storage layer. A service should not be able to modify files it only needs to read, and ordinary users should not be able to rewrite security-sensitive binaries or secrets.
 
-Endpoint security relies heavily on cryptographic protections for data at rest, in transit, and during processing. This section covers platform-specific implementations of cryptographic controls.
+### Encryption at rest
 
-> **Core Concepts:** For comprehensive information about encryption algorithms, key management, digital certificates, and cryptographic best practices, see [Cryptography and Data Protection](01%20Cryptography.md).
+Encryption at rest protects data stored on disks, backups, and removable media. It raises the cost of physical theft and offline copying, but it does not fully protect a live compromised system that can already access the decrypted data through legitimate processes.
 
-**Related Security Concepts:**
-- [Zero Trust Architecture](../02%20Identity%20and%20Access/03%20Zero%20Trust%20Architecture.md) - Framework for continuous verification and least-privilege access
-- [Authentication Methods](../02%20Identity%20and%20Access/01%20Authentication.md) - Identity verification techniques including multi-factor authentication
-- [Network Security Controls](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md) - Firewall and network segmentation strategies
-- [Incident Response](Incident%20Response%20and%20Recovery.md) - Security incident management and forensics
+For the cryptographic mechanism, see [Encryption](02%20Encryption.md#Encryption%20States). For the lifecycle of the underlying keys, see [Key Management Lifecycle](Key%20Management%20Lifecycle.md).
+
+### Recovery and resilience
+
+Backups reduce the impact of accidental deletion, corruption, hardware failure, and ransomware. They are part of file security because the value of the file includes the ability to recover it when the primary copy is gone.
+
+For the operational recovery flow, see [Backup and Restore](Backup%20and%20Restore.md).
+
+## Platform and Security Context
+
+Storage protection rarely stands alone.
+
+- [Endpoint Security](../05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md): endpoint hardening and device controls that surround the storage layer.
+- [Windows Security](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Security.md#BitLocker%20Drive%20Encryption%20Integration): Windows-specific disk and file-encryption mechanisms.
+- [Linux Endpoint Security](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md): Linux-oriented hardening practices and secure remote administration.
+- [Incident Response, Forensics, and Disaster Recovery](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md): recovery, investigation, and restoration after storage-related incidents.
+
+File and filesystem security is where abstract cryptographic and policy decisions become concrete operating-system behavior. If the permissions, keys, backup copies, or operational procedures fail here, higher-level security goals usually fail with them.

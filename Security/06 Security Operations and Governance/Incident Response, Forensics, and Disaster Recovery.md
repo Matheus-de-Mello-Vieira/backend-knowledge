@@ -388,7 +388,7 @@ To ensure that digital evidence is reliable, credible, and admissible in a profe
 
 Integrity ensures that the evidence analyzed in the lab is an identical replica of the data found at the scene.
 
-- **[Hashing](01%20Cryptography.md#4.%20Hashing%20The%20"One-Way"%20Trap)**: Investigators use mathematical algorithms (like SHA-256) to create a "digital fingerprint" of the original drive. If even a single character changes, the hash will fail, signaling that the evidence has been tampered with.
+- **[Hashing](../03%20Cryptography%20and%20Data%20Protection/03%20Hashing%20and%20Password%20Storage.md#Hash%20Properties%20and%20Common%20Uses)**: Investigators use mathematical algorithms (like SHA-256) to create a "digital fingerprint" of the original drive. If even a single character changes, the hash will fail, signaling that the evidence has been tampered with.
 - **Write Blockers**: During collection, specialized hardware is used to prevent the investigator's computer from accidentally writing any data back to the original device.
 
 #### 2. Authenticity: Proving the Source

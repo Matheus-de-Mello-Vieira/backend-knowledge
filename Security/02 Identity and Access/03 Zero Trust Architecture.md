@@ -43,7 +43,7 @@ Every device accessing network resources must be verified and secured:
 
 - **Device Registration:** Comprehensive inventory and registration of all devices accessing network resources.
 - **Health Assessment:** Continuous monitoring of device security posture, including patch levels, antivirus status, and compliance.
-- **Device Certificates:** [Cryptographic certificates](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#6.%20Digital%20Certificates%20and%20PKI) for device authentication and secure communication.
+- **Device Certificates:** [Cryptographic certificates](../03%20Cryptography%20and%20Data%20Protection/04%20Digital%20Certificates%20and%20PKI.md) for device authentication and secure communication.
 - **Mobile Device Management (MDM):** Centralized control and security enforcement for mobile devices.
 
 ## Technology Components
@@ -62,7 +62,7 @@ Centralized collection and analysis of security events from across the Zero Trus
 ### **Data Protection**
 Comprehensive protection of data at rest, in transit, and in use:
 
-- **Encryption:** Strong encryption for all data, with proper [key management and rotation](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#7.%20Key%20Management%20Lifecycle).
+- **Encryption:** Strong encryption for all data, with proper [key management and rotation](Key%20Management%20Lifecycle.md).
 - **Data Classification:** Systematic categorization of data based on sensitivity and business value.
 - **Data Loss Prevention (DLP):** Monitoring and prevention of unauthorized data access, sharing, or exfiltration.
 - **Rights Management:** Fine-grained control over data access and usage rights.

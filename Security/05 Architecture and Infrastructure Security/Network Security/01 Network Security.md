@@ -46,7 +46,7 @@ Micro-segmentation is advanced network segmentation that creates granular securi
 - **Container Network Security:** Specialized segmentation for containerized applications and microservices architectures.
 - **East-West Traffic Control:** Monitoring, inspecting, and controlling lateral (internal) traffic between internal systems, not just north-south traffic crossing the perimeter.
 - **Application-Centric Policies:** Security policies that follow applications regardless of their network location.
-- **Encrypted Communication:** Internal traffic should be [encrypted in transit](../../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#3.%20The%20States%20of%20Encryption), including service-to-service communication inside the network.
+- **Encrypted Communication:** Internal traffic should be [encrypted in transit](../../03%20Cryptography%20and%20Data%20Protection/02%20Encryption.md#Encryption%20States), including service-to-service communication inside the network.
 
 ## Wireless Network Security Standards
 

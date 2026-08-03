@@ -84,7 +84,7 @@ Linux endpoint protection relies on multiple complementary approaches:
 
 ### SSH (Secure Shell) Protection
 
-SSH provides cryptographic protection for remote access. For detailed information about SSH's encryption mechanisms, see [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/01%20Cryptography.md#5.%20Applications%20of%20Asymmetric%20Cryptography).
+SSH provides cryptographic protection for remote access. For detailed information about SSH's encryption mechanisms, see [Cryptography and Data Protection](../03%20Cryptography%20and%20Data%20Protection/02%20Encryption.md#Applications%20of%20Asymmetric%20Cryptography).
 
 **Linux SSH Security Configuration:**
 - **Key-Based Authentication:** Ed25519 keys preferred for stronger security
