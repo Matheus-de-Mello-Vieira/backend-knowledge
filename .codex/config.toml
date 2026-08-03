@@ -1,12 +1,10 @@
-model = "gpt-5.6-terra"
+model = "gpt-5.4"
 model_reasoning_effort = "medium"
-
-[mcp_servers.file-system]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+model_instructions_file = "model_instructions.md"
 
 [mcp_servers.qmd]
 command = "npx"
+required = true
 args = ["-y", "@tobilu/qmd", "mcp"]
 
 [[hooks.PreToolUse]]

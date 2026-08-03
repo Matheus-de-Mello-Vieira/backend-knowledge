@@ -1,4 +1,4 @@
-# Developing GraphQL Server
+find "$staging_dir" -print# Developing GraphQL Server
 
 *   Two components in Graphq
 

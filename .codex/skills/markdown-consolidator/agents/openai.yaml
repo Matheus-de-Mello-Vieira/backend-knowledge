@@ -1,0 +1,7 @@
+interface:
+  display_name: "Standalone Lossless Markdown Consolidator"
+  short_description: "Unify Markdown without loss or source-file citations"
+  default_prompt: "Perform a complete lossless consolidation of the Markdown sources in this workspace. Preserve every informational unit, keep every temporary artifact under one disposable .markdown-consolidator-work directory, produce one standalone Markdown publication, do not cite or identify the input files, state all content directly without meta-source narration, and fully present and explain every example."
+
+policy:
+  allow_implicit_invocation: true

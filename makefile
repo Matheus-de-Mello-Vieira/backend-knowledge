@@ -1,19 +1,43 @@
+-include .env
+
+FTP_HOST ?= 
+FTP_PORT ?= 21
+FTP_USER ?=
+FTP_PASSWORD ?=
+FTP_DEST ?= /G/backend-knowledge
+
+define upload_vault_subset
+	@staging_dir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$staging_dir"' EXIT; \
+	rsync -a --prune-empty-dirs \
+		--include='.obsidian/' \
+		--include='.obsidian/***' \
+		--exclude='.*' \
+		--include='*/' \
+		--include='*.md' \
+		--exclude='*' \
+		./ "$$staging_dir/"; \
+	lftp \
+		-u "$(FTP_USER),$(FTP_PASSWORD)" \
+		-p "$(FTP_PORT)" \
+		"$(FTP_HOST)" \
+		-e "set cmd:fail-exit yes; \
+		    mkdir -p \"$(FTP_DEST)\"; \
+		    mirror \
+		        --reverse \
+		        --verbose \
+		        --delete \
+		        --parallel=4 \
+		        \"$$staging_dir\" \
+		        \"$(FTP_DEST)\"; \
+		    bye"
+endef
+
+.PHONY: upload_vault_ftp
+upload_vault_ftp:
+	$(call upload_vault_subset)
+
+.PHONY: update_qdm
 update_qdm:
 	qmd update
 	qmd embed
-
-TP_SHARE_DEST ?= /Volumes/tp-share/backend-knowledge
-
-define rsync_vault_subset
-	rsync -av --prune-empty-dirs \
-		--exclude='._*' \
-		--include='*/' \
-		--include='*.md' \
-		--include='.obsidian/***' \
-		--exclude='*' \
-		./ $(1)/
-endef
-
-sync_tp_share:
-	$(call rsync_vault_subset,$(TP_SHARE_DEST))
-	find "$(TP_SHARE_DEST)" -type f -name '._*' -delete

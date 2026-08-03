@@ -20,7 +20,7 @@ The core cybersecurity lifecycle transforms "emergency mode" into a structured, 
 Organizations need formal plans because incidents create time pressure, uncertainty, and competing priorities.
 * [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md) defines who can escalate decisions and lead crisis communications
 * [Risk Management and Threat Modeling](../01%20Foundations%20and%20Risk/02%20Risk%20Management%20and%20Threat%20Modeling.md) helps prioritize the systems and business functions that matter most.
-* Formal plans also support [Legal Frameworks and Compliance](Legal%20Frameworks%20and%20Compliance.md) by documenting notification duties, evidence handling, and recovery accountability so the response is coordinated, defensible, and repeatable.
+* Formal plans also support [Data Privacy and Compliance.bkp](Data%20Privacy%20and%20Compliance.md) by documenting notification duties, evidence handling, and recovery accountability so the response is coordinated, defensible, and repeatable.
 
 ## Events, Incidents, and Disasters
 

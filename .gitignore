@@ -219,3 +219,6 @@ pnpm-debug.log*
 *.tar.gz
 *.tgz
 *.zip
+
+.markdown-consolidator-work
+*.bkp.*
