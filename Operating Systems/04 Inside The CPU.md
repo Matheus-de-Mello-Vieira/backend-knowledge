@@ -42,7 +42,8 @@ class c1mmu mmu
 class c1l1 cache
 ```
 
-- **Arithmetic Logic Unit (ALU):** The actual mathematical engine of the processor. It performs all integer arithmetic (addition, subtraction) and bitwise logic (AND, OR, XOR) on raw binary data. Modern cores also include a Floating-Point Unit (FPU) specifically dedicated to complex decimal math.
+- **Arithmetic Logic Unit (ALU):** The standard mathematical engine of the processor. It performs all integer arithmetic (addition, subtraction) and bitwise logic (AND, OR, XOR) on raw binary data. If the math involves integer numbers or simple memory offsets, it happens here.
+- **Floating-Point Unit (FPU):** The complex math engine. While the ALU is limited to integers, the FPU is specifically designed to calculate decimals, fractions, and scientific notation (using standards like IEEE 754). It handles the heavy mathematical workloads that the ALU cannot physically process, such as trigonometry, physics simulations, and large [SIMD](02%20The%20Anatomy%20of%20a%20Process.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) vector calculations.
 - **Control Unit (CU):** The conductor of the silicon orchestra. It drives the **Fetch-Decode-Execute** cycle. It fetches the next instruction from memory, decodes its binary intent, and physically routes the correct electrical signals to the ALU, registers, or memory bus to execute the command.
 - **Registers:** The lowest-latency storage available to an execution core, built directly into the core. They have much lower latency than cache or RAM, but very limited capacity (typically 64 bits per register). They hold the values the ALU is currently mutating.
 - **Memory Management Unit (MMU):** The hardware translator. It intercepts the virtual addresses requested by the Control Unit and translates them into physical RAM locations using the OS-managed Page Tables. Largely talked about at [Memory Management](03%20Memory%20Management.md) notes.
@@ -396,13 +397,81 @@ However, measuring a CPU's actual performance requires understanding that **one 
 - **Superscalar Execution:** Modern processors (both RISC and CISC) are "superscalar." They have multiple ALUs inside a single core. If two instructions don't depend on each other, a modern core can actually execute 4 to 6 instructions simultaneously in a _single_ clock cycle (an IPC > 1).
 - **The SIMD Multiplier:** Features like [Single Instruction, Multiple Data (SIMD)](02%20The%20Anatomy%20of%20a%20Process.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) don't necessarily reduce the number of cycles an instruction takes, but they drastically increase the _amount of data_ processed per cycle (e.g., adding 16 pairs of numbers in the same 1-cycle heartbeat). 
 - **The Overhead Bottleneck:** Actually fetching the code from memory and decoding it into electrical signals takes several clock cycles on its own. If the execution core has to wait for the decoder, billions of cycles are wasted. This is solved by **Instruction Pipelining**.
-## Display CPU info
+## The Instruction Life Cycle & Pipelining
 
-- Show L caches: `sysctl -a | grep cachesize`
-- Show number of cores: `sysctl -n hw.physicalcpu`
-- Show CPU architecture: `uname -m`
-## ...
+The lifecycle of every instruction follows a strict sequence of hardware stages. To maximize IPC (Instructions Per Cycle), modern CPUs use **Pipelining**—an assembly-line technique where the CPU overlaps these stages. While Instruction 1 is being executed, Instruction 2 is being decoded, and Instruction 3 is being fetched.
 
-### Multi level threading
+> [!info] Same word, different bottleneck
+> CPU pipelining and [HTTP/1.1 pipelining](../Networking/02%20Protocols/07%20HTTP1.1.md#HTTP%20Pipelining%20(The%20Failed%20Feature)) share the same core idea: start later work before earlier work has fully finished so an expensive path stays busy instead of idle. The important difference is what is being overlapped. In a CPU, the overlapped units are fixed hardware stages of different instructions. In HTTP/1.1, the overlapped units are multiple requests on one TCP connection. The analogy is useful because both try to increase throughput by filling idle gaps, but their failure modes differ: CPU pipelines mainly suffer from hazards such as branches and data dependencies, while HTTP/1.1 pipelining suffered from protocol-level head-of-line blocking and intermediates proxies.
 
-Also called hypervisor, that transform each physical core into two virtual cores, with another set of registers. They share everything else (ALU, CU, MMU, etc). Without that, the cores would wait after executing certain instruction, wasting precious cycles.
+The classic pipeline consists of five stages:
+
+1. **Instruction Fetch (IF):**
+    - The CPU reads the Program Counter (PC/IP) to find the virtual address of the next instruction.
+    - The MMU/TLB translates this to a physical address.
+    - The CPU fetches the raw binary instruction from the L1 Instruction Cache (fetching a full 64-byte cache line from L2/L3 if there is a cache miss).
+2. **Instruction Decode (ID):**
+    - The **Control Unit (CU)** takes the raw binary opcode and translates it into electrical control signals.
+    - _Example:_ It sees the binary for `ADD`, identifies which registers hold the data, and flips the microscopic physical switches to wire those specific registers to the ALU. (In CISC x86 CPUs, this is also where complex instructions are shredded into smaller Micro-ops).
+3. **Execute (EX):**
+    - The **Arithmetic Logic Unit (ALU)** performs the actual computation.
+    - The Control Unit routes the electrical signals from the source registers directly into the ALU's inputs. The ALU crunches the operation (e.g., executing the mathematical addition, or evaluating if `x == y`) and generates the physical result to be passed down the pipeline.
+4. **Memory Access (MEM - Optional):**
+    - If the instruction was a pure math calculation (like adding two registers), this stage is skipped.
+    - If the instruction is a `LOAD` or `STORE`, the CPU interacts with the L1 Data Cache to read from or write to main system RAM.
+5. **Write-Back (WB):**
+    - The final result—whether it is the mathematical answer from the ALU or the data retrieved from memory in the previous stage—is written back into the designated architectural destination register (e.g., updating `rax`).
+### Branch Prediction & Speculative Execution
+
+Because modern CPUs use deep pipelines, they face a massive bottleneck when they encounter a conditional branch (like an `if/else` statement or a `while` loop).
+
+When the CPU fetches the `if` instruction, it won't actually know the result of that condition until the instruction reaches the **Execute (EX)** stage a few clock cycles later. If the CPU simply paused and waited for the ALU to output the answer, the entire pipeline would sit idle. Over millions of branches, this would destroy performance.
+
+To solve this, modern CPUs use two interconnected technologies:
+#### 1. The Branch Predictor
+
+Instead of waiting, the CPU simply guesses which way the `if` statement will go. It uses complex historical tracking (the Branch Target Buffer) to remember how this specific `if` statement behaved the last few times it was run. (For example, if a `for` loop runs 100 times, it branches back to the top 99 times. The predictor learns to safely guess "go to the top").
+#### 2. Speculative Execution
+
+Once the CPU guesses the path, it doesn't just queue up the instructions—it actually starts **executing** them before the `if` statement has been officially solved.
+
+* **If the guess is right:** The pipeline stays completely full. The CPU effectively executed code in zero time.
+* **If the guess is wrong (Misprediction):** The CPU performs a **Pipeline Flush**. It instantly throws away all the speculative work, rolls back the registers to their previous state, and fetches the correct path. This wastes about 10–20 clock cycles, but because predictors are ~95% accurate, the math heavily favors guessing.
+#### The Spectre Vulnerability (Hardware Hacking)
+
+In 2018, security researchers discovered a catastrophic flaw in this exact architecture, naming it **Spectre**.
+
+Spectre proved that while a CPU rolls back its *registers* when it makes a wrong guess, **it forgets to roll back the CPU Cache.**
+
+Hackers realized they could weaponize this by doing the following:
+
+1. **Train the Predictor:** Feed the CPU harmless data to train the Branch Predictor to always guess `True` on a specific `if` statement.
+2. **The Trap:** Feed the CPU a malicious input that makes the `if` statement evaluate to `False`, but specifically ask it to read highly secure memory (like a password) inside the `True` block.
+3. **The Speculative Theft:** Because the CPU is trained to guess `True`, it speculatively executes the block. It fetches the secret password from memory and loads it into the L1 Cache.
+4. **The Rollback Failure:** A fraction of a second later, the ALU finishes the math, realizes the `if` statement was actually `False`, and flushes the pipeline. The CPU thinks it stopped the hack.
+5. **The Extraction:** The password is left sitting in the hardware cache. The hacker can then use a timing attack (measuring exactly how many nanoseconds it takes to read certain memory blocks) to reconstruct the password directly from the cache line.
+
+> **The Takeaway:** Spectre proved that perfectly functioning, correctly designed hardware can still be exploited. It forced the entire software industry to rewrite operating systems to build software barriers around the CPU's speculative execution engine.
+
+### Simultaneous Multithreading (SMT) / Hyper-Threading
+
+"Hyper-Threading" (Intel's marketing term for Simultaneous Multithreading, or SMT) is a hardware trick that exposes a single physical CPU core to the Operating System as **two logical (virtual) cores**.
+
+#### The Hardware Split
+
+To accomplish this, CPU engineers duplicate the "Architectural State" but share the "Execution Engine":
+
+- **Duplicated:** The core physically contains two sets of Registers (including two Program Counters and two sets of Flags).
+- **Shared:** They share the heavy, expensive machinery: the L1/L2 Caches, the Control Unit, the Memory Management Unit (MMU), and the ALU execution ports.
+
+#### The Goal: Hiding Latency
+
+Without SMT, if a thread suffers a cache miss and has to fetch data from main RAM, the entire CPU core stalls for ~400 clock cycles doing absolutely nothing. With SMT, if Logical Core 0 stalls waiting for memory, Logical Core 1 instantly steps in and uses the idle ALU to crunch math. SMT exists purely to keep the execution pipelines fed when one thread stalls.
+
+#### The Trade-off: Performance Variance
+
+While SMT generally yields a 20-30% overall performance boost in multitasking, it introduces high variance and unpredictability:
+
+- **Resource Contention:** Because both logical cores share the exact same execution ports and caches, they can step on each other's toes. If both threads need to do heavy floating-point math at the exact same time, they will fight over the FPU (Floating-Point Unit), potentially running _slower_ than if they had just run sequentially.
+- **Cache Thrashing:** Two threads fighting for the same tiny L1 cache will overwrite each other's data, causing constant cache misses.
+- **The Fix:** For workloads that demand absolute predictability and zero latency variance (like high-frequency algorithmic trading, real-time audio processing, or high-end gaming), engineers will often physically disable SMT in the BIOS, ensuring one thread gets 100% undisputed access to the core's cache and ALUs.
