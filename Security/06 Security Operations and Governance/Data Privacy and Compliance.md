@@ -301,6 +301,23 @@ A formal data-management policy is the bridge that translates these high-level p
 2. **User Agency (The "How"):** The self-service mechanisms that allow people to easily grant or withdraw consent, export their data, and exercise their deletion rights without friction.
 3. **Technical Guardrails (The "Enforcement"):** The specific IT and security controls—such as encryption, firewalls, role-based access restrictions, and secure backups—that guarantee the first two pillars are actually enforced.
 
+### Terms of use, privacy notices, and cookie consent
+
+Transparency is not satisfied by collecting consent somewhere in the interface. It has to be expressed through the documents and prompts that tell users what relationship they are entering and what data flows follow from that decision.
+
+- **Terms of use:** Define the service contract: acceptable use, account responsibilities, service conditions, limitation rules, and the operational relationship between user and provider.
+- **Privacy notice or privacy policy:** Explains which personal data is collected, why it is processed, who receives it, how long it is retained, and how users can exercise their rights.
+- **Cookie consent and tracking notices:** Cover browser-side storage and tracking practices such as session cookies, analytics identifiers, advertising tags, and preference storage.
+
+These documents matter because the legal basis for processing is only part of the problem. Users also need a truthful description of where the data goes, whether third parties or cloud providers receive it, and what retention or cross-border transfer consequences follow from that design.
+
+For engineers, this creates concrete implementation duties:
+
+- consent banners must map to real tracking behavior rather than decorative UI;
+- retention statements must match actual deletion and backup workflows;
+- third-party integrations listed in the policy must match the processors the system really uses;
+- revocation paths must stop optional processing rather than merely hiding the banner.
+
 ## Major Legal Frameworks
 
 Global privacy practice is anchored by several foundational laws. While jurisdictions differ in their specific mechanics, they share a common DNA centered on transparency, user rights, and organizational accountability.
