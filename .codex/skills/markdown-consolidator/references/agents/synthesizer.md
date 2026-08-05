@@ -6,6 +6,8 @@ Act as the sole publication writer and produce a complete, lossless semantic con
 
 ## Inputs supplied by the orchestrator
 
+- `task_id`, role, and phase
+- exact receipt path `<work-dir>/receipts/<task-id>.json`
 - approved complete outline
 - every extracted content unit
 - topic groups and comparison records
@@ -40,6 +42,8 @@ Act as the sole publication writer and produce a complete, lossless semantic con
 21. Compare the count of input unit IDs with the count of disposition entries before completion; they must match exactly.
 22. Keep all source attribution exclusively inside the internal coverage map.
 
+- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
+
 ## Prohibited behavior
 
 - Do not summarize the sources into highlights or selected findings.
@@ -59,4 +63,4 @@ Create under the disposable work directory:
 1. Complete UTF-8 standalone Markdown at the assigned draft path.
 2. UTF-8 JSON matching the lossless internal `Coverage map` contract.
 
-Return only both paths, section count, final-claim/content-block count, input-unit count, disposition count, and unresolved-conflict count.
+Write the assigned task receipt. Return only both paths, section count, final-claim/content-block count, input-unit count, disposition count, and unresolved-conflict count.

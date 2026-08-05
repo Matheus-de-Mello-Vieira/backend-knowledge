@@ -6,6 +6,8 @@ Compare all units in the assigned topic groups and describe their semantic relat
 
 ## Inputs supplied by the orchestrator
 
+- `task_id`, role, and phase
+- exact receipt path `<work-dir>/receipts/<task-id>.json`
 - assigned topic groups and complete unit records
 - target scope and terminology map
 - comparison-batch contract
@@ -33,6 +35,8 @@ Compare all units in the assigned topic groups and describe their semantic relat
 8. Record confidence and uncertainty.
 9. Keep source IDs and paths inside the internal comparison artifact only; never propose local-file attribution as publication wording.
 
+- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
+
 ## Prohibited behavior
 
 - Do not label source-set information irrelevant for deletion.
@@ -46,4 +50,4 @@ Compare all units in the assigned topic groups and describe their semantic relat
 
 Write a UTF-8 JSON object matching `comparison_batch` in `references/contracts.md`.
 
-Return only the output path, assigned-unit count, accounted-unit count, record count, conflict count, and warning count.
+Write the assigned task receipt. Return only the output path, assigned-unit count, accounted-unit count, record count, conflict count, and warning count.

@@ -1,13 +1,48 @@
 ---
 name: markdown-consolidator
-description: Perform a complete, lossless semantic consolidation of multiple Markdown files about the same subject. Preserve every informational unit, detail, example, caveat, procedure, warning, rationale, variant, historical statement, conflict, code block, table, external reference, and qualifier while removing only redundant wording. Produce one standalone Markdown publication with no citations, paths, names, IDs, or line references to the input files. Keep all extraction, provenance, decisions, drafts, conflicts, and validation artifacts in one disposable work directory. Use when asked to merge, unify, reconcile, synthesize, or update overlapping .md sources. Never replace the sources with a summary unless the user explicitly requests summarization.
+description: Orchestrate a mandatory multi-subagent, complete, lossless semantic consolidation of multiple Markdown files about the same subject. Preserve every informational unit, detail, example, caveat, procedure, warning, rationale, variant, historical statement, conflict, code block, table, external reference, and qualifier while removing only redundant wording. Produce one standalone Markdown publication with no citations, paths, names, IDs, or line references to the input files. Keep all extraction, provenance, decisions, drafts, conflicts, and validation artifacts in one disposable work directory. Use when asked to merge, unify, reconcile, synthesize, or update overlapping .md sources. Never replace the sources with a summary unless the user explicitly requests summarization.
 ---
 
 # Markdown Consolidator
 
 Create one coherent, standalone Markdown document from overlapping sources without losing source information. This is **lossless semantic consolidation**, not summarization, shortening, or selective extraction.
 
-The skill is self-contained. The orchestrator reads role definitions from `references/agents/*.md` and injects them into built-in subagent tasks. No `.codex/agents` registration is required.
+The skill is self-contained. The main agent is an **orchestrator only**: it inventories files, spawns and waits for subagents, checks machine-readable gates, publishes the accepted draft, and reports results. It must not perform source analysis, semantic comparison, conflict resolution, document synthesis, or semantic validation itself.
+
+The orchestrator reads role definitions from `references/agents/*.md` and injects them into built-in subagent tasks. No `.codex/agents` registration is required.
+
+## Mandatory delegated execution
+
+This workflow requires subagents. It is not an optional optimization.
+
+Immediately after inventory, the main agent must explicitly request subagents using direct instructions such as `Spawn one source-analyst subagent per assigned source batch and wait for all of them.` Skill wording such as `consider delegating` or `delegate when useful` is insufficient.
+
+The main agent may only:
+
+- resolve input, output, and work-directory paths;
+- run deterministic inventory and validation scripts;
+- read role instructions, contracts, policies, task receipts, counts, and validation findings;
+- create and update the delegation log;
+- spawn, wait for, retry, or cancel bounded subagent tasks;
+- verify that required files exist and conform structurally;
+- copy the accepted subagent-written draft to the final path;
+- report final metrics.
+
+The main agent must not:
+
+- open source Markdown bodies for semantic analysis after inventory;
+- design the canonical outline itself;
+- extract or normalize source content;
+- group units by topic;
+- compare claims or resolve conflicts;
+- plan unit dispositions;
+- write or repair publication prose;
+- perform semantic coverage review itself;
+- fabricate task receipts or claim that a subagent ran when it did not.
+
+If subagents cannot be spawned, stop with a concrete `subagent execution unavailable` error. Do not silently fall back to completing specialist work in the main thread.
+
+Every delegated task must write a task receipt under `<work-dir>/receipts/`. Final success requires deterministic delegation validation in addition to content validation.
 
 ## Publication boundary
 
@@ -123,6 +158,9 @@ Place every disposable artifact under one directory:
 ```text
 .markdown-consolidator-work/
   inventory.json
+  delegation-log.json
+  delegation-validation-report.json
+  receipts/
   outline.json
   units/
   topics.json
@@ -142,7 +180,9 @@ If the user explicitly asks for cleanup after success, delete the work directory
 ## Reference-backed subagent roles
 
 ```text
+references/agents/outline-planner.md
 references/agents/source-analyst.md
+references/agents/topic-organizer.md
 references/agents/topic-comparator.md
 references/agents/conflict-resolver.md
 references/agents/synthesizer.md
@@ -151,18 +191,24 @@ references/agents/validator.md
 
 ### Delegation protocol
 
-Before starting a role-specific subagent:
+Read `references/delegation-policy.md` before any semantic phase.
 
-1. Read the complete role file.
-2. Read the referenced contracts and policies.
-3. Build a task prompt containing the complete role instructions, exact assigned scope, input paths, output path, applicable contract, audience, terminology, conflict policy, lossless-coverage rule, publication boundary, and work-directory boundary.
-4. Explicitly state: `This is exhaustive consolidation, not summarization. Do not omit any informational unit. Do not cite or name the input files in publication prose. State content directly. Never write meta-source phrases such as “the material states” or refer to examples that are not fully presented and explained in the final document.`
-5. Use an explorer-style subagent for extraction and validation, a default-style subagent for comparison and conflict reasoning, and one worker-style subagent for synthesis.
-6. Validate the returned artifact before accepting it.
-7. Retry once with concrete validation errors when malformed or incomplete.
-8. Fall back to sequential execution in the main agent when subagents are unavailable.
+For every role-specific task:
 
-Do not assume subagents can discover role files. Inject the role text and contracts into each delegated task.
+1. Read the complete role file and applicable contract or policy.
+2. Create a bounded task with one role, one disjoint scope, exact input paths, exact output paths, and a task ID.
+3. Explicitly instruct Codex to **spawn a subagent now**, not merely to consider delegation.
+4. Inject the complete role instructions because subagents must not be expected to discover skill files on their own.
+5. Require the subagent to write both its assigned output and `<work-dir>/receipts/<task-id>.json`.
+6. Spawn independent tasks in parallel, then wait for all tasks in the phase.
+7. While subagents run, do not duplicate their work in the main thread.
+8. Check output existence, receipt existence, assigned-scope coverage, counts, and schema shape.
+9. Retry a failed task once with concrete validation errors.
+10. If spawning remains unavailable or a required phase cannot produce valid receipts, stop. Do not execute the role in the main thread.
+
+Use explorer-style subagents for outline discovery, extraction, topic organization, and validation; default-style subagents for comparison and conflict reasoning; and exactly one worker-style subagent for each draft revision.
+
+Do not assume subagents can discover role files. Inject the role text, receipt contract, and applicable data contract into each delegated task.
 
 ## Workflow
 
@@ -200,25 +246,17 @@ Also exclude the selected output directory when it is inside the source root and
 
 Stop with a concrete error when no readable Markdown files are found. Record unreadable files; do not skip them silently.
 
-Read `references/contracts.md` before creating intermediate JSON.
+Read `references/contracts.md` and `references/delegation-policy.md` before creating intermediate JSON.
 
-### 3. Plan a complete canonical outline
+Create `<work-dir>/delegation-log.json` with `execution_mode: "subagents_required"`, `fallback_used: false`, and an empty `tasks` list. Create `<work-dir>/receipts/`. Every spawn attempt must be recorded before the task starts and completed only after its receipt and outputs are present.
 
-Inspect the full heading structure of every source, not representative samples. Build an outline capable of containing all extracted information.
+### 3. Delegate complete outline planning
 
-The outline must include:
+Read `references/agents/outline-planner.md` and the `Outline` contract. Spawn one outline-planner subagent with the complete inventory and all selected source paths. The main agent must not inspect source bodies or draft the outline.
 
-- every source topic;
-- sections for exceptions, alternatives, examples, warnings, limitations, and rationale when present;
-- enough space to present every example as a self-contained scenario and explain its relevance;
-- a historical or deprecated-information section when needed;
-- an unresolved-conflicts section when needed;
-- an additional-material appendix for information that does not fit cleanly elsewhere;
-- external references when they exist in the source content.
+The outline-planner must inspect the full heading structure and content organization of every source and write `<work-dir>/outline.json`. It must provide sections for every topic, detailed examples, exceptions, alternatives, warnings, rationale, historical information, unresolved conflicts, additional material, and external references when present.
 
-Do not add an input-source bibliography or local-file reference section.
-
-Save `<work-dir>/outline.json`. An overview may introduce the document, but it must never substitute for the detailed sections.
+Wait for the outline-planner receipt and validate the outline schema before continuing. An overview may introduce the document, but it must never substitute for detailed sections.
 
 ### 4. Extract all source content
 
@@ -227,7 +265,7 @@ Read:
 - `references/agents/source-analyst.md`
 - the `Content-unit batch` contract in `references/contracts.md`
 
-Delegate one read-only extraction task per file or disjoint batch. Each analyst must cover every non-empty source line through a content unit. This includes headings, frontmatter, prose, lists, blockquotes, examples, code fences, tables, footnotes, link definitions, comments containing information, and references.
+Spawn read-only source-analyst subagents now: use one task per file when practical, or disjoint batches when source count exceeds available concurrency. Record every source assignment in the delegation log before spawning. Each analyst must cover every non-empty source line through a content unit. This includes headings, frontmatter, prose, lists, blockquotes, examples, code fences, tables, footnotes, link definitions, comments containing information, and references.
 
 Each extraction result must include:
 
@@ -238,15 +276,17 @@ Each extraction result must include:
 
 Do not accept an extraction batch with uncovered non-empty lines. Do not summarize paragraphs into a smaller set of selected claims.
 
-Write batches only under `<work-dir>/units/`.
+Wait for all source analysts. The union of source IDs in their receipts must equal the inventory source set exactly. Write batches only under `<work-dir>/units/`.
 
-### 5. Group topics without dropping units
+### 5. Delegate topic organization without dropping units
 
-Create `<work-dir>/topics.json`. Every extracted unit ID must appear in exactly one primary topic group, with optional cross-topic references. Units that do not fit the main outline go to an explicit `additional-source-material` topic rather than being discarded.
+Read `references/agents/topic-organizer.md` and the `Topic groups` contract. Spawn a topic-organizer subagent with all accepted unit batches and the approved outline. The main agent must not cluster or classify units.
+
+The topic organizer writes `<work-dir>/topics.json`. Every extracted unit ID must appear in exactly one primary topic group, with optional cross-topic references. Units that do not fit the main outline go to an explicit `additional-source-material` topic rather than being discarded. Wait for its receipt and verify exact unit-set coverage.
 
 ### 6. Compare relationships
 
-Read `references/agents/topic-comparator.md` and delegate topic groups in parallel.
+Read `references/agents/topic-comparator.md`. Partition topic IDs into disjoint scopes, explicitly spawn topic-comparator subagents in parallel, and wait for all comparator receipts.
 
 Allowed relationships:
 
@@ -266,7 +306,7 @@ Write all comparison outputs under `<work-dir>/comparisons/`.
 
 Read `references/agents/conflict-resolver.md` and `references/decision-policy.md`.
 
-Resolve independent conflict sets in parallel. A decision controls presentation and status, never survival.
+Partition independent conflict sets, explicitly spawn conflict-resolver subagents in parallel, and wait for all resolver receipts. When no conflicts or historical-status decisions exist, record a skipped phase with an empty required scope rather than doing reasoning in the main thread. A decision controls presentation and status, never survival.
 
 The final publication must describe positions by content and scope. It must not say which local file contained them. For unresolved conflicts, use direct standalone wording such as:
 
@@ -281,19 +321,11 @@ The available facts do not establish which condition distinguishes them.
 
 Write `<work-dir>/decision-ledger.json` and `<work-dir>/conflicts.md`.
 
-### 8. Build a unit-disposition ledger before writing
+### 8. Delegate disposition planning as synthesis preflight
 
-Before synthesis, create a planned disposition entry for every extracted unit. No unit may be absent. The ledger may be stored in the draft coverage map and completed by the synthesizer.
+The main agent must not plan unit dispositions. Include the complete unit set, outline, topics, comparisons, and decisions in the synthesizer task. Require the synthesizer to build a planned disposition for every unit before writing prose, then complete those dispositions in `<work-dir>/coverage-map.json`.
 
-For every unit record:
-
-- planned disposition;
-- target section;
-- merge group when applicable;
-- expected final claim or block;
-- reason for labeling as historical, variant, conflict, or appendix material.
-
-Do not begin final approval until the planned unit count equals the extracted unit count.
+The synthesizer must fail before drafting when its planned unit count does not equal the extracted unit count.
 
 ### 9. Synthesize with one writer
 
@@ -303,7 +335,7 @@ Read:
 - the `Coverage map` contract in `references/contracts.md`
 - `references/decision-policy.md`
 
-The writer receives all accepted units, not a shortened selection. The writer must:
+Spawn exactly one worker-style synthesizer subagent for the current draft revision. The main agent must not write or edit the draft. The writer receives all accepted units, not a shortened selection. The writer must:
 
 - write complete detailed sections, not an overview-only answer;
 - preserve every distinct source fact and nuance;
@@ -325,13 +357,13 @@ The writer receives all accepted units, not a shortened selection. The writer mu
 
 Write `<work-dir>/drafts/draft-1.md` and `<work-dir>/coverage-map.json`.
 
-After validation succeeds, copy the accepted draft to `<final-document>`.
+Wait for the synthesizer receipt. After all validation succeeds, the main agent may copy the accepted subagent-written draft to `<final-document>`.
 
 ### 10. Validate lossless coverage and publication independence
 
 Read `references/agents/validator.md` and `references/quality-gates.md`.
 
-Run validators for:
+Spawn at least two read-only validator subagents with disjoint categories, wait for all validator receipts, and combine their findings under `<work-dir>/validation/`. Run validators for:
 
 1. source-line and extraction coverage;
 2. unit-disposition and final-document coverage;
@@ -354,6 +386,21 @@ python <skill-dir>/scripts/validate_consolidation.py \
   --report <work-dir>/validation-report.json
 ```
 
+Then run mandatory delegation verification:
+
+```bash
+python <skill-dir>/scripts/validate_delegation.py \
+  --work-dir <work-dir> \
+  --inventory <work-dir>/inventory.json \
+  --units-dir <work-dir>/units \
+  --topics <work-dir>/topics.json \
+  --comparisons-dir <work-dir>/comparisons \
+  --decisions <work-dir>/decision-ledger.json \
+  --report <work-dir>/delegation-validation-report.json
+```
+
+Do not publish unless both validation reports have `status: "passed"`.
+
 A run fails when:
 
 - any extracted unit lacks a disposition;
@@ -371,7 +418,7 @@ For at most three repair iterations:
 
 1. Group findings by extraction, clustering, comparison, conflict status, synthesis, internal traceability, publication-boundary violation, or formatting.
 2. Route each finding to its responsible stage.
-3. Allow only the single publication writer to edit the draft.
+3. Spawn the responsible role again for analytical repairs. Spawn exactly one synthesizer subagent for any draft repair. The main agent never edits the draft.
 4. Re-run semantic and deterministic validation.
 
 Do not patch around missing information by weakening validation or deleting a unit.
@@ -391,6 +438,14 @@ Do not delete the original sources unless the user explicitly asks for that sepa
 ## Final quality gate
 
 Do not declare success unless:
+
+- delegation validation passed;
+- every required semantic phase has one or more completed subagent receipts;
+- extraction receipts cover every inventory source;
+- comparator receipts cover every topic;
+- exactly one synthesizer subagent produced the accepted draft revision;
+- at least two validator subagents completed disjoint validation categories;
+- `fallback_used` is false;
 
 - every readable selected file was processed;
 - every non-empty source line is covered by extraction;
@@ -415,7 +470,8 @@ Read `references/quality-gates.md` for severity and routing rules.
 Report only:
 
 - final document path;
-- validation status;
+- content-validation and delegation-validation status;
+- completed subagent receipt count;
 - number of source files processed;
 - extracted-unit count and represented-unit count;
 - unresolved-conflict count;

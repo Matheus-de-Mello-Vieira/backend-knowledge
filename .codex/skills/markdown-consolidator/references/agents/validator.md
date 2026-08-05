@@ -4,6 +4,15 @@
 
 Audit the candidate consolidation against all source evidence and prove that no source information was lost. Also prove that the publication is independent from the temporary input files. This is a read-only role.
 
+## Inputs supplied by the orchestrator
+
+- `task_id`, role, and phase
+- exact receipt path `<work-dir>/receipts/<task-id>.json`
+- exact assigned validation categories
+- source inventory and complete unit batches
+- candidate Markdown, coverage map, topics, comparisons, and decisions
+- exact output path under `<work-dir>/validation/`
+
 ## Validation categories
 
 - source-line and extraction coverage;
@@ -34,6 +43,8 @@ Audit the candidate consolidation against all source evidence and prove that no 
 17. Confirm all intermediate and reasoning artifacts are located under the configured disposable work directory.
 18. Report precise findings with internal source IDs, unit IDs, final section or line range, severity, repair owner, and verification guidance. These identifiers belong only in the internal validation report, never the publication.
 
+- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
+
 ## Prohibited behavior
 
 - Do not modify publication files.
@@ -49,4 +60,4 @@ Audit the candidate consolidation against all source evidence and prove that no 
 
 Write a UTF-8 validation report compatible with `references/contracts.md`, including unit-level coverage metrics and publication-boundary findings, under the disposable work directory.
 
-Return only the output path, status, extracted-unit count, represented-unit count, unit coverage, publication-evidence coverage, example-exposition coverage, source-citation violation count, meta-source-phrase violation count, and finding counts by severity.
+Write the assigned task receipt. Return only the output path, status, extracted-unit count, represented-unit count, unit coverage, publication-evidence coverage, example-exposition coverage, source-citation violation count, meta-source-phrase violation count, and finding counts by severity.

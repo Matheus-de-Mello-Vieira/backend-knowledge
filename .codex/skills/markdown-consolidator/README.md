@@ -1,12 +1,16 @@
-# Standalone Lossless Markdown Consolidator for Codex
+# Mandatory Multi-Agent Lossless Markdown Consolidator for Codex
 
-A self-contained Codex skill that combines multiple Markdown sources into one coherent document without losing source information.
+A self-contained Codex skill that requires Codex to spawn bounded subagents for all semantic work and combines multiple Markdown sources into one coherent document without losing source information.
 
 The result is a **standalone Markdown publication**. It does not cite or depend on the temporary input files, so those files can be deleted after consolidation.
 
 ## Guarantees
 
 A successful run requires:
+
+- the main agent to act only as orchestrator;
+- completed subagent receipts for every required semantic phase;
+- no sequential main-thread fallback when subagents are unavailable;
 
 - 100% coverage of non-empty source lines during extraction;
 - exactly one disposition for every extracted unit;
@@ -35,6 +39,9 @@ Everything else is stored together:
 output/
 └── .markdown-consolidator-work/
     ├── inventory.json
+    ├── delegation-log.json
+    ├── delegation-validation-report.json
+    ├── receipts/
     ├── outline.json
     ├── units/
     ├── topics.json
@@ -132,13 +139,57 @@ The orchestrator reads role prompts from:
 
 It injects those prompts into built-in subagent tasks for:
 
-1. exhaustive source extraction;
-2. topic comparison;
-3. conflict and historical-status resolution;
-4. single-writer synthesis;
-5. unit-level and publication-boundary validation.
+1. complete outline planning;
+2. exhaustive source extraction;
+3. complete topic organization;
+4. topic comparison;
+5. conflict and historical-status resolution;
+6. single-writer synthesis;
+7. unit-level and publication-boundary validation.
 
-No `.codex/agents` directory or `.codex/config.toml` registration is required.
+The main agent does not perform those roles. It creates task records, spawns agents, waits for them, checks receipts and schemas, runs deterministic validators, and publishes the accepted subagent-written draft. No `.codex/agents` directory or `.codex/config.toml` registration is required.
+
+## Mandatory delegation behavior
+
+Subagents are required, not advisory. After inventory, the main thread must explicitly spawn agents and must not semantically read the source documents or author intermediate/final content itself.
+
+Required phases are:
+
+```text
+outline planner
+    ↓
+source analysts, parallel by source or disjoint batch
+    ↓
+topic organizer
+    ↓
+topic comparators, parallel by disjoint topic sets
+    ↓
+conflict resolvers, parallel by independent conflict sets
+    ↓
+one synthesizer for each draft revision
+    ↓
+at least two validators with disjoint categories
+```
+
+Every task writes a receipt under:
+
+```text
+.markdown-consolidator-work/receipts/<task-id>.json
+```
+
+The final delegation validator checks:
+
+- required role and phase counts;
+- exact source assignment coverage;
+- exact topic assignment coverage;
+- conflict-record assignment coverage;
+- task/receipt consistency;
+- declared output existence;
+- exactly one accepted synthesizer;
+- at least two validators with complete, disjoint category coverage;
+- `fallback_used: false`.
+
+When subagents cannot be spawned, the skill stops with `subagent execution unavailable`. It does not continue the consolidation in the main thread.
 
 ## Installation
 
@@ -161,13 +212,13 @@ Copy the skill directory to:
 ## Invocation
 
 ```text
-$markdown-consolidator Perform a complete lossless consolidation of docs/sources into output/consolidated.md. Preserve every informational unit, keep all temporary artifacts under output/.markdown-consolidator-work, and do not cite the input files.
+$markdown-consolidator Spawn subagents for every semantic phase and perform a complete lossless consolidation of docs/sources into output/consolidated.md. Keep the main thread orchestration-only, preserve every informational unit, keep all temporary artifacts under output/.markdown-consolidator-work, and do not cite the input files.
 ```
 
 For selected files:
 
 ```text
-$markdown-consolidator Consolidate architecture-a.md, architecture-b.md, and vendor-notes.md into architecture.md. Keep all details, examples, caveats, alternatives, conflicts, and historical behavior. The final document must be standalone and must not name the input files.
+$markdown-consolidator Spawn subagents for every semantic phase and consolidate architecture-a.md, architecture-b.md, and vendor-notes.md into architecture.md. Keep all details, examples, caveats, alternatives, conflicts, and historical behavior. The final document must be standalone and must not name the input files.
 ```
 
 To remove temporary artifacts automatically after success:
@@ -188,17 +239,21 @@ $markdown-consolidator Consolidate docs/sources into output/consolidated.md. Aft
 │   └── final-document-template.md
 ├── references/
 │   ├── agents/
+│   │   ├── outline-planner.md
 │   │   ├── source-analyst.md
+│   │   ├── topic-organizer.md
 │   │   ├── topic-comparator.md
 │   │   ├── conflict-resolver.md
 │   │   ├── synthesizer.md
 │   │   └── validator.md
 │   ├── contracts.md
+│   ├── delegation-policy.md
 │   ├── decision-policy.md
 │   └── quality-gates.md
 └── scripts/
     ├── inventory_markdown.py
-    └── validate_consolidation.py
+    ├── validate_consolidation.py
+    └── validate_delegation.py
 ```
 
 ## How it works
@@ -207,25 +262,33 @@ $markdown-consolidator Consolidate docs/sources into output/consolidated.md. Aft
 
 All selected Markdown files are inventoried. Generated outputs, the skill directory, and the disposable work directory are excluded.
 
-### 2. Exhaustive extraction
+### 2. Delegated outline planning
+
+An outline-planner subagent reads the complete selected source set and creates a structure with a destination for every category of information. The main agent does not draft the outline.
+
+### 3. Exhaustive extraction
 
 Every non-empty line must be covered by an extracted unit. Headings, metadata, prose, lists, code, tables, footnotes, links, warnings, examples, and references are included.
 
-### 3. Comparison
+### 4. Delegated topic organization
+
+A topic-organizer subagent assigns every extracted unit to one primary topic and verifies exact unit-set coverage.
+
+### 5. Comparison
 
 Units are classified as equivalent, near-duplicate, complementary, conflicting, conditionally compatible, unique, or outdated. No deletion path exists inside the selected source set.
 
-### 4. Preservation-oriented decisions
+### 6. Preservation-oriented decisions
 
 Conflicts determine presentation and status, not deletion. Non-primary statements remain visible as alternatives, exceptions, historical behavior, or unresolved claims.
 
-### 5. Complete standalone synthesis
+### 7. Complete standalone synthesis
 
 One writer creates the detailed final document. Information that does not fit the main narrative goes into explicit appendices. Input-file provenance is written only to the internal coverage map.
 
-### 6. Validation
+### 8. Validation
 
-The deterministic validator checks:
+The content validator checks:
 
 - source-line coverage;
 - unit disposition coverage;
@@ -237,7 +300,7 @@ The deterministic validator checks:
 - complete example exposition, including both details and explanation;
 - Markdown structure, code fences, anchors, and footnotes.
 
-Semantic validator agents separately compare source units with final text to detect meaning loss and file-oriented attribution.
+Semantic validator agents separately compare source units with final text to detect meaning loss and file-oriented attribution. A second deterministic validator verifies that all required work was actually assigned to subagents and supported by matching receipts.
 
 ## Helper scripts
 
@@ -268,13 +331,33 @@ python .agents/skills/markdown-consolidator/scripts/validate_consolidation.py \
   --report output/.markdown-consolidator-work/validation-report.json
 ```
 
+Validate mandatory delegation:
+
+```bash
+python .agents/skills/markdown-consolidator/scripts/validate_delegation.py \
+  --work-dir output/.markdown-consolidator-work \
+  --inventory output/.markdown-consolidator-work/inventory.json \
+  --units-dir output/.markdown-consolidator-work/units \
+  --topics output/.markdown-consolidator-work/topics.json \
+  --comparisons-dir output/.markdown-consolidator-work/comparisons \
+  --decisions output/.markdown-consolidator-work/decision-ledger.json \
+  --report output/.markdown-consolidator-work/delegation-validation-report.json
+```
+
+The delegation validator fails when a required subagent receipt is missing, assignments overlap or omit sources/topics/conflicts, no accepted synthesizer exists, fewer than two validators ran, or validation categories are incomplete.
+
 The scripts use only the Python standard library.
 
 ## Pass criteria
 
-A run passes only when:
+A run passes only when both deterministic reports pass and the delegation report proves that semantic work was performed by subagents:
 
 ```text
+delegation_status = passed
+fallback_used = false
+accepted_synthesizers = 1
+completed_validators >= 2
+validation_categories_covered_once = 6
 source_coverage = 1.0
 source_line_coverage = 1.0
 unit_disposition_coverage = 1.0
@@ -310,6 +393,20 @@ It may not:
 - refer to an example without presenting and explaining it in the final document.
 
 ## Troubleshooting
+
+### No subagent threads appear
+
+Invoke the skill explicitly and include `Spawn subagents for every semantic phase; keep the main thread orchestration-only.` Confirm that the Codex client supports subagents.
+
+The workflow must stop rather than continue semantic work in the main thread. Inspect:
+
+```text
+output/.markdown-consolidator-work/delegation-log.json
+output/.markdown-consolidator-work/receipts/
+output/.markdown-consolidator-work/delegation-validation-report.json
+```
+
+A missing phase or receipt is a failed run, not permission for the main agent to take over.
 
 ### Intermediate files appear beside the final document
 

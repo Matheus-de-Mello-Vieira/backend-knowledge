@@ -28,5 +28,10 @@
   "cleanup_work_directory_after_success": false,
   "require_publication_evidence_coverage": 1.0,
   "require_example_exposition_coverage": 1.0,
-  "require_meta_source_phrase_violations": 0
+  "require_meta_source_phrase_violations": 0,
+  "execution_mode": "subagents-required",
+  "main_agent_role": "orchestrator-only",
+  "allow_main_thread_semantic_fallback": false,
+  "require_delegation_validation": true,
+  "minimum_validator_subagents": 2
 }

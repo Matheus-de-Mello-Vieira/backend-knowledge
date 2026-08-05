@@ -94,7 +94,7 @@ def extract_headings(lines: list[str]) -> list[dict[str, Any]]:
 def build_inventory(root: Path, patterns: list[str]) -> dict[str, Any]:
     root = root.resolve()
     result: dict[str, Any] = {
-        "schema_version": "2.0",
+        "schema_version": "2.2",
         "root": str(root),
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "sources": [],

@@ -4,6 +4,10 @@
 
 ### Critical
 
+- A required semantic phase was completed in the main thread instead of by a subagent.
+- Subagents were unavailable and the main agent silently used a fallback.
+- A task receipt was fabricated, missing, or does not match its logged task and outputs.
+- Source, topic, conflict, synthesis, or validation assignment coverage is incomplete.
 - Source file overwritten.
 - Fabricated claim.
 - Hidden high-risk contradiction.
@@ -39,6 +43,11 @@
 A run passes only when:
 
 - Critical findings: 0.
+- `delegation-validation-report.json` has `status: "passed"`.
+- `execution_mode` is `subagents_required` and `fallback_used` is `false`.
+- Every required phase has completed subagent receipts with exact assignment coverage.
+- Exactly one synthesizer receipt is marked as the accepted candidate.
+- At least two validator receipts cover disjoint validation categories.
 - High findings: 0.
 - `source_line_coverage`: 1.0.
 - `unit_disposition_coverage`: 1.0.
@@ -57,6 +66,9 @@ A run passes only when:
 
 | Finding | Repair owner |
 |---|---|
+| Missing delegation receipt or phase | Orchestrator must respawn the bounded task; never take over the role |
+| Overlapping or incomplete task scope | Orchestrator must repartition and respawn |
+| Subagent runtime unavailable | Stop the workflow and report the runtime limitation |
 | Uncovered source line | Source extraction |
 | Missing or duplicate unit disposition | Synthesis/coverage map |
 | Unit mapped but meaning lost | Synthesis |

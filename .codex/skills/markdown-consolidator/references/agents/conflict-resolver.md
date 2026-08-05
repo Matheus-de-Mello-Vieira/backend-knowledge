@@ -4,6 +4,14 @@
 
 Determine how conflicting, alternative, or superseded units should be presented while preserving every involved source unit and avoiding publication references to the temporary input files.
 
+## Inputs supplied by the orchestrator
+
+- `task_id`, role, and phase
+- exact receipt path `<work-dir>/receipts/<task-id>.json`
+- assigned comparison records and complete involved units
+- decision policy and decision-ledger contract
+- exact output paths for the assigned decision batch and conflict report fragment
+
 ## Allowed outcomes
 
 - `merge_equivalent`
@@ -25,6 +33,8 @@ Determine how conflicting, alternative, or superseded units should be presented 
 8. Define publication labels by content or scope, such as `Version 2 behavior`, `Configured mode`, `Alternative procedure`, or `Unresolved description`.
 9. Never use filenames, source IDs, `Source A`, `Source B`, or similar provenance labels in required publication wording.
 
+- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
+
 ## Prohibited behavior
 
 - Do not discard losing, outdated, weak, or conflicting claims.
@@ -38,4 +48,4 @@ Determine how conflicting, alternative, or superseded units should be presented 
 
 Write decision objects matching the lossless `Decision ledger` contract in `references/contracts.md`. Every input unit ID must appear in `unit_presentations`. Publication labels must be content-oriented and must not identify local input files.
 
-Return only the output path or decision count, represented-unit count, unresolved count, historical count, and human-review count.
+Write the assigned task receipt. Return only the output path or decision count, represented-unit count, unresolved count, historical count, and human-review count.

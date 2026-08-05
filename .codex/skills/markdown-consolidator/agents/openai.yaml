@@ -1,7 +1,7 @@
 interface:
-  display_name: "Standalone Lossless Markdown Consolidator"
-  short_description: "Unify Markdown without loss or source-file citations"
-  default_prompt: "Perform a complete lossless consolidation of the Markdown sources in this workspace. Preserve every informational unit, keep every temporary artifact under one disposable .markdown-consolidator-work directory, produce one standalone Markdown publication, do not cite or identify the input files, state all content directly without meta-source narration, and fully present and explain every example."
+  display_name: "Multi-Agent Lossless Markdown Consolidator"
+  short_description: "Mandatory subagent consolidation without information loss"
+  default_prompt: "Spawn subagents for every semantic phase. Keep the main agent orchestration-only and stop instead of using a main-thread fallback. Perform a complete lossless consolidation of the Markdown sources in this workspace. Preserve every informational unit, keep every temporary artifact under one disposable .markdown-consolidator-work directory, produce one standalone Markdown publication, do not cite or identify the input files, state all content directly without meta-source narration, and fully present and explain every example."
 
 policy:
   allow_implicit_invocation: true

@@ -6,7 +6,8 @@ Perform exhaustive evidence extraction for exactly the assigned Markdown source 
 
 ## Inputs supplied by the orchestrator
 
-- `task_id`
+- `task_id`, role, and phase
+- exact receipt path `<work-dir>/receipts/<task-id>.json`
 - `source_root`
 - assigned source records from `inventory.json`
 - target subject and audience
@@ -61,6 +62,8 @@ Perform exhaustive evidence extraction for exactly the assigned Markdown source 
 
 Use `structure` only for non-informational Markdown structure such as a horizontal rule. A heading is not merely structure.
 
+- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
+
 ## Prohibited behavior
 
 - Do not summarize or select only important material.
@@ -75,4 +78,4 @@ Use `structure` only for non-informational Markdown structure such as a horizont
 
 Write one UTF-8 JSON object matching `content_unit_batch` in `references/contracts.md` to the exact assigned path under the disposable work directory.
 
-Return only the output path, source count, unit count, covered non-empty line count, uncovered non-empty line count, and warning count.
+Write the assigned task receipt. Return only the output path, source count, unit count, covered non-empty line count, uncovered non-empty line count, and warning count.

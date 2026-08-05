@@ -25,6 +25,124 @@ All artifacts described here are internal and disposable except the final Markdo
 }
 ```
 
+## Delegation log
+
+The main agent creates and updates this orchestration-only artifact. It must not mark a task completed before the corresponding subagent receipt and outputs exist.
+
+```json
+{
+  "schema_version": "2.2",
+  "execution_mode": "subagents_required",
+  "fallback_used": false,
+  "tasks": [
+    {
+      "task_id": "extract-guide-a",
+      "phase": "extraction",
+      "role": "source-analyst",
+      "status": "completed",
+      "assigned_scope": {
+        "source_ids": ["guide-a-md-a1b2c3d4"],
+        "topic_ids": [],
+        "comparison_ids": [],
+        "unit_ids": [],
+        "validation_categories": []
+      },
+      "output_paths": ["units/extract-guide-a.json"],
+      "receipt_path": "receipts/extract-guide-a.json",
+      "accepted_candidate": false,
+      "attempt": 1,
+      "runtime_thread_id": null
+    }
+  ]
+}
+```
+
+Allowed phases:
+
+`outline`, `extraction`, `topic_organization`, `comparison`, `conflict_resolution`, `synthesis`, `semantic_validation`.
+
+Allowed roles:
+
+`outline-planner`, `source-analyst`, `topic-organizer`, `topic-comparator`, `conflict-resolver`, `synthesizer`, `validator`.
+
+Allowed statuses:
+
+`planned`, `running`, `completed`, `failed`, `skipped`.
+
+A skipped task is allowed only for `conflict_resolution` when the required comparison-ID scope is empty. Do not invent a runtime thread ID when the client does not expose one.
+
+## Task receipt
+
+Every completed delegated subagent writes its own receipt.
+
+```json
+{
+  "schema_version": "2.2",
+  "task_id": "extract-guide-a",
+  "phase": "extraction",
+  "role": "source-analyst",
+  "producer": "subagent",
+  "status": "completed",
+  "assigned_scope": {
+    "source_ids": ["guide-a-md-a1b2c3d4"],
+    "topic_ids": [],
+    "comparison_ids": [],
+    "unit_ids": [],
+    "validation_categories": []
+  },
+  "output_paths": ["units/extract-guide-a.json"],
+  "counts": {
+    "sources": 1,
+    "units": 42
+  },
+  "warnings": [],
+  "accepted_candidate": false,
+  "completed_at": "ISO-8601 timestamp"
+}
+```
+
+Receipt requirements:
+
+- `producer` must be `subagent`;
+- task ID, phase, role, scope, and output paths must match the delegation-log task;
+- all declared output paths must exist under the disposable work directory;
+- `accepted_candidate` is meaningful only for synthesizer tasks; exactly one completed synthesizer receipt must set it to `true`;
+- validator receipts must list their exact disjoint `validation_categories`.
+
+Canonical validation categories:
+
+- `source_line_extraction`;
+- `unit_final_coverage`;
+- `conflicts_qualifiers`;
+- `traceability_unsupported_claims`;
+- `publication_independence`;
+- `coherence_markdown`.
+
+## Delegation validation report
+
+```json
+{
+  "schema_version": "2.2",
+  "status": "passed",
+  "errors": [],
+  "warnings": [],
+  "metrics": {
+    "logged_tasks": 12,
+    "completed_subagent_receipts": 12,
+    "inventory_sources": 4,
+    "sources_assigned_once": 4,
+    "topics": 9,
+    "topics_assigned_once": 9,
+    "required_conflict_records": 2,
+    "conflict_records_assigned_once": 2,
+    "completed_synthesizers": 1,
+    "accepted_synthesizers": 1,
+    "completed_validators": 2,
+    "validation_categories_covered": 6
+  }
+}
+```
+
 ## Outline
 
 ```json
