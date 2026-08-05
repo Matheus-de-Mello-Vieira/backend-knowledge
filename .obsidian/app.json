@@ -6,6 +6,7 @@
   "promptDelete": false,
   "spellcheckDictionary": [
     "WAF",
-    "WAFs"
+    "WAFs",
+    "Goroutines"
   ]
 }
