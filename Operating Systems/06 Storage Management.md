@@ -82,3 +82,11 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
     - **iSCSI:** Runs block-level SCSI commands over standard Ethernet cables, making it a cheaper alternative to Fibre Channel.    
 - **Use Cases:** Massive databases (like Oracle or SQL), virtualization clusters (VMware/Hyper-V) requiring fast VM migration, and high-performance transactional applications.
 - **Pros/Cons:** Incredibly fast, highly scalable, and ultra-low latency; however, it is highly complex to manage and very expensive to implement.
+
+## I/O Pressure Stall Information (PSI)
+
+When managing sockets, network-attached storage, or databases, threads often have to wait for hardware to return data. I/O PSI (`/proc/pressure/io`) measures exactly how much time your threads spend physically blocked by block storage or network I/O devices.
+
+- **Reading I/O PSI:** `cat /proc/pressure/io`
+- **`some` (The Asynchronous Ideal):** At least one thread is blocked waiting for an I/O device (like a socket read or a database disk fetch). However, because you have enough concurrent threads, the OS scheduler seamlessly switches the CPU to do other work. High `some` is normal in heavily concurrent network apps.
+- **`full` (The I/O Bottleneck):** Every single active thread in your application is blocked waiting for I/O (e.g., the network queue is totally saturated, or the disk ran out of IOPS). The CPU is sitting completely idle. Adding more CPU cores or RAM will not help; you must either upgrade your networking/storage hardware or add a caching layer (like Redis) to bypass the I/O bottleneck.

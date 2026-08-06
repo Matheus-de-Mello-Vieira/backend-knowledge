@@ -1,0 +1,28 @@
+{
+  "recentFiles": [
+    {
+      "basename": "06 Storage Management",
+      "path": "Operating Systems/06 Storage Management.md"
+    },
+    {
+      "basename": "07 Socket Management",
+      "path": "Operating Systems/07 Socket Management.md"
+    },
+    {
+      "basename": "03 Memory Management",
+      "path": "Operating Systems/03 Memory Management.md"
+    },
+    {
+      "basename": "05 Process Management",
+      "path": "Operating Systems/05 Process Management.md"
+    },
+    {
+      "basename": "04 Inside The CPU",
+      "path": "Operating Systems/04 Inside The CPU.md"
+    }
+  ],
+  "omittedPaths": [],
+  "omittedTags": [],
+  "updateOn": "file-open",
+  "omitBookmarks": false
+}

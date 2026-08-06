@@ -409,3 +409,14 @@ Because traditional Direct Memory Access (DMA) operates purely on physical addre
 To prevent someone from completely compromising a locked laptop just by plugging a rogue device into a Thunderbolt port, hardware and software engineers had to combine forces:
 - **The Hardware Sandbox (IOMMU):** As mentioned earlier, the IOMMU (Input/Output Memory Management Unit) acts as a bouncer for hardware devices. Instead of letting a Thunderbolt device see raw physical RAM, the IOMMU forces the device to use virtual addresses. If the malicious device tries to read memory outside its strictly assigned sandbox, the IOMMU blocks the request at the hardware level.
 - **Kernel DMA Protection:** Modern operating systems (like Windows 10/11 and macOS) utilize the IOMMU to implement strict DMA protection policies. By default, the OS will completely block DMA access for any newly plugged-in Thunderbolt or PCIe device until the user successfully unlocks the computer and authorizes the peripheral.
+
+## Memory Pressure Stall Information (PSI)
+
+Memory PSI (`/proc/pressure/memory`) measures the time threads spend stalled waiting for the OS to organize RAM—such as waiting for page faults, page reclaims, or swapping to disk. It goes beyond simply asking "How much RAM is free?" by measuring actual performance degradation.
+
+Unlike the [CPU](04%20Inside%20The%20CPU.md#CPU%20Pressure%20Stall%20Information), Memory PSI tracks two distinct metrics:
+
+- **`some` (Partial Starvation):** At least one thread is stalled waiting for memory operations, but the CPU is still executing other threads. The system is "thrashing" slightly (swapping or clearing page cache), which hurts latency, but the app is surviving.
+- **`full` (Total Lockup):** **ALL** runnable threads are stalled waiting for memory. The CPU has absolutely no work to do and is sitting idle.
+
+**The OOM Danger Zone:** If the `full` metric spikes and stays high for more than a few seconds, it means the entire system has deadlocked waiting for RAM. The Linux kernel will panic and trigger the **OOM (Out of Memory) Killer**, terminating processes to forcefully reclaim memory pages and unfreeze the system.

@@ -475,3 +475,19 @@ While SMT generally yields a 20-30% overall performance boost in multitasking, i
 - **Resource Contention:** Because both logical cores share the exact same execution ports and caches, they can step on each other's toes. If both threads need to do heavy floating-point math at the exact same time, they will fight over the FPU (Floating-Point Unit), potentially running _slower_ than if they had just run sequentially.
 - **Cache Thrashing:** Two threads fighting for the same tiny L1 cache will overwrite each other's data, causing constant cache misses.
 - **The Fix:** For workloads that demand absolute predictability and zero latency variance (like high-frequency algorithmic trading, real-time audio processing, or high-end gaming), engineers will often physically disable SMT in the BIOS, ensuring one thread gets 100% undisputed access to the core's cache and ALUs.
+## CPU Pressure Stall Information
+
+Traditional CPU usage (e.g., in `top`) is a **utilization metric**. It shows how busy the hardware is, but it cannot tell you if 4 threads are running perfectly or if 400 threads are violently fighting for execution time. Both look like "100% Usage."
+
+PSI (`/proc/pressure/cpu`) is a **queueing metric**. It measures the percentage of wall-clock time that software threads wasted waiting in line for a hardware core.
+
+- **Reading CPU PSI:** `cat /proc/pressure/cpu`    
+- **The `some` metric:** Indicates the percentage of time (averaged over 10, 60, and 300 seconds) that _at least one_ runnable thread was stalled waiting for the CPU. 
+	- The CPU file does not use a `full` metric, because if all threads are waiting for the CPU, the CPU is idle, making a 100% CPU stall a logical paradox.
+
+**The Threading Decision Matrix:**
+
+- **CPU < 100% & PSI `some` = 0.00:** Hardware is underutilized. You can safely spin up more threads.
+- **CPU = 100% & PSI `some` = 0.00:** Perfect tuning. Cores are fed, but no threads are waiting. Do not add more threads.
+- **CPU = 100% & PSI `some` > 0.00:** CPU Saturation. Threads are fighting. Adding more threads will increase context-switching overhead and slow the app down. You need a bigger CPU or fewer threads.
+- **CPU < 100% & PSI `some` > 0.00:** Artificial Throttling. The physical hardware has plenty of free cycles, but your threads are still waiting in line. This almost always means your application is hitting an artificial software boundary—usually a strict Docker/Kubernetes CPU limit (cgroups quota), or it is heavily pinned to a single overloaded core while the others sit idle. Adding a larger CPU won't fix this; you must increase the container's CPU limits or fix the core-pinning configuration.
