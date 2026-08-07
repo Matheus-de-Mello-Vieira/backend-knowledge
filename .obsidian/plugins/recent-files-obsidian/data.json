@@ -1,6 +1,26 @@
 {
   "recentFiles": [
     {
+      "basename": "01 Network Security",
+      "path": "Security/05 Architecture and Infrastructure Security/Network Security/01 Network Security.md"
+    },
+    {
+      "basename": "Data Privacy and Compliance",
+      "path": "Security/06 Security Operations and Governance/Data Privacy and Compliance.md"
+    },
+    {
+      "basename": "Intrusion Detection and Prevention",
+      "path": "Security/06 Security Operations and Governance/Intrusion Detection and Prevention.md"
+    },
+    {
+      "basename": "04 Inside The CPU",
+      "path": "Operating Systems/04 Inside The CPU.md"
+    },
+    {
+      "basename": "05 Process Management",
+      "path": "Operating Systems/05 Process Management.md"
+    },
+    {
       "basename": "06 Storage Management",
       "path": "Operating Systems/06 Storage Management.md"
     },
@@ -11,14 +31,6 @@
     {
       "basename": "03 Memory Management",
       "path": "Operating Systems/03 Memory Management.md"
-    },
-    {
-      "basename": "05 Process Management",
-      "path": "Operating Systems/05 Process Management.md"
-    },
-    {
-      "basename": "04 Inside The CPU",
-      "path": "Operating Systems/04 Inside The CPU.md"
     }
   ],
   "omittedPaths": [],

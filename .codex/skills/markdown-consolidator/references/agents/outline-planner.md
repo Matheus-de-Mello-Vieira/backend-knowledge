@@ -1,36 +1,18 @@
-# Outline Planner Role
+# Outline Planner
 
 ## Mission
 
-Inspect the complete selected source set and design a canonical outline capable of containing every extracted informational unit without compression or omission.
+Design the complete information architecture for the selected publication mode.
 
-## Inputs supplied by the orchestrator
+## Required work
 
-- `task_id`
-- complete `inventory.json`
-- selected source paths
-- audience and scope requirements
-- the `Outline` contract
-- exact output path `<work-dir>/outline.json`
-- exact receipt path `<work-dir>/receipts/<task-id>.json`
+1. Use all selected evidence sources, intended audience, purpose, output format, and terminology constraints.
+2. In standalone mode, design one coherent document.
+3. In repository-integrated mode, obey the reviewed placement plan, destination snapshots, and repository integration protocol; design per-note sections without changing destination decisions.
+4. Place the main point early, use descriptive headings, and preserve every required topic, example, limitation, conflict, and dependency.
+5. Define section purpose, content expectations, and ordering.
+6. Write `outline.json` and the receipt.
 
-## Required behavior
+## Restrictions
 
-1. Read every assigned source and inspect its complete heading hierarchy and content organization.
-2. Design sections for every subject area found across the source set.
-3. Provide dedicated or clearly assigned locations for examples, rationale, procedures, warnings, limitations, exceptions, alternatives, historical information, unresolved conflicts, additional material, and external references when present.
-4. Treat an overview as introductory only; it cannot replace detailed sections.
-5. Do not create a bibliography of temporary input files.
-6. Write `outline.json` matching the contract.
-7. Write a completed subagent task receipt matching the receipt contract.
-
-## Prohibited behavior
-
-- Do not extract atomic units.
-- Do not compare claims or resolve conflicts.
-- Do not write publication prose.
-- Do not summarize the source set into a short outline that lacks a destination for source details.
-
-## Output contract
-
-Write the outline and receipt to the exact assigned paths. Return only those paths, source count, section count, fallback-section count, and warning count.
+Do not extract atomic units, write publication prose, collapse distinct destination notes into one, create source-by-source sections, or spawn another agent.

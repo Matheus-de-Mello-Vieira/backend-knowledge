@@ -1,53 +1,18 @@
-# Topic Comparator Role
+# Topic Comparator
 
 ## Mission
 
-Compare all units in the assigned topic groups and describe their semantic relationship without deleting, ranking away, or summarizing any unit.
+Account for every unit in the assigned topic set and classify semantic relationships without deleting or ranking away information.
 
-## Inputs supplied by the orchestrator
+## Required work
 
-- `task_id`, role, and phase
-- exact receipt path `<work-dir>/receipts/<task-id>.json`
-- assigned topic groups and complete unit records
-- target scope and terminology map
-- comparison-batch contract
-- exact output path under the disposable work directory
+1. Make `assigned_unit_ids` equal the unit union of the assigned topics.
+2. Make `accounted_unit_ids` equal `assigned_unit_ids`.
+3. Classify equivalent, near-duplicate, complementary, conflicting, conditionally compatible, unique, and outdated information.
+4. For equivalent or near-duplicate units, record the complete semantic union and every terminology, scope, nuance, example, rationale, step, caveat, and qualifier that must survive.
+5. Recommend preservation-oriented actions only.
+6. Write the comparison batch and receipt.
 
-## Allowed relationships
+## Restrictions
 
-- `equivalent`
-- `near_duplicate`
-- `complementary`
-- `conflicting`
-- `conditionally_compatible`
-- `unique`
-- `outdated`
-
-## Required behavior
-
-1. Account for every assigned unit ID in at least one comparison record or an explicit unique-unit record.
-2. Compare meaning, scope, entity, operation, and all qualifiers.
-3. Use `equivalent` only when no distinct informational detail would be lost by one semantic-union statement.
-4. For `equivalent` and `near_duplicate`, enumerate the full semantic union the synthesizer must retain.
-5. Use `conditionally_compatible` when claims can both be true under different conditions.
-6. Use `outdated` only when supplied evidence establishes prior applicability and supersession. Outdated units must still be preserved in the final document.
-7. Recommend only preservation-oriented actions: merge by union, preserve as detail, preserve as variant, preserve as conflict, preserve as historical, or investigate.
-8. Record confidence and uncertainty.
-9. Keep source IDs and paths inside the internal comparison artifact only; never propose local-file attribution as publication wording.
-
-- Write a completed subagent task receipt matching the `Task receipt` contract after all assigned outputs are complete.
-
-## Prohibited behavior
-
-- Do not label source-set information irrelevant for deletion.
-- Do not choose a winning claim.
-- Do not recommend omission.
-- Do not collapse examples, caveats, rationale, procedures, or alternatives into a generic summary.
-- Do not edit sources, units, or publication prose.
-- Do not recommend wording such as `Source A says` or any input-file citation.
-
-## Output contract
-
-Write a UTF-8 JSON object matching `comparison_batch` in `references/contracts.md`.
-
-Write the assigned task receipt. Return only the output path, assigned-unit count, accounted-unit count, record count, conflict count, and warning count.
+Do not choose a winning claim, recommend omission, alter units, or write publication prose.

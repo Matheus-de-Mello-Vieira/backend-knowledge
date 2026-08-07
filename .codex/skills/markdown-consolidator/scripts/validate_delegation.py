@@ -1,153 +1,64 @@
 #!/usr/bin/env python3
-"""Validate that the Markdown consolidation ran through required subagents."""
+"""Validate accepted subagent assignments and mode-specific phase coverage."""
 
 from __future__ import annotations
 
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
-SCHEMA_VERSION = "2.2"
-REQUIRED_VALIDATION_CATEGORIES = {
-    "source_line_extraction",
-    "unit_final_coverage",
+from common import (
+    SCHEMA_VERSION,
+    comparison_records,
+    dump_json,
+    is_under,
+    load_json,
+    normalize_scope,
+    resolve_under,
+    task_spec_sha256,
+    unit_records,
+)
+from validate_reviews import evaluate_reviews
+
+BASE_VALIDATION_CATEGORIES = {
+    "coverage",
     "conflicts_qualifiers",
-    "traceability_unsupported_claims",
-    "publication_independence",
+    "standalone_exposition",
     "coherence_markdown",
+    "writing_quality",
 }
-ALLOWED_ROLES = {
-    "outline-planner",
-    "source-analyst",
-    "topic-organizer",
-    "topic-comparator",
-    "conflict-resolver",
-    "synthesizer",
-    "validator",
-}
-ROLE_PHASE = {
-    "outline-planner": "outline",
-    "source-analyst": "extraction",
-    "topic-organizer": "topic_organization",
-    "topic-comparator": "comparison",
-    "conflict-resolver": "conflict_resolution",
-    "synthesizer": "synthesis",
-    "validator": "semantic_validation",
-}
-SCOPE_KEYS = {
-    "source_ids",
-    "topic_ids",
-    "comparison_ids",
-    "unit_ids",
-    "validation_categories",
-}
+REPOSITORY_VALIDATION_CATEGORIES = {"repository_integration", "link_context"}
+ALLOWED_PUBLICATION_ROLES = {"synthesizer", "publication-finalizer"}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description="Validate mandatory delegated execution using accepted attempts only.")
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument("--units-dir", type=Path, required=True)
     parser.add_argument("--topics", type=Path, required=True)
     parser.add_argument("--comparisons-dir", type=Path, required=True)
-    parser.add_argument("--decisions", type=Path)
+    parser.add_argument("--comparison-index", type=Path, required=True)
+    parser.add_argument("--decisions", type=Path, required=True)
+    parser.add_argument("--placement", type=Path)
+    parser.add_argument("--integration-plan", type=Path)
     parser.add_argument("--report", type=Path, required=True)
     return parser.parse_args()
 
 
-def load_json(path: Path, errors: list[dict[str, Any]], code: str) -> dict[str, Any]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        errors.append({"code": code, "message": f"Missing file: {path}"})
-        return {}
-    except (OSError, json.JSONDecodeError) as exc:
-        errors.append({"code": code, "message": f"Cannot read {path}: {exc}"})
-        return {}
-    if not isinstance(data, dict):
-        errors.append({"code": code, "message": f"Expected JSON object: {path}"})
-        return {}
-    return data
-
-
-def json_files(directory: Path) -> list[Path]:
-    if not directory.is_dir():
-        return []
-    return sorted(path for path in directory.glob("*.json") if path.is_file())
-
-
-def normalize_scope(value: Any) -> dict[str, list[str]]:
-    scope = value if isinstance(value, dict) else {}
-    result: dict[str, list[str]] = {}
-    for key in SCOPE_KEYS:
-        items = scope.get(key, [])
-        if not isinstance(items, list):
-            items = []
-        result[key] = sorted({str(item) for item in items})
-    return result
-
-
-def resolve_under_work_dir(work_dir: Path, path_text: str) -> Path:
-    path = Path(path_text)
-    return path if path.is_absolute() else work_dir / path
-
-
-def is_under(path: Path, parent: Path) -> bool:
-    try:
-        path.resolve().relative_to(parent.resolve())
-        return True
-    except (OSError, ValueError):
-        return False
-
-
-def flatten_units(units_dir: Path, errors: list[dict[str, Any]]) -> set[str]:
-    result: set[str] = set()
-    files = json_files(units_dir)
-    if not files:
-        errors.append({"code": "missing_unit_batches", "message": f"No JSON unit batches in {units_dir}"})
-    for path in files:
-        data = load_json(path, errors, "unit_batch_read_error")
-        for unit in data.get("units", []):
-            if isinstance(unit, dict) and unit.get("unit_id"):
-                result.add(str(unit["unit_id"]))
-    return result
-
-
-def load_comparison_ids(comparisons_dir: Path, errors: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
-    all_ids: set[str] = set()
-    required_resolution: set[str] = set()
-    for path in json_files(comparisons_dir):
-        data = load_json(path, errors, "comparison_read_error")
-        for record in data.get("records", []):
-            if not isinstance(record, dict) or not record.get("comparison_id"):
-                continue
-            comparison_id = str(record["comparison_id"])
-            all_ids.add(comparison_id)
-            if record.get("relationship") in {"conflicting", "conditionally_compatible", "outdated"}:
-                required_resolution.add(comparison_id)
-    return all_ids, required_resolution
-
-
-def add_count_coverage_errors(
-    label: str,
-    expected: set[str],
-    assignments: Iterable[str],
-    errors: list[dict[str, Any]],
-) -> int:
-    counter = Counter(assignments)
-    assigned = set(counter)
-    missing = sorted(expected - assigned)
-    unknown = sorted(assigned - expected)
-    duplicated = sorted(item for item, count in counter.items() if count != 1 and item in expected)
+def add_exact_coverage(label: str, expected: set[str], assignments: list[str], errors: list[dict[str, Any]]) -> int:
+    counts = Counter(assignments)
+    missing = sorted(expected - set(counts))
+    unknown = sorted(set(counts) - expected)
+    nonexact = sorted(value for value in expected if counts[value] != 1)
     if missing:
         errors.append({"code": f"missing_{label}_assignments", "items": missing})
     if unknown:
         errors.append({"code": f"unknown_{label}_assignments", "items": unknown})
-    if duplicated:
-        errors.append({"code": f"non_disjoint_{label}_assignments", "items": duplicated})
-    return sum(1 for item in expected if counter.get(item) == 1)
+    if nonexact:
+        errors.append({"code": f"nonexact_{label}_assignments", "items": nonexact})
+    return sum(1 for value in expected if counts[value] == 1)
 
 
 def main() -> int:
@@ -155,185 +66,192 @@ def main() -> int:
     work_dir = args.work_dir.resolve()
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
+    ledger = load_json(work_dir / "task-ledger.json")
+    attempts_doc = load_json(work_dir / "attempts.json")
+    runtime_plan = load_json(work_dir / "runtime-plan.json") if (work_dir / "runtime-plan.json").exists() else {}
+    publication_mode = str(runtime_plan.get("publication_mode", "standalone"))
+    inventory = load_json(args.inventory)
+    topics_doc = load_json(args.topics)
+    comparison_index = load_json(args.comparison_index)
+    _ = load_json(args.decisions)
+    units, _ = unit_records(args.units_dir)
+    comparisons, _ = comparison_records(args.comparisons_dir)
 
-    inventory = load_json(args.inventory, errors, "inventory_read_error")
-    topics = load_json(args.topics, errors, "topics_read_error")
-    log_path = work_dir / "delegation-log.json"
-    log = load_json(log_path, errors, "delegation_log_read_error")
+    if publication_mode not in {"standalone", "repository_integrated"}:
+        errors.append({"code": "invalid_publication_mode", "value": publication_mode})
+    if ledger.get("execution_mode") != "subagents_required":
+        errors.append({"code": "invalid_execution_mode"})
+    if ledger.get("fallback_used") is not False:
+        errors.append({"code": "fallback_used"})
 
-    if log.get("execution_mode") != "subagents_required":
-        errors.append({"code": "invalid_execution_mode", "value": log.get("execution_mode")})
-    if log.get("fallback_used") is not False:
-        errors.append({"code": "fallback_used", "value": log.get("fallback_used")})
+    tasks = [item for item in ledger.get("logical_tasks", []) if isinstance(item, dict)]
+    attempts = [item for item in attempts_doc.get("attempts", []) if isinstance(item, dict)]
+    task_map = {str(item.get("logical_task_id")): item for item in tasks if item.get("logical_task_id")}
+    attempt_map = {str(item.get("attempt_id")): item for item in attempts if item.get("attempt_id")}
+    accepted_attempts: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]] = []
 
-    tasks_raw = log.get("tasks", [])
-    if not isinstance(tasks_raw, list):
-        errors.append({"code": "invalid_task_entries"})
-        tasks_raw = []
-    tasks = [task for task in tasks_raw if isinstance(task, dict)]
-    if len(tasks) != len(tasks_raw):
-        errors.append({"code": "invalid_task_entries"})
-
-    task_ids = [str(task.get("task_id", "")) for task in tasks]
-    duplicate_task_ids = sorted(item for item, count in Counter(task_ids).items() if item and count > 1)
-    if duplicate_task_ids:
-        errors.append({"code": "duplicate_task_ids", "items": duplicate_task_ids})
-
-    receipts_dir = work_dir / "receipts"
-    receipts: dict[str, dict[str, Any]] = {}
-    for path in json_files(receipts_dir):
-        receipt = load_json(path, errors, "receipt_read_error")
-        task_id = str(receipt.get("task_id", ""))
-        if not task_id:
-            errors.append({"code": "receipt_missing_task_id", "path": str(path)})
+    for logical_id, task in task_map.items():
+        if task.get("status") == "skipped":
             continue
-        if task_id in receipts:
-            errors.append({"code": "duplicate_receipt_task_id", "task_id": task_id})
-        receipts[task_id] = receipt
-
-    unknown_receipts = sorted(set(receipts) - {task_id for task_id in task_ids if task_id})
-    if unknown_receipts:
-        errors.append({"code": "unlogged_task_receipts", "task_ids": unknown_receipts})
-
-    completed_tasks: list[dict[str, Any]] = []
-    completed_receipts: list[dict[str, Any]] = []
-    for task in tasks:
-        task_id = str(task.get("task_id", ""))
-        role = str(task.get("role", ""))
-        phase = str(task.get("phase", ""))
-        status = str(task.get("status", ""))
-        if role not in ALLOWED_ROLES:
-            errors.append({"code": "unknown_role", "task_id": task_id, "role": role})
-        elif ROLE_PHASE[role] != phase:
-            errors.append({"code": "role_phase_mismatch", "task_id": task_id, "role": role, "phase": phase})
-
-        if status == "skipped":
-            if phase != "conflict_resolution" or any(normalize_scope(task.get("assigned_scope")).values()):
-                errors.append({"code": "invalid_skipped_task", "task_id": task_id})
+        accepted_id = task.get("accepted_attempt_id")
+        if task.get("status") != "accepted" or not accepted_id:
+            errors.append({"code": "logical_task_not_accepted", "logical_task_id": logical_id, "status": task.get("status")})
             continue
-        if status == "failed":
-            warnings.append({"code": "failed_attempt_recorded", "task_id": task_id})
+        attempt = attempt_map.get(str(accepted_id))
+        if not attempt or attempt.get("status") != "accepted":
+            errors.append({"code": "accepted_attempt_missing_or_invalid", "logical_task_id": logical_id, "attempt_id": accepted_id})
             continue
-        if status != "completed":
-            errors.append({"code": "incomplete_task", "task_id": task_id, "status": status})
+        spec_path = resolve_under(work_dir, str(attempt.get("task_spec_path", "")))
+        receipt_path = resolve_under(work_dir, str(attempt.get("receipt_path", "")))
+        if not spec_path.exists() or not receipt_path.exists():
+            errors.append({"code": "accepted_attempt_artifact_missing", "attempt_id": accepted_id})
             continue
+        spec = load_json(spec_path)
+        receipt = load_json(receipt_path)
+        if spec.get("nested_delegation") != "prohibited":
+            errors.append({"code": "nested_delegation_not_prohibited", "attempt_id": accepted_id})
+        if receipt.get("producer") != "subagent" or receipt.get("status") != "completed":
+            errors.append({"code": "invalid_accepted_receipt", "attempt_id": accepted_id})
+        if receipt.get("task_spec_sha256") != task_spec_sha256(spec_path):
+            errors.append({"code": "task_spec_hash_mismatch", "attempt_id": accepted_id})
+        if receipt.get("attempt_id") != accepted_id or receipt.get("logical_task_id") != logical_id:
+            errors.append({"code": "accepted_identity_mismatch", "attempt_id": accepted_id})
+        for output in spec.get("output_paths", []):
+            resolved = resolve_under(work_dir, str(output))
+            if not is_under(resolved, work_dir) or not resolved.exists():
+                errors.append({"code": "accepted_output_missing_or_outside_work_dir", "attempt_id": accepted_id, "path": str(output)})
+        accepted_attempts.append((task, attempt, spec))
 
-        completed_tasks.append(task)
-        receipt = receipts.get(task_id)
-        if not receipt:
-            errors.append({"code": "missing_task_receipt", "task_id": task_id})
-            continue
-        completed_receipts.append(receipt)
-
-        if receipt.get("producer") != "subagent":
-            errors.append({"code": "invalid_receipt_producer", "task_id": task_id, "producer": receipt.get("producer")})
-        for field in ("role", "phase", "status", "accepted_candidate"):
-            expected = task.get(field)
-            actual = receipt.get(field)
-            if actual != expected:
-                errors.append({"code": "receipt_task_mismatch", "task_id": task_id, "field": field, "expected": expected, "actual": actual})
-        if normalize_scope(receipt.get("assigned_scope")) != normalize_scope(task.get("assigned_scope")):
-            errors.append({"code": "receipt_scope_mismatch", "task_id": task_id})
-
-        declared_receipt_path = str(task.get("receipt_path", ""))
-        if not declared_receipt_path:
-            errors.append({"code": "missing_declared_receipt_path", "task_id": task_id})
-        else:
-            resolved_receipt = resolve_under_work_dir(work_dir, declared_receipt_path)
-            if not is_under(resolved_receipt, receipts_dir):
-                errors.append({"code": "receipt_outside_receipts_dir", "task_id": task_id, "path": declared_receipt_path})
-            elif not resolved_receipt.exists():
-                errors.append({"code": "missing_declared_receipt", "task_id": task_id, "path": declared_receipt_path})
-
-        task_outputs = sorted(str(item) for item in task.get("output_paths", []) if item)
-        receipt_outputs = sorted(str(item) for item in receipt.get("output_paths", []) if item)
-        if task_outputs != receipt_outputs:
-            errors.append({"code": "receipt_output_mismatch", "task_id": task_id})
-        for output in receipt_outputs:
-            resolved = resolve_under_work_dir(work_dir, output)
-            if not is_under(resolved, work_dir):
-                errors.append({"code": "output_outside_work_dir", "task_id": task_id, "path": output})
-            elif not resolved.exists():
-                errors.append({"code": "missing_declared_output", "task_id": task_id, "path": output})
+    active = [item.get("attempt_id") for item in attempts if item.get("status") in {"planned", "queued", "running", "completed"}]
+    if active:
+        errors.append({"code": "nonterminal_or_unreconciled_attempts", "attempt_ids": active})
 
     expected_sources = {
         str(item["source_id"])
         for item in inventory.get("sources", [])
         if isinstance(item, dict) and item.get("source_id")
     }
-    extracted_units = flatten_units(args.units_dir, errors)
+    expected_units = set(units)
     expected_topics = {
         str(item["topic_id"])
-        for item in topics.get("topics", [])
+        for item in topics_doc.get("topics", [])
         if isinstance(item, dict) and item.get("topic_id")
     }
-    _, required_conflicts = load_comparison_ids(args.comparisons_dir, errors)
+    required_resolution = set(map(str, comparison_index.get("required_resolution_ids", [])))
 
-    role_receipts: dict[str, list[dict[str, Any]]] = {role: [] for role in ALLOWED_ROLES}
-    for receipt in completed_receipts:
-        role = str(receipt.get("role", ""))
-        if role in role_receipts:
-            role_receipts[role].append(receipt)
-
-    if len(role_receipts["outline-planner"]) != 1:
-        errors.append({"code": "outline_planner_count", "count": len(role_receipts["outline-planner"])})
+    placement_paths: set[str] = set()
+    if publication_mode == "repository_integrated":
+        placement_path = args.placement or work_dir / "placement-plan.json"
+        if not placement_path.exists():
+            errors.append({"code": "placement_plan_missing"})
+        else:
+            placement = load_json(placement_path)
+            placement_paths = {
+                str(item.get("path")) for item in placement.get("destinations", [])
+                if isinstance(item, dict) and item.get("path")
+            }
+        placement_attempts = [(t, a, s) for t, a, s in accepted_attempts if s.get("phase") == "placement"]
+        if len(placement_attempts) != 1 or placement_attempts[0][2].get("role") != "note-home-finder-adapter":
+            errors.append({"code": "placement_assignment_count", "count": len(placement_attempts)})
+        elif set(normalize_scope(placement_attempts[0][2].get("assigned_scope"))["source_ids"]) != expected_sources:
+            errors.append({"code": "placement_source_scope_mismatch"})
     else:
-        outline_sources = normalize_scope(role_receipts["outline-planner"][0].get("assigned_scope"))["source_ids"]
-        add_count_coverage_errors("outline_source", expected_sources, outline_sources, errors)
-    if len(role_receipts["topic-organizer"]) != 1:
-        errors.append({"code": "topic_organizer_count", "count": len(role_receipts["topic-organizer"])})
+        if any(spec.get("phase") in {"placement", "integration_planning"} for _, _, spec in accepted_attempts):
+            errors.append({"code": "repository_stage_present_in_standalone_mode"})
 
-    source_assignments = [
-        source_id
-        for receipt in role_receipts["source-analyst"]
-        for source_id in normalize_scope(receipt.get("assigned_scope"))["source_ids"]
-    ]
-    sources_assigned_once = add_count_coverage_errors("source", expected_sources, source_assignments, errors)
+    outline_attempts = [(t, a, s) for t, a, s in accepted_attempts if s.get("phase") == "outline"]
+    if len(outline_attempts) != 1 or outline_attempts[0][2].get("role") != "outline-planner":
+        errors.append({"code": "outline_assignment_count", "count": len(outline_attempts)})
+    elif set(normalize_scope(outline_attempts[0][2].get("assigned_scope"))["source_ids"]) != expected_sources:
+        errors.append({"code": "outline_source_scope_mismatch"})
 
-    topic_assignments = [
-        topic_id
-        for receipt in role_receipts["topic-comparator"]
-        for topic_id in normalize_scope(receipt.get("assigned_scope"))["topic_ids"]
-    ]
-    topics_assigned_once = add_count_coverage_errors("topic", expected_topics, topic_assignments, errors)
+    extraction_assignments: list[str] = []
+    for _, _, spec in accepted_attempts:
+        if spec.get("phase") == "extraction":
+            if spec.get("role") != "source-analyst":
+                errors.append({"code": "extraction_role_mismatch", "attempt_id": spec.get("attempt_id")})
+            extraction_assignments.extend(normalize_scope(spec.get("assigned_scope"))["source_ids"])
+    sources_exact = add_exact_coverage("source", expected_sources, extraction_assignments, errors)
 
-    conflict_assignments = [
-        comparison_id
-        for receipt in role_receipts["conflict-resolver"]
-        for comparison_id in normalize_scope(receipt.get("assigned_scope"))["comparison_ids"]
-    ]
-    conflicts_assigned_once = add_count_coverage_errors("conflict", required_conflicts, conflict_assignments, errors)
-    if not required_conflicts:
-        skipped_conflict = any(task.get("phase") == "conflict_resolution" and task.get("status") == "skipped" for task in tasks)
-        if not skipped_conflict and not role_receipts["conflict-resolver"]:
-            errors.append({"code": "empty_conflict_phase_not_logged"})
+    organizers = [(t, a, s) for t, a, s in accepted_attempts if s.get("phase") == "topic_organization"]
+    if len(organizers) != 1 or organizers[0][2].get("role") != "topic-organizer":
+        errors.append({"code": "topic_organizer_assignment_count", "count": len(organizers)})
+    elif set(normalize_scope(organizers[0][2].get("assigned_scope"))["unit_ids"]) != expected_units:
+        errors.append({"code": "topic_organizer_unit_scope_mismatch"})
 
-    synthesizers = role_receipts["synthesizer"]
-    accepted_synthesizers = [receipt for receipt in synthesizers if receipt.get("accepted_candidate") is True]
-    if not synthesizers:
-        errors.append({"code": "missing_synthesizer"})
-    if len(accepted_synthesizers) != 1:
-        errors.append({"code": "accepted_synthesizer_count", "count": len(accepted_synthesizers)})
+    comparison_assignments: list[str] = []
+    for _, _, spec in accepted_attempts:
+        if spec.get("phase") == "comparison":
+            if spec.get("role") != "topic-comparator":
+                errors.append({"code": "comparison_role_mismatch", "attempt_id": spec.get("attempt_id")})
+            comparison_assignments.extend(normalize_scope(spec.get("assigned_scope"))["topic_ids"])
+    topics_exact = add_exact_coverage("topic", expected_topics, comparison_assignments, errors)
 
-    validators = role_receipts["validator"]
-    if len(validators) < 2:
-        errors.append({"code": "insufficient_validator_agents", "count": len(validators)})
-    validation_assignments = [
-        category
-        for receipt in validators
-        for category in normalize_scope(receipt.get("assigned_scope"))["validation_categories"]
-    ]
-    categories_covered_once = add_count_coverage_errors(
-        "validation_category", REQUIRED_VALIDATION_CATEGORIES, validation_assignments, errors
-    )
+    resolution_assignments: list[str] = []
+    accepted_resolution_attempts = 0
+    for _, _, spec in accepted_attempts:
+        if spec.get("phase") == "conflict_resolution":
+            accepted_resolution_attempts += 1
+            if spec.get("role") != "conflict-resolver":
+                errors.append({"code": "conflict_role_mismatch", "attempt_id": spec.get("attempt_id")})
+            resolution_assignments.extend(normalize_scope(spec.get("assigned_scope"))["comparison_ids"])
+    skipped_resolution_tasks = [task for task in tasks if task.get("phase") == "conflict_resolution" and task.get("status") == "skipped"]
+    if required_resolution:
+        if skipped_resolution_tasks:
+            errors.append({"code": "conflict_phase_skipped_with_required_scope"})
+    else:
+        if accepted_resolution_attempts:
+            errors.append({"code": "conflict_attempts_with_empty_required_scope"})
+        if len(skipped_resolution_tasks) != 1:
+            errors.append({"code": "empty_conflict_phase_requires_one_skipped_task", "count": len(skipped_resolution_tasks)})
+    conflicts_exact = add_exact_coverage("conflict", required_resolution, resolution_assignments, errors)
 
-    if role_receipts["topic-organizer"]:
-        organizer_scope = normalize_scope(role_receipts["topic-organizer"][0].get("assigned_scope"))["unit_ids"]
-        add_count_coverage_errors("topic_organizer_unit", extracted_units, organizer_scope, errors)
+    if publication_mode == "repository_integrated":
+        integration_path = args.integration_plan or work_dir / "integration-plan.json"
+        if not integration_path.exists():
+            errors.append({"code": "integration_plan_missing"})
+        integrators = [(t, a, s) for t, a, s in accepted_attempts if s.get("phase") == "integration_planning"]
+        if len(integrators) != 1 or integrators[0][2].get("role") != "integration-planner":
+            errors.append({"code": "integration_planner_assignment_count", "count": len(integrators)})
+        else:
+            scope = normalize_scope(integrators[0][2].get("assigned_scope"))
+            if set(scope["unit_ids"]) != expected_units:
+                errors.append({"code": "integration_planner_unit_scope_mismatch"})
+            if set(scope["destination_paths"]) != placement_paths:
+                errors.append({"code": "integration_planner_destination_scope_mismatch"})
 
-    if len(accepted_synthesizers) == 1:
-        synthesis_scope = normalize_scope(accepted_synthesizers[0].get("assigned_scope"))["unit_ids"]
-        add_count_coverage_errors("synthesizer_unit", extracted_units, synthesis_scope, errors)
+    publication_tasks = [task for task in tasks if task.get("phase") == "synthesis" and task.get("logical_task_id") == "publication"]
+    publication_accepted = [(task, attempt, spec) for task, attempt, spec in accepted_attempts if task.get("logical_task_id") == "publication"]
+    if len(publication_tasks) != 1 or len(publication_accepted) != 1:
+        errors.append({"code": "publication_lineage_count", "logical_tasks": len(publication_tasks), "accepted_attempts": len(publication_accepted)})
+    else:
+        _, _, publication_spec = publication_accepted[0]
+        if publication_spec.get("role") not in ALLOWED_PUBLICATION_ROLES:
+            errors.append({"code": "invalid_publication_role", "role": publication_spec.get("role")})
+        scope = normalize_scope(publication_spec.get("assigned_scope"))
+        if set(scope["unit_ids"]) != expected_units:
+            errors.append({"code": "publication_full_unit_scope_mismatch"})
+        if publication_mode == "repository_integrated" and set(scope["publication_paths"]) != placement_paths:
+            errors.append({"code": "publication_full_destination_scope_mismatch"})
+
+    required_categories = set(BASE_VALIDATION_CATEGORIES)
+    if publication_mode == "repository_integrated":
+        required_categories.update(REPOSITORY_VALIDATION_CATEGORIES)
+    validation_assignments: list[str] = []
+    validator_count = 0
+    for _, _, spec in accepted_attempts:
+        if spec.get("phase") == "semantic_validation":
+            validator_count += 1
+            if spec.get("role") != "validator":
+                errors.append({"code": "validator_role_mismatch", "attempt_id": spec.get("attempt_id")})
+            validation_assignments.extend(normalize_scope(spec.get("assigned_scope"))["validation_categories"])
+    categories_exact = add_exact_coverage("validation_category", required_categories, validation_assignments, errors)
+    if validator_count < 2:
+        errors.append({"code": "insufficient_validator_agents", "count": validator_count})
+
+    review_errors, review_warnings, review_metrics = evaluate_reviews(work_dir)
+    errors.extend({"code": "stage_review_validation", "detail": item} for item in review_errors)
+    warnings.extend({"code": "stage_review_warning", "detail": item} for item in review_warnings)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -341,26 +259,31 @@ def main() -> int:
         "errors": errors,
         "warnings": warnings,
         "metrics": {
-            "logged_tasks": len(tasks),
-            "completed_tasks": len(completed_tasks),
-            "completed_subagent_receipts": len(completed_receipts),
+            "publication_mode": publication_mode,
+            "logical_tasks": len(tasks),
+            "attempts": len(attempts),
+            "accepted_attempts": len(accepted_attempts),
+            "superseded_attempts": sum(1 for item in attempts if item.get("status") == "superseded"),
             "inventory_sources": len(expected_sources),
-            "sources_assigned_once": sources_assigned_once,
-            "extracted_units": len(extracted_units),
+            "sources_assigned_once": sources_exact,
+            "units": len(expected_units),
             "topics": len(expected_topics),
-            "topics_assigned_once": topics_assigned_once,
-            "required_conflict_records": len(required_conflicts),
-            "conflict_records_assigned_once": conflicts_assigned_once,
-            "completed_synthesizers": len(synthesizers),
-            "accepted_synthesizers": len(accepted_synthesizers),
-            "completed_validators": len(validators),
-            "validation_categories_covered_once": categories_covered_once,
+            "topics_assigned_once": topics_exact,
+            "comparison_records": len(comparisons),
+            "required_conflict_records": len(required_resolution),
+            "conflict_records_assigned_once": conflicts_exact,
+            "destination_notes": len(placement_paths),
+            "accepted_publication_attempts": len(publication_accepted),
+            "completed_validators": validator_count,
+            "validation_categories_covered": categories_exact,
+            "required_stage_reviews": review_metrics.get("required_producer_attempts", 0),
+            "producer_attempts_reviewed_once": review_metrics.get("reviewed_once", 0),
+            "accepted_stage_review_attempts": review_metrics.get("accepted_review_attempts", 0),
         },
     }
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(json.dumps({"status": report["status"], "report": str(args.report), "errors": len(errors)}))
-    return 0 if not errors else 1
+    dump_json(args.report, report)
+    print(report["status"])
+    return 0 if not errors else 2
 
 
 if __name__ == "__main__":

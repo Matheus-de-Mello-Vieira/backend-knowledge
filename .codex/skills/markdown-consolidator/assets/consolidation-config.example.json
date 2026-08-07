@@ -1,5 +1,7 @@
 {
+  "publication_mode": "standalone",
   "source_root": "docs/sources",
+  "repository_root": null,
   "include": [
     "**/*.md"
   ],
@@ -9,29 +11,36 @@
     ".codex/**",
     "node_modules/**",
     ".markdown-consolidator-work/**",
-    ".consolidation/**",
     "output/**"
   ],
   "output_document": "output/consolidated.md",
   "work_directory": "output/.markdown-consolidator-work",
-  "audience": "software developers",
+  "companion_skill_paths": {
+    "note_home_finder": null,
+    "markdown_link_normalizer": null
+  },
+  "maximum_concurrent_subagents": 3,
+  "maximum_sources_per_extraction_batch": 1,
+  "maximum_topics_per_comparison_batch": 4,
+  "maximum_conflicts_per_resolution_batch": 4,
+  "maximum_repair_iterations": 3,
+  "publication_context": {
+    "audience": "software developers",
+    "purpose": "operational reference",
+    "output_format": "standalone Markdown or repository notes",
+    "assumed_knowledge": [
+      "basic command-line use"
+    ],
+    "mandatory_overrides": []
+  },
   "detail_level": "exhaustive-lossless",
   "publication_source_attribution": "none",
-  "internal_traceability": "coverage-map",
   "preserve_external_references_from_content": true,
-  "conflict_policy": "preserve-all-evidence-without-file-labels",
-  "require_source_line_coverage": 1.0,
-  "require_unit_disposition_coverage": 1.0,
-  "require_unit_final_representation_coverage": 1.0,
-  "require_input_source_reference_violations": 0,
-  "maximum_repair_iterations": 3,
+  "preserve_existing_destination_headings": true,
+  "modify_context_notes": false,
+  "normalize_changed_notes_only": true,
+  "validate_full_repository_links": true,
   "cleanup_work_directory_after_success": false,
-  "require_publication_evidence_coverage": 1.0,
-  "require_example_exposition_coverage": 1.0,
-  "require_meta_source_phrase_violations": 0,
-  "execution_mode": "subagents-required",
-  "main_agent_role": "orchestrator-only",
-  "allow_main_thread_semantic_fallback": false,
-  "require_delegation_validation": true,
-  "minimum_validator_subagents": 2
+  "independent_stage_reviews": true,
+  "review_batch_size": 3
 }

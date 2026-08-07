@@ -1,459 +1,323 @@
-# Mandatory Multi-Agent Lossless Markdown Consolidator for Codex
+# Codex Markdown Consolidator
 
-A self-contained Codex skill that requires Codex to spawn bounded subagents for all semantic work and combines multiple Markdown sources into one coherent document without losing source information.
+A lossless, reviewed Codex workflow for consolidating overlapping Markdown evidence into either:
 
-The result is a **standalone Markdown publication**. It does not cite or depend on the temporary input files, so those files can be deleted after consolidation.
+- one standalone Markdown publication; or
+- one or more durable notes integrated into an existing Markdown knowledge repository.
 
-## Guarantees
+The skill preserves the complete supported informational union, removes only duplicated meaning, and requires independent subagent review before each downstream stage.
 
-A successful run requires:
+## Repository integration
 
-- the main agent to act only as orchestrator;
-- completed subagent receipts for every required semantic phase;
-- no sequential main-thread fallback when subagents are unavailable;
+Repository-integrated mode works with two separately installed companion skills:
 
-- 100% coverage of non-empty source lines during extraction;
-- exactly one disposition for every extracted unit;
-- a final representation for every non-structural unit;
-- preservation of distinct facts, details, examples, steps, warnings, limitations, rationale, alternatives, historical statements, conflicts, code, tables, external references, and qualifiers;
-- zero citations or identifiers for the local input files in the final publication;
-- zero meta-source narration such as `the material states`, `in the material`, or `the example in the source`;
-- exact final-document evidence for every non-structural source unit;
-- complete presentation and explanation of every example;
-- all intermediate and reasoning artifacts contained in one disposable directory.
+- `note-home-finder` decides whether to reuse, extend, create, or split durable notes;
+- `markdown-link-normalizer` normalizes changed-note links and validates the final note graph.
 
-Equivalent wording may be merged, but the merged text must preserve the complete semantic union of every contributing source unit. Outdated, conflicting, or awkward material is labeled or moved to an appendix rather than discarded.
+The consolidator does not copy their internal rules. It locates their current `SKILL.md` and scripts, records those paths, and uses them through explicit handoff contracts.
 
-## Final and disposable outputs
+## Core guarantees
 
-Only the consolidated document is durable:
-
-```text
-output/
-└── consolidated.md
-```
-
-Everything else is stored together:
-
-```text
-output/
-└── .markdown-consolidator-work/
-    ├── inventory.json
-    ├── delegation-log.json
-    ├── delegation-validation-report.json
-    ├── receipts/
-    ├── outline.json
-    ├── units/
-    ├── topics.json
-    ├── comparisons/
-    ├── decision-ledger.json
-    ├── conflicts.md
-    ├── drafts/
-    ├── coverage-map.json
-    ├── validation-report.json
-    └── validation/
-```
-
-After validation succeeds, the complete work directory can be removed at once:
-
-```bash
-rm -rf output/.markdown-consolidator-work
-```
-
-The skill does not delete this directory automatically unless explicitly requested.
-
-## No input-file citations
-
-The final Markdown must not contain:
-
-- input filenames or paths;
-- generated source IDs or unit IDs;
-- source line numbers or ranges;
-- footnotes or links pointing to the local source files;
-- phrases such as `Source A states` or `according to notes-a.md`;
-- a bibliography of the local input files.
-
-When source material conflicts, the final document describes each position by content and scope, for example:
-
-```md
-Two behaviors are documented:
-
-- Version 2 uses a 30-minute expiration period.
-- Version 3 uses a 60-minute expiration period.
-```
-
-When the distinguishing condition is unknown:
-
-```md
-Two behaviors remain unresolved:
-
-- One behavior uses a 30-minute expiration period.
-- Another uses a 60-minute expiration period.
-
-The distinguishing condition is unknown.
-```
-
-External links, standards, publications, authors, and bibliographic references that are part of the original content are preserved. Only citations to the temporary local input files are prohibited.
-
-## Standalone exposition and verification
-
-The final document must state the subject directly. It must not narrate what the temporary inputs said or assume that the reader has access to them.
-
-Rejected wording includes:
-
-```text
-The material states that ...
-The sources describe ...
-As shown in the source ...
-The distance-learning example in the material shows the logic.
-```
-
-A source example must be recreated in the final document with enough information to stand alone:
-
-```text
-In the distance-learning scenario, students receive the same lesson remotely but complete activities at different times. This demonstrates that delivery location and participation timing are separate dimensions: remote instruction does not necessarily require synchronous participation.
-```
-
-The skill verifies this in multiple ways:
-
-1. The deterministic validator scans prose outside code fences for prohibited meta-source patterns.
-2. Every non-structural unit must include at least one exact `publication_evidence` excerpt that occurs in the final Markdown.
-3. Every example unit must include an exact `detail_excerpt` presenting the example and an exact `explanation_excerpt` explaining its logic or significance.
-4. Semantic validator agents compare source examples with the final text and reject dangling allusions to examples, cases, definitions, diagrams, or arguments that were never reproduced.
-
-A run fails when any of these checks fails.
-
-## Architecture
-
-Codex discovers one skill:
-
-```text
-.agents/skills/markdown-consolidator/SKILL.md
-```
-
-The orchestrator reads role prompts from:
-
-```text
-.agents/skills/markdown-consolidator/references/agents/
-```
-
-It injects those prompts into built-in subagent tasks for:
-
-1. complete outline planning;
-2. exhaustive source extraction;
-3. complete topic organization;
-4. topic comparison;
-5. conflict and historical-status resolution;
-6. single-writer synthesis;
-7. unit-level and publication-boundary validation.
-
-The main agent does not perform those roles. It creates task records, spawns agents, waits for them, checks receipts and schemas, runs deterministic validators, and publishes the accepted subagent-written draft. No `.codex/agents` directory or `.codex/config.toml` registration is required.
-
-## Mandatory delegation behavior
-
-Subagents are required, not advisory. After inventory, the main thread must explicitly spawn agents and must not semantically read the source documents or author intermediate/final content itself.
-
-Required phases are:
-
-```text
-outline planner
-    ↓
-source analysts, parallel by source or disjoint batch
-    ↓
-topic organizer
-    ↓
-topic comparators, parallel by disjoint topic sets
-    ↓
-conflict resolvers, parallel by independent conflict sets
-    ↓
-one synthesizer for each draft revision
-    ↓
-at least two validators with disjoint categories
-```
-
-Every task writes a receipt under:
-
-```text
-.markdown-consolidator-work/receipts/<task-id>.json
-```
-
-The final delegation validator checks:
-
-- required role and phase counts;
-- exact source assignment coverage;
-- exact topic assignment coverage;
-- conflict-record assignment coverage;
-- task/receipt consistency;
-- declared output existence;
-- exactly one accepted synthesizer;
-- at least two validators with complete, disjoint category coverage;
-- `fallback_used: false`.
-
-When subagents cannot be spawned, the skill stops with `subagent execution unavailable`. It does not continue the consolidation in the main thread.
+- Every selected evidence source is inventoried.
+- Every non-empty evidence line is extracted.
+- Every extracted unit receives one primary topic, disposition, and final representation.
+- Examples retain both concrete details and explanation.
+- Conflicts, uncertainty, qualifications, limitations, dependencies, and exceptions remain visible.
+- Temporary evidence files are never cited, named, or linked in durable notes.
+- Every required producer attempt receives an independent subagent review.
+- The main agent performs orchestration only.
+- Repository candidates are normalized and validated in a disposable shadow tree before durable files are written.
 
 ## Installation
 
-### Repository scope
-
-Copy the `.agents` directory into a repository root:
+Copy the skill directory into a repository:
 
 ```text
-<repository>/.agents/skills/markdown-consolidator/SKILL.md
+<repository>/.agents/skills/markdown-consolidator/
 ```
 
-### User scope
-
-Copy the skill directory to:
+or install it for the current user:
 
 ```text
 ~/.agents/skills/markdown-consolidator/
 ```
 
-## Invocation
+Repository-integrated mode also requires the companion skills to be installed in a discoverable location such as:
 
 ```text
-$markdown-consolidator Spawn subagents for every semantic phase and perform a complete lossless consolidation of docs/sources into output/consolidated.md. Keep the main thread orchestration-only, preserve every informational unit, keep all temporary artifacts under output/.markdown-consolidator-work, and do not cite the input files.
+<repository>/.agents/skills/<skill>/
+<repository>/.codex/skills/<skill>/
+~/.agents/skills/<skill>/
+~/.codex/skills/<skill>/
 ```
 
-For selected files:
+Required names:
 
 ```text
-$markdown-consolidator Spawn subagents for every semantic phase and consolidate architecture-a.md, architecture-b.md, and vendor-notes.md into architecture.md. Keep all details, examples, caveats, alternatives, conflicts, and historical behavior. The final document must be standalone and must not name the input files.
+note-home-finder
+markdown-link-normalizer
 ```
 
-To remove temporary artifacts automatically after success:
+## Usage
+
+### Standalone consolidation
 
 ```text
-$markdown-consolidator Consolidate docs/sources into output/consolidated.md. After validation passes, delete the disposable work directory. Do not delete the source files.
+$markdown-consolidator Consolidate all Markdown files under docs/sources into docs/consolidated.md. Preserve all supported information and do not cite the source files.
 ```
 
-## Package structure
+### Integrate into an existing note repository
 
 ```text
-.agents/skills/markdown-consolidator/
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── assets/
-│   ├── consolidation-config.example.json
-│   └── final-document-template.md
-├── references/
-│   ├── agents/
-│   │   ├── outline-planner.md
-│   │   ├── source-analyst.md
-│   │   ├── topic-organizer.md
-│   │   ├── topic-comparator.md
-│   │   ├── conflict-resolver.md
-│   │   ├── synthesizer.md
-│   │   └── validator.md
-│   ├── contracts.md
-│   ├── delegation-policy.md
-│   ├── decision-policy.md
-│   └── quality-gates.md
-└── scripts/
-    ├── inventory_markdown.py
-    ├── validate_consolidation.py
-    └── validate_delegation.py
+$markdown-consolidator Integrate the Markdown files under Inbox/oauth-research into this note repository. Use existing notes when they are the correct home, create or split notes when needed, preserve existing content, and validate all resulting links.
 ```
 
-## How it works
+### Extend rather than duplicate
 
-### 1. Inventory
+```text
+$markdown-consolidator Consolidate these privacy-governance sources into the existing knowledge base. Prefer extending an appropriate note over creating a duplicate, but keep every source detail represented.
+```
 
-All selected Markdown files are inventoried. Generated outputs, the skill directory, and the disposable work directory are excluded.
+### Explicit split permission
 
-### 2. Delegated outline planning
+```text
+$markdown-consolidator Integrate these files into the repository. Split them across multiple notes when the topics have different natural homes, and add contextual links between the resulting notes.
+```
 
-An outline-planner subagent reads the complete selected source set and creates a structure with a destination for every category of information. The main agent does not draft the outline.
+## Publication modes
 
-### 3. Exhaustive extraction
+### Standalone
 
-Every non-empty line must be covered by an extracted unit. Headings, metadata, prose, lists, code, tables, footnotes, links, warnings, examples, and references are included.
+Produces one self-contained Markdown document. The lossless extraction, comparison, conflict resolution, synthesis, evidence materialization, review, and validation flow produces one self-contained document.
 
-### 4. Delegated topic organization
+### Repository integrated
 
-A topic-organizer subagent assigns every extracted unit to one primary topic and verifies exact unit-set coverage.
+Adds reviewed stages for:
 
-### 5. Comparison
+1. companion-skill discovery;
+2. note placement using `note-home-finder`;
+3. durable destination and context-note snapshots;
+4. unit-to-destination integration planning;
+5. multi-note annotated synthesis;
+6. publication-set materialization;
+7. link normalization and repository-wide validation using `markdown-link-normalizer`;
+8. baseline-content, heading, context-boundary, and link-plan validation.
 
-Units are classified as equivalent, near-duplicate, complementary, conflicting, conditionally compatible, unique, or outdated. No deletion path exists inside the selected source set.
+## File classes
 
-### 6. Preservation-oriented decisions
+Repository mode distinguishes three classes.
 
-Conflicts determine presentation and status, not deletion. Non-primary statements remain visible as alternatives, exceptions, historical behavior, or unresolved claims.
+### Evidence sources
 
-### 7. Complete standalone synthesis
+Selected input files whose complete supported information must be represented. They may be deleted after publication and must never be cited or linked.
 
-One writer creates the detailed final document. Information that does not fit the main narrative goes into explicit appendices. Input-file provenance is written only to the internal coverage map.
+### Destination notes
 
-### 8. Validation
+Durable notes that may be reused, extended, or created. These are the only repository files the workflow may publish.
 
-The content validator checks:
+### Context notes
 
-- source-line coverage;
-- unit disposition coverage;
-- final representation coverage;
-- internal source, unit, section, claim, and block mappings;
-- absence of source filenames, paths, IDs, and local-file citations in the publication;
-- absence of meta-source narration and references to unavailable input content;
-- exact publication-evidence coverage for every non-structural unit;
-- complete example exposition, including both details and explanation;
-- Markdown structure, code fences, anchors, and footnotes.
+Durable neighboring notes used for taxonomy, terminology, boundaries, and links. They remain read-only unless a reviewed placement plan explicitly promotes them to destinations.
 
-Semantic validator agents separately compare source units with final text to detect meaning loss and file-oriented attribution. A second deterministic validator verifies that all required work was actually assigned to subagents and supported by matching receipts.
+## Explicit execution order
 
-## Helper scripts
+Every semantic stage uses:
 
-Inventory sources:
+```text
+specify
+  → producer subagent
+  → reconcile producer
+  → independent stage-review subagent
+  → reconcile review
+  → deterministic validation
+  → advance or retry
+```
+
+Repository mode executes:
+
+```text
+Evidence inventory
+  → Companion discovery
+  → Note-home placement
+  → Placement review and validation
+  → Destination/context snapshots
+  → Outline
+  → Lossless extraction
+  → Topic organization
+  → Comparison
+  → Conflict decisions
+  → Integration plan
+  → Integration-plan review and validation
+  → Full publication-set synthesis
+  → Publication review
+  → Lifecycle and review validation
+  → Final semantic validation
+  → Link normalization in repository shadow
+  → Full shadow-tree link validation
+  → Repository-integration validation
+  → Delegation validation
+  → Publish normalized destination notes
+```
+
+## Companion interaction
+
+### `note-home-finder`
+
+The consolidator spawns a `note-home-finder-adapter` subagent and injects the installed companion `SKILL.md` unchanged. The adapter follows the companion's repository search workflow and produces only a machine-readable placement plan.
+
+Placement outcomes:
+
+- reuse an existing note;
+- extend an existing note;
+- create a new note;
+- split the material across multiple notes.
+
+The placement output is independently reviewed and deterministically validated before outline planning.
+
+### `markdown-link-normalizer`
+
+The consolidator invokes the companion scripts only after candidate note paths, headings, and link relationships are stable.
+
+The link pipeline:
+
+1. copies the repository's Markdown files into a disposable shadow tree;
+2. records pre-existing link failures;
+3. removes selected evidence files from the modeled final state;
+4. overlays candidate destination notes;
+5. normalizes only changed candidate notes;
+6. validates every local Markdown file and heading target in the final shadow tree;
+7. copies normalized candidates into a disposable normalized-output directory.
+
+New or evidence-deletion-exposed link failures block publication. Unchanged pre-existing failures are reported as warnings.
+
+## Existing-note preservation
+
+Before synthesis, the skill snapshots every existing destination and context note.
+
+Mandatory behavior:
+
+- preserve existing supported content and note purpose;
+- preserve established terminology and external references;
+- preserve existing headings unless a reviewed heading migration is approved;
+- integrate material into specific existing sections instead of appending a generic catch-all section;
+- keep context notes read-only;
+- compare final candidates with snapshots during independent review.
+
+## Link behavior
+
+Repository links are allowed and encouraged only when they clarify a useful relationship:
+
+- broader context;
+- prerequisite;
+- implementation detail;
+- contrast;
+- alternative;
+- example;
+- continuation;
+- related mechanism.
+
+The relationship must be stated in nearby prose. A link cannot replace facts assigned to the current note.
+
+Temporary evidence links remain forbidden.
+
+## Durable and disposable outputs
+
+### Standalone
+
+Durable:
+
+```text
+consolidated.md
+```
+
+### Repository integrated
+
+Durable:
+
+```text
+one or more reviewed destination notes
+```
+
+Disposable internal state:
+
+```text
+.markdown-consolidator-work/
+```
+
+This directory contains placement plans, snapshots, extraction units, comparisons, decisions, integration plans, annotated drafts, candidates, shadow repository, receipts, reviews, and validation reports. It may be deleted as one directory after successful publication.
+
+## New scripts
+
+```text
+locate_companion_skills.py
+validate_placement.py
+snapshot_repository_context.py
+validate_integration_plan.py
+materialize_publication_set.py
+run_link_pipeline.py
+validate_repository_integration.py
+```
+
+The existing lifecycle, review, extraction, topic, comparison, decision, writing, consolidation, and delegation scripts remain in use.
+
+## Important contracts
+
+### Placement plan
+
+Defines the outcome, confidence, destination paths and actions, context notes, and rationale.
+
+### Repository context index
+
+Records immutable snapshots, hashes, and existing headings for destination and context notes.
+
+### Integration plan
+
+Assigns every source unit to exactly one primary destination and defines section operations, protected headings, approved heading migrations, terminology constraints, and contextual links.
+
+### Publication manifest
+
+Lists every candidate note, action, annotated path, and assigned unit set for one publication revision.
+
+### Repository coverage map
+
+Maps every source unit to its durable destination and exact materialized evidence.
+
+## Validation rules
+
+Repository publication is blocked when any of these remains:
+
+- an evidence source is selected as a durable destination;
+- a source unit lacks one primary destination;
+- a context note is modified without becoming a destination;
+- an existing heading disappears without an approved migration;
+- a planned link is missing;
+- a local link targets disposable evidence;
+- a new local file or anchor target is broken;
+- a destination note loses supported baseline content;
+- source-dependent narration appears;
+- final evidence coverage is incomplete;
+- a required producer lacks an independent review;
+- lifecycle or delegation validation fails.
+
+## Tests
+
+Run both suites:
 
 ```bash
-python .agents/skills/markdown-consolidator/scripts/inventory_markdown.py \
-  docs/sources \
-  --output output/.markdown-consolidator-work/inventory.json \
-  --exclude '.git/**' \
-  --exclude '.agents/**' \
-  --exclude '.codex/**' \
-  --exclude 'node_modules/**' \
-  --exclude '.markdown-consolidator-work/**' \
-  --exclude '.consolidation/**' \
-  --exclude 'output/**'
+python .agents/skills/markdown-consolidator/tests/smoke_test.py
+python .agents/skills/markdown-consolidator/tests/repository_integration_smoke_test.py
 ```
 
-Validate a run:
+Compile all scripts:
 
 ```bash
-python .agents/skills/markdown-consolidator/scripts/validate_consolidation.py \
-  --document output/.markdown-consolidator-work/drafts/draft-1.md \
-  --inventory output/.markdown-consolidator-work/inventory.json \
-  --units-dir output/.markdown-consolidator-work/units \
-  --coverage-map output/.markdown-consolidator-work/coverage-map.json \
-  --decisions output/.markdown-consolidator-work/decision-ledger.json \
-  --report output/.markdown-consolidator-work/validation-report.json
+python -m py_compile .agents/skills/markdown-consolidator/scripts/*.py
 ```
 
-Validate mandatory delegation:
+The repository-integration suite covers companion discovery, placement validation, snapshots, unit-to-note assignment, publication-set materialization, shadow-tree link validation, repository integration validation, and rejection of disposable evidence as a destination.
 
-```bash
-python .agents/skills/markdown-consolidator/scripts/validate_delegation.py \
-  --work-dir output/.markdown-consolidator-work \
-  --inventory output/.markdown-consolidator-work/inventory.json \
-  --units-dir output/.markdown-consolidator-work/units \
-  --topics output/.markdown-consolidator-work/topics.json \
-  --comparisons-dir output/.markdown-consolidator-work/comparisons \
-  --decisions output/.markdown-consolidator-work/decision-ledger.json \
-  --report output/.markdown-consolidator-work/delegation-validation-report.json
-```
+## Scope limitations
 
-The delegation validator fails when a required subagent receipt is missing, assignments overlap or omit sources/topics/conflicts, no accepted synthesizer exists, fewer than two validators ran, or validation categories are incomplete.
+The uploaded `markdown-link-normalizer` companion normalizes and validates local inline Markdown links. Other syntaxes, such as Obsidian wikilinks, reference-style links, or raw HTML links, require separate tooling unless the companion skill is later expanded.
 
-The scripts use only the Python standard library.
-
-## Pass criteria
-
-A run passes only when both deterministic reports pass and the delegation report proves that semantic work was performed by subagents:
-
-```text
-delegation_status = passed
-fallback_used = false
-accepted_synthesizers = 1
-completed_validators >= 2
-validation_categories_covered_once = 6
-source_coverage = 1.0
-source_line_coverage = 1.0
-unit_disposition_coverage = 1.0
-unit_final_representation_coverage = 1.0
-publication_evidence_coverage = 1.0
-example_exposition_coverage = 1.0
-input_source_reference_violations = 0
-meta_source_phrase_violations = 0
-```
-
-Agent validation must also confirm that no semantic detail was lost. Mapping a unit in JSON without actually preserving its meaning is a high-severity failure.
-
-## Important distinction
-
-Lossless does not mean verbatim concatenation. The skill may:
-
-- reorganize sections;
-- normalize terminology;
-- merge duplicate wording;
-- improve transitions;
-- present current information before historical information.
-
-It may not:
-
-- select only important points;
-- shorten procedures or examples;
-- remove alternatives or caveats;
-- hide conflicts;
-- discard outdated information;
-- replace detailed sections with an overview;
-- cite or identify the temporary input files in the final publication;
-- use meta-source narration such as `the material states` or `in the material`;
-- refer to an example without presenting and explaining it in the final document.
-
-## Troubleshooting
-
-### No subagent threads appear
-
-Invoke the skill explicitly and include `Spawn subagents for every semantic phase; keep the main thread orchestration-only.` Confirm that the Codex client supports subagents.
-
-The workflow must stop rather than continue semantic work in the main thread. Inspect:
-
-```text
-output/.markdown-consolidator-work/delegation-log.json
-output/.markdown-consolidator-work/receipts/
-output/.markdown-consolidator-work/delegation-validation-report.json
-```
-
-A missing phase or receipt is a failed run, not permission for the main agent to take over.
-
-### Intermediate files appear beside the final document
-
-Confirm the installed `SKILL.md` defines the disposable work directory as:
-
-```text
-<output-dir>/.markdown-consolidator-work
-```
-
-Every artifact except the final Markdown should be written below that directory.
-
-### The final document cites input files
-
-Inspect:
-
-```text
-output/.markdown-consolidator-work/validation-report.json
-```
-
-The deterministic validator rejects exact input paths, filenames, source IDs, and unit IDs found in the final Markdown. Semantic validation also checks file-oriented wording such as `Source A states`.
-
-### The final document says “the material states” or refers to an unavailable example
-
-Inspect the deterministic findings in:
-
-```text
-output/.markdown-consolidator-work/validation-report.json
-```
-
-The validator emits `meta_source_narration_in_publication` for phrases that point back to temporary inputs. It also verifies exact `publication_evidence` for every non-structural unit and requires `detail_excerpt` plus `explanation_excerpt` for every example unit.
-
-### The output is still a summary
-
-Confirm the installed `SKILL.md` contains the heading `Non-negotiable completion rule` and the frontmatter description includes `lossless semantic consolidation`.
-
-Invoke the skill explicitly with:
-
-```text
-Preserve every informational unit; do not summarize. Require 100% source-line, unit-disposition, and final-representation coverage.
-```
-
-### The final document becomes very long
-
-That is expected when sources contain substantial unique information. Use sections and appendices to improve navigation; do not shorten by omission.
-
-## Scope
-
-Suitable for technical documentation, research notes, architecture documents, policies, requirements, migration guides, and knowledge-base consolidation.
-
-Not intended for summarization, simple concatenation, single-file proofreading, or externally verifying whether source claims are true.
+The consolidator does not create reciprocal links in unrelated context notes by default. Request those edits explicitly so they become reviewed destinations.
