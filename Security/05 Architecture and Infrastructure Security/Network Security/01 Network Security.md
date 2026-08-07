@@ -17,19 +17,37 @@ Here is a deeper look into each of those strategies, including how they work, th
 - It uses [Virtual Local Area Networks (VLANs)](02%20Ethernet.md#VLAN%20Tagging) to segment a network at the Layer 2
 - **Best Used For:** Internal departmental separation (e.g., keeping Guest Wi-Fi, HR, and Engineering traffic completely isolated from each other on the same physical hardware).
 
-## 2. Subnet Segmentation (Layer 3)
+## Subnet Segmentation (Layer 3)
 
 - **How it works:** It uses [Subnetting](03%20Internet%20Protocol.md#Subnetting) to segment a network at the Layer 2
 - **Best Used For:** Creating distinct boundaries for different types of infrastructure—for example, putting all IP security cameras on one subnet, VoIP phones on another, and critical database servers on a highly restricted third subnet.
 
 ### Demilitarized Zones (DMZ)
 
-A DMZ (`/ˌdiː ɛm ˈziː/`) acts as a neutral buffer zone between your untrusted public internet and your highly trusted internal corporate network.
+A DMZ (`/ˌdiː ɛm ˈziː/`) stands for Demilitarized Zone. In the physical world, it refers to an area where military presence is forbidden; in computing, it acts as a perimeter network or neutral buffer zone between an untrusted public internet and a highly trusted internal corporate network. It improves security by physically or logically segregating devices on opposite sides of a firewall.
 
-- **How it works:** Typically structured using a "triple-homed firewall" or two separate firewalls (external and internal). Public-facing servers sit in the middle. If a hacker compromises your public web server in the DMZ, the internal firewall still blocks them from jumping deeper into your private Active Directory or customer databases.
-- **Best Used For:** Hosting external-facing services like web servers, mail gateways, external APIs, and reverse proxies.
+**The Security Problem**: If a company places public-facing resources (like web or email servers) inside its private network, it must allow untrusted internet traffic through the firewall. This creates a severe security vulnerability. If hackers compromise those public servers, they are already past the firewall and can easily pivot to access sensitive internal devices—like database servers—or plant viruses on the corporate network.
 
-## 4. Zero Trust Network Access (ZTNA)
+**The DMZ Solution**: By placing public-facing servers outside the internal network and into a DMZ, they remain fully exposed and accessible to the internet without granting external users access to the internal network. If a hacker compromises your public web server in the DMZ, the internal firewall still blocks them from jumping deeper into your private Active Directory or customer databases.
+
+**Enterprise DMZ Architectures**
+
+- **Single Firewall Setup:** Divides a network into two parts by taking specific devices from inside the trusted network and placing them on the outside of the firewall, directly facing the internet.
+- **Dual Firewall Setup (More Secure):** Typically structured using a "triple-homed firewall" or two separate firewalls (external and internal). The first (external) firewall filters initial traffic from the internet, ensuring only legitimate requests reach the public-facing servers sitting in the middle. The second (internal) firewall protects the private corporate network. Hackers would have to successfully bypass two separate firewalls to reach sensitive internal data.
+
+**Best Used For:**
+
+- Hosting external-facing services like web servers, mail gateways, external APIs, and reverse proxies.
+
+#### Home Network DMZ (DMZ Host)
+
+While enterprise DMZs create segmented subnets, many home routers feature an advanced setting simply labeled "DMZ." This is not a true DMZ subnet, but rather a **DMZ Host**.
+
+- **How it Works:** Setting up a DMZ host in a home router designates a single device to have all ports forwarded to it, completely bypassing the router's firewall and fully exposing the device to the internet.
+- **Common Use Case:** This is frequently used for gaming consoles (such as an Xbox or PlayStation) to ensure the router's firewall does not interfere with online gaming connectivity. It eliminates the hassle of configuring manual port forwarding.
+- **Configuration Requirement:** Any device placed in a home router's DMZ must be configured with a **static IP address**, rather than a dynamic IP, so the router always knows exactly where to forward the unfiltered traffic. All other personal computers and devices on the home network remain safely protected behind the router's standard firewall.
+
+## Zero Trust Network Access (ZTNA)
 
 ZTNA shifts the focus from _network location_ to _identity and context_. Traditional segmentation assumes that if you are inside the network, you are safe. ZTNA assumes the network is already hostile, whether you are sitting in the office or at a coffee shop.
 
