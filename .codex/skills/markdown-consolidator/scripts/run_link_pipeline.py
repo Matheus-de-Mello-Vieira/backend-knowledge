@@ -86,12 +86,12 @@ def main() -> int:
     validate_script = args.normalizer_skill_dir / "scripts" / "validate_markdown_links.py"
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
-    if (repository / ".python-version").exists() and shutil.which("pyenv"):
-        python_prefix = ["pyenv", "exec", "python"]
+    if shutil.which("uv") and (repository / ".venv").exists():
+        python_prefix = ["uv", "run", "python"]
     else:
         python_prefix = [sys.executable]
-        if (repository / ".python-version").exists():
-            warnings.append({"code": "pyenv_unavailable_used_current_python"})
+        if shutil.which("uv"):
+            warnings.append({"code": "uv_venv_missing_used_current_python"})
 
     if not normalize_script.is_file() or not validate_script.is_file():
         errors.append({"code": "normalizer_companion_scripts_missing", "skill_dir": str(args.normalizer_skill_dir)})

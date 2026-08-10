@@ -5,6 +5,8 @@ description: Fix Markdown lint issues with `/usr/local/bin/markdownlint`. Use wh
 
 # Markdownlint Fix
 
+When the user does not name any file, load the `obsidian-workspace-context` skill first. Use its `active_note` as the lint target. If it reports no `active_note`, ask the user which note to use from `open_notes` instead of guessing.
+
 ## Workflow
 
 Use `scripts/markdownlint_fix.py` for Markdown lint cleanup instead of hand-editing routine lint violations.
@@ -14,6 +16,14 @@ Run it from the repository root when possible:
 ```bash
 .codex/skills/markdownlint-fix/scripts/markdownlint_fix.py README.md docs
 ```
+
+When the user omits targets, the note-selection flow is:
+
+1. Load the `obsidian-workspace-context` skill.
+2. Read its output.
+3. If it returns an `active_note`, pass that note to `markdownlint_fix.py` as the positional target.
+4. If it returns no `active_note` but does return `open_notes`, ask the user which open note to lint.
+5. If it returns neither, ask the user for an explicit target.
 
 The script:
 
@@ -29,6 +39,13 @@ The script:
 ## Target Selection
 
 Pass only the files or directories the user asked to fix. Do not run the script across the whole repository unless the user asked for project-wide cleanup.
+
+If the user does not specify targets:
+
+1. Load the `obsidian-workspace-context` skill.
+2. If it returns an `active_note`, pass that note to `markdownlint_fix.py` as the positional target.
+3. If it returns no `active_note` but does return `open_notes`, ask the user which open note to lint.
+4. If it returns neither, ask the user for an explicit target.
 
 Use quoted globs so the script can expand them consistently:
 

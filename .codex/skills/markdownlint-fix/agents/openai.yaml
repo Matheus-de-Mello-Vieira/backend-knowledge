@@ -1,4 +1,4 @@
 interface:
   display_name: "Markdownlint Fix"
   short_description: "Fix Markdown lint issues with markdownlint"
-  default_prompt: "Use $markdownlint-fix to fix Markdown lint problems in these files."
+  default_prompt: "Use $markdownlint-fix to fix Markdown lint problems in the requested files, or use obsidian-workspace-context to choose the active note when no file is named."
