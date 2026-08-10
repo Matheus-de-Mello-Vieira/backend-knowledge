@@ -27,6 +27,7 @@ define upload_vault_subset
 		        --reverse \
 		        --verbose \
 		        --delete \
+				--no-perms \
 		        --parallel=4 \
 		        \"$$staging_dir\" \
 		        \"$(FTP_DEST)\"; \

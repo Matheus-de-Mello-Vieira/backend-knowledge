@@ -4,7 +4,7 @@
 
 Unlike languages like Go or C that compile directly into a static executable bound to a specific CPU architecture, Python operates dynamically.
 
-- **The Runtime Engine:** Python relies on a [[02 The Anatomy of a Process#Assembling into Machine Code|runtime engine]] to interpret code or compile it just-in-time (JIT).
+- **The Runtime Engine:** Python relies on a [[04 Inside The CPU#Assembling into Machine Code|runtime engine]] to interpret code or compile it just-in-time (JIT).
 - **Memory Permissions:** Because the runtime generates raw machine instructions on the fly, it must constantly juggle memory permissions—requesting writable memory from the OS to generate code, then switching it to read-only/executable (W^X) before the CPU can safely run it.
 
 ## Memory Layout and The OOP Penalty
@@ -100,4 +100,4 @@ Libraries like NumPy and Pandas bypass Python's architectural bottlenecks by exe
 
 - **Dropping the GIL:** Because the GIL only protects Python objects, underlying C code explicitly releases the lock before doing heavy math, allowing true parallel execution across multiple physical CPU cores.
 - **Contiguous Memory:** NumPy completely abandons the OOP penalty. It allocates raw C-arrays in a single, massive, contiguous block of raw memory. This maximizes spatial locality, resulting in virtually 100% L1 CPU Cache hit rates.
-- **Hardware Acceleration (SIMD):** By operating on contiguous memory, NumPy feeds data directly into [[02 The Anatomy of a Process#Single Instruction, Multiple Data (SIMD)|SIMD]] hardware registers. This allows the CPU to execute the exact same mathematical instruction on a large batch of array data simultaneously within a single clock cycle, completely bypassing the standard ALU limitations.
+- **Hardware Acceleration (SIMD):** By operating on contiguous memory, NumPy feeds data directly into [[04 Inside The CPU#Single Instruction, Multiple Data (SIMD)|SIMD]] hardware registers. This allows the CPU to execute the exact same mathematical instruction on a large batch of array data simultaneously within a single clock cycle, completely bypassing the standard ALU limitations.
