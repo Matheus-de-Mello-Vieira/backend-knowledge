@@ -226,36 +226,10 @@ graph LR
 	* Enterprise databases like PostgreSQL, MySQL, or SAP HANA handle massive concurrency by partitioning data.
 	* When a database is NUMA-aware, it creates buffer pools per node. A thread processing a query for Partition A runs on Node A's CPU and fetches from Node A's RAM.
 	* Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
-### Case Study: Python’s `None` and the Cache Invalidation Storm
 
-To see how devastating cache invalidation can be in the real world, we can look at a massive performance bottleneck that plagued the Python programming language for years, finally fixed in Python 3.12 (via PEP 683).
-#### The Architecture of the Problem
+> [!example] Python’s `None` and the Cache Invalidation Storm
+> An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. For the full walkthrough of how Python 3.12 fixed it with immortal objects, see [[Python Internals#Hardware Collisions and Immortal Objects]].
 
-Python uses **Reference Counting** for garbage collection. Every object in memory has an internal integer (`ob_refcnt`). Whenever a variable points to an object, the CPU increments that counter. When the variable is destroyed, the CPU decrements it. If the counter hits zero, the memory is freed.
-
-Python also uses **Singletons** for its most common values: `None`, `True`, and `False`. There is only one physical instance of `None` in an entire Python process. Every time your code says `x = None`, it points to that exact same memory address.
-
-#### The Hardware Collision
-
-Because `None` is used constantly in almost every Python script, it is heavily accessed by multithreaded applications.
-
-Imagine Thread 1 (on Core 1) and Thread 2 (on Core 2) are doing completely different background tasks, but they both occasionally assign variables to `None`.
-
-- Thread 1 assigns `a = None`. Core 1 fetches the cache line containing `None`, increments the reference count, and marks the cache line as **Modified (M)**.
-- Instantly, the MESI protocol broadcasts an invalidation signal. Core 2's cached copy of `None` is marked **Invalid (I)**.
-- A microsecond later, Thread 2 assigns `b = None`. Core 2 suffers a cache miss, forces Core 1 to flush its data back to L3, fetches the fresh cache line, increments the counter, marks it **Modified**, and invalidates Core 1.
-
-#### The MESI Nightmare
-
-This is a textbook example of **Cache Thrashing** (specifically, _True Sharing_ contention). Even though the threads were doing completely separate work, simply referencing `None` forced the CPU cores to violently fight over the exact same 64-byte cache line. The L1 caches were effectively disabled for Python's most heavily used object, forcing the processor to constantly suffer ~80-nanosecond trips to the L3 cache.
-
-Furthermore, it was entirely pointless overhead: `None`, `True`, and `False` are core language constructs. They are _never_ meant to be garbage collected, meaning tracking their reference counts was a complete waste of hardware cycles.
-
-#### The Fix: Immortal Objects
-
-In Python 3.12, engineers introduced **Immortal Objects**. They hardcoded the reference count for `None`, `True`, and `False` to a special, massive value that the interpreter knows never to change.
-
-Because the reference count is no longer modified, the CPU cores can pull the cache line containing `None` into their L1 caches and leave it permanently in the **Shared (S)** state. Core 1 and Core 2 can now read `None` simultaneously in 1 nanosecond with zero cross-talk on the system bus.
 ## Registers
 
 The absolute fastest storage in the machine, built directly into the execution core. Registers operate with zero latency (0 clock cycles) because they hold the exact values the CPU is actively using at this exact nanosecond. They have microscopic capacity (typically 32 or 64 bits per register).

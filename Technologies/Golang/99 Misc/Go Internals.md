@@ -2,7 +2,7 @@
 
 ## Execution Hierarchy and the Go Scheduler
 
-To understand why Go's concurrency is highly efficient, you must look at [how the operating system handles execution boundaries](02%20The%20Anatomy%20of%20a%20Process.md#Processes%20vs.%20Threads), and how the Go runtime works to bypass those heavy hardware limitations.
+To understand why Go's concurrency is highly efficient, you must look at [how the operating system handles execution boundaries](05%20Process%20Management.md#Processes%20vs.%20Threads), and how the Go runtime works to bypass those heavy hardware limitations.
 
 ### Processes and OS Threads (The Kernel's Domain)
 

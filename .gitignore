@@ -220,5 +220,6 @@ pnpm-debug.log*
 *.tgz
 *.zip
 
+.obsidian/plugins/recent-files-obsidian/data.json
 .markdown-consolidator-work
 *.bkp.*

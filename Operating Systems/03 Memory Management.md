@@ -161,6 +161,9 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 > [!tip] Inspecting the Map in Linux
 > You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at `/proc/[pid]/maps`. It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
 
+> [!example] Python’s `None` and the Copy-on-Write Penalty
+> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. For the full walkthrough, see [[Python Internals#Hardware Collisions and Immortal Objects]].
+
 
 > [!example] Architecture Story: Redis & The Persistence
 > Because Redis is fundamentally an in-memory database, it faces a massive existential threat: if the physical server loses power or crashes, every single piece of data is permanently wiped from RAM. To handle crashes, Redis engineers needed a way to periodically persist (save) this in-memory data to the physical hard drive.

@@ -151,8 +151,40 @@ If a workload forces the GPU to behave like a CPU, the hardware's parallel effic
 ## GPU scheduling and driver orchestration
 
 - **What to learn later:** How CPU-side process scheduling vocabulary relates to GPU work submission, synchronization, and device-side scheduling.
-- **Prerequisites:** [Process Management](05%20Process%20Management.md) and [System Architecture Overview](00%20System%20Architecture%20Overview.md#Process%20Management).
+- **Prerequisites:** [Process Management](05%20Process%20Management.md) and [System Architecture Overview](05%20Process%20Management.md#Process%20Management).
 - **Why these prerequisites matter:** Process scheduling gives useful vocabulary, even though GPU scheduling is not the same as CPU process scheduling.
 - **Core idea:** The operating system, runtime, and driver stack cooperate to feed work to the device while the CPU continues doing other tasks.
 - **Terms to cover:** queue, stream, synchronization, blocking, asynchronous launch, context.
 - **Practical implication:** This topic is helpful for deeper systems understanding, but it is not required before learning basic GPU architecture.
+
+## Beyond the GPU
+
+### The Tensor Processing Unit (TPU)
+
+While GPUs are the undisputed champions of massive parallel computing, they are still fundamentally designed to handle a variety of tasks, from physics simulations to 3D rendering. Because they must remain somewhat flexible, a significant portion of their silicon is still dedicated to complex memory controllers, Warp Schedulers, and massive register files.
+
+When the tech industry realized that generative AI and deep learning relied almost entirely on one specific mathematical operation—**Matrix Multiplication**—Google hardware engineers designed a custom chip specifically to execute that single task.
+
+The TPU is an **Application-Specific Integrated Circuit (ASIC)**. It cannot render graphics, it cannot run a standard operating system, and it is terrible at general-purpose logic. It is a piece of silicon hardwired to do nothing but multiply giant grids of numbers.
+### The Architectural Leap: The Systolic Array
+
+To understand why a TPU is so much faster and more power-efficient at AI workloads than a GPU, we have to look at the physical movement of data.
+
+- **The GPU (Register Bottleneck):** When a GPU's Streaming Multiprocessor calculates matrix math, an ALU fetches two numbers from its register, multiplies them, and writes the answer back to the register. To calculate the next step of the matrix, it fetches that answer from the register, adds another number, and writes it back. The physical act of constantly reading and writing to the register file consumes an enormous amount of time and electrical power.
+- **The TPU (Systolic Array):** A TPU replaces independent ALUs with a **Matrix Multiply Unit (MXU)**—a massive physical grid of thousands of calculators wired directly to each other (e.g., a 128x128 grid).
+    - Data is pumped in from the top and the left edges of the grid.
+    - As the first calculator does its math, it does not write the answer to a register. Instead, it physically passes the electrical result directly to the calculator sitting next to it.
+    - The data flows rhythmically through the entire grid like blood pumping through a heart (hence the term "systolic").
+
+Because the partial answers never leave the physical ALU grid until the entire matrix multiplication is finished, the TPU bypasses the register bottleneck entirely. This allows it to execute hundreds of thousands of matrix operations per clock cycle at a fraction of the power consumption of a GPU.
+
+#### Memory and Interconnects
+
+TPUs were designed from the ground up to solve the specific bottlenecks of the [LLM Processing Pipeline](LLM%20Processing%20Pipeline.md#LLM%20Processing%20Pipeline) and deep neural networks.
+
+- **HBM (High Bandwidth Memory):** Like flagship GPUs, TPUs use stacked HBM located on the exact same physical package as the processor, offering massive bandwidth to feed the Systolic Array.    
+- **The Pod Architecture (ICI):** While GPUs rely on bridging technologies like NVLink or the motherboard's PCIe bus to communicate with other GPUs, TPUs are built with Inter-Core Interconnects (ICI). This allows thousands of individual TPU chips to be wired directly into a massive, room-sized supercomputer (a TPU Pod) that behaves as one giant, unified matrix calculator.
+#### TPU vs. GPU (The Trade-offs)
+
+- **When to use a GPU:** If your mathematical workload is highly diverse (mixing standard physics, complex math functions, and rendering), or if you are doing localized research and development. GPUs are heavily supported by mature frameworks (like NVIDIA's CUDA) and are much easier to program for general parallel tasks.
+- **When to use a TPU:** If you are training a massive LLM or running high-scale production inference. The workload must consist almost entirely of dense matrix multiplications and convolutions. If the workload perfectly aligns with the Systolic Array, a TPU will deliver vastly superior throughput and cost-efficiency per watt compared to a GPU.

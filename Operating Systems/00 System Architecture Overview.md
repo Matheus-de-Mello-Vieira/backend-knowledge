@@ -51,13 +51,7 @@ To understand how physical hardware transitions into a usable software environme
 
 ## Program vs Process
 [Program vs Process](02%20The%20Anatomy%20of%20a%20Process.md#Program%20vs%20Process)
-## Process Management
-
-- **The Kernel's Role:** Because the kernel is the core component of an Operating System, its primary job is resource management. This includes maintaining the state, tracking the memory space, and overseeing the entire lifecycle of every active process.
-- **CPU Scheduling:** The CPU is where actual execution happens, making it a highly valuable and scarce resource. The kernel acts as a traffic controller (the scheduler), determining exactly which process gets to run on which CPU core, in what order, and for how long.
-- **Context Switching:** To create the illusion that dozens of programs are running at the exact same time, the kernel rapidly swaps processes on and off the CPU cores. During this switch, it must save the current state of the active process (like the data in the CPU registers) and load the saved state of the next process before execution can resume.
-- **Resource Allocation and Access:** Processes are strictly isolated and cannot directly interact with physical hardware. The kernel acts as the secure gatekeeper, granting and mediating access to resources like physical RAM (via the MMU and Page Tables), storage drives, and network interfaces.
-
+[05 Process Management](05%20Process%20Management.md)
 ## User Space vs Kernel Space
 
 - **The Virtual Memory Split:** Every process's private virtual address space is divided into two strict regions: User Space and Kernel Space.
