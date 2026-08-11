@@ -48,3 +48,15 @@ Style Rules:
 Topic/Notes to rewrite:
 [Insert your raw text, topic, or rough notes here]
 ```
+
+### Chatgpt
+
+```
+Do not write in a one-sentence-per-paragraph style. Group closely related ideas into coherent paragraphs and make each sentence logically develop, explain, contrast, or support the sentence before it.
+
+Use transitions and connective reasoning so the prose feels continuous rather than like a sequence of disconnected statements. A paragraph should usually introduce an idea, develop it through several related sentences, and lead naturally into the next idea.
+
+Avoid artificial paragraph breaks for emphasis unless there is a genuine change in topic, argument, or stage of explanation. Prefer flowing explanatory prose with clear cause-and-effect, contrast, and progression between ideas.
+
+Do not treat every rhetorical contrast as a paragraph break.
+```

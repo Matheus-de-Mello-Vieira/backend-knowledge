@@ -1,20 +1,22 @@
 # GPU
 
-A **GPU (Graphics Processing Unit)** is a throughput-oriented processor designed to run the exact same mathematical operation across a massive dataset in parallel. While originally built to calculate pixel colors for 3D graphics, modern GPUs form the backbone of machine learning, scientific computing, and video processing—workloads dominated by heavy matrix and vector math.
+A **GPU (Graphics Processing Unit)** is a throughput-oriented processor designed to apply the same mathematical operations across massive amounts of data in parallel. GPUs were originally developed to calculate geometry, lighting, and pixel colors for computer graphics, but the same architecture also maps naturally to scientific computing, video processing, and machine-learning workloads dominated by large amounts of vector and matrix math.
 
-- **The Design Philosophy (Throughput vs. Latency):**
-    - **CPUs** are optimized for **Low Latency**. They dedicate massive amounts of silicon to [Branch Prediction](04%20Inside%20The%20CPU.md#Branch%20Prediction%20&%20Speculative%20Execution), [deep caches](04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy), and complex [pipelines](04%20Inside%20The%20CPU.md#The%20Instruction%20Life%20Cycle%20&%20Pipelining) to get a single, branch-heavy task done as fast as possible.  
-    - **GPUs** are optimized for **High Throughput**. They strip away complex control logic and caches in favor of packing thousands of simple ALUs onto the die. They sacrifice the speed of a single operation to execute millions of operations simultaneously.
-- **The Mechanism:** GPUs use an execution model called **SIMT (Single Instruction, Multiple Threads)**. Instead of fetching different instructions for every core, the GPU's control unit fetches a _single_ instruction (e.g., "multiply by 2") and blasts it to hundreds of ALUs at once, which apply it to different pieces of data simultaneously.
-- **The Practical Implication:** A GPU is not inherently "faster" than a CPU; it is highly specialized. A GPU only wins when a workload contains enough parallel math to keep its thousands of cores fed. If the code relies heavily on sequential logic, loops, or complex branching (`if/else`), it will actually run much slower on a GPU.
+The fundamental difference between a CPU and a GPU is therefore not that one is universally faster than the other, but that they optimize for different goals. A CPU is designed primarily for **low-latency execution** of relatively small numbers of complicated instruction streams, so it dedicates substantial silicon to [Branch Prediction](04%20Inside%20The%20CPU.md#Branch%20Prediction%20&%20Speculative%20Execution), [deep cache hierarchies](04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy), sophisticated [instruction pipelines](04%20Inside%20The%20CPU.md#The%20Instruction%20Life%20Cycle%20&%20Pipelining), and other control machinery. A GPU instead prioritizes **high throughput**, dedicating much more of the chip to mathematical execution units so that enormous numbers of similar operations can proceed in parallel.
+
+This trade-off means that a GPU is highly specialized rather than inherently faster. Workloads with large amounts of independent, repetitive computation can keep thousands of execution units busy and therefore benefit enormously from the architecture. Conversely, workloads dominated by sequential dependencies, irregular memory access, or unpredictable branching force much of the GPU's parallel hardware to remain idle and may execute more efficiently on a CPU.
+
+> [!note] CPU vs. GPU
+>
+> A CPU primarily tries to minimize the latency of individual instruction streams, while a GPU primarily tries to maximize the total amount of work completed in parallel.
+>
+> Most of the architectural differences between them follow from this trade-off.
 
 ## Basic Components
 
-When we write standard software, it is easy to imagine the processor executing a single, branch-heavy task as fast as possible. In a CPU, hardware engineers designed a highly parallel assembly line to minimize latency, relying on complex control logic and caches so the execution core doesn't waste clock cycles.
+A CPU core contains sophisticated machinery intended to keep a small number of instruction streams moving as quickly as possible. If a GPU replicated that entire structure thousands of times, however, enormous amounts of silicon would be consumed by control logic rather than computation. GPU architecture therefore moves in the opposite direction: it simplifies much of the per-thread control machinery and uses the reclaimed chip area to provide a much larger number of mathematical execution units.
 
-However, at the hardware level, a GPU is bound by a completely different philosophy: maximizing throughput. If a GPU were built with the complex components of a CPU, it would waste massive amounts of silicon that could otherwise be used for raw math. To achieve millions of operations simultaneously, hardware engineers stripped away the complex control units and designed the GPU as a massive array of specialized calculators. By grouping thousands of threads into strict hardware-scheduled units, the GPU hides memory latency through sheer overwhelming parallelism rather than caching.
-
-To make this high-throughput factory function, the GPU relies on a core set of specialized silicon grouped into Streaming Multiprocessors:
+These execution units are organized into groups called **Streaming Multiprocessors (SMs)**. Instead of treating every software thread as an independently scheduled hardware execution engine, each SM manages many threads collectively, keeps their execution state close to the computation hardware, and issues work to groups of threads whenever the required resources are available.
 
 ```mermaid
 block-beta
@@ -24,13 +26,13 @@ block:sm1:2
   columns 1
   c1title["Streaming Multiprocessor (SM)"]
   c1warp["Warp Schedulers"]
-  
+
   block:compute:1
     columns 4
     a1["ALU"] a2["ALU"] a3["ALU"] a4["ALU"]
     f1["FPU"] f2["FPU"] f3["FPU"] f4["FPU"]
   end
-  
+
   c1reg["Massive Register File"]
   space
   c1l1["Shared Memory / L1 Cache"]
@@ -54,137 +56,290 @@ class c1l1 cache
 class c1title title
 ```
 
-- **Streaming Multiprocessor (SM):** The actual hardware "core" of the GPU. While a CPU core relies on a single Control Unit to drive its cycle, an SM is a massive factory floor containing dozens of mathematical units, its own control logic, and warp schedulers. A modern GPU contains well over 100 SMs wired together.
-- **Warp Schedulers:** The managers that decide what gets executed next. The hardware physically cannot issue an instruction to a single thread; instead, the scheduler issues a single instruction to a Warp (a strictly grouped squad of 32 threads) simultaneously. If one Warp pauses to wait for memory, the scheduler instantly swaps to another Warp with zero overhead to keep the execution units fed.
-- **Arithmetic Logic Unit (ALU):** Operates on the exact same integer math and bitwise logic principles detailed in [Inside The CPU](04%20Inside%20The%20CPU.md). The critical difference is scale: instead of having one or two per core, an SM packs hundreds of ALUs to execute the exact same instruction across a massive dataset simultaneously.
-- **Floating-Point Unit (FPU):** The complex math engine, functioning exactly as outlined in [Inside The CPU](04%20Inside%20The%20CPU.md). While CPUs use FPUs for localized decimal math, GPUs dedicate vast portions of their silicon to FPUs to crunch the massive floating-point vectors required for 3D graphics, physics simulations, and machine learning.
-- **Registers:** The lowest-latency storage available to an execution core, built directly into the core. GPU registers operate exactly like CPU registers but are massively expanded in capacity. This massive internal storage allows the SM to hold the exact states of dozens of Warps simultaneously, enabling the zero-overhead context swap when a Warp stalls.
-- **Shared Memory / L1 Cache:** A latency bridge between cores and RAM. It is an ultra-fast memory bank physically located right next to the calculators inside the SM. While it functions like a CPU's L1 cache, "Shared Memory" can also be explicitly managed by the software to allow threads within the same Thread Block to communicate at extreme speeds.
-- **Global Memory (VRAM):** The main memory of the GPU. Similar to how a CPU must reach out to physical RAM with substantially higher latency (~100 nanoseconds), VRAM takes hundreds of clock cycles to access. GPUs hide this latency via Occupancy, instantly switching Warps rather than waiting for the data to arrive.
+- **Streaming Multiprocessor (SM):** The main computational building block of the GPU. An SM contains many execution units together with Warp Schedulers, registers, local memory, and the control logic required to coordinate them. A complete GPU contains many SMs operating in parallel.
+- **Warp Scheduler:** The hardware responsible for selecting which group of threads should execute. Rather than issuing an independent instruction stream to every thread, the scheduler operates on groups called **Warps**.
+- **Arithmetic Logic Units (ALUs):** Perform integer arithmetic and bitwise operations according to the same basic principles described in [Inside The CPU](04%20Inside%20The%20CPU.md). The important difference is scale: GPU hardware contains large numbers of execution units so similar calculations can occur across many elements simultaneously.
+- **Floating-Point Units (FPUs):** Perform floating-point arithmetic. Because graphics, scientific simulation, and machine learning rely heavily on this kind of math, GPUs dedicate significant computational capacity to floating-point operations.
+- **Registers:** Store the values and execution state actively used by GPU threads. GPU register files are large because an SM must keep the state of many threads resident at the same time.
+- **Shared Memory / L1 Cache:** Low-latency SRAM located close to the execution units. In addition to normal caching behavior, Shared Memory can be explicitly managed by software so threads within the same Thread Block can rapidly exchange and reuse data.
+- **Global Memory (VRAM):** The GPU's primary large-capacity memory. It provides much more storage than the on-chip memories but has substantially higher access latency, making efficient access patterns critical to performance.
 
 ## Single Instruction, Multiple Threads (SIMT)
 
-While CPUs use [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) to pack multiple data points into a single, extra-wide register for one massive calculator, GPUs use SIMT to achieve parallelism through a completely different hardware mechanism and developer abstraction.
+GPUs obtain much of their parallel throughput through an execution model called **SIMT — Single Instruction, Multiple Threads**. SIMT is closely related to [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)), but the two expose parallelism differently. CPU SIMD explicitly packs several values into a wide vector register and executes one vector operation against those values, while GPU SIMT presents the programmer with many individual software threads and lets the hardware group them together for execution.
 
-### The Hardware Mechanism
+This distinction is important because a SIMT program can still be written using an ordinary scalar mental model. Each software thread has its own logical state and operates on its own element, yet threads that reach the same instruction together can be executed collectively by the GPU.
 
-Instead of relying on a single wide Vector ALU, the GPU's Streaming Multiprocessor (SM) distributes the workload across an army of standard-sized calculators.
+### Warps and Hardware Execution
 
-- **The Warp Scheduler:** The control unit fetches **one single instruction** (e.g., a mathematical addition).
-- **The Broadcast:** Instead of sending it to one wide ALU, the scheduler blasts that instruction to **32 separate, individual ALUs** simultaneously.
-- **Independent Contexts:** Each of those 32 ALUs reads from its own independent register and processes its own distinct thread. They all do the exact same math at the exact same clock cycle, just on different pieces of data.
+Inside an SM, threads are organized into fixed groups called **Warps**. The Warp Scheduler issues an instruction for a Warp, and the active threads in that Warp perform the operation on their respective data.
 
-### Memory Flexibility and Coalescing
+Conceptually, a program might contain many independent operations:
 
-CPU SIMD is incredibly rigid regarding memory: to load a 512-bit SIMD register efficiently, the data must sit sequentially in RAM. If the data is scattered, the CPU struggles to "gather" it before doing the math. SIMT solves this hardware limitation:
+```text
+Thread 0  -> value[0]  + 1
+Thread 1  -> value[1]  + 1
+Thread 2  -> value[2]  + 1
+...
+Thread 31 -> value[31] + 1
+```
 
-- **Independent Fetching:** Because each ALU in a Warp has its own register and its own thread, they can fetch scattered data freely. Thread 1 can request memory address `0x01`, while Thread 2 requests `0xFF`.
-- **Memory Coalescing:** To ensure maximum performance, the GPU hardware includes a dynamic memory controller. If it notices that all 32 threads in a Warp _happen_ to be asking for contiguous memory addresses, the controller automatically fuses those 32 separate requests into one massive, ultra-fast memory fetch. You get the speed of vector memory blocks when the data aligns, but the execution doesn't break when the data is scattered.
+From the programmer's perspective, these are individual threads working on different elements. At the hardware level, however, the Warp Scheduler sees that they are executing the same instruction and coordinates their execution together. This allows the programming model to remain thread-oriented while the physical hardware obtains throughput from wide parallel execution.
 
-### The Developer Abstraction (The Language Gap)
+### GPU Occupancy
 
-While array-based programming (like Python's NumPy) is highly intuitive for complex math, the high-performance systems languages historically used to program hardware (C, C++, Fortran) were strictly built around a scalar mental model: fetch one instruction, do one thing, repeat.
+**Occupancy** describes how many Warps can remain active on a Streaming Multiprocessor relative to the maximum amount of execution state the SM can support. This matters because GPU execution frequently encounters operations that cannot immediately continue, especially accesses to high-latency VRAM. When one Warp is not ready, the Warp Scheduler benefits from having other resident Warps whose instructions are ready to issue.
 
-- **The CPU SIMD Friction:** Writing CPU SIMD in C/C++ often forces developers to abandon standard math syntax and write complex, low-level compiler intrinsics (e.g., `_mm512_add_ps()`) to manually pack data into rigid hardware registers.
-- **The SIMT Illusion:** SIMT was designed specifically to bypass this language limitation. It allows developers to write standard, single-threaded (scalar) C code using standard syntax. The abstraction layer is built directly into the silicon's Warp Scheduler, which transparently takes that scalar code, groups 32 threads together, and secretly executes them like a massive vector array.
+The important detail is that these Warps already have their execution state resident on the SM. Their registers and other required resources have already been allocated, so selecting another ready Warp does not require an operating-system context switch or saving an entire process state to system RAM. The scheduler simply chooses another eligible Warp from the pool of resident work.
 
-### Handling Conditional Logic
+Occupancy is not unlimited because every resident thread consumes physical hardware resources. Registers, Shared Memory, thread slots, and other SM resources are finite, so a kernel that uses large amounts of these resources per thread or Thread Block can reduce the number of Warps that fit on the SM. If very few Warps are resident, a stall may leave the scheduler without any ready work to issue; with a larger pool, the scheduler has more opportunities to keep the execution units productive.
 
-Because CPU SIMD relies on packed hardware registers, conditional logic (`if/else` statements) inside the dataset often breaks the vectorization completely. Under SIMT, the GPU hardware automatically manages divergence to keep the parallel model intact:
+> [!note] Occupancy vs. Utilization
+>
+> **Occupancy** describes how much parallel execution state is resident on an SM, whereas **utilization** describes how busy the actual execution hardware is.
+>
+> Higher occupancy gives the scheduler more work to choose from, but maximum occupancy does not automatically mean maximum performance.
 
-- **Hardware Masking:** If threads within a Warp diverge on an `if` statement, the hardware cannot run both branches at once. It physically disables (masks out) the ALUs for the threads that evaluate to `False` and executes the `True` path.
-- **The Re-convergence:** Once the `True` path finishes, it flips the mask, activates the `False` threads, executes the `else` path, and then converges them back together.
-- **The Trade-off:** While this prevents the execution model from breaking, it wastes clock cycles. If a Warp diverges, it takes twice as long to execute, cutting parallel efficiency in half.
+### The Developer Abstraction
+
+SIMT hides much of the hardware grouping from the programmer. With explicit CPU SIMD, developers may need to work with specialized compiler intrinsics such as `_mm512_add_ps()` and reason directly about several values packed inside one vector register. GPU programming instead allows the developer to describe the work from the perspective of a single thread and then launch many copies of that thread across different pieces of data.
+
+For example, imagine an array containing 32 numbers that must all be doubled. The GPU program can conceptually describe the work of **one thread** like this:
+
+```c
+void double_value(float *values, int thread_id) {
+    values[thread_id] = values[thread_id] * 2;
+}
+```
+
+The function itself contains ordinary scalar code: it reads one value, multiplies it by `2`, and writes one result. The parallelism appears when many threads execute that same function with different `thread_id` values:
+
+```text
+Thread 0  -> values[0]  = values[0]  * 2
+Thread 1  -> values[1]  = values[1]  * 2
+Thread 2  -> values[2]  = values[2]  * 2
+Thread 3  -> values[3]  = values[3]  * 2
+...
+Thread 31 -> values[31] = values[31] * 2
+```
+
+From the developer's perspective, these are 32 independent executions of the same scalar function, each operating on a different array element. The programmer does not explicitly construct a 32-element hardware vector or manually describe how those operations should execute together.
+
+The GPU hardware performs that grouping. If these threads belong to the same Warp and reach the multiplication instruction together, the Warp Scheduler issues that instruction across the active threads
+
+This is the central abstraction of SIMT: **the developer writes the logic of one scalar thread, launches many independent threads, and the GPU groups compatible threads into Warps for parallel execution**. Each thread maintains its own logical state and data, even though the hardware executes their common instructions together.
+### Branch Divergence
+
+SIMT works most efficiently when all active threads in a Warp follow the same instruction path. Conditional logic becomes expensive when different threads evaluate the same condition differently because the Warp cannot freely execute two unrelated instruction streams at the same time.
+
+Consider:
+
+```c
+if (value > 0) {
+    do_a();
+} else {
+    do_b();
+}
+```
+
+If some threads take the `True` branch and others take the `False` branch, the hardware uses **masking**. It temporarily disables the threads that are not following the current path, executes one branch for the relevant threads, then changes the mask and executes the other path before reconverging the Warp.
+
+```text
+Warp
+├── Threads 0–15  -> True branch
+└── Threads 16–31 -> False branch
+
+Execution:
+1. Run True threads, mask False threads
+2. Run False threads, mask True threads
+3. Reconverge
+```
+
+The result remains logically correct, but some execution lanes are idle while each branch runs. This phenomenon is known as **Branch Divergence**, and it explains why highly irregular control flow can dramatically reduce SIMT efficiency. When all threads take the same path, the hardware remains fully aligned; as their paths diverge, execution becomes increasingly serialized.
 
 ## GPU Memory Hierarchy
 
-While GPUs possess unimaginable arithmetic throughput, modern GPU performance is rarely limited by raw math. The true bottleneck is almost always **memory movement**. A GPU can crunch numbers significantly faster than it can physically move the data into the calculators.
+Massive arithmetic capacity is useful only when data can reach the execution units quickly enough. For many GPU workloads, performance is therefore constrained less by the raw speed of mathematical operations than by the cost of **moving data** through the memory hierarchy.
 
-If a workload is slow on a GPU, it is usually because the execution units are starving for data.
+Like the hierarchy described in [Memory Management](03%20Memory%20Management.md), GPU memory trades capacity for proximity and access latency. Registers and Shared Memory sit directly beside the execution hardware but have limited capacity, whereas Global Memory provides much more storage at substantially higher latency.
+### Registers
 
-### The On-Device Memory Hierarchy
+Registers are the closest storage to the GPU execution units and contain the values actively manipulated by threads. Local variables, intermediate results, addresses, and other pieces of thread state can reside there while computation is taking place.
 
-Similar to a CPU, the GPU relies on a physical hierarchy of memory, trading capacity for lower latency as data moves closer to the execution cores.
+GPU register files are particularly large because the architecture must keep the state of many resident Warps available simultaneously. That large pool of on-chip state directly supports Occupancy: the more thread state the hardware can keep resident, the larger the set of Warps from which the scheduler can select work.
 
-- **Registers:** The absolute fastest, zero-latency memory built directly into the Streaming Multiprocessor (SM). Because GPUs rely on instant context switching to hide latency, their register files are massive. While a CPU core might have a few hundred registers, a single SM can contain tens of thousands, allowing it to hold the exact states of dozens of active Warps simultaneously.
-- **Shared Memory (L1 Cache):** A block of ultra-fast SRAM located directly inside each physical SM. Unlike a CPU's L1 cache, which the hardware manages entirely behind your back, GPU **Shared Memory** is programmable. Developers can explicitly write code to load data from VRAM into Shared Memory, allowing all threads within a Thread Block to share and reuse that data at near-register speeds without ever going back to main memory.
-- **Global Memory (VRAM):** The main storage pool of the GPU (e.g., 24GB on an RTX 4090). While accessing VRAM takes hundreds of clock cycles, it compensates with unimaginably wide **Bandwidth**. Instead of standard DDR memory, GPUs use GDDR or HBM (High Bandwidth Memory), allowing the memory controller to fetch massive, contiguous blocks of data simultaneously to feed the thousands of waiting threads.
+### Shared Memory / L1 Cache
 
-### Host Interaction and The PCIe Bottleneck
+**Shared Memory** is a small, low-latency memory space located on the SM and explicitly accessible by threads within a Thread Block. Unlike an ordinary CPU or GPU cache, whose contents and eviction decisions are automatically managed by hardware, Shared Memory is managed by the program. Threads can cooperatively load data from VRAM into Shared Memory, synchronize, and then reuse or exchange those values without repeatedly accessing Global Memory.
 
-A GPU does not exist in a vacuum; it is a peripheral device physically plugged into the motherboard's PCIe bus. It cannot independently read a file from the hard drive or fetch data from the network.
+On some GPU architectures, Shared Memory and the L1 cache use the same underlying on-chip SRAM, but they serve different logical roles: **L1 automatically caches memory accesses, while Shared Memory acts as a programmer-controlled scratchpad.**
+### Global Memory / VRAM
 
-- **Host RAM & Pinned Memory:** To move data from standard motherboard RAM ("Host RAM") to the GPU's VRAM without bottlenecking the CPU, the GPU uses a standard [Direct Memory Access (DMA)](03%20Memory%20Management.md#Direct%20Memory%20Access%20(DMA)) controller over the PCIe bus. Just like any high-speed peripheral, this hardware transfer requires **Pinned (Page-Locked) Memory** to safely bypass the OS virtual memory system. If a developer attempts to send standard unpinned memory to the GPU, the driver secretly wastes CPU cycles copying it into a temporary pinned "bounce buffer" first, crippling the PCIe transfer speed.
-- **The Interconnect Bottleneck:** The physical distance and bandwidth limit of the PCIe bus is often the absolute ceiling of GPU performance. If an application spends 100 milliseconds copying data across the PCIe bus to perform 2 milliseconds of math, using the GPU is a net negative. GPUs only win when the mathematical workload is large enough to completely offset the massive latency of moving the data across the motherboard.
-- **Scattered Access (Uncoalesced Memory):** Even after the data reaches the GPU, the architecture can still collapse. VRAM bandwidth is strictly optimized for fetching large, sequential blocks. If the 32 threads in a Warp ask for memory addresses that sit perfectly next to each other, the hardware _coalesces_ it into a single, ultra-fast fetch. If the threads ask for randomly scattered memory addresses, the hardware must perform 32 separate, agonizingly slow VRAM fetches, causing the entire SM to stall.
+**Global Memory**, commonly called **VRAM**, is the GPU's main high-capacity memory pool. Although it has much greater access latency than registers or Shared Memory, GPU memory systems compensate by providing very high **bandwidth**, allowing large amounts of data to move in parallel.
 
-## Workload Alignment and ML Fit
+Technologies such as GDDR and HBM are designed around this need for bandwidth. However, simply having a wide memory interface is not enough; software must access that memory in patterns the hardware can combine efficiently. This makes the layout of data and the addresses requested by neighboring threads central to GPU performance.
 
-Because of the architectural trade-offs required to achieve massive SIMT throughput, a GPU is not a general-purpose replacement for a CPU. To determine if a workload belongs on a GPU, you must evaluate a single decision rule: **Can the exact same mathematical operation be applied to many independent elements at once?**
+### Memory Coalescing
 
-### The Good Fit
+Threads inside a Warp maintain independent logical contexts, so they are technically free to request unrelated addresses. If neighboring threads access neighboring data, however, the memory controller can combine those requests into a smaller number of large transfers. This optimization is known as **memory coalescing**.
 
-GPUs dominate workloads that require repetitive, predictable math across massive datasets.
+A favorable pattern looks like:
 
-- **Matrix Multiplication:** At its core, a GPU is a massive, highly parallel calculator designed to multiply giant grids of numbers (matrices) simultaneously. This makes it the undisputed engine for neural network training and inference.
-- **Multi-Tenant Batching:** Because of the GPU's parallel architecture, it takes almost the exact same amount of time to calculate the next token for 10 stacked users as it does to calculate it for 1 user. Batching physically stacks multiple independent user requests into a single, combined matrix. The GPU then pushes this giant composite matrix through the neural network's weights in a single forward pass.
-- **3D Rendering and Ray Tracing:** Calculating the light, shadow, and color of millions of independent pixels on a screen relies on the exact same floating-point vector math applied simultaneously across the entire display.
-- **Scientific Simulation:** Fluid dynamics, weather modeling, and molecular simulations involve updating millions of independent particles simultaneously based on fixed physics equations.
+```text
+Thread 0  -> array[0]
+Thread 1  -> array[1]
+Thread 2  -> array[2]
+...
+Thread 31 -> array[31]
+```
 
-### The Bad Fit
+Because the requested addresses belong to a contiguous region, the memory hardware can service them efficiently. If the Warp instead accesses widely scattered addresses, the controller loses that opportunity and may need to perform many separate memory transactions.
 
-If a workload forces the GPU to behave like a CPU, the hardware's parallel efficiency collapses, resulting in performance far worse than a standard CPU core.
+```text
+Thread 0 -> array[10]
+Thread 1 -> array[9000]
+Thread 2 -> array[31]
+Thread 3 -> array[700000]
+```
 
-- **Branch-Heavy Logic:** Workloads dominated by complex, unpredictable `if/else` statements (like parsing complex JSON business logic) trigger constant Branch Divergence. The Warp Scheduler is forced to mask out execution units, cutting parallel throughput in half with every diverging branch.
-- **Irregular Pointer Chasing:** Data structures like Linked Lists or Graph traversals force the threads within a Warp to request completely random, scattered memory addresses. This destroys hardware memory coalescing, overwhelming the memory controller and stalling the Streaming Multiprocessor.
-- **Tiny Jobs (The Transfer Penalty):** If you send a single user's prompt to the GPU, the math required is so relatively small that it might only light up 5% of the GPU's compute cores. If a task is too small, the latency of moving the data from Host RAM across the PCIe bus takes longer than the actual computation, making the GPU a net negative.
+The program remains correct in both cases, but the second pattern makes much poorer use of the available memory bandwidth. In this sense, coalescing is closely related to [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality): both reward software for organizing related accesses close together, although the GPU applies the principle across the simultaneous memory requests of a Warp.
 
-## GPU and the operating system
+## Host Memory and the PCIe Bottleneck
 
-- **What to learn later:** How the GPU is exposed through drivers, kernel-mediated interfaces, and command submission paths.
-- **Prerequisites:** [System Architecture Overview](00%20System%20Architecture%20Overview.md#Device%20Drivers) and [More OS Concepts](08%20More%20OS%20Concepts.md#Device%20drivers).
-- **Why these prerequisites matter:** The OS-facing side of GPU learning is mostly a device-driver topic.
-- **Core idea:** The GPU is a device managed through drivers and kernel-mediated interfaces.
-- **Terms to cover:** device driver, user space, kernel space, command queue, runtime, kernel launch.
-- **Practical implication:** A program usually does not talk to the GPU hardware directly; it talks to a runtime and driver stack.
+A discrete GPU is not part of the CPU's normal system-memory path. It is a peripheral device connected to the host system, typically through PCIe, and it owns a separate VRAM address space. Consequently, using the GPU often requires data to cross a physical boundary before computation can begin.
 
-## GPU scheduling and driver orchestration
+This distinction is important because accelerating the computation itself does not eliminate the cost of reaching the device. An operation can execute extremely quickly once its input reaches the GPU and still perform poorly overall if moving that input and retrieving the result dominate total execution time.
 
-- **What to learn later:** How CPU-side process scheduling vocabulary relates to GPU work submission, synchronization, and device-side scheduling.
-- **Prerequisites:** [Process Management](05%20Process%20Management.md) and [System Architecture Overview](05%20Process%20Management.md#Process%20Management).
-- **Why these prerequisites matter:** Process scheduling gives useful vocabulary, even though GPU scheduling is not the same as CPU process scheduling.
-- **Core idea:** The operating system, runtime, and driver stack cooperate to feed work to the device while the CPU continues doing other tasks.
-- **Terms to cover:** queue, stream, synchronization, blocking, asynchronous launch, context.
-- **Practical implication:** This topic is helpful for deeper systems understanding, but it is not required before learning basic GPU architecture.
+### DMA and Pinned Memory
 
-## Beyond the GPU
+Large transfers between Host RAM and GPU memory use the same [Direct Memory Access (DMA)](03%20Memory%20Management.md#Direct%20Memory%20Access%20(DMA)) principles used by other high-speed peripherals. Instead of forcing the CPU to copy every byte through its own execution registers, the CPU and driver configure the transfer and the device handles the bulk movement.
 
-### The Tensor Processing Unit (TPU)
+DMA operates against physical memory, which introduces a problem because ordinary application memory is managed through virtual memory and may be moved, reclaimed, or swapped by the operating system. A device cannot safely continue writing to a physical location if the OS is free to repurpose the page during the transfer. For this reason, high-performance GPU transfers commonly use **Pinned (Page-Locked) Memory**, temporarily preventing those physical pages from moving.
 
-While GPUs are the undisputed champions of massive parallel computing, they are still fundamentally designed to handle a variety of tasks, from physics simulations to 3D rendering. Because they must remain somewhat flexible, a significant portion of their silicon is still dedicated to complex memory controllers, Warp Schedulers, and massive register files.
+If the application supplies ordinary pageable memory, the GPU driver may first need to copy it into a temporary pinned buffer before starting the DMA transfer. That additional step introduces another memory copy, which is why pinned memory matters for workloads that repeatedly move large amounts of data between the host and device.
 
-When the tech industry realized that generative AI and deep learning relied almost entirely on one specific mathematical operation—**Matrix Multiplication**—Google hardware engineers designed a custom chip specifically to execute that single task.
+### The Transfer Penalty
 
-The TPU is an **Application-Specific Integrated Circuit (ASIC)**. It cannot render graphics, it cannot run a standard operating system, and it is terrible at general-purpose logic. It is a piece of silicon hardwired to do nothing but multiply giant grids of numbers.
-### The Architectural Leap: The Systolic Array
+Because the PCIe transfer is part of the operation, GPU acceleration must be evaluated across the complete path rather than by comparing compute time alone. Consider a workload that spends `100 ms` transferring input to the GPU, performs the actual calculation in `2 ms`, and then spends another `20 ms` returning the result. Even though the computation itself may be dramatically faster on the GPU, the complete operation still takes `122 ms`.
 
-To understand why a TPU is so much faster and more power-efficient at AI workloads than a GPU, we have to look at the physical movement of data.
+```text
+Host → GPU Transfer: 100 ms
+GPU Computation:       2 ms
+GPU → Host Transfer:  20 ms
+```
 
-- **The GPU (Register Bottleneck):** When a GPU's Streaming Multiprocessor calculates matrix math, an ALU fetches two numbers from its register, multiplies them, and writes the answer back to the register. To calculate the next step of the matrix, it fetches that answer from the register, adds another number, and writes it back. The physical act of constantly reading and writing to the register file consumes an enormous amount of time and electrical power.
-- **The TPU (Systolic Array):** A TPU replaces independent ALUs with a **Matrix Multiply Unit (MXU)**—a massive physical grid of thousands of calculators wired directly to each other (e.g., a 128x128 grid).
-    - Data is pumped in from the top and the left edges of the grid.
-    - As the first calculator does its math, it does not write the answer to a register. Instead, it physically passes the electrical result directly to the calculator sitting next to it.
-    - The data flows rhythmically through the entire grid like blood pumping through a heart (hence the term "systolic").
+The workload must therefore perform enough useful computation to justify the cost of moving data across the host/device boundary. Large operations that reuse data already present in VRAM can amortize this cost, whereas tiny operations that constantly shuttle inputs and outputs across PCIe may lose any advantage provided by the GPU.
 
-Because the partial answers never leave the physical ALU grid until the entire matrix multiplication is finished, the TPU bypasses the register bottleneck entirely. This allows it to execute hundreds of thousands of matrix operations per clock cycle at a fraction of the power consumption of a GPU.
+> [!note] The Host/Device Rule
+>
+> GPU acceleration must account for:
+>
+> **Host → Device Transfer + GPU Computation + Device → Host Transfer**
+>
+> Fast mathematical execution cannot compensate for excessive data movement.
 
-#### Memory and Interconnects
+## Workload Alignment
 
-TPUs were designed from the ground up to solve the specific bottlenecks of the [LLM Processing Pipeline](LLM%20Processing%20Pipeline.md#LLM%20Processing%20Pipeline) and deep neural networks.
+The architectural trade-offs behind SIMT make a GPU extremely powerful for some workloads and poorly suited to others. A useful mental test is to ask whether **the same mathematical operation can be applied independently across a large number of data elements**. The more naturally a problem exposes that kind of parallel structure, the more effectively the hardware can keep its execution units occupied.
 
-- **HBM (High Bandwidth Memory):** Like flagship GPUs, TPUs use stacked HBM located on the exact same physical package as the processor, offering massive bandwidth to feed the Systolic Array.    
-- **The Pod Architecture (ICI):** While GPUs rely on bridging technologies like NVLink or the motherboard's PCIe bus to communicate with other GPUs, TPUs are built with Inter-Core Interconnects (ICI). This allows thousands of individual TPU chips to be wired directly into a massive, room-sized supercomputer (a TPU Pod) that behaves as one giant, unified matrix calculator.
-#### TPU vs. GPU (The Trade-offs)
+### Good GPU Workloads
 
-- **When to use a GPU:** If your mathematical workload is highly diverse (mixing standard physics, complex math functions, and rendering), or if you are doing localized research and development. GPUs are heavily supported by mature frameworks (like NVIDIA's CUDA) and are much easier to program for general parallel tasks.
-- **When to use a TPU:** If you are training a massive LLM or running high-scale production inference. The workload must consist almost entirely of dense matrix multiplications and convolutions. If the workload perfectly aligns with the Systolic Array, a TPU will deliver vastly superior throughput and cost-efficiency per watt compared to a GPU.
+**Matrix and vector computation** is one of the clearest examples because large numerical structures contain enormous numbers of repetitive operations that can be distributed across many threads. This property is also why GPU hardware maps naturally to machine learning, although the LLM-specific consequences—such as inference batching, KV caching, quantization, and serving trade-offs—belong in [LLM Processing Pipeline](../AI%20Engineering/LLM/LLM%20Processing%20Pipeline.md) rather than in this hardware note.
+
+**3D rendering and ray tracing** expose similar parallelism because large numbers of pixels, vertices, fragments, or rays require related mathematical operations. **Scientific simulations** such as fluid dynamics, weather modeling, and molecular simulation likewise update enormous collections of particles or cells according to repeated mathematical rules, making them natural candidates for SIMT execution.
+
+### Poor GPU Workloads
+
+**Branch-heavy logic** works against the architecture because unpredictable control flow causes threads in the same Warp to take different paths. As Branch Divergence increases, the hardware repeatedly masks inactive threads and serializes portions of execution, reducing the parallelism that made the GPU attractive in the first place.
+
+**Irregular pointer chasing** creates a similar problem in the memory system. Linked structures and irregular graph traversals repeatedly load an address and then jump to another unrelated location, causing threads within the same Warp to request scattered regions of VRAM. This prevents efficient memory coalescing and resembles the [Pointer Chasing](02%20The%20Anatomy%20of%20a%20Process.md#The%20OOP%20Penalty) problem described for CPUs, except that the GPU now has many threads generating irregular requests simultaneously.
+
+**Tiny jobs** can also be a poor fit even when the computation itself is parallel. A small workload may occupy only a fraction of the available GPU hardware while still paying the fixed costs of preparing the work, submitting it to the device, transferring memory, synchronizing, and retrieving the result. In that situation, the overhead surrounding the computation can exceed the computation itself.
+
+## GPU and the Operating System
+
+A user-space application does not normally communicate directly with GPU hardware. Like other peripherals, the GPU is exposed through a software stack in which the application interacts with a runtime, the runtime communicates with a device driver, and the operating system controls the privileged path to the physical hardware.
+
+```mermaid
+flowchart LR
+    A[Application] --> B[GPU Runtime]
+    B --> C[Device Driver]
+    C --> D[Kernel-Mediated Interface]
+    D --> E[GPU Hardware]
+```
+
+This follows the general device-driver model introduced in [System Architecture Overview](00%20System%20Architecture%20Overview.md#Device%20Drivers). The application can request GPU work without needing to manipulate hardware registers or directly coordinate the device's physical resources, because those lower-level responsibilities are handled through the runtime and driver stack.
+
+### Runtime and Driver Boundary
+
+The **GPU Runtime** provides the higher-level interface used by application code, while the **Device Driver** controls the operating-system-facing interaction with the hardware. This division allows user-space software to request memory operations and computational work without receiving unrestricted access to a privileged peripheral.
+
+Several concepts belong to this boundary:
+
+- **User Space:** Where the application and much of the runtime execute.
+- **Kernel Space:** Where privileged operating-system code mediates hardware access.
+- **Device Driver:** The software responsible for controlling and communicating with the GPU.
+- **Runtime:** The higher-level API through which applications request GPU operations.
+- **Command Queue:** A mechanism used to submit work for later execution by the device.
+- **Kernel Launch:** Submission of a computational function that will execute across GPU threads.
+
+The important architectural principle is the same as with other devices: the application does not directly own the hardware. Access is mediated so multiple software components can safely interact with the GPU while the operating system remains responsible for privileged resource management.
+
+## GPU Scheduling and Driver Orchestration
+
+CPU scheduling and GPU scheduling use related language, but they refer to different layers of execution. The operating system's CPU scheduler decides which software threads run on CPU cores, whereas GPU work must first be prepared by the host application and submitted through the runtime and driver before the device schedules that work across its own hardware.
+
+```mermaid
+flowchart LR
+    A[CPU Application] --> B[Prepare GPU Work]
+    B --> C[Runtime / Driver]
+    C --> D[Command Queue]
+    D --> E[GPU]
+    E --> F[Warp Scheduling]
+    F --> G[Execution Units]
+```
+
+This separation allows host and device execution to overlap. After submitting work, the CPU may be able to continue performing independent operations while the GPU processes the command queue. The two processors only need to wait for each other when a dependency requires the result of one side before the other can continue.
+
+### Synchronization
+
+GPU work is commonly submitted **asynchronously**, meaning the CPU can enqueue an operation and continue executing without waiting for the GPU to finish it immediately. This allows the host and device to perform independent work at the same time instead of forcing one processor to remain idle whenever the other is busy.
+
+Eventually, however, the CPU may reach an operation that depends on a result still being produced by the GPU. At that point, it must **synchronize** with the device: the CPU waits until the required GPU work has completed before continuing with the dependent operation.
+
+The following timeline illustrates this relationship. The times are only illustrative:
+
+```mermaid
+gantt
+    title Overlapping CPU and GPU Execution
+    dateFormat x
+    axisFormat %L ms
+    tickInterval 20millisecond
+
+    section CPU
+    Prepare GPU work       :cpu_prepare, 0, 20ms
+    Independent CPU work   :cpu_work, 20, 50ms
+    Synchronize / Wait     :crit, cpu_wait, 70, 30ms
+    Consume GPU result     :cpu_result, 100, 20ms
+
+    section GPU
+    Waiting for submission :done, gpu_idle, 0, 20ms
+    GPU computation        :gpu_work, 20, 80ms
+```
+
+During the first `20 ms`, the CPU prepares and submits the GPU operation. Once the GPU begins its computation, the CPU does not immediately wait; it spends the next `50 ms` performing unrelated work while the GPU executes in parallel. This overlap is useful because both processors are doing productive work during the same interval.
+
+At `70 ms`, the CPU reaches code that requires the GPU's result, but the GPU is still computing. The CPU can no longer make progress on that dependency, so it synchronizes and waits for the remaining `30 ms`. Once the GPU finishes at `100 ms`, the synchronization condition is satisfied and the CPU can consume the result.
+
+The important distinction is therefore between **submission** and **dependency**. An asynchronous launch allows CPU execution to continue after work has been submitted, while synchronization establishes the point at which the CPU is no longer allowed to continue until the required device work has completed.
+
+Relevant concepts include:
+
+- **Queue:** Submitted GPU operations waiting to execute.
+- **Stream:** An ordered sequence of GPU operations whose execution and dependencies can be coordinated.
+- **Asynchronous Launch:** The CPU submits GPU work and continues without immediately waiting for it.
+- **Synchronization:** The CPU waits until required GPU work has completed.
+- **Blocking:** The state in which the CPU cannot continue because it is waiting for a synchronization condition.
+- **Context:** State associated with an application's use of the GPU.
+
+The goal is not to eliminate synchronization, because dependencies eventually require coordination. Instead, efficient GPU programs try to **delay synchronization until the result is actually needed**, maximizing the amount of useful CPU and GPU work that can overlap.
