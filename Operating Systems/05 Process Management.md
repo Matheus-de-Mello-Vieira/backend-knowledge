@@ -101,11 +101,28 @@ Because a single operating system might be running 5,000 threads distributed acr
 
 ## Context Switching
 
-The CPU doesn’t know about a process is, it is a abstraction from the OS. The OS loads the **context**: CPU registers (pc, sp, bp, etc), pointer to page table mapping.
+A CPU core does not execute a "process" as a hardware concept. It executes an instruction stream using whatever architectural state is currently loaded into the core. The operating system provides the abstractions around that execution: a **process** owns resources and an address space, while a **thread** represents the execution state that the scheduler can place on a CPU core.
 
-- **Context Switching Overhead:**
-    - **Process Switch (Heavy):** Switching the CPU from Process A to Process B is incredibly computationally expensive. The kernel must physically swap out the entire virtual memory mapping (updating the CPU's Memory Management Unit) and flush the CPU's Translation Lookaside Buffer (TLB). This forces a massive wave of L1/L2 cache misses as the new process is forced to pull its data all the way from system RAM.
-    - **Thread Switch (Lightweight):** Switching from Thread 1 to Thread 2 _within the same process_ can require less work than switching between processes because they share a virtual address space. The kernel still saves and restores register state, and the exact cost depends on the scheduler and architecture.
+A thread's **execution context** is the state required to pause it and later resume it as if nothing happened. This includes the Program Counter / Instruction Pointer (`pc`/`ip`), Stack Pointer (`sp`), general-purpose registers, flags/status registers, and, when necessary, floating-point or SIMD registers. The process also contributes **address-space context**, most importantly the page-table root that the MMU uses for virtual-to-physical address translation.
+
+During a context switch, the kernel generally:
+
+1. Enters kernel mode because of an interrupt, system call, blocking operation, or explicit yield.
+2. Saves the outgoing thread's CPU register state into kernel bookkeeping associated with that thread.
+3. Lets the scheduler choose another runnable thread.
+4. If the incoming thread belongs to a different process, switches the active address-space/page-table context.
+5. Restores the incoming thread's saved registers and resumes execution from its saved instruction pointer.
+
+From the program's perspective, execution simply continues from the instruction where it previously stopped.
+
+### Context Switching Overhead
+
+- **Thread Switch Within the Same Process (Usually Cheaper):** Both threads share the same virtual address space and page tables, so the kernel normally only needs to switch thread-specific execution state such as registers and the stack. The MMU can continue using the same address-space context.
+- **Switch Between Different Processes (Usually More Expensive):** The kernel must restore the new thread's registers **and** activate the destination process's address space, typically by changing the CPU register that identifies the active page-table root. This can reduce TLB effectiveness because cached virtual-to-physical translations from the previous address space may no longer be usable.
+- **TLB Behavior Depends on the Architecture:** A process switch does not always require flushing the entire TLB. Modern CPUs commonly tag TLB entries with an address-space identifier (such as an **ASID** or **PCID**), allowing translations from multiple processes to coexist safely.
+- **CPU Caches Are Not Normally Flushed:** L1/L2/L3 caches are not simply emptied during a context switch. However, the incoming thread may have a different working set, so its instructions and data can displace the previous thread's cache lines and cause additional cache misses. This loss of **cache locality**, rather than an explicit cache flush, is an important part of context-switch cost.
+
+The distinction between a "process switch" and a "thread switch" is therefore a useful simplification: the scheduler is fundamentally switching runnable execution contexts, while the cost depends heavily on whether the address space also changes.
 
 ## Related notes
 
