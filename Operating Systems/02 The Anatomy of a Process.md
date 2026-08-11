@@ -180,7 +180,7 @@ At the machine-code level, this means your instruction stream often stops being 
 
 - **Direct-to-Binary (Skipping the Assembly File):** While compilation is conceptually a multi-step pipeline (Source Code -> Assembly -> Machine Code), modern compilers (like Clang or GCC) often skip generating a physical, intermediate assembly text file. To optimize the build process and reduce disk I/O, they translate the high-level code directly into binary object files in memory.
 - **Read-Only Text Segment (Security & Caching):** Once the machine code (the Text/Code segment) is loaded into virtual memory, the OS enforces strict hardware-level protection marking that region as **read-only** and **executable** (a principle known as Write XOR Execute, or W^X).
-       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#buffer-overflow)) to inject and execute their own rogue machine instructions.
+       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#Buffer%20Overflow)) to inject and execute their own rogue machine instructions.
        - **Cache Coherency:** Because the CPU knows the instructions will never change, it can aggressively load them into the L1 cache without ever worrying about complex cache coherency issues or invalidating the data.
 - **Just-In-Time (JIT) and Interpreted Languages:** The traditional ahead-of-time (AOT) assembly step is bypassed entirely by languages like Python, JavaScript, and Java. Instead of pre-compiling a static executable bound to a specific CPU architecture, these languages rely on a runtime engine. The engine either interprets the code line-by-line or uses a JIT compiler to generate the necessary raw machine instructions on the fly, right as the program is executing.
        - **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
@@ -215,7 +215,7 @@ At the machine-code level, this means your instruction stream often stops being 
 When an active function (`func1`) calls a new function (`func2`), `func2` must become the new active frame. The machine code executes a specific sequence to preserve the state safely:
 
 1. **Save the Return Address:** The system saves the exact instruction address where `func1` left off, so it knows exactly where to resume later.
-    - _Architecture Note:_ On x86 processors, it is pushed directly into the stack memory. On ARM processors, this is stored in a dedicated CPU register called the **Link Register (LR)** - see [Nested Calls in ARM.](#nested-calls-in-arm)
+    - _Architecture Note:_ On x86 processors, it is pushed directly into the stack memory. On ARM processors, this is stored in a dedicated CPU register called the **Link Register (LR)** - see [Nested Calls in ARM.](#Nested%20Calls%20in%20ARM)
 2. **Save the Old Base Pointer:** The current value of `bp` (which anchors `func1`) is pushed onto the stack inside the new `func2` frame.
 3. **Update Pointers:** The `bp` is updated to match the current `sp` (establishing the new anchor for `func2`), and the `sp` is moved down to allocate space for `func2`'s local variables.
 

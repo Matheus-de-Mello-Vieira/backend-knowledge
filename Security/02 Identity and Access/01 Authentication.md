@@ -67,7 +67,7 @@ It is important not to confuse this with **Confidentiality**. Encryption protect
 There are two common ways to build cryptographic authentication:
 
 * **Symmetric authentication:** Both parties share the same secret. The client uses that secret to produce a proof, and the server uses the same secret to verify it. This is the model used by [**HMAC**](#hmac).
-* **Asymmetric authentication:** The client signs data with a **private key**, and the server verifies it with the corresponding **public key**. This is the model behind **digital signatures**, **client certificates**, and many certificate-based trust systems. Signed tokens such as [**JSON Web Tokens (JWT)**](#json-web-tokens-jwt) can also use this model depending on the signing algorithm.
+* **Asymmetric authentication:** The client signs data with a **private key**, and the server verifies it with the corresponding **public key**. This is the model behind **digital signatures**, **client certificates**, and many certificate-based trust systems. Signed tokens such as [**JSON Web Tokens (JWT)**](#JSON%20Web%20Tokens%20%28JWT%29) can also use this model depending on the signing algorithm.
 
 Symmetric approaches are usually simpler and faster for service-to-service integrations. Asymmetric approaches are stronger when systems need scalable trust distribution, identity binding, or proof that does not require sharing the same secret across multiple parties.
 
@@ -245,7 +245,7 @@ Base64UrlEncode(header) + "." + Base64UrlEncode(payload) + "." + Base64UrlEncode
   }
   ```
 
-* **The Payload:** This section contains the core data regarding the user, which are referred to as "[claims](#understanding-payload-claims)".
+* **The Payload:** This section contains the core data regarding the user, which are referred to as "[claims](#Understanding%20Payload%20Claims)".
 
   ```json
   {

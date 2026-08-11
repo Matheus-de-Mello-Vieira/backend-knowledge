@@ -119,18 +119,18 @@ Because an LLM-as-a-judge is inherently subjective and never 100% accurate, deve
 
 Human Graders involve manual human review and scoring. While humans provide the highest fidelity for judging comprehensiveness, depth, and creative nuance, they are slow, expensive, and cannot scale to real-time continuous integration (CI) pipelines.
 
-They are primarily used to establish **"golden baseline datasets"** to calibrate your automated [Model Graders](#model-graders-probabilistic), and to define the per-example ground truth labels required by certain quadrants of the [2×2 Decision Matrix](#the-2x2-decision-matrix).
+They are primarily used to establish **"golden baseline datasets"** to calibrate your automated [Model Graders](#Model%20Graders%20%28Probabilistic%29), and to define the per-example ground truth labels required by certain quadrants of the [2×2 Decision Matrix](#The%202%C3%972%20Decision%20Matrix).
 
 ### The Hybrid Engineering Strategy
 
-In practice, the three grader types are used together. Format compliance and syntactic validity should always be handled by **[Code Graders](#code-graders-deterministic)** because they are black-and-white rules. Semantic accuracy is better suited for a **[Model Grader](#model-graders-probabilistic)** because it requires a conceptual understanding of intent. **[Human Graders](#human-graders-ground-truth)** establish the ground truth that keeps both automated grader types calibrated and honest.
+In practice, the three grader types are used together. Format compliance and syntactic validity should always be handled by **[Code Graders](#Code%20Graders%20%28Deterministic%29)** because they are black-and-white rules. Semantic accuracy is better suited for a **[Model Grader](#Model%20Graders%20%28Probabilistic%29)** because it requires a conceptual understanding of intent. **[Human Graders](#Human%20Graders%20%28Ground%20Truth%29)** establish the ground truth that keeps both automated grader types calibrated and honest.
 
 ### The 2×2 Decision Matrix
 
 With the three grader types defined, the natural question becomes: which combination do you use for a given evaluation scenario? The answer depends on two axes:
 
-1. **The Execution Mechanism:** Is the evaluation _Objective_ (deterministic code, i.e., a [Code Grader](#code-graders-deterministic)) or _Subjective_ (i.e., a [Model Grader](#model-graders-probabilistic))?
-2. **The Reference Data:** Does the evaluation require a unique _Per-Example Ground Truth_ label (typically provided by a [Human Grader](#human-graders-ground-truth)), or can it operate without one?
+1. **The Execution Mechanism:** Is the evaluation _Objective_ (deterministic code, i.e., a [Code Grader](#Code%20Graders%20%28Deterministic%29)) or _Subjective_ (i.e., a [Model Grader](#Model%20Graders%20%28Probabilistic%29))?
+2. **The Reference Data:** Does the evaluation require a unique _Per-Example Ground Truth_ label (typically provided by a [Human Grader](#Human%20Graders%20%28Ground%20Truth%29)), or can it operate without one?
 
 ```mermaid
 quadrantChart
@@ -176,7 +176,7 @@ This quadrant applies when there are many correct ways to format the final outpu
 - **The Implementation:** Every customer chat is about a completely different problem. Therefore, you cannot use a universal rule. Instead, a developer creates a dataset of 20 chats and manually writes a unique "Ground Truth Fact Sheet" for each one. For example:
     - _Test Case A Ground Truth:_ Must mention the router was broken, and the customer was angry.
     - _Test Case B Ground Truth:_ Must mention a $50 refund was issued for late delivery.
-- **The Evaluator:** You cannot use a Python script to check for "$50 refund" because the AI might legitimately write "refunded fifty bucks" or "credited 50 dollars." Instead, you deploy a **[Model Grader](#model-graders-probabilistic)**. The judge is given the agent's generated summary _alongside_ the unique Ground Truth Fact Sheet for that specific ticket, and is prompted to semantically evaluate whether those specific core facts were successfully captured.
+- **The Evaluator:** You cannot use a Python script to check for "$50 refund" because the AI might legitimately write "refunded fifty bucks" or "credited 50 dollars." Instead, you deploy a **[Model Grader](#Model%20Graders%20%28Probabilistic%29)**. The judge is given the agent's generated summary _alongside_ the unique Ground Truth Fact Sheet for that specific ticket, and is prompted to semantically evaluate whether those specific core facts were successfully captured.
 
 #### Quadrant IV: Subjective Evaluation with No Per-Example Ground Truth
 
@@ -184,7 +184,7 @@ This quadrant is reserved for complex, unstructured generation outputs that must
 
 - **The Scenario:** An agentic tool that automatically generates data visualizations (e.g., charts displaying sales trends).
 - **The Implementation:** There is no single "correct" graphic for the data, so per-example labels are impossible.
-- **The Evaluator:** A multimodal [Model Grader](#model-graders-probabilistic) is deployed to inspect the generated charts against a universal qualitative rubric. The model verifies cross-cutting design standards across all tested files, such as checking whether axis labels are clear, legible, and structurally appropriate.
+- **The Evaluator:** A multimodal [Model Grader](#Model%20Graders%20%28Probabilistic%29) is deployed to inspect the generated charts against a universal qualitative rubric. The model verifies cross-cutting design standards across all tested files, such as checking whether axis labels are clear, legible, and structurally appropriate.
 ## Evaluation Approaches
 
 ### The Pipeline Approach
@@ -294,7 +294,7 @@ The LLM processes the batch and generates its raw outputs: a simple equation for
 
 #### Step 4: Feed Through the Grader
 
-Apply the appropriate [Grading Techniques](#grading-techniques) to each output. The [Hybrid Engineering Strategy](#the-hybrid-engineering-strategy) typically applies: use [Code Graders](#code-graders-deterministic) for format and syntax checks, and a [Model Grader](#model-graders-probabilistic) for semantic accuracy.
+Apply the appropriate [Grading Techniques](#Grading%20Techniques) to each output. The [Hybrid Engineering Strategy](#The%20Hybrid%20Engineering%20Strategy) typically applies: use [Code Graders](#Code%20Graders%20%28Deterministic%29) for format and syntax checks, and a [Model Grader](#Model%20Graders%20%28Probabilistic%29) for semantic accuracy.
 
 Once the entire test suite passes through the graders, your pipeline aggregates the data by calculating the mathematical mean of the scores across all tasks. This final average serves as your application's absolute performance metric for that specific prompt version.
 

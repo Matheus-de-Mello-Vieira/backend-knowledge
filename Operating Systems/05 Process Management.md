@@ -20,12 +20,11 @@ To understand how the kernel manages work, you must separate the concept of _res
 
 - **The Process (The Container)**: A process is the ultimate resource container.
        - By itself, a process doesn't actually "do" anything; it is simply the bounded, isolated environment in which code runs.
-              - It holds the isolated virtual memory space—which is strictly divided into its own dedicated **code, data, heap, and stack sections**—along with the Per-Process File Descriptor Table and the [**Process Control Block (PCB)**](#the-process-control-block-pcb).
+              - It holds the isolated virtual memory space—which is strictly divided into its own dedicated **code, data, heap, and stack sections**—along with the Per-Process File Descriptor Table and the [Process Control Block](#The%20Process%20Control%20Block%20(PCB)).  
 - **The Thread (The Execution)** A thread is the actual active unit of execution.
        - Every process starts with exactly one main thread, but it can spawn dozens of child threads.
        - The OS scheduler does not actually schedule processes; it schedules _threads_ onto physical CPU cores.
-       - All threads within a single process share [exact same memory](#multi-threaded-memory-layout) and open files, but each thread is given its own isolated Stack and CPU Registers (like the Program Counter).
-
+       - All threads within a single process share [exact same memory](#Multi-Threaded%20Memory%20Layout) and open files, but each thread is given its own isolated Stack and CPU Registers (like the Program Counter).
 ### The Process Control Block (PCB)
 
 The Process Control Block (in Linux, known as the `task_struct`) is the definitive data structure representing a process inside the operating system. It is the kernel's internal ledger tracking every single detail about a process's state, memory boundaries, and security permissions.
@@ -101,12 +100,20 @@ Because a single operating system might be running 5,000 threads distributed acr
 
 ## Context Switching
 
-The CPU doesn’t know about a process is, it is a abstraction from the OS. The OS loads the **context**: CPU registers (pc, sp, bp, etc), pointer to page table mapping.
+A CPU core does not understand a **process** as a hardware concept. It simply executes instructions using whatever execution state is currently loaded into its registers. The operating system creates the abstraction around that execution: a **process** owns resources and a virtual address space, while a **thread** represents the execution state that can actually be scheduled onto a CPU core.
 
-- **Context Switching Overhead:**
-    - **Process Switch (Heavy):** Switching the CPU from Process A to Process B is incredibly computationally expensive. The kernel must physically swap out the entire virtual memory mapping (updating the CPU's Memory Management Unit) and flush the CPU's Translation Lookaside Buffer (TLB). This forces a massive wave of L1/L2 cache misses as the new process is forced to pull its data all the way from system RAM.
-    - **Thread Switch (Lightweight):** Switching from Thread 1 to Thread 2 _within the same process_ can require less work than switching between processes because they share a virtual address space. The kernel still saves and restores register state, and the exact cost depends on the scheduler and architecture.
+A thread's **context** is the information required to pause it and later resume it exactly where it stopped. This primarily includes CPU registers such as the Program Counter / Instruction Pointer (`pc` / `ip`), Stack Pointer (`sp`), Base/Frame Pointer (`bp`), general-purpose registers, and status/flags registers. The process also provides the address-space context, especially the page-table root used by the MMU to translate virtual addresses into physical memory.
 
+During a context switch, the kernel saves the outgoing thread's execution state, chooses another runnable thread, restores that thread's saved state, and resumes execution from its saved Instruction Pointer. If the new thread belongs to a different process, the kernel must also activate that process's virtual address space.
+
+### Context Switching Overhead
+
+- **Thread Switch Within the Same Process (Usually Cheaper):** Threads in the same process share the same virtual address space and page tables. The kernel mainly needs to save and restore thread-specific state such as registers and the Stack Pointer, while the MMU can continue using the same address-space mapping.
+- **Switch Between Different Processes (Usually More Expensive):** In addition to restoring the new thread's registers, the kernel must switch to the destination process's page-table context. This can reduce the effectiveness of cached address translations in the **TLB**, because translations belonging to the previous process may no longer be useful.
+- **The TLB Is Not Necessarily Fully Flushed:** Modern CPUs commonly tag TLB entries with an address-space identifier, such as an **ASID** or **PCID**. This allows translations from different processes to coexist in the TLB, reducing the cost of switching address spaces.
+- **CPU Caches Are Not Explicitly Flushed:** A context switch does not normally clear the L1, L2, or L3 caches. However, the incoming thread may use a completely different set of instructions and data. As it runs, its working set can replace the previous thread's cache lines, causing additional cache misses. This loss of **cache locality** contributes significantly to context-switch overhead.
+
+Therefore, the distinction between a "process switch" and a "thread switch" is mainly about whether the virtual address space also changes. The scheduler fundamentally switches **execution contexts**, but switching between threads that share the same process is usually cheaper because less memory-management state needs to change.
 ## Related notes
 
 - For memory layout, the PCB, the stack, and execution state, see [The Anatomy of a Process](02%20The%20Anatomy%20of%20a%20Process.md).
