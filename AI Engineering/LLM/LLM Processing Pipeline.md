@@ -350,10 +350,6 @@ The jump from a single text completion to a dynamic, multi-turn AI agent is enti
 - **The Halting Phase:** The inference server detects this specific JSON structure, immediately halts the generation loop, and passes the JSON payload back to the host application (e.g., a Python backend).
 - **The Injection Phase:** The host application actually executes the API call or database query. It takes the raw data returned by that external tool, appends it to the rolling transcript under a new `<|im_start|>tool` role, and sends the entire massive prompt back to the LLM to read the data and summarize the final answer for the user.
 
-Here is the complete, integrated content for **Model Parameters & Memory Footprint**, **Mixture of Experts (MoE) Architecture**, and **Quantization**.
-
-This draft adopts the structure, formatting, technical depth, and tone of your existing notes—utilizing high-level summary bullets (`What it does`, `Why it matters`, `Mental model`), bold emphasis, callout-style notes, inline LaTeX math, and explicit sub-sections.
-
 ## Mixture of Experts (MoE) Architecture
 
 The **Mixture of Experts (MoE)** architecture is an engineering solution designed to decouple a model's knowledge capacity from its generation latency.
