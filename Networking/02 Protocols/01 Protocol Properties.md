@@ -65,6 +65,22 @@ More broadly, network communication is usually **bidirectional**:
 * **Stateless:** Each request is independent and contains all the information needed to fulfill it (e.g., UDP, standard HTTP).
 * **Stateful:** The protocol remembers previous interactions and maintains a session context (e.g., TCP handshakes, gRPC, Apache Thrift).
 
+### Processing Overhead
+
+Protocols consume CPU and memory to parse data, maintain state, provide reliability, perform encryption, and implement other features.
+
+The cost can happen at different granularities:
+
+* **Per byte:** Encryption/decryption, checksums, compression, and memory copying.
+* **Per packet:** Header parsing, acknowledgements, loss detection, and congestion-control updates.
+* **Per connection:** Connection state, timers, buffers, and cryptographic state.
+* **Per stream:** Stream creation, state management, scheduling, and flow control.
+* **Per message/request:** Message parsing, header processing, serialization, and application dispatch.
+
+Which cost dominates depends on the workload. Large transfers tend to emphasize per-byte processing, while workloads with many small messages are more sensitive to per-packet, per-stream, and per-message overhead.
+
+Protocol features therefore involve tradeoffs. Compression may consume more CPU while reducing bandwidth, multiplexing requires additional state management while reducing the number of connections, and reliability requires acknowledgements and retransmission logic while providing stronger delivery guarantees.
+
 ### Flow and Congestion Control
 Mechanisms to ensure the network or receiver isn't overwhelmed.
 * **TCP:** Robust control; it slows down transmission if it detects packet loss or network congestion.
