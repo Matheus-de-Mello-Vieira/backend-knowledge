@@ -8,7 +8,7 @@ In contrast, **HTTP/2** allows a single connection to handle multiple requests a
 
 - Every request is tagged with a unique Stream ID.
 - The client initiates streams using odd numbers (e.g., `Stream 1`, `Stream 3`), while the server initiates streams using even numbers.
-- The server can process these streams concurrently and send back the responses in any order, completely eliminating HTTP head-of-line blocking.
+- The server can process these streams concurrently and send responses in any order. This removes HTTP/1.x request-ordering limitations at the HTTP layer, but all streams still share one ordered TCP connection and therefore remain subject to TCP head-of-line blocking.
 
 ## HTTP/2 Server Push (Deprecated)
 
@@ -176,6 +176,22 @@ To defeat this, servers had to add new layers of defense beyond just checking th
 - **Cookie "Crumb" Accounting:** Attackers historically bypassed count limits by splitting a single standard `Cookie` header into thousands of tiny fragments (called crumbs), which is allowed by the HTTP/2 specification. Modern servers are now patched to strictly count these fragments toward the total header limit.
 - **Aggressive Timeouts:** Load balancers and reverse proxies now aggressively monitor streams that consume memory but refuse to accept responses (the 0-byte window hold), terminating them to free up resources.
 
+## CPU Overhead
+
+HTTP/2 adds more protocol work per connection than HTTP/1.1. The additional cost comes mainly from managing the state required by multiplexing rather than from binary framing itself.
+
+The main sources of CPU overhead are:
+
+- **Stream bookkeeping:** Every frame is associated with a stream, so the implementation must locate that stream and maintain its state.
+- **Multiplexing:** Frames from many concurrent streams are interleaved over the same TCP connection and must be scheduled and reconstructed correctly.
+- **Flow control:** HTTP/2 maintains both connection-level and stream-level flow-control windows.
+- **HPACK:** Headers must be compressed and decompressed while keeping the static and dynamic compression tables synchronized.
+- **Frame validation:** Frames such as `HEADERS`, `DATA`, `SETTINGS`, and `WINDOW_UPDATE` must be parsed and validated against the current connection and stream state.
+
+The binary format itself is not necessarily expensive to parse. Most of the additional processing comes from the state management around multiplexing, streams, flow control, and header compression.
+
+However, HTTP/2 can also reduce work elsewhere because a single connection can replace several HTTP/1.1 TCP connections, reducing the number of sockets, TCP state machines, and TLS handshakes.
+
 ## Pros and Cons
 
 ### Pros
@@ -188,7 +204,7 @@ To defeat this, servers had to add new layers of defense beyond just checking th
 
 - **TCP Head-of-Line (HoL) Blocking:** Because all requests are multiplexed over a single TCP connection, if a single packet is lost at the network level, the entire TCP connection halts until that packet is retransmitted. This delays _all_ multiplexed HTTP requests, not just the one missing the packet.
 - **Server Push Never Picked Up:** [As mentioned](#HTTP/2%20Server%20Push%20(Deprecated)), the push feature proved inefficient in practice and is mostly abandoned. 
-- **Higher CPU Usage:** HTTP/2 uses a binary framing layer instead of the plain-text format used in HTTP/1.1. The server and client must do more work to encode, decode, compress headers, and manage the interleaving of multiple streams on a single connection.
+- **Higher Protocol Complexity:** HTTP/2 requires stream bookkeeping, multiplexing, flow-control management, frame validation, and HPACK compression. This can increase CPU usage per connection, although using fewer TCP/TLS connections can offset some of this cost.
 
 ## When to Use HTTP/2
 
