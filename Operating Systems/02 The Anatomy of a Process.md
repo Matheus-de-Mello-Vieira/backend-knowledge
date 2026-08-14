@@ -56,9 +56,9 @@ Instead, that integer acts as a starting point. When your program asks to read o
     - **What it is:** A shared table that tracks the active "session" or connection of the open file.
     - **Its Job:** This table tracks the state of your connection, including your access permissions and your current Read/Write offset. Because the offset is tracked here, sequential `read()` calls will naturally walk forward through a file without the programmer needing to manually track their byte position.
 3. **The Inode Table (System-Wide)**
-	- **The FD Connection:** The state entry in the Open File Table points down to a specific Inode here.
-	- **What it is:** The final global table that represents the actual physical or virtual reality of the resource.
-	- **Its Job:** This table holds the absolute metadata of the file, completely independent of how any process is reading it. This points the kernel to where the data physically lives, such as a block of data on your hard drive.
+    - **The FD Connection:** The state entry in the Open File Table points down to a specific Inode here.
+    - **What it is:** The final global table that represents the actual physical or virtual reality of the resource.
+    - **Its Job:** This table holds the absolute metadata of the file, completely independent of how any process is reading it. This points the kernel to where the data physically lives, such as a block of data on your hard drive.
 
 **Why the separation matters:**
 By breaking this connection into three layers, the OS can manipulate how files behave behind the scenes. For example, if you duplicate an FD using the `dup()` system call, the kernel simply takes a new integer index in your private File Descriptor Table and points it to the exact same entry in the Open File Table. Your program thinks it has two different files, but the OS knows they are sharing the exact same underlying connection.
@@ -210,29 +210,102 @@ At the machine-code level, this means your instruction stream often stops being 
 - **Variable Referencing:** Once the `bp` is set, the compiler can reliably find any local variable using fixed offsets (e.g., `bp - 8 bytes` or `bp - 16 bytes`), regardless of what the `sp` is currently doing.
 - **Frame Pointer Omission (FPO):** While the Base Pointer is the standard anchor, it is not strictly mandatory. If a function's stack frame has a fixed, known size at compile time, modern compilers can track all local variables simply by calculating offsets directly from the moving Stack Pointer (`sp`). Through an aggressive optimization called Frame Pointer Omission, the compiler discards the Base Pointer entirely, freeing up that valuable CPU register for general computation to improve execution speed—though this trade-off makes debugging and reading stack traces significantly more difficult.
 
-### Nested Calls & Context Switching
+### Function Prologue and Epilogue
 
-When an active function (`func1`) calls a new function (`func2`), `func2` must become the new active frame. The machine code executes a specific sequence to preserve the state safely:
+When a function begins executing, it may need to create a **stack frame** for local variables, saved registers, and other temporary state. The compiler generates a short sequence of machine instructions called the **function prologue** to prepare this environment.
 
-1. **Save the Return Address:** The system saves the exact instruction address where `func1` left off, so it knows exactly where to resume later.
-    - _Architecture Note:_ On x86 processors, it is pushed directly into the stack memory. On ARM processors, this is stored in a dedicated CPU register called the **Link Register (LR)** - see [Nested Calls in ARM.](#Nested%20Calls%20in%20ARM)
-2. **Save the Old Base Pointer:** The current value of `bp` (which anchors `func1`) is pushed onto the stack inside the new `func2` frame.
-3. **Update Pointers:** The `bp` is updated to match the current `sp` (establishing the new anchor for `func2`), and the `sp` is moved down to allocate space for `func2`'s local variables.
+A prologue generally may:
 
-**When `func2` returns:**
+1. **Preserve Required Registers:** Save registers whose current values must survive the function call.
+2. **Reserve Stack Space:** Move the Stack Pointer (`sp`) to allocate space for local variables and temporary data.
+3. **Establish a Frame Pointer:** Optionally save the previous Frame Pointer and make `bp` / `fp` point to the new stack frame.
+4. **Perform Runtime-Specific Checks:** Some runtimes insert additional work into function prologues. For example, Go places stack-growth checks in the prologue of many functions.
 
-1. The CPU completely collapses `func2`'s frame by setting the `sp` back to the current `bp`.
-2. It pops the saved `func1` base pointer off the stack and puts it back into the `bp` register, restoring `func1` as the active frame.
-3. It takes the saved Return Address and loads it into the **Instruction Pointer**, seamlessly resuming `func1`'s execution exactly where it paused.
+Conceptually:
 
-#### Nested Calls in ARM
+```text
+Before entering the function:
 
-- **The Link Register Bottleneck:** ARM processors use a single hardware Link Register (LR) to store the return address when a function is called. If `func1` calls `func2`, the LR holds the return address for `func1`. If `func2` then calls `func3`, the hardware will overwrite the LR, permanently losing the way back to `func1`.
-- **Leaf vs. Non-Leaf Functions:**
-       - A **Leaf Function** is a function that does not call any other functions (it is the end of the branch). It can safely leave its return address in the LR hardware register and use it to return without loading the address from memory.
-    - A **Non-Leaf Function** (like `func2` in our example) _does_ call other functions.
-- **Spilling to the Stack:** To prevent the return address from being destroyed, the compiled machine code for a non-leaf function will immediately push the current value of the LR onto the Stack the moment the function starts (in a phase called the function prologue). It gets stored in the memory frame right alongside the Base Pointer.
-- **The Return:** When `func2` is finally ready to return to `func1`, it doesn't look at the physical LR hardware register anymore. Instead, it pops the original return address directly off the stack memory and loads it into the Instruction Pointer to safely resume execution.
+        caller's frame
+        ──────────────
+sp  →   top of stack
+
+
+Function prologue:
+
+        caller's frame
+        ──────────────
+        saved state
+        local variables
+        temporary data
+sp  →   ──────────────
+        current function's frame
+```
+
+After the function body finishes, the compiler may generate a corresponding **function epilogue**. It reverses the setup performed by the prologue:
+
+1. Release the current function's stack space by restoring the Stack Pointer.
+2. Restore registers that were saved by the function.
+3. Restore the previous Frame Pointer, if one was used.
+4. Return execution to the caller.`
+
+Not every function has a large or even clearly visible prologue and epilogue. Optimizing compilers can eliminate unnecessary stack frames, omit the Frame Pointer, keep local values entirely in registers, or inline the function into its caller.
+
+### Nested Function Calls
+
+When one function calls another, the caller does not disappear. Its stack frame remains in memory while a new frame is created for the called function.
+
+For example:
+
+```text
+main()
+  └─ func1()
+       └─ func2()
+```
+
+While `func2` is executing, the stack conceptually contains:
+
+```text
+Higher addresses
+
+┌─────────────────────┐
+│ main() frame        │
+├─────────────────────┤
+│ func1() frame       │
+├─────────────────────┤
+│ func2() frame       │ ← currently executing
+└─────────────────────┘
+
+Lower addresses
+```
+
+Because the stack follows **Last-In, First-Out (LIFO)** ordering, `func2` must finish before `func1` can resume, and `func1` must finish before `main` can resume.
+
+#### Return Address
+
+Before execution transfers to the called function, the machine must preserve the location where the caller should continue afterward. This location is the **return address**.
+
+> [!warning] Return Address ≠ Returned Value Address  
+The **return address** is the address of the **next machine instruction that the caller should execute after the called function finishes**.
+>
+> It is **not** the memory address of the value returned by the function.
+
+A function's return value is usually passed according to the platform's calling convention, commonly through a CPU register, although larger values may use memory. The return address exists purely to restore **control flow** back to the caller.
+
+How this is represented depends on the CPU architecture:
+
+- **x86:** The `call` instruction normally pushes the return address onto the stack and jumps to the called function. The eventual `ret` instruction retrieves that address and jumps back to it.
+- **ARM:** A branch-with-link instruction normally stores the return address in the **Link Register (`LR`)**. If the called function needs to call another function, its prologue may save the current `LR`, commonly onto the stack, so it is not lost when the next call overwrites it.
+
+Each nested call can therefore add another frame to the stack. When functions return, those frames are removed in the reverse order in which they were created.
+
+This chain of active function frames is the **call stack**. It records the current hierarchy of function calls and is what debuggers use to produce stack traces such as:
+
+```text
+func2()
+func1()
+main()
+```
 
 ### Calling Conventions (Parameters & Returns)
 

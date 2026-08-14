@@ -115,12 +115,93 @@ During a context switch, the kernel saves the outgoing thread's execution state,
 
 - **Thread Switch Within the Same Process (Usually Cheaper):** Threads in the same process share the same virtual address space and page tables. The kernel mainly needs to save and restore thread-specific state such as registers and the Stack Pointer, while the MMU can continue using the same address-space mapping.
 - **Switch Between Different Processes (Usually More Expensive):** In addition to restoring the new thread's registers, the kernel must switch to the destination process's page-table context. This can reduce the effectiveness of cached address translations in the **TLB**, because translations belonging to the previous process may no longer be useful.
-- **The TLB Is Not Necessarily Fully Flushed:** Modern CPUs commonly tag TLB entries with an address-space identifier, such as an **ASID** or **PCID**. This allows translations from different processes to coexist in the TLB, reducing the cost of switching address spaces.
 - **CPU Caches Are Not Explicitly Flushed:** A context switch does not normally clear the L1, L2, or L3 caches. However, the incoming thread may use a completely different set of instructions and data. As it runs, its working set can replace the previous thread's cache lines, causing additional cache misses. This loss of **cache locality** contributes significantly to context-switch overhead.
 
 Therefore, the distinction between a "process switch" and a "thread switch" is mainly about whether the virtual address space also changes. The scheduler fundamentally switches **execution contexts**, but switching between threads that share the same process is usually cheaper because less memory-management state needs to change.
-## Related notes
 
-- For memory layout, the PCB, the stack, and execution state, see [The Anatomy of a Process](02%20The%20Anatomy%20of%20a%20Process.md).
-- For backend scheduling tradeoffs at the application level, see [Execution Patterns](../Backend%20Engineering/02%20Execution%20Patterns.md).
-- For kernel-space coordination and device access, see [System Architecture Overview](05%20Process%20Management.md#Process%20Management).
+#### TLB Behavior
+
+Historically, switching from one process to another often required flushing the **Translation Lookaside Buffer (TLB)**. The TLB caches recent virtual-to-physical address translations, but without additional metadata the CPU cannot distinguish which process a cached translation belongs to. Since two processes can use the same virtual address while mapping it to completely different physical pages, retaining the previous process's TLB entries would be unsafe.
+
+Modern CPUs reduce this overhead by tagging TLB entries with an **address-space identifier**. Different architectures use different names for this mechanism: ARM commonly uses **ASID (Address Space Identifier)**, while x86 uses **PCID (Process-Context Identifier)**.
+
+Instead of the TLB effectively storing only `virtual address → physical address`, it stores something conceptually closer to `address-space identifier + virtual address → physical address`
+
+When the OS switches to another process, it changes the active address-space identifier together with the page-table context. The MMU then only considers TLB entries associated with the currently active address space. This allows translations from multiple processes to coexist in the TLB and avoids many full TLB flushes during context switches.
+
+These identifiers must remain relatively small because they are stored alongside TLB entries, and increasing their width increases hardware area, power usage, and lookup complexity. As a result, the number of available identifiers is finite.
+
+When the identifier space is exhausted, the operating system eventually has to **reuse** an identifier. Before assigning it to a different address space, the OS must ensure that stale TLB entries carrying the same identifier cannot be mistaken for translations belonging to the new process. This may require invalidating those entries or using a generation/versioning mechanism. Therefore, address-space tagging significantly reduces the frequency of TLB flushes, but it does not eliminate TLB invalidation entirely.
+
+### When Context Switches Happen
+
+A context switch happens whenever the currently running thread stops using the CPU and the scheduler decides that another runnable thread should execute instead. This can happen for several reasons:
+
+- **Scheduling Decisions:** The scheduler may choose another runnable thread according to the operating system's scheduling policy, such as priority, fairness, CPU affinity, or accumulated CPU time.
+- **Preemptive Multitasking:** In a preemptive operating system, a running thread does not control the CPU indefinitely. A periodic timer interrupt gives control back to the kernel, which may decide that the thread's time slice has expired and preempt it in favor of another runnable thread.
+- **I/O Wait:** If a thread performs a blocking operation, such as waiting for disk, network, or user input, it cannot make progress on the CPU. The kernel moves it into a blocked/waiting state and schedules another runnable thread. When the I/O operation completes, an interrupt or kernel event wakes the blocked thread and makes it runnable again.
+
+A context switch can therefore be triggered either because the **scheduler takes the CPU away from a thread** or because the **thread voluntarily stops being runnable**, for example by blocking on I/O or waiting for synchronization.
+#### Scheduling Algorithms
+
+The scheduler decides **which runnable thread executes on which CPU core and for how long**. Designing a good scheduling policy is difficult because the operating system must balance competing goals such as fairness, responsiveness, throughput, latency, and efficient CPU utilization.
+
+Modern operating systems normally schedule **threads**, rather than processes directly. The scheduler may also consider where a thread previously executed. Running a thread again on the same core can preserve **cache and TLB locality**, because some of its instructions, data, and address translations may still be available close to that core. This tendency is known as **CPU affinity**.
+
+However, locality is only one objective. If several threads from the same process can execute independently, spreading them across different cores may provide true parallelism. The scheduler therefore balances locality against load distribution and parallel execution.
+
+Some classic scheduling algorithms include:
+
+- **First-Come, First-Served (FCFS):** Runnable tasks execute in the order they arrive. It is simple, but a long-running task can delay every task behind it.
+- **Shortest Job First (SJF):** The task expected to require the least CPU time runs first. This can minimize average waiting time, but the operating system usually cannot know a task's future execution time precisely.
+- **Round Robin (RR):** Each runnable task receives a fixed **time slice**. When its slice expires, the scheduler preempts it and gives another task a turn. This improves fairness and responsiveness but introduces additional context-switch overhead.
+
+Real operating systems usually use more sophisticated scheduling policies that combine ideas such as priorities, time slicing, CPU affinity, fairness, and workload history rather than relying on a single simple algorithm.
+#### Cooperative vs. Preemptive Multitasking
+
+- **Cooperative multitasking** relies on the running thread voluntarily giving control of the CPU back to the operating system, usually by yielding, blocking, or reaching some point where the program allows another task to run. If a program fails to yield—for example, because it enters an infinite loop or performs a long computation—other tasks may receive little or no CPU time.
+- **Preemptive multitasking** gives the operating system control over how long a thread can execute. A timer interrupt periodically returns control to the kernel, allowing the scheduler to preempt the running thread, save its context, and execute another runnable thread. Because the operating system does not depend on applications voluntarily yielding, one CPU-bound program cannot normally monopolize a CPU core indefinitely.
+
+Modern general-purpose operating systems primarily use preemptive multitasking, although threads can still voluntarily yield or block when they do not need the CPU.
+
+> [!example] Windows 3.1  
+> Windows 3.1 used cooperative multitasking between 16-bit Windows applications. Applications were expected to periodically yield control, commonly while processing their message loop. If an application entered an infinite loop or performed a long-running computation without yielding, other applications could stop receiving CPU time and the graphical environment could appear frozen.
+### Thread Prioritization
+
+When multiple threads are **runnable** at the same time, the scheduler must decide which one should receive CPU time. One of the inputs to that decision is **priority**.
+
+A higher-priority thread is generally favored over a lower-priority one, although the exact meaning of "priority" depends on the operating system and scheduling policy. Priority does not reserve a CPU core or guarantee continuous execution. If a high-priority thread blocks on I/O, a mutex, or another event, it stops being runnable and the scheduler can execute another thread.
+
+Priority is closely related to **preemption**. Under priority-based scheduling policies, when a sufficiently higher-priority thread becomes runnable, the scheduler may preempt the currently executing thread, save its context, and switch the CPU to the higher-priority thread.
+
+#### Windows
+
+Windows gives each process a **priority class**, such as `IDLE`, `NORMAL`, `ABOVE_NORMAL`, `HIGH`, or `REALTIME`. Each thread also has its own priority level. Windows combines these values to determine the thread's base scheduling priority.
+
+For example, selecting **High** for a process in Task Manager changes the process's priority class. The scheduler still schedules individual threads, but the threads belonging to that process generally receive higher base priorities and are therefore favored when competing with lower-priority runnable threads.
+
+This should be used carefully: a CPU-bound high-priority process can reduce the CPU time available to ordinary applications, while real-time priorities can interfere with important system work.
+
+#### Linux
+
+Linux exposes a similar idea differently. For ordinary time-sharing workloads, a thread has a **nice value** ranging from `-20` to `+19`:
+
+- `-20` → higher scheduling preference
+- `0` → default
+- `+19` → lower scheduling preference
+
+Despite the name, a "higher" nice value actually means the task is being **nicer to other tasks**, so the scheduler gives it a smaller share of CPU time when there is contention.
+
+For example:
+
+`nice -n 10 ./program`
+
+starts a program with a lower scheduling preference than the default. Conversely, decreasing the nice value gives the task a greater share of CPU time, although increasing priority is normally restricted by permissions.
+
+Linux also provides separate **real-time scheduling policies**, such as `SCHED_FIFO` and `SCHED_RR`, whose threads take precedence over ordinary time-sharing tasks. These policies are conceptually closer to strict priority scheduling and must be used carefully because a CPU-bound real-time thread can starve ordinary work.
+
+## Concurrency and Parallelism
+
+Parallelism is executing multiple tasks simultaneously across separate cores. Concurrency is managing multiple tasks by interleaving their execution to create the illusion of parallelism. However, both demands the art/science of split your program into processes or threads.
+
+### 

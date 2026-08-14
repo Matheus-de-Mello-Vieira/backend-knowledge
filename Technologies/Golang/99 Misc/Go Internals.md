@@ -27,7 +27,12 @@ Because the OS kernel strictly schedules physical OS threads, the Go runtime act
 - **Execution Rules:** Each **M** (OS thread) must have exactly one **P** attached to execute Go code, and each **P** can be attached to only one **M** at a time.
 - **Run Queues:** Each **P** maintains a local run queue of ready-to-execute goroutines (**Gs**).
 - **Hardware Execution:** The **M** executes these goroutines sequentially by routing them through the physical CPU core's instruction pipeline.
+### The Go Runtime
 
+The **Go runtime** is the part of the Go implementation that executes and manages your program after compilation. It sits between your Go code and the operating system, handling language-specific execution mechanics such as goroutine scheduling, stack growth, memory allocation, garbage collection, timers, and coordination with OS threads.
+
+- **What belongs to the runtime:** Goroutine creation, the **G-M-P scheduler**, heap allocation, garbage collection, stack resizing, channel parking and wake-up behavior, and many low-level interactions with the operating system.
+- **What does not belong to the runtime:** Your application logic and most standard-library APIs are not themselves the runtime, even though they may call into runtime-managed mechanisms.
 ## Goroutine Allocation
 
 When you execute a `go` statement, the runtime completely bypasses the OS kernel and executes a highly optimized sequence of user-space memory allocations.
@@ -45,6 +50,12 @@ Unlike OS threads that require system calls for contiguous memory and Guard Page
 
 - The runtime maps the 2KB request to a specific **Size Class** bucket.
 - The **P** checks its private `mcache`. If the 2KB Free List has an empty block, it pulls it instantly without locking the global heap.
+
+#### Stack Growth Checks
+
+Goroutine stacks are dynamically sized rather than fixed. Because a function call may require more stack space than is currently available, the compiler inserts a **stack-growth check** near the beginning of most functions.
+
+Conceptually, the function compares the current Stack Pointer (`sp`) against the goroutine's stack guard. If there is not enough remaining stack space, execution enters the runtime, which grows the goroutine's stack and then resumes the function.
 
 ### 3. Initializing the Execution State
 
@@ -73,16 +84,106 @@ Because CPU cycles are a scarce hardware resource, the Go runtime aggressively b
 - The OS penalty for waking a sleeping thread (transitioning from Kernel Space back to User Space) is computationally expensive.
 - Go intentionally utilizes spinning threads as a hardware optimization to instantly capture new goroutines, prioritizing sub-millisecond execution over strict power efficiency.
 
-### Asynchronous Preemption (Go 1.14+)
+### Goroutine Preemption
 
-Historically, Go relied on _Cooperative Scheduling_, where compiler-injected checks (during function calls or blocking I/O) allowed the runtime to yield goroutines. A tight mathematical `for` loop could completely hijack a CPU core.
+The Go runtime has its own scheduler for deciding which goroutine (**G**) executes on an OS thread (**M**) using a logical processor (**P**). This scheduling layer is independent from the operating-system scheduler: the OS preemptively schedules the **M**, while the Go runtime decides which **G** that M should execute.
 
-Modern Go uses **Asynchronous Preemption**:
+For the general distinction between cooperative and preemptive scheduling, see [Cooperative vs. Preemptive Multitasking](https://chatgpt.com/Operating%20Systems/05%20Process%20Management.md#cooperative-vs-preemptive-multitasking).
 
-- A privileged background thread (`sysmon`) watches all logical processors.
-- If a goroutine runs uninterrupted for >10ms, the runtime fires a UNIX signal (`SIGURG`) directly to the underlying OS thread.
-- This hardware-level interrupt forcefully rips the greedy goroutine off the CPU, parks it, and lets the **P** schedule the next task.
+A goroutine cannot be interrupted at an arbitrary instruction unless the runtime knows that its execution state can be safely preserved and inspected. These locations are called **safe points**. The modern runtime distinguishes three categories:
 
+- **Blocked safe point:** the goroutine is already descheduled, such as while blocked on synchronization or a system call.
+- **Synchronous safe point:** the running goroutine explicitly reaches a runtime/compiler check where a pending preemption request can be observed.
+- **Asynchronous safe point:** the runtime interrupts a running goroutine at an instruction where its stack and register state can still be safely recovered.
+
+Before Go 1.14, goroutine preemption depended primarily on the first two categories. Go 1.14 added asynchronous safe points, allowing the runtime to interrupt many long-running goroutines without waiting for them to naturally reach a synchronous check.
+
+#### Before Go 1.14: Synchronous Preemption
+
+Before asynchronous preemption existed, the runtime could **request** that a goroutine stop, but it generally could not immediately interrupt arbitrary Go code. The goroutine first had to reach a synchronous safe point, historically associated mainly with function calls. This made the mechanism cooperative-like: the runtime initiated the request, but the running goroutine had to execute code containing a preemption check before the request could actually take effect.
+
+The runtime reused the compiler-inserted stack-growth checks described in [Stack Growth Checks](#Stack%20Growth%20Checks) for preemption. When it wanted to preempt a goroutine, it set a preemption flag and replaced the goroutine's normal stack guard (`stackguard0`) with the special `stackPreempt` value. The next function Nested Calls would therefore make the ordinary stack check appear to fail. Execution entered the stack-growth path, where the runtime recognized that this was actually a **preemption request**, rather than a real stack overflow, and transferred control to the scheduler.
+
+Conceptually:
+
+`preemption requested → stackguard0 = stackPreempt → next function call → stack check fails → runtime detects preemption → scheduler`
+
+This approach was cheap because Go could reuse checks that were already necessary for stack growth instead of injecting a separate scheduler check into every instruction or loop iteration.
+
+The weakness was code that did not reach one of those checks. Consider:
+
+```go
+for {
+    x++
+}
+```
+
+If the compiler generated a tight loop with no function calls or other safe points, the goroutine could continue executing for an arbitrarily long time. A pending preemption request existed, but the goroutine never executed the stack check required to observe it. This could delay other goroutines and, more importantly, delay operations such as garbage collection that need running goroutines to reach safe states. The Go runtime tracked this limitation for years as the “tight loops should be preemptible” problem.
+
+Blocking operations did not have the same problem. If a goroutine blocked on a channel, synchronization primitive, system call, or another operation that descheduled it, it naturally entered a **blocked safe point** and stopped consuming its P.
+
+#### `sysmon` and Preemption Requests
+
+Go also has a special runtime monitoring thread called **`sysmon`**. It runs independently of the normal G-M-P execution path—it does not require a P—and performs several runtime maintenance tasks, including monitoring long-running execution, network polling, and reclaiming Ps associated with long system calls.
+
+For scheduling fairness, `sysmon` periodically calls `retake`, which examines running Ps. The runtime currently defines `forcePreemptNS` as **10 ms**. If a P remains on the same scheduling tick for roughly that duration, `retake` calls `preemptone(pp)` to request preemption. This is a scheduling target rather than a guarantee that every goroutine executes for exactly 10 ms.
+
+`preemptone` locates the M and G currently associated with that P and marks the goroutine for preemption:
+
+```text
+gp.preempt = true
+gp.stackguard0 = stackPreempt
+```
+
+The `stackguard0` modification preserves the synchronous preemption mechanism described above. In modern Go, however, `preemptone` can additionally request **asynchronous preemption** of the M.
+
+This means `sysmon` does **not** itself rip a goroutine from the CPU. Its role is primarily:
+
+`observe long-running P → request preemption`
+
+The actual interruption and transition into the scheduler are handled by the rest of the runtime and, for asynchronous preemption, platform-specific OS mechanisms.
+
+#### Go 1.14+: Asynchronous Preemption
+
+Go 1.14 added **asynchronous goroutine preemption**. The key improvement is that a running goroutine no longer always has to reach the next function-prologue stack check before the runtime can interrupt it. Loops without function calls therefore no longer have the same ability to indefinitely delay scheduling or garbage collection.
+
+Importantly, asynchronous preemption did **not replace** the old mechanism. Modern Go still uses blocked and synchronous safe points. Asynchronous safe points were added as another way to stop a goroutine when synchronous preemption would take too long.
+
+The process begins similarly. `sysmon` notices that execution has exceeded the scheduler's target time slice, `retake` calls `preemptone`, and the goroutine is marked for preemption. But if asynchronous preemption is supported, `preemptone` also marks the P and calls the platform-specific `preemptM` mechanism for the M currently executing the goroutine.
+
+On Unix-like systems, `preemptM` sends a signal to the target OS thread. Go currently uses **`SIGURG`** as its dedicated non-cooperative preemption signal. The signal interrupts the M at whatever instruction it happens to be executing and transfers control temporarily to the Go runtime's signal handler.
+
+Receiving the signal does **not** automatically mean the goroutine can be stopped at that exact instruction. The runtime first examines the interrupted Program Counter, Stack Pointer, registers, and runtime state to determine whether execution is currently at an **asynchronous safe point**. Some runtime regions cannot safely be preempted—for example, while the M is holding certain runtime locks, allocating memory, executing a system call, or otherwise maintaining runtime invariants.
+
+If the location is not safe, the signal handler does not force the switch there. The synchronous preemption request remains pending, and another asynchronous attempt can occur later.
+
+If the instruction **is** an asynchronous safe point, the runtime modifies the interrupted thread's saved execution context. Instead of returning directly to the instruction that was interrupted, it changes the context so that the thread appears to have called a runtime assembly function named **`asyncPreempt`**. The signal handler then returns normally.
+
+Conceptually:
+
+`sysmon → retake → preemptone → preemptM → OS interrupts M → check async safe point → inject asyncPreempt`
+
+`asyncPreempt` is architecture-specific assembly because the interruption may occur at essentially any safe instruction, meaning ordinary calling-convention assumptions cannot be relied upon. It saves the general-purpose registers—and, where necessary, additional register state—before transferring execution into Go runtime code.
+
+The Go continuation, `asyncPreempt2`, then switches to the system stack and either parks the goroutine or calls the scheduler's normal preemption path. The scheduler can place the interrupted goroutine back into a runnable state and choose another G to execute on the P. Later, when the original goroutine is scheduled again, its preserved state allows it to resume from the point where it was interrupted.
+
+One complication of asynchronous interruption is **garbage collection**. At synchronous safe points the compiler/runtime has precise information about where pointers live on the stack. At an asynchronous safe point, however, execution may be between the compiler's normal precise stack-map locations. The runtime therefore preserves register state and conservatively scans the relevant asynchronous frame so potential pointers are not accidentally treated as non-pointers and collected.
+
+Therefore, the evolution can be summarized as:
+
+**Before Go 1.14**
+
+`runtime requests preemption → G must reach a synchronous safe point → usually next function/stack check → scheduler`
+
+A tight loop without such a safe point could run for a very long time despite a pending preemption request.
+
+**Go 1.14+**
+
+`runtime requests preemption → try asynchronous interruption → if current instruction is safe, inject asyncPreempt → save registers → scheduler`
+
+If asynchronous interruption cannot safely happen at that moment, the existing synchronous mechanism remains available as a fallback.
+
+The result is that modern Go combines **blocked, synchronous, and asynchronous safe points**, giving the runtime much stronger control over long-running goroutines while still preserving the invariants required for stack management and garbage collection.
 ## Memory Management
 
 Go applications rely on the [classic virtual memory layout established by the operating system](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).

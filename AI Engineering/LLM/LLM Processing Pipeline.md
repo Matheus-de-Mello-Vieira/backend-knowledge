@@ -378,27 +378,46 @@ This architecture splits the parameter metric into two distinct operational valu
 
 ## Quantization
 
-Quantization is the process of compressing a model's parameters by mapping high-precision floating-point numbers to lower-precision integers, solving the severe hardware limitations of large models.
+Neural-network parameters are numerical values, and the **number format used to store those values determines how many bits each parameter occupies and how precisely it can represent numbers**.
 
-### The Problem: The VRAM Wall and Floating-Point Math
+A common representation is **floating point**, where the available bits are divided between the number's sign, exponent, and significant digits. Different floating-point formats make different trade-offs between memory usage, numerical range, and precision:
 
-Loading a model requires physical GPU memory (VRAM). The total parameter count directly dictates this static VRAM footprint based on the precision of the numbers.
+- **FP32 (32-bit Floating Point):** Uses 32 bits, or 4 bytes, per value. It provides high numerical precision but requires substantial memory and bandwidth.
+- **FP16 (16-bit Floating Point):** Uses 16 bits, or 2 bytes, per value. It reduces memory usage and allows faster computation on hardware optimized for lower precision.
+- **BF16 (Brain Floating Point 16):** Also uses 16 bits, but dedicates more of those bits to the exponent and fewer to numerical precision. This gives it approximately the same numerical range as FP32 while retaining the 2-byte storage cost of FP16.
+    
 
-During **pre-training**, neural networks strictly require floating-point numbers (FP32 or FP16). Floating-point formats split bits into a Sign, an Exponent, and a Mantissa, providing the massive **dynamic range** needed to simultaneously represent huge activation values alongside microscopic gradient updates during backpropagation.
+These formats illustrate an important hardware trade-off: **more bits preserve more numerical information, but they also consume more memory and require more data to move through the GPU's memory system.**
 
-Because 16 bits equal 2 bytes, every single parameter occupies exactly 2 bytes of memory.
+Quantization pushes this trade-off further by representing model weights and, in some cases, activations using even lower-precision formats such as INT8, INT4, FP8, or FP4.
 
-- **The Static VRAM Formula:** $\text{Total Parameters} \times 2 \text{ bytes}$
-- **The Hardware Wall:** A dense 70B parameter model ($70,000,000,000 \times 2$) requires roughly **140 GB of VRAM** just to load the static weights. Because enterprise GPUs (like the NVIDIA H100) max out at 80 GB of VRAM, standard high-parameter models physically cannot fit on a single GPU.
+### The Problem: The VRAM and Memory-Bandwidth Wall
 
-### The Solution: Integer Compression
+Model parameters must be stored in [VRAM](GPU.md#Global%20Memory%20/%20VRAM) while the model is running. Their numerical precision therefore directly affects the model's static memory footprint.
 
-During **inference**, the model's weights are permanently frozen. Because the system is no longer calculating microscopic gradients, the extreme dynamic range requirement drops, allowing the model to tolerate mathematical compression.
+For example, a parameter stored in FP16 or BF16 occupies 16 bits, or 2 bytes. A dense 70B-parameter model stored entirely at 16-bit precision therefore requires approximately:
 
-Quantization maps the continuous floating-point range to a discrete integer grid. It takes the 16-bit floats, multiplies them by a scaling factor, rounds them off, and packs them into smaller formats.
+$$  
+70\text{B parameters} \times 2\text{ bytes} \approx 140\text{ GB}  
+$$
 
-- **INT8 Quantization:** Converts 16-bit floats to 8-bit integers (1 byte). Reduces static VRAM requirements by **50%** with near-zero loss in benchmark accuracy.
-- **INT4 Quantization:** Converts 16-bit floats to 4-bit integers (0.5 bytes). Reduces static VRAM requirements by **75%**. The 140 GB model now drops to ~35 GB, allowing it to easily fit on a single consumer-grade GPU.
+This data must not only fit in VRAM; the weights also have to be read from memory while the GPU executes the model. Large models can therefore be constrained by both **VRAM capacity** and **memory bandwidth**.
+
+During inference, the model's weights are frozen, which makes it possible to represent many of them using lower precision while preserving most of the model's behavior.
+
+### Lower-Precision Representation
+
+Quantization maps model values into a smaller numerical representation. Traditional approaches commonly use integer formats such as INT8 or INT4, while modern hardware also supports low-precision floating-point formats such as FP8 and FP4.
+
+- **INT8:** Uses 8 bits per quantized value, roughly halving the raw storage required compared with FP16/BF16.
+- **INT4:** Uses 4 bits per quantized value, reducing raw storage to roughly one quarter of FP16/BF16.
+- **FP8 / FP4:** Low-precision floating-point formats that retain a floating-point representation while using fewer bits.
+
+For example, ignoring additional metadata such as scaling factors, the raw weight storage of a 70B model falls from roughly **140 GB at 16-bit precision** to approximately **70 GB at 8-bit precision** or **35 GB at 4-bit precision**.
+
+The exact computation performed by the GPU depends on the quantization method. Some approaches perform matrix operations directly using low-precision arithmetic supported by the hardware, while others store weights in a compressed format and convert them to a higher-precision representation during computation.
+
+The important architectural effect is that **fewer bits per value reduce both the amount of VRAM required and the amount of data that must move through the GPU's memory system.**
 ### Quantization Methodologies
 
 Applying naive quantization introduces rounding errors that can degrade the model's logic. To mitigate this, engineers use sophisticated compression frameworks:
