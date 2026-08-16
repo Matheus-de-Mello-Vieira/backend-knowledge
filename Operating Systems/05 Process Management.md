@@ -200,8 +200,3 @@ starts a program with a lower scheduling preference than the default. Conversely
 
 Linux also provides separate **real-time scheduling policies**, such as `SCHED_FIFO` and `SCHED_RR`, whose threads take precedence over ordinary time-sharing tasks. These policies are conceptually closer to strict priority scheduling and must be used carefully because a CPU-bound real-time thread can starve ordinary work.
 
-## Concurrency and Parallelism
-
-Parallelism is executing multiple tasks simultaneously across separate cores. Concurrency is managing multiple tasks by interleaving their execution to create the illusion of parallelism. However, both demands the art/science of split your program into processes or threads.
-
-### 
