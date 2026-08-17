@@ -71,7 +71,7 @@ When deploying Python as a backend server, its socket management and concurrency
 
 ### Python `asyncio`: Single Listener, Single Worker Thread
 
-Modern asynchronous frameworks (like FastAPI or AIOHTTP) running on a single process operate under the [**Single Listener, Single Worker Thread**](02%20Execution%20Patterns.md#1.%20Single%20Listener,%20Single%20Worker%20Thread) pattern.
+Modern asynchronous frameworks (like FastAPI or AIOHTTP) running on a single process operate under the [**Single Listener, Single Worker Thread**](02%20Application%20Server%20Concurrency.md#1.%20Single%20Listener,%20Single%20Worker%20Thread) pattern.
 
 - **The Architecture:** One single main thread acts as the listener, acceptor, and worker.
 - **The Mechanism:** It relies heavily on non-blocking I/O and an Event Loop to juggle connections.
@@ -80,7 +80,7 @@ Modern asynchronous frameworks (like FastAPI or AIOHTTP) running on a single pro
 
 ### Scaling Python (Gunicorn/Uvicorn): Multiple Listeners
 
-To scale beyond a single CPU core, Python uses process managers like Gunicorn. Gunicorn utilizes a Pre-Fork model where a Master process binds to a port and relies on the OS kernel's Socket Backlog to queue pending TCP connections until a worker process calls `accept()`. When scaled optimally, this utilizes the [**Multiple Listeners (Same Port and Address)**](02%20Execution%20Patterns.md#4.%20Multiple%20Listeners%20(Same%20Port%20and%20Address)) pattern.
+To scale beyond a single CPU core, Python uses process managers like Gunicorn. Gunicorn utilizes a Pre-Fork model where a Master process binds to a port and relies on the OS kernel's Socket Backlog to queue pending TCP connections until a worker process calls `accept()`. When scaled optimally, this utilizes the [**Multiple Listeners (Same Port and Address)**](02%20Application%20Server%20Concurrency.md#4.%20Multiple%20Listeners%20(Same%20Port%20and%20Address)) pattern.
 
 - **OS-Level Distribution:** By using the `SO_REUSEPORT` socket option, the OS allows multiple independent worker processes to bind to the exact same port.
 - **Queue Management:** The OS kernel creates separate accept queues for each listener and distributes incoming connections between them.
@@ -91,11 +91,11 @@ Gunicorn allows you to swap its internal execution engine depending on your work
 - **A. Sync Workers (The Default):** Each worker process handles exactly one request at a time. It is highly robust and avoids thread race conditions, but a slow I/O request (like a long database query) will completely block that worker from taking new connections from the OS backlog.
 - **B. Gthread Workers (Threads):** Each worker process spawns a pool of OS threads. Threads are used to solve IO blocking problems, keeping the main execution path responsive by offloading waiting tasks so other threads can handle new users.
 - **C. Async Workers (Gevent / Eventlet):** Uses "Greenlets" to monkey-patch synchronous libraries into behaving asynchronously. It leverages User-Space Context Switching to juggle massive concurrent connections without the memory bloat of OS threads.
-- **D. Uvicorn Workers (ASGI):** Each Gunicorn worker process runs an `asyncio` Event Loop. Internally, each worker acts as a [**Single Listener, Single Worker Thread**](02%20Execution%20Patterns.md#1.%20Single%20Listener,%20Single%20Worker%20Thread), using OS event monitors (like `epoll`) to multiplex thousands of sockets non-blockingly. 
+- **D. Uvicorn Workers (ASGI):** Each Gunicorn worker process runs an `asyncio` Event Loop. Internally, each worker acts as a [**Single Listener, Single Worker Thread**](02%20Application%20Server%20Concurrency.md#1.%20Single%20Listener,%20Single%20Worker%20Thread), using OS event monitors (like `epoll`) to multiplex thousands of sockets non-blockingly. 
 
 ### Python Thread Pools: Single Listener, Multiple Worker Threads
 
-For traditional synchronous frameworks like **Flask** and **Django**—which were built on the **WSGI** (Web Server Gateway Interface) standard—the application often runs under the [**Single Listener, Multiple Worker Threads**](02%20Execution%20Patterns.md#2.%20Single%20Listener,%20Multiple%20Worker%20Threads) pattern.
+For traditional synchronous frameworks like **Flask** and **Django**—which were built on the **WSGI** (Web Server Gateway Interface) standard—the application often runs under the [**Single Listener, Multiple Worker Threads**](02%20Application%20Server%20Concurrency.md#Single%20Acceptor,%20Multiple%20Workers) pattern.
 
 - **The Architecture:** A single main process or thread owns the listening and accepting phases.
 - **The Mechanism:** Once it accepts a connection, it hands off the file descriptor to a pool of worker threads, effectively acting as an internal load balancer.

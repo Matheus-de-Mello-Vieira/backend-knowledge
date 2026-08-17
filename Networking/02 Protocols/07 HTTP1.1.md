@@ -91,17 +91,17 @@ sequenceDiagram
 
 ### The Vulnerability
 
-Because backends handle connections [differently](02%20Execution%20Patterns.md#Architecture), Slowloris impacts them in different ways. The attack aims for two distinct types of resource exhaustion:
+Because backends handle connections [differently](02%20Application%20Server%20Concurrency.md#Single%20Listener,%20Single%20Worker), Slowloris impacts them in different ways. The attack aims for two distinct types of resource exhaustion:
 
 #### Thread Exhaustion
 
-This specifically targets backends using a [Multiple threads, single shared socket](02%20Execution%20Patterns.md#3.%20Multiple%20Threads,%20Single%20Shared%20Socket) execution pattern (like traditional Apache). 
+This specifically targets backends using a [Multiple threads, single shared socket](02%20Application%20Server%20Concurrency.md#Multiple%20Listeners%20with%20SO_REUSEPORT) execution pattern (like traditional Apache). 
 - **The Lockout:** In this model, every active connection is assigned a dedicated worker thread, and there is a hard cap on the total number of threads (e.g., 500).
 - By opening 500 dripping connections, the attacker successfully traps all 500 worker threads. Because every worker is stuck waiting for `\r\n\r\n`, no thread is available to call `accept()` on the socket. Legitimate users are completely blocked from accessing the site.
 
 #### File Descriptor Exhaustion
 
-This targets backends using a [Single listener, single worker thread](02%20Execution%20Patterns.md#1.%20Single%20Listener,%20Single%20Worker%20Thread) pattern (like Node.js) or modern event-driven proxies. 
+This targets backends using a [Single listener, single worker thread](02%20Application%20Server%20Concurrency.md#1.%20Single%20Listener,%20Single%20Worker%20Thread) pattern (like Node.js) or modern event-driven proxies. 
 
 - **Thread Immunity:** Because Node.js uses non-blocking I/O and an Event Loop, a slow HTTP request does _not_ block the worker thread. The single thread simply registers the connection and instantly moves on to serve other users. Slowloris cannot exhaust Node.js threads.
 - **The OS Bottleneck:** However, every open TCP connection consumes a **File Descriptor** (socket) and dedicated buffer memory at the operating system level. If the attacker scales the attack to open thousands of connections, they will hit the operating system's hard limit (e.g., the `ulimit` on Linux). Once all file descriptors are exhausted, the OS itself refuses new network connections, taking the backend offline.

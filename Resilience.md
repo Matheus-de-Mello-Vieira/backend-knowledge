@@ -285,40 +285,60 @@ The producer sends an event and does not track it further. Any interested consum
 
 ### Idempotency
 
-Idempotency means you can make the same call repeatedly and always get the same result, with no additional side effects from subsequent calls.
+Idempotency means a repeated operation leaves the system in the same final state as the first successful application. It matters because distributed systems often cannot tell whether a missing response means “the server never ran the operation” or “the operation succeeded but the response was lost.”
 
-For example
+For resilience, that distinction controls whether retries are safe. If an operation is not idempotent, a retry can execute the side effect twice. If the operation is idempotent, the client, proxy, or retry engine can repeat the request without compounding the result.
+
+For example:
 
 1. `increase(1)` — not idempotent
- This one says: “Add one more coin to your hoard.”
-    Call it once: value goes from 10 → 11.
-    Call it again: 11 → 12.
-    And again: 12 → 13.
-    The same call keeps changing the state. The outcome depends on how many times you run it. That's the opposite of idempotent behavior. Each repetition amplifies the effect.
+   - Call it once: value goes from `10` → `11`.
+   - Call it again: `11` → `12`.
+   - Each repetition changes state again, so the outcome depends on how many times the call runs.
 
 2. `set(5)` — idempotent
- This one says: “Your value *is* 5 now.”
-    Call it once: variable becomes 5.
-    Call it again: still 5.
-    Call it a thousand times: still 5.
-    The first call changes state, but every subsequent call leaves things unchanged. Repetition doesn’t compound anything.
+   - Call it once: value becomes `5`.
+   - Call it again: still `5`.
+   - The first call may change state, but subsequent identical calls do not add new side effects.
 
-Idempotency is important for resilience because:
+Idempotency improves resilience because:
 
-* Non-idempotency is complicated to handle in distributed systems.
-  * (Usually) increases coupling between participating parties
-  * If you don’t get a response from a non-idempotent endpoint, you can’t blindly retry the call because you might accidentally trigger the operation twice.
-* Use idempotent actions to reduce coupling between nodes
-  * you can retry a idempotent endpoint
-* Very fundamental resilence and scalability pattern.
-* Turn a non-idempotent operation into an idempotent one by attaching a **unique request token** to each call, which the server checks before executing:
-  - The client generates a fresh, collision-resistant token for every intended operation.
-  - The server stores the token the first time it processes the request.
-  - If the server receives the same token again—whether because of retries, network ghosts, or cosmic mischief—it recognizes the duplicate and skips re-execution.
-    - the usual practice is to return the exact same response that was sent for the original request.
-  - The client is then free to retry safely, since the token guards against accidental repetition.
-  - In HTTP, this is often implemented by sending the token via a header such as `Idempotency-Key`, allowing intermediaries and the server to consistently identify repeated attempts.
-    - Some APIs do add a hint header—for example, `Idempotency-Replayed: true`
+* Non-idempotent operations increase coupling between participants.
+  * If the caller does not know whether the first attempt succeeded, it cannot retry safely.
+* Idempotent operations make failure recovery simpler.
+  * Clients and intermediaries can retry after timeouts, disconnects, or lost responses without risking duplicate execution.
+* It is a fundamental resilience and scalability pattern.
+  * Safe retries reduce the amount of coordination required between nodes.
+
+### HTTP semantics and retry safety
+
+* `GET` is idempotent.
+  * Browsers, proxies, and caches assume repeated `GET` requests do not create new business-side effects.
+  * Incidental side effects such as access logs are fine; business writes are not.
+* `POST` is not idempotent by default.
+  * Repeating the same `POST` can create duplicate resources or trigger the same side effect twice.
+* HTTP method idempotency is useful, but it does not solve every duplicate-write problem.
+  * Application-level retries for payments, order submission, or webhook handling often still need explicit deduplication.
+
+### Turning a write into an idempotent operation
+
+A common pattern is to attach a unique request token, often called an idempotency key, to the intended operation:
+
+1. The client generates a fresh, collision-resistant token for that logical operation.
+2. The server stores the token when it first applies the request.
+3. If the same token arrives again, the server recognizes it as a retry instead of a new operation.
+4. The server skips the duplicate side effect and usually returns the same result as the original request.
+
+In HTTP APIs, the token is often sent in a header such as `Idempotency-Key`. Some APIs also return a hint such as `Idempotency-Replayed: true`, but that behavior is implementation-specific.
+
+### Common implementation patterns
+
+* Store and check an idempotency key.
+  * This is the general solution when the operation is naturally non-idempotent, such as charging a card or creating an order.
+* Use an upsert-style write.
+  * Instead of blindly inserting, create the record or update the existing one deterministically.
+
+This is especially important in payment flows, retries through proxies, and any system where duplicate execution is expensive.
 
 ### Self-Containment
 
@@ -553,3 +573,4 @@ To study:
 
 * https://youtu.be/gm6Y4vPlOLg?si=U-ppS0ix77-kuTj2
 * https://youtu.be/FjsrxNjnCWM?si=_Kd4w9SkMM87nq9I
+

@@ -14,7 +14,7 @@ NGINX can proxy at Layer 4 or Layer 7:
 
 ## NGINX Internal Architecture
 
-_See also: [Backend Execution Patterns](../../Backend%20Engineering/02%20Execution%20Patterns.md) for broader context on connection handling._
+_See also: [Backend Execution Patterns](02%20Application%20Server%20Concurrency.md) for broader context on connection handling._
 
 ### The Worker Process Model
 

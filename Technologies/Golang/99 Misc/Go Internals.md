@@ -239,13 +239,13 @@ Go prevents this hardware collision using highly localized allocation:
 
 ## Handling Network Connections
 
-When building backend servers, [the architecture](02%20Execution%20Patterns.md#Architecture) must distribute three core roles: the **listener**, the **acceptor**, and the **worker**. 
+When building backend servers, [the architecture](02%20Application%20Server%20Concurrency.md#Single%20Listener,%20Single%20Worker) must distribute three core roles: the **listener**, the **acceptor**, and the **worker**. 
 
 Traditional models face strict bottlenecks: single-threaded event loops (like Node.js) max out on CPU computation, while multi-threaded models (like Apache) require strict locking and suffer from the Thundering Herd problem when threads compete to accept connections.
 
 ### The Goroutine-Per-Connection Model (Single Listener, Multiple Workers)
 
-By default, Go's `net/http` package utilizes the **[Single Listener, Multiple Worker Threads](../../../Backend%20Engineering/02%20Execution%20Patterns.md#2.%20Single%20Listener,%20Multiple%20Worker%20Threads)** execution pattern. Because Go's goroutines start with a microscopic memory footprint compared to OS threads, Go can seamlessly spawn a dedicated worker goroutine for every single incoming network connection rather than relying on a limited pool of OS threads.
+By default, Go's `net/http` package utilizes the **[Single Listener, Multiple Worker Threads](02%20Application%20Server%20Concurrency.md#Single%20Acceptor,%20Multiple%20Workers)** execution pattern. Because Go's goroutines start with a microscopic memory footprint compared to OS threads, Go can seamlessly spawn a dedicated worker goroutine for every single incoming network connection rather than relying on a limited pool of OS threads.
 
 - **The Acceptor Loop (Single Listener):** A single main goroutine acts as the listener and acceptor in a continuous loop, calling `accept()` to turn pending network connections into dedicated file descriptors (connected sockets).
 - **The Worker Handoff (Internal Load Balancing):** Once a connection is accepted, the main goroutine acts as an internal load balancer. It instantly spawns a new worker goroutine and hands the file descriptor directly to it.
@@ -261,7 +261,7 @@ Socket I/O is usually handled asynchronously with mechanisms like `epoll` or `se
 
 ### Scaling the Acceptor (Multiple Listeners Pattern)
 
-A known drawback of the single listener pattern is that a central accepting process can still become a bottleneck under heavy connection loads. If a single acceptor goroutine cannot pull connections out of the OS kernel's queue fast enough, Go can shift to the **[Multiple Listeners (Same Port and Address)](../../../Backend%20Engineering/02%20Execution%20Patterns.md#4.%20Multiple%20Listeners%20%28Same%20Port%20and%20Address%29)** pattern using the `SO_REUSEPORT` socket option.
+A known drawback of the single listener pattern is that a central accepting process can still become a bottleneck under heavy connection loads. If a single acceptor goroutine cannot pull connections out of the OS kernel's queue fast enough, Go can shift to the **[Multiple Listeners (Same Port and Address)](02%20Application%20Server%20Concurrency.md#4.%20Multiple%20Listeners%20(Same%20Port%20and%20Address))** pattern using the `SO_REUSEPORT` socket option.
 
 Because the OS kernel is completely blind to goroutines, you cannot simply spawn multiple goroutines to listen to one socket. You must create multiple physical file descriptors. This is implemented in two ways:
 
