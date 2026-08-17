@@ -72,7 +72,6 @@ TLS is a good example of this division of labor:
 - **Key establishment:** Modern TLS commonly uses ephemeral Diffie-Hellman, often elliptic-curve variants, to derive shared session secrets.
 - **Bulk protection afterward:** The negotiated symmetric keys protect the actual application data.
 
-For the protocol-level handshake details, version differences, forward secrecy, and mTLS flow, see [Transport Layer Security (TLS)](../../Networking/02%20Protocols/06%20TLS.md).
 
 ## Hybrid Encryption
 
@@ -85,7 +84,7 @@ Modern secure communication usually follows a hybrid pattern because neither mod
 
 **Why the split exists:** Asymmetric operations are relatively expensive, while symmetric operations are fast enough to protect large streams of data continuously.
 
-One of the clearest real-world examples is TLS: public-key cryptography authenticates the peer and helps establish shared secret material, then symmetric ciphers protect the rest of the connection. For the protocol walkthrough, see [Transport Layer Security (TLS)](../../Networking/02%20Protocols/06%20TLS.md).
+One of the clearest real-world examples is [TLS](../../Networking/02%20Protocols/06%20TLS.md): public-key cryptography authenticates the peer and helps establish shared secret material, then symmetric ciphers protect the rest of the connection.
 
 ## Encryption States
 
@@ -107,7 +106,7 @@ Encryption at rest protects stored data such as disks, databases, backups, and i
 - **Mechanism:** The stored bytes remain encrypted until an authorized component with the right key decrypts them.
 - **Practical consequence:** Physical theft and offline disk access become less useful to the attacker, though a live compromised system may still access the decrypted data.
 
-For the storage-layer controls around permissions, backups, and operational handling, see [File and Filesystem Security](File%20and%20Filesystem%20Security.md).
+[Storage-layer controls around permissions, backups, and operational handling](File%20and%20Filesystem%20Security.md) still matter alongside encryption at rest.
 
 ### End-to-end encryption
 
@@ -126,4 +125,4 @@ Encryption is powerful but narrow. It solves some problems directly and leaves o
 - **Encryption does not fix key mismanagement:** Lost, leaked, or weakly generated keys defeat the whole design.
 - **Encryption at rest does not fully protect a live compromised host:** If malware gains access after the system decrypts the data legitimately, the attacker can often read the plaintext through the running process.
 
-For identity binding, see [Digital Certificates and PKI](04%20Digital%20Certificates%20and%20PKI.md). For key handling, see [Key Management Lifecycle](Key%20Management%20Lifecycle.md).
+[Identity binding](04%20Digital%20Certificates%20and%20PKI.md) and [key handling](Key%20Management%20Lifecycle.md) remain separate responsibilities around any encryption system.

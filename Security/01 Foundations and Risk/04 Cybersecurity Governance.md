@@ -4,7 +4,7 @@ Information security is the discipline of protecting information and the systems
 
 Governance exists because security is not just a firewall or a policy document. An organization can buy tools, but without decision rights, standards, ownership, and enforcement, those tools become scattered controls that do not add up to a coherent security posture. Governance turns security from isolated technical fixes into an operating model.
 
-A useful boundary is that **privacy** asks what personal data may be collected and why, while **information security** asks how information and systems are protected once the organization holds them. For the privacy side of that boundary, see [Data Privacy and Compliance](../06%20Security%20Operations%20and%20Governance/Data%20Privacy%20and%20Compliance.md). For the security goals that governance is trying to preserve, see [Security Principles](01%20Security%20Principles.md#The%20tenets).
+A useful boundary is that [**privacy**](../06%20Security%20Operations%20and%20Governance/Data%20Privacy%20and%20Compliance.md) asks what personal data may be collected and why, while **information security** asks how information and systems are protected once the organization holds them by preserving the [core security goals](01%20Security%20Principles.md#The%20tenets).
 
 ## Information Security as an Organizational Discipline
 

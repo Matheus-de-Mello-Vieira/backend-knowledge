@@ -44,7 +44,7 @@ Because data protection is a continuous obligation, systems must manage personal
 
 Cross-border transfer becomes a compliance problem once personal data leaves the jurisdiction where it was originally collected or expected to remain. At that point, the main question is no longer where the infrastructure stores the bytes, but whether the organization can preserve legal rights, lawful processing, and regulatory accountability after the transfer.
 
-For the infrastructure mechanics behind residency, sovereignty, localization, replication paths, and provider-operated copies, see [Cloud Security](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md#Data%20Sovereignty%20in%20Cloud%20Architecture). The concern here is narrower: what legal and operational duties follow once data crosses that boundary.
+The [infrastructure mechanics behind residency, sovereignty, localization, replication paths, and provider-operated copies](../05%20Architecture%20and%20Infrastructure%20Security/Cloud%20Security.md) are broader than the concern here: what legal and operational duties follow once data crosses that boundary.
 
 ### Why Transfer Changes the Compliance Problem
 
@@ -459,4 +459,3 @@ Consider a scenario where an e-commerce platform suffers a system failure, resul
 |**Consumer Protection** (e.g., CDC)|Failure to deliver paid goods, misleading the consumer, and providing inadequate customer support.|Consumer lawsuits, class actions, and business compensation.|
 
 Because laws intersect, modern compliance must be a coordinated effort across data governance, customer support, legal review, and IT operations.
-

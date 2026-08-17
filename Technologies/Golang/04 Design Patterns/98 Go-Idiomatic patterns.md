@@ -1,6 +1,6 @@
 # Go-Idiomatic Patterns
 
-This note collects alternatives to classical GoF-style builders that align better with Go norms. For broader context on fluent builders, see [Builder](02%20Builder.md).
+This note collects alternatives to classical [GoF-style builders](02%20Builder.md) that align better with Go norms.
 
 ## Functional Options
 

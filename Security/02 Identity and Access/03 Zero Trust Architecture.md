@@ -36,7 +36,7 @@ Zero Trust architecture places identity at the center of all security decisions:
 - **Privileged Identity Management (PIM):** Special controls and monitoring for accounts with [elevated privileges](01%20Authentication.md#Privileged%20Access%20Management%20%28PAM%29).
 
 ### **Network Micro-Segmentation**
-Traditional network perimeter security is replaced with granular internal controls. See [Micro-Segmentation](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Micro-Segmentation) for the detailed network security treatment.
+Traditional network perimeter security is replaced with granular internal controls such as [micro-segmentation](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Micro-Segmentation).
 
 ### **Device and Endpoint Security**
 Every device accessing network resources must be verified and secured:
@@ -57,7 +57,7 @@ Centralized systems that manage user identities, authentication, and authorizati
 - **Audit and Compliance:** Comprehensive logging and reporting of all access activities.
 
 ### **Security Information and Event Management (SIEM)**
-Centralized collection and analysis of security events from across the Zero Trust environment, see [SIEM](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM).
+Centralized collection and analysis of security events from across the Zero Trust environment is typically handled by [SIEM](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#SIEM).
 
 ### **Data Protection**
 Comprehensive protection of data at rest, in transit, and in use:

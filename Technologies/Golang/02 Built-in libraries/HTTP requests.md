@@ -30,10 +30,6 @@ func main() {
 }
 ```
 
-## Receve a JSON
-
-See [json](JSON.md)
-
 ## `http.NewRequest`
 
 In Go, `http.NewRequest` is the function used to **create an HTTP request object** (`*http.Request`) before sending it with an HTTP client (like `http.Client`).

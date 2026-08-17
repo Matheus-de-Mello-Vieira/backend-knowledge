@@ -2,7 +2,7 @@
 
 Network protection is not just a logical function; it begins with physical access. Imagine creating a state-of-the-art data protection system with dozens of firewalls and control systems, only for an attacker to simply walk in, physically steal the server, remove the hard drive, and gain access to all your files. Why? Because the physical access to the equipment was left undefended. Network protection must be designed in layers, and the very first is the Access Layer. This is where our studies and projects must begin.
 
-This note covers broad security techniques applied across layers. For the narrower firewall-specific view of what can be inspected and enforced at each OSI layer, see [Firewalls Across the OSI Model Layers](Firewall%20Technologies.md#Firewalls%20Across%20the%20OSI%20Model%20Layers).
+This note covers broad security techniques applied across layers, beyond the firewall-specific view of [what can be inspected and enforced at each OSI layer](Firewall%20Technologies.md#Firewalls%20Across%20the%20OSI%20Model%20Layers).
 
 **1. Access Layer (Physical Security)**
 
@@ -44,6 +44,6 @@ This layer is primarily governed by the TCP and UDP protocols described in the [
 
 **5. Application Layer Techniques (OSI Layer 7)**
 
-This layer encompasses a wide variety of distinct applications, and understanding how each works is essential for implementing proper defenses. For the broader conceptual breakdown of these layers, see [Network Communication Models](../../../Networking/03%20Network%20Models.md).
+This layer encompasses a wide variety of distinct applications, and [understanding how each works](../../../Networking/03%20Network%20Models.md) is essential for implementing proper defenses.
 
 - **Application-Specific Defenses:** The techniques used are highly specific to the protocol. For example, the defense mechanisms for HTTP (web traffic) are vastly different from those used for SMTP (email). Email systems face unique problems like spam, which does not affect HTTP. DNS (Domain Name System) traffic also has its own unique vulnerabilities and required security measures. In short, each application requires highly particular, tailor-made security techniques.

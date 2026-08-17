@@ -1,6 +1,6 @@
 # Reading and sending data
 
-This note covers what happens after a TCP connection is already established and the backend process has a connected socket. For the handshake, SYN queue, accept queue, and `accept()` handoff, see [How Connections are Established](01%20How%20Connections%20are%20Established.md). For TCP segment structure, flags, and protocol guarantees, see [TCP](../02%20Protocols/05%20TCP.md).
+This note covers what happens after a TCP connection is already established and the backend process has a connected socket.
 
 Once a connection is established, the OS creates two separate memory buffers: one for sending data and one for receiving data. The receive buffer specifically handles incoming client data, while the send buffer handles outbound server data.
 ## Receiving data

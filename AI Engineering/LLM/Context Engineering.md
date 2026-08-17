@@ -156,12 +156,11 @@ This accumulation introduces opportunities to critical risks:
 * **Tool Output Bloat:** Tool results accumulate in context and consume tokens disproportionately to their relevance. For example, returning a raw database payload with 40+ fields per order lookup—when only 5 fields are relevant to the task—drastically accelerates context exhaustion.
 * **Progressive Summarization Risks:** While summarizing old messages saves tokens, it is highly destructive to factual accuracy. Condensing numerical values, percentages, dates, and customer-stated expectations into vague summaries strips the agent of the exact data it needs to execute tasks.
 * **Conversational Coherence Loss:** Despite the risks of bloat, you must balance compression with continuity. Failing to pass complete conversation history in subsequent API requests strips the agent of conversational coherence, making the AI feel forgetful or disjointed to the user.
-* Many mathematical problems, see [Context Window Constraints](LLM%20Processing%20Pipeline.md#Context%20Window%20Constraints)
 
 > [!info]
 > In context engineering, tokens matter primarily as a **capacity and budgeting constraint**: the context window is measured in tokens, and both latency and cost scale with token volume.
 >
-> For the mechanics of how raw text is split into model-specific tokens, see [LLM Processing Pipeline](LLM%20Processing%20Pipeline.md#1.%20Tokenization), which covers tokenization itself, why token boundaries vary by model, and why code or structured text often consumes disproportionately more tokens.
+> [Raw text is split into model-specific tokens](LLM%20Processing%20Pipeline.md#1.%20Tokenization), and tokenization explains why token boundaries vary by model and why code or structured text often consumes disproportionately more tokens.
 
 ## Context Window
 
@@ -169,7 +168,7 @@ The context window is the specific limit of tokens an AI model can process and "
 
 * **The Moving Horizon:** AI memory operates as a sliding window where reaching the token limit forces the model to drop the oldest messages to make room for new ones, leading to "forgetfulness" regarding earlier instructions.
 * **The Capacity Spectrum:** Model limits vary significantly by architecture, ranging from the 4,000-token baseline of early GPT-3.5 models to the massive 128,000-token capacity of GPT-4 Turbo and the 1 million-plus token range of Gemini Pro.
-* **The Lost-in-the-Middle Effect:** AI models naturally prioritize information at the beginning and end of a prompt, meaning critical instructions buried in the middle of a long request are frequently ignored. See [why](LLM%20Processing%20Pipeline.md#The%20"Lost-in-the-Middle"%20Effect).
+* **The Lost-in-the-Middle Effect:** AI models naturally prioritize information at the beginning and end of a prompt, meaning critical instructions buried in the middle of a long request are frequently ignored because of the [lost-in-the-middle effect](LLM%20Processing%20Pipeline.md#The%20"Lost-in-the-Middle"%20Effect).
 * _Mitigation strategy:_ Always place key findings and executive summaries at the very beginning of aggregated inputs. Organize detailed tool results with explicit, markdown-formatted section headers below the summary to mitigate position effects.
 * **The Input-Output Balance:** The context window must accommodate both your prompt and the expected response; if your input consumes nearly the entire window, the model will return an error because it lacks the "buffer" required to generate text.
 * **The Token Tax:** Since generative AI services charge based on token volume for both input and output, large context windows provide power but require a cost-benefit analysis as projects scale.
@@ -239,7 +238,7 @@ Scratchpads are generally categorized by how long they "live":
     ```
 
 > [!info]
-> Scratchpads are task or session working state used to support context engineering. For durable cross-session memory, memory tiers, self-editing memory, and frameworks such as MemGPT and Letta, see [Agentic Memory Systems](Agentic%20Memory%20Systems.md).
+> Scratchpads are task or session working state used to support context engineering, while [durable cross-session memory, memory tiers, self-editing memory, and frameworks such as MemGPT and Letta](Agentic%20Memory%20Systems.md) belong to agentic memory systems.
 
 ### Compress context
 

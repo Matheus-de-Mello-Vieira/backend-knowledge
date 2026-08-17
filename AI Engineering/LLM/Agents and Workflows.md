@@ -603,7 +603,7 @@ To effectively catch subtle issues, you must instantiate a completely **independ
 
 - **The Mechanism:** The Generator model creates the output. Your backend takes that final output text and passes it to a brand-new, isolated LLM instance (the Reviewer).    
 - **The Benefit:** The Reviewer model operates with zero prior reasoning context. It did not experience the Generator's internal monologue, struggles, or compromises. It evaluates the artifact purely on its objective merits against the system prompt, making it vastly more effective at spotting hallucinations, security vulnerabilities, or logic gaps.
-- **Model Specialization:** The Generator and Reviewer do not need to be the same model. In production pipelines, it is often advantageous to route generation to a model optimized for synthesis, while routing the reflective or review step to a different model optimized for critique, rubric adherence, or safety auditing. Different LLMs have different strengths, so the best model for producing an artifact is not always the best model for evaluating it. See [LLM Model Selection](LLM%20Model%20Selection.md).
+- **Model Specialization:** The Generator and Reviewer do not need to be the same model. In production pipelines, it is often advantageous to route generation to a model optimized for synthesis, while routing the reflective or review step to a different model optimized for critique, rubric adherence, or safety auditing. Different LLMs have different strengths, so [the best model for producing an artifact is not always the best model for evaluating it](LLM%20Model%20Selection.md).
 
 #### Multi-Pass Review
 

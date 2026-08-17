@@ -2,10 +2,6 @@
 
 Network security encompasses a comprehensive set of technologies and practices designed to protect network infrastructure and the data transmitted across it. Modern network security goes far beyond traditional perimeter defense to include advanced threat detection, network segmentation, and continuous monitoring.
 
-## Firewall
-
-Firewall-specific concepts are covered in [Firewall Technologies](Firewall%20Technologies.md).
-
 ## Network Segmentation Strategies
 
 Network segmentation is one of the most effective ways to stop a cyberattack from turning into a company-wide catastrophe. Think of it like the bulkhead doors on a ship: if water floods one compartment, the doors seal it off so the whole ship doesn't sink.
@@ -24,7 +20,7 @@ Here is a deeper look into each of those strategies, including how they work, th
 
 ### Demilitarized Zones (DMZ)
 
-A DMZ (`/ˌdiː ɛm ˈziː/`) stands for Demilitarized Zone. In the physical world, it refers to an area where military presence is forbidden; in computing, it acts as a perimeter network or neutral buffer zone between an untrusted public internet and a highly trusted internal corporate network. It improves security by physically or logically segregating devices on opposite sides of a firewall.
+A DMZ (`/ˌdiː ɛm ˈziː/`) stands for Demilitarized Zone. In the physical world, it refers to an area where military presence is forbidden; in computing, it acts as a perimeter network or neutral buffer zone between an untrusted public internet and a highly trusted internal corporate network. It improves security by physically or logically segregating devices on opposite sides of a [firewall](Firewall%20Technologies.md).
 
 **The Security Problem**: If a company places public-facing resources (like web or email servers) inside its private network, it must allow untrusted internet traffic through the firewall. This creates a severe security vulnerability. If hackers compromise those public servers, they are already past the firewall and can easily pivot to access sensitive internal devices—like database servers—or plant viruses on the corporate network.
 
@@ -83,10 +79,6 @@ Comprehensive systems for controlling device access to network resources:
 - **Compliance Checking:** Ensuring devices meet security requirements (patches, antivirus, configuration) before network admission.
 - **Guest Network Management:** Secure, isolated network access for visitors and temporary users.
 - **Quarantine Mechanisms:** Automatically isolating non-compliant devices until security issues are resolved.
-
-## Intrusion Prevention Systems (IPS)
-
-See [Intrusion Detection and Prevention](Intrusion%20Detection%20and%20Prevention.md).
 
 ## Network Monitoring and Analysis
 

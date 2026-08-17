@@ -70,7 +70,7 @@ Cloud platforms let organizations choose a primary region, but they also make it
 - **Data Sovereignty:** The legal and governance authority that applies to the data. Residency influences sovereignty, but does not fully determine it because providers, subprocessors, contracts, and lawful-access requests can all affect who may reach the data.
 - **Data Localization:** A stricter requirement that certain data must remain inside a specific territory, and sometimes be processed there as well. This limits architecture choices by restricting cross-border replication, analytics, and operational access.
 
-A local region selection is therefore only the first step. The real design problem is tracing every secondary copy and every operational path that the platform creates around the primary workload. For the legal and compliance consequences of cross-border transfer, see [Data Privacy and Compliance](../06%20Security%20Operations%20and%20Governance/Data%20Privacy%20and%20Compliance.md#Cross-Border%20Transfer%20Consequences).
+A local region selection is therefore only the first step. The real design problem is tracing every secondary copy and every operational path that the platform creates around the primary workload, because [cross-border transfer consequences](../06%20Security%20Operations%20and%20Governance/Data%20Privacy%20and%20Compliance.md#Cross-Border%20Transfer%20Consequences) follow from those paths.
 
 #### **Hidden Data Movement in Cloud Platforms**
 
@@ -318,7 +318,7 @@ As a third-party service, cloud computing requires continuous auditing to protec
 #### **AI/ML-Enhanced Cloud Security**
 
 **Machine Learning Applications:**
-- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities. For more details on behavioral analysis techniques, see [Intrusion Detection and Prevention](Intrusion%20Detection%20and%20Prevention.md) in the Introduction section.
+- **Anomaly Detection:** ML models trained to identify unusual patterns in user behavior and system activities, using [behavioral analysis techniques](Intrusion%20Detection%20and%20Prevention.md).
 - **Predictive Security Analytics:** Forecasting potential security incidents based on historical data
 - **Automated Response:** AI-driven incident response and remediation actions
 

@@ -13,8 +13,8 @@ LLMs (`/ˌɛl.ɛl.ˈɛm/`) are AI models designed to understand and generate hum
 LLM systems are often adapted with a mix of training-time and runtime techniques:
 
 * **Fine-Tuning**: Updates model weights using domain-specific data to improve task behavior, terminology usage, and response style. Best suited for repeatable tasks with stable requirements. Costly to train and maintain, slower to update, and not ideal for frequently changing knowledge.
-* **Prompt Engineering**: Constrains and steers model behavior via structured instructions, examples, and output schemas. Fast to iterate and zero-training, but does not introduce new knowledge. Performance can be brittle and highly model-dependent. See [Prompt Engineering](Prompt%20Engineering.md).
-* **Domain-Specific Retrieval (RAG)**: Augments the model with external, authoritative data sources at inference time. Improves factual accuracy, freshness, and auditability without retraining. Effectiveness depends on document quality, chunking, embedding strategy, and retrieval precision. See [RAG Fundamentals](../RAG/01%20Fundamentals.md).
+* [**Prompt Engineering**](Prompt%20Engineering.md): Constrains and steers model behavior via structured instructions, examples, and output schemas. Fast to iterate and zero-training, but does not introduce new knowledge. Performance can be brittle and highly model-dependent.
+* [**Domain-Specific Retrieval (RAG)**](../RAG/01%20Fundamentals.md): Augments the model with external, authoritative data sources at inference time. Improves factual accuracy, freshness, and auditability without retraining. Effectiveness depends on document quality, chunking, embedding strategy, and retrieval precision.
 
 ## Evolution of LLMs
 

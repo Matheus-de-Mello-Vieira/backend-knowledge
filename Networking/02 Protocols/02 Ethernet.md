@@ -54,7 +54,7 @@ While the diagram above shows the logical Layer 2 structure, a complete transmis
 
 **1. Physical Layer Overhead (Not technically part of the Layer 2 frame)**
 
-Ethernet uses synchronous block-level transmission, where the receiver must align its clock before reading the frame. See [Synchronous Transmission](../01%20Introduction.md#2.%20Synchronous%20Transmission%20%28Block-Level%20Sync%29) for the general concept.
+Ethernet uses synchronous block-level transmission, where the receiver must align its clock before reading the frame, as in [synchronous transmission](../01%20Introduction.md#2.%20Synchronous%20Transmission%20%28Block-Level%20Sync%29).
 
 In Ethernet specifically, this synchronization is implemented with:
 - **Preamble (7 bytes):** clock alignment pattern.
@@ -253,6 +253,3 @@ Because DSCP lives inside the [Layer 3 IP Header](03%20Internet%20Protocol.md#An
 - **The Process:** As the priority frame enters the router, the router reads the Layer 2 CoS value (e.g., CoS 5 for Voice). Before it destroys the Ethernet header, it translates that value into the corresponding Layer 3 DSCP value (e.g., DSCP EF - Expedited Forwarding) and stamps it into the IP header.
 - **The Result:** The packet is routed across the internet with its high-priority status intact. When it arrives at a switch on the destination network, that switch reads the IP header's DSCP value, maps it _back_ to a Layer 2 CoS tag, and delivers it locally with the proper priority.
 
-## Security
-
-For a security-oriented view of this control, see [Layered Security Techniques](../../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/Layered%20Security%20Techniques.md#2.%20Data%20Link%20Layer%20Techniques%20%28OSI%20Layer%202%29).

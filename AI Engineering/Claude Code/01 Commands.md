@@ -54,7 +54,7 @@
     | `SessionEnd`         | When a session terminates                                    |
 
 * `/memory` manage memory
-  * For memory scopes, `CLAUDE.md` layering, and dynamic context loading, see [04 Persistent Context](./04%20Persistent%20Context.md).
+  * [Memory scopes, `CLAUDE.md` layering, and dynamic context loading](04%20Persistent%20Context.md).
   * You can select which memory file you want to open.
   * You can type `#` with some info to include it on the memory, selecting which one.
 

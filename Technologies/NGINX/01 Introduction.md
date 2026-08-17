@@ -1,6 +1,6 @@
 # Introduction
 
-NGINX is an open-source web server written in C. It can also act as a reverse proxy and load balancer.
+NGINX is an open-source web server written in C. It can also act as a [reverse proxy and load balancer](../../Networking/99%20Proxying%20and%20Load%20Balancing.md).
 
 * **Web server:** serves static content and can route HTTP requests.
 * **Reverse proxy:** receives client traffic and forwards it to upstream services. It can route by host, path, headers, or other HTTP information; cache responses; and distribute traffic across backends.
@@ -11,7 +11,6 @@ NGINX can proxy at Layer 4 or Layer 7:
 * Use the `stream` context for TCP or UDP proxying, including protocols NGINX does not interpret, such as a database protocol.
 * Use the `http` context for HTTP-aware proxying, including request routing, response caching, and TLS termination.
 
-For the general proxy, reverse-proxy, TLS, and load-balancing model, see [Proxying and Load Balancing](../../Networking/99%20Proxying%20and%20Load%20Balancing.md). For NGINX directives and configuration examples, see [NGINX Configuration](02%20Nginx%20Configuration.md).
 
 ## NGINX Internal Architecture
 

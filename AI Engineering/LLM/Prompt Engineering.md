@@ -6,7 +6,7 @@ There is a famous saying on data science: "garbage in, garbage out", applying it
 
 Prompt engineering is a blend of science and art.
 
-* science because it is backed by benchmarks and measurable performance improvements. The techniques are supported by research papers focused on improving prompt quality. See [Prompt Evaluation](Prompt%20Evaluation.md).
+* science because it is backed by benchmarks and measurable performance improvements. The techniques are supported by research papers focused on [prompt evaluation](Prompt%20Evaluation.md).
 * art because it involves creative approaches to prompt writing
 
 Prompt engineering is not a universal requirement; it’s a tool for specific complexity. For routine requests—summarizing an article, drafting a standard email, or fact-checking—modern AI is intuitive enough to deliver without a "persona" or a list of constraints. If the task is straightforward, keep your input straightforward. Over-complicating the basics adds friction to your workflow without adding value to the output.
@@ -64,7 +64,7 @@ To guarantee deterministic formatting, explicitly list the specific constraints 
 - **Inclusions:** Mandate specific elements (e.g., "Must include a clear call-to-action" or "Must feature a supporting character").
 - **Tone:** Dictate the stylistic persona (e.g., "Formal," "Direct," "Apathetic").
 
-Use it by default, go to [Algorithmic Prompting](#Algorithmic%20Prompting) is the task is too complex.
+Use it by default; switch to [Algorithmic Prompting](#Algorithmic%20Prompting) if the task is too complex.
 #### Algorithmic Prompting
 
 Instead of jumping straight to the final output, force the model to execute the task systematically. By providing numbered process steps, you guide the model's reasoning path and prevent it from skipping crucial logical leaps.
@@ -95,7 +95,7 @@ AI performance improves significantly when complex requests are broken down into
 - **The Iterative Advantage:** Prompting is naturally conversational; handling one task at a time mimics human workflow and allows the AI to focus its full processing power on a single objective.
 - **Deep-Dive Accuracy:** Single-task prompts yield more technical depth, such as detailed formula explanations and optimized logic, whereas "all-in-one" prompts often resort to generic solutions.
 - **Modular Troubleshooting:** Isolating tasks makes it easier to refine specific steps; if one part of the process fails, you can ask for corrections without the AI losing track of the broader context or breaking previous work.
-- **The Lost-in-the-Middle Effect:** AI models naturally prioritize information at the beginning and end of a prompt, meaning critical instructions buried in the middle of a long request are frequently ignored. See [why](LLM%20Processing%20Pipeline.md#The%20"Lost-in-the-Middle"%20Effect).
+- **The Lost-in-the-Middle Effect:** AI models naturally prioritize information at the beginning and end of a prompt, meaning critical instructions buried in the middle of a long request are frequently ignored because of the [lost-in-the-middle effect](LLM%20Processing%20Pipeline.md#The%20"Lost-in-the-Middle"%20Effect).
 - **Detail vs. Density:** Effective prompting requires detailed explanations for specific actions rather than a high density of different goals. Focus on being thorough about one task before moving to the next.
 
 ### Ensure the formatting of the response
@@ -386,7 +386,7 @@ What was the total revenue, and did it meet the CEO's projections?
 
 ## Sampling Parameters
 
-When you want to control how creative, focused, or random your LLM's outputs are, you use **sampling parameters**. For a deep dive into the math and mechanics, see [here](LLM%20Processing%20Pipeline.md#Stochastic%20Sampling). Below, we’ll focus entirely on the practical side: how to use them to shape your model's responses.
+When you want to control how creative, focused, or random your LLM's outputs are, you use **sampling parameters**. Their [math and mechanics](LLM%20Processing%20Pipeline.md#Stochastic%20Sampling) matter, but below we'll focus entirely on the practical side: how to use them to shape your model's responses.
 
 ### Penalties
 

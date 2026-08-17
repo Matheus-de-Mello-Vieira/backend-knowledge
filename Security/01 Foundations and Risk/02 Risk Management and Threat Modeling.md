@@ -10,7 +10,7 @@ A vulnerability is a flaw or weakness in the project's architecture that can be 
 
 To identify vulnerabilities, you must analyze each element of your architecture and ask: 'Is this element weak?' or 'Is this element more vulnerable than others?'
 
-To ground the discussion, consider a simple communication flow between Alice, a cloud synchronization service, and Bob. This example is only an introduction for threat modeling here; the network protection controls built around the same scenario are covered in [Network Security and Firewalls](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md).
+To ground the discussion, consider a simple communication flow between Alice, a cloud synchronization service, and Bob. This example is only an introduction for threat modeling here; the same scenario also appears in [network protection controls](../05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md).
 
 ```mermaid
 flowchart LR
@@ -52,7 +52,7 @@ Communication
 * "Can the attacker launch an availability attack (e.g. DDoS) on the network link?"
 * "Can the attacker reroute the communication, to spoof the cloud?"
 
-IoT devices can materially expand this kind of attack surface. For the device-specific risks behind that concern, see [IoT Security](IoT%20Security.md#IoT%20Attack%20Surface%20Risk).
+IoT devices can materially expand this kind of [attack surface](../05%20Architecture%20and%20Infrastructure%20Security/IoT%20Security.md).
 ### Causes of Vulnerability
 
 Vulnerabilities can originate from a wide variety of sources, ranging from software flaws to human behavior. An organization's cybersecurity leaders must strive to maintain maximum visibility and control over these potentially vulnerable vectors.

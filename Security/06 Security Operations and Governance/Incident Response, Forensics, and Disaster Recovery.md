@@ -218,7 +218,7 @@ Malware analysis determines whether a suspicious file or artifact is malicious, 
 - **Dynamic analysis**: When necessary, observe the sample only in an isolated sandbox to identify process, file-system, and network behavior.
 - **Response outcome**: Use the resulting indicators and observed behavior to scope the incident, guide containment and eradication, and escalate advanced reverse engineering to specialist responders when needed.
 
-For endpoint capabilities that support this work—NGAV/EDR behavioral detection, cloud sandboxing, quarantine, and automatic host isolation—see [NGAV, EDR, and XDR](../05%20Architecture%20and%20Infrastructure%20Security/NGAV,%20EDR,%20and%20XDR.md.md#Behavioral%20Analysis%20and%20Cloud%20Integration).
+[NGAV/EDR behavioral detection, cloud sandboxing, quarantine, and automatic host isolation](../05%20Architecture%20and%20Infrastructure%20Security/NGAV,%20EDR,%20and%20XDR.md.md#Behavioral%20Analysis%20and%20Cloud%20Integration) are endpoint capabilities that support this work.
 
 ## Containment
 
@@ -344,7 +344,7 @@ To manage the volume of alerts effectively, a SOC typically utilizes a tiered an
 A **SIEM (Security Information and Event Management)** provides the technological backbone for the SOC by centralizing and correlating security-relevant telemetry from across the entire infrastructure. While the SOC is the "team," the SIEM is the "engine" that powers their visibility.
 
 > [!info]
-> IoT devices are a strong case for SIEM because they produce a lot of logs. See [SIEM and IoT support](#SIEM%20and%20IoT%20support).
+> IoT devices are a strong case for SIEM because they produce a lot of logs.
 
 ### Centralized Visibility and Correlation
 

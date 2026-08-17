@@ -4,7 +4,7 @@ File security protects the data objects people actually use: documents, configur
 
 The distinction matters because a file can be sensitive even when the disk is healthy, and a filesystem can be dangerous even when the files themselves look ordinary. Security failures happen at both layers: a confidential file may be exposed through weak permissions, while a whole storage environment may be compromised through unsafe mounting, legacy formats, or poor recovery practices.
 
-These controls sit close to the operating system boundary. For the storage mechanics behind file systems, see [Storage Management](../../Operating%20Systems/06%20Storage%20Management.md).
+These controls sit close to the operating-system boundary where [storage mechanics behind file systems](../../Operating%20Systems/06%20Storage%20Management.md) start to matter.
 
 ## File Protection
 
@@ -34,13 +34,13 @@ Least privilege matters at the storage layer. A service should not be able to mo
 
 Encryption at rest protects data stored on disks, backups, and removable media. It raises the cost of physical theft and offline copying, but it does not fully protect a live compromised system that can already access the decrypted data through legitimate processes.
 
-For the cryptographic mechanism, see [Encryption](02%20Encryption.md#Encryption%20States). For the lifecycle of the underlying keys, see [Key Management Lifecycle](Key%20Management%20Lifecycle.md).
+The [cryptographic mechanism](02%20Encryption.md#Encryption%20States) and the [lifecycle of the underlying keys](Key%20Management%20Lifecycle.md) both determine how much protection encryption at rest actually provides.
 
 ### Recovery and resilience
 
 Backups reduce the impact of accidental deletion, corruption, hardware failure, and ransomware. They are part of file security because the value of the file includes the ability to recover it when the primary copy is gone.
 
-For the operational recovery flow, see [Backup and Restore](Backup%20and%20Restore.md).
+The [operational recovery flow](Backup%20and%20Restore.md) determines whether those backups can be turned back into working files under pressure.
 
 ## Platform and Security Context
 

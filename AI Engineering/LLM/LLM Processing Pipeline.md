@@ -244,9 +244,9 @@ Because the Self-Attention mechanism is incredibly powerful, the model doesn't n
 
 Several common LLM system components are *outside* the core processing pipeline but influence its inputs and outputs.
 
-- **Prompt Engineering:** Shapes the instruction payload before tokenization. See [Prompt Engineering](Prompt%20Engineering.md).
-- **Context Engineering:** Controls what information enters the context window. See [Context Engineering](Context%20Engineering.md).
-- **RAG:** Injects retrieved external information before or during generation. See [RAG Fundamentals](../RAG/01%20Fundamentals.md).
+- [**Prompt Engineering**](Prompt%20Engineering.md): Shapes the instruction payload before tokenization.
+- [**Context Engineering**](Context%20Engineering.md): Controls what information enters the context window.
+- [**RAG**](../RAG/01%20Fundamentals.md): Injects retrieved external information before or during generation.
 - **Tool Calling:** Delegates precise actions outside the model's internal reasoning loop.
 
 ## Production Serving & Batching

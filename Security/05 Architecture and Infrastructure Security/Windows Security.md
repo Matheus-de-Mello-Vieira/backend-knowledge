@@ -154,7 +154,7 @@ To understand AD, you have to understand how it organizes resources. It uses a s
 Active Directory isn't just one technology; it is a sophisticated system built on top of three core network protocols:
 
 - **LDAP (Lightweight Directory Access Protocol):** The language used by clients and applications to read from and write to the Active Directory database.    
-- **Kerberos:** The primary authentication protocol used for verifying user and host identities. In an AD environment, the Domain Controller acts as the Key Distribution Center (KDC), issuing the encrypted access tickets. See [Windows Defender Credential Guard](#Windows%20Defender%20Credential%20Guard).
+- **Kerberos:** The primary authentication protocol used for verifying user and host identities. In an AD environment, the Domain Controller acts as the Key Distribution Center (KDC), issuing the encrypted access tickets.
 - **DNS (Domain Name System):** AD is critically dependent on DNS. When a computer needs to log in, it uses DNS records to physically locate the nearest active Domain Controller on the network. 
 
 #### Security Significance

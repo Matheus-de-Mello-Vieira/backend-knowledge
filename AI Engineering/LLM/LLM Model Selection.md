@@ -11,7 +11,7 @@ The first step is to match the cognitive demand of your task with the model's si
 
 ### 2. Determine the Context Window Requirements
 
-Context-window requirements affect model choice. For the deeper treatment of context management, see [Context Engineering](Context%20Engineering.md).
+[Context-window requirements](Context%20Engineering.md) affect model choice.
 
 ### 3. Latency and Throughput Constraints
 
@@ -34,7 +34,7 @@ Consider how much the model needs to learn your specific domain.
 * **Zero-Shot / Few-Shot Capable:** Many powerful models work exceptionally well right out of the box with just a few examples provided in the prompt.
 * **Fine-Tuning:** If you need the model to adopt a highly specific tone of voice, understand deep proprietary jargon, or follow strict output formats consistently, you should look for models that allow for easy and cost-effective fine-tuning. Generally, open-weights models and certain dedicated proprietary tiers offer the best flexibility for this.
 
-Prompt iteration is part of this tradeoff as well. For the deeper prompting note, see [Prompt Evaluation](Prompt%20Evaluation.md) and [Prompt Engineering](Prompt%20Engineering.md).
+Prompt iteration is part of this tradeoff as well, especially [prompt evaluation](Prompt%20Evaluation.md) and [prompt engineering](Prompt%20Engineering.md).
 
 ### 6. Cost and Economics
 
@@ -122,5 +122,5 @@ Here is why hands-on testing should ultimately guide your decision:
 * **Benchmarks Are Highly Specific**: Benchmarks measure performance on specific, tightly constrained tasks. A model might ace a graduate-level physics evaluation, but completely fail to extract the right tone for a simple customer service email. A high benchmark score indicates raw capability, but it does not guarantee the model is the best fit for your exact need.
 * **Look Beyond the Marketing**: AI providers frequently highlight the specific benchmarks where their models excel, sometimes tailoring their training to perform well on those exact tests. Therefore, do not rely solely on benchmark tables or advertising claims. What looks like a revolutionary leap on a leaderboard might translate to an unnoticeable difference in your daily workflow.
 * **The Best Benchmark is Your Own Data**: To truly know if an LLM is right for you, you must try different models yourself.
-* **Experimentation is Mandatory**: Testing models goes hand-in-hand with how you communicate with them. Experimentation is a key part of prompt engineering. A prompt that yields brilliant results in one model might confuse another. You will often need to tweak your instructions, adjust your formatting constraints, and iterate on your context to coax the best performance out of any given LLM. See [Prompt Engineering](Prompt%20Engineering.md).
+* **Experimentation is Mandatory**: Testing models goes hand-in-hand with how you communicate with them. Experimentation is a key part of [prompt engineering](Prompt%20Engineering.md). A prompt that yields brilliant results in one model might confuse another. You will often need to tweak your instructions, adjust your formatting constraints, and iterate on your context to coax the best performance out of any given LLM.
 * **Plan for Obsolescence**: The AI landscape is moving at a breakneck pace. As AI tools evolve, more models will become available. The "best" model today will likely be surpassed by a faster, cheaper, and smarter alternative in a matter of months. By establishing your own hands-on testing framework now, you will be perfectly positioned to evaluate and adopt new models the moment they hit the market.

@@ -53,7 +53,7 @@ Hashing exists when the system needs a deterministic fingerprint of data rather 
 - **Hash functions:** Turn variable-size input into a fixed-size digest for comparison, integrity checking, or higher-level protocol building.
 - **HMAC (Hash-based Message Authentication Code):** Adds a shared secret to the hashing process so the verifier can detect tampering and also verify that the sender knew the secret.
 
-This is why password storage uses hashing rather than reversible encryption: the system only needs to verify a later guess, not recover the original password itself. For salts, peppers, slow password hashing, and HMAC, see [Hashing and Password Storage](03%20Hashing%20and%20Password%20Storage.md).
+This is why password storage uses [hashing rather than reversible encryption](03%20Hashing%20and%20Password%20Storage.md): the system only needs to verify a later guess, not recover the original password itself.
 
 ### Digital signatures
 
@@ -74,7 +74,7 @@ Cryptographic systems need ways to agree on secrets and ways to trust public key
 - **Key exchange:** Lets two parties derive or establish shared secret material without sending that secret directly in the clear.
 - **Certificates and PKI:** Bind public keys to identities so a verifier can decide whether a key really belongs to a given server, service, device, or person.
 
-For the trust chain and certificate model, see [Digital Certificates and PKI](04%20Digital%20Certificates%20and%20PKI.md).
+The [trust chain and certificate model](04%20Digital%20Certificates%20and%20PKI.md) determine whether a public key can be trusted.
 
 ## Why Modern Systems Combine Multiple Mechanisms
 
@@ -104,7 +104,7 @@ Cryptography is often attacked through the surrounding system rather than throug
 - **Live-system exposure:** Encryption at rest does not stop malware running on a legitimately unlocked machine from reading the plaintext through normal process access.
 - **Trust failures:** A public key is not useful if the receiver cannot verify whose key it is.
 
-This is why cryptography cannot be separated from operations. Key generation, storage, rotation, recovery, and revocation are part of the security mechanism, not later administrative details. For that lifecycle, see [Key Management Lifecycle](Key%20Management%20Lifecycle.md).
+This is why cryptography cannot be separated from operations. Key generation, storage, rotation, recovery, and revocation are part of the [key management lifecycle](Key%20Management%20Lifecycle.md), not later administrative details.
 
 ## Practical Boundaries
 

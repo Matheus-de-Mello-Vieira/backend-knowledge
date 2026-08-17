@@ -14,7 +14,7 @@ Next-Generation Antivirus (NGAV) and EDR (Endpoint Detection and Response) solut
 * **Artificial Intelligence and Sandboxing:** EDR utilizes cloud-based Machine Learning to evaluate processes. Suspicious files that have not yet been cataloged are directed to a sandbox—an isolated virtual environment in the cloud—where they are executed and tested to verify their danger level before being released to the client's operating system.
 * **Optimized Performance:** Because it processes a large portion of heuristic analyses in the cloud, modern next-generation tools consume fewer local hardware resources than traditional structural scanning engines.
 
-For the incident-response process for handling suspicious artifacts and interpreting their behavior, see [Malware Analysis](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Malware%20Analysis).
+The incident-response process for handling suspicious artifacts and interpreting their behavior is [malware analysis](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Malware%20Analysis).
 
 ## Centralized Governance and Enterprise Management
 

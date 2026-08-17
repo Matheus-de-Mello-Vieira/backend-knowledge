@@ -3,10 +3,8 @@
 Network management is the broader administrative discipline responsible for keeping a network available, secure, correctly configured, and aligned with business needs.
 
 * It includes planning, configuration, fault handling, performance oversight, accounting, and security control.
-* Monitoring is one part of network management, not a synonym for it.
-* In practice, monitoring provides the visibility that management uses to make operational and architectural decisions.
-
-For the monitoring-specific methods, telemetry, and collection techniques, see [Network Monitoring](06%20Network%20Monitoring.md).
+* [Monitoring](06%20Network%20Monitoring.md) is one part of network management, not a synonym for it.
+* In practice, [monitoring](06%20Network%20Monitoring.md) provides the visibility that management uses to make operational and architectural decisions.
 
 ### **The ISO Network Management Model**
 

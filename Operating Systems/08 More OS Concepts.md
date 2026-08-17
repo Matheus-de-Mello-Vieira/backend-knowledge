@@ -19,7 +19,3 @@ This note collects operating-system topics that matter in practice but do not fi
 - **Drivers translate hardware-specific behavior into OS-managed interfaces.**
 - **Interrupts, polling, and DMA** are the main strategies for coordinating with physical devices efficiently.
 
-## Where to keep studying
-
-- For boot details, user/kernel mode, and drivers, see [System Architecture Overview](00%20System%20Architecture%20Overview.md).
-- For Linux-specific history, see [Linux History](Linux/History.md).

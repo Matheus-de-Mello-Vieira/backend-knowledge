@@ -228,18 +228,18 @@ graph LR
 	* Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
 
 > [!example] Python’s `None` and the Cache Invalidation Storm
-> An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. For the full walkthrough of how Python 3.12 fixed it with immortal objects, see [[Python Internals#Hardware Collisions and Immortal Objects]].
+> An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. Python 3.12 fixed it with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
 
 ## Registers
 
 The absolute fastest storage in the machine, built directly into the execution core. Registers operate with zero latency (0 clock cycles) because they hold the exact values the CPU is actively using at this exact nanosecond. They have microscopic capacity (typically 32 or 64 bits per register).
 
-- **Instruction Pointer (IP) / Program Counter (PC):** Holds the virtual address of the next instruction to execute. For process state and context switching, see [Process Execution and State](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
-- **Stack Pointer (`sp`):** Points to the active edge of the current stack frame. See [Stack Pointer](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Pointer%20(`sp`)).
-- **Base Pointer (`bp`) / Frame Pointer:** Anchors the current stack frame when one is used. See [Base Pointer](02%20The%20Anatomy%20of%20a%20Process.md#Base%20Pointer%20(`bp`%20/%20Frame%20Pointer)).
-- **Link Register (LR):** On ARM, holds a function's return address until it must be saved to the stack. See [Nested Calls in ARM](02%20The%20Anatomy%20of%20a%20Process.md#Nested%20Calls%20in%20ARM).
-- **Page Table Base Register (PTBR):** Points to the active process's page table, allowing the MMU to translate virtual addresses. See [The Page Table & Hardware Translation](03%20Memory%20Management.md#The%20Page%20Table%20%26%20Hardware%20Translation).
-- **General-purpose registers:** Hold operands, intermediate values, function arguments, and return values, such as ARM's `r0`–`r3` and x86-64's `rax`. For examples, see [Producing machine code](02%20The%20Anatomy%20of%20a%20Process.md#Producing%20machine%20code) and [Calling Conventions](02%20The%20Anatomy%20of%20a%20Process.md#Calling%20Conventions%20(Parameters%20%26%20Returns)).
+- **Instruction Pointer (IP) / Program Counter (PC):** Holds the virtual address of the next instruction to execute during [process state and context switching](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
+- [**Stack Pointer (`sp`)**](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Pointer%20%28%60sp%60%29): Points to the active edge of the current stack frame.
+- [**Base Pointer (`bp`) / Frame Pointer**](02%20The%20Anatomy%20of%20a%20Process.md#Base%20Pointer%20%28%60bp%60%20%2F%20Frame%20Pointer%29): Anchors the current stack frame when one is used.
+- [**Link Register (LR)**](02%20The%20Anatomy%20of%20a%20Process.md#Nested%20Function%20Calls): On ARM, holds a function's return address until it must be saved to the stack.
+- [**Page Table Base Register (PTBR)**](03%20Memory%20Management.md#The%20Page%20Table%20%26%20Hardware%20Translation): Points to the active process's page table, allowing the MMU to translate virtual addresses.
+- **General-purpose registers:** Hold operands, intermediate values, function arguments, and return values, such as ARM's `r0`–`r3` and x86-64's `rax`.
 
 The registers listed above are the primary architectural registers a software engineer interacts with during debugging, reverse engineering, or standard systems programming. However, to understand how the hardware actually executes code and manages the system, we must look at the specialized and hidden registers:
 

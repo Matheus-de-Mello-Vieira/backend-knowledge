@@ -59,4 +59,4 @@ Replication is usually better for fast failover. Backups are usually better for 
 
 Restore operations usually happen inside a broader recovery process. After a major incident, the organization still needs to verify the root cause, contain the attacker, and avoid reintroducing compromised data or systems.
 
-For the larger operational lifecycle, see [Incident Response, Forensics, and Disaster Recovery](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md). For controls that protect stored data before recovery is needed, see [File and Filesystem Security](File%20and%20Filesystem%20Security.md).
+The larger [incident-response and disaster-recovery lifecycle](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md) and the [controls that protect stored data before recovery is needed](File%20and%20Filesystem%20Security.md) both shape restore decisions.

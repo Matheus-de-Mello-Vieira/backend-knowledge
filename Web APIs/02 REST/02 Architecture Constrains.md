@@ -70,7 +70,7 @@ To a architecture be deemed as restful, it needs to follow 6 design rules:
 * We can use cache in:
   * Database
   * Server
-  * Client: "Server should specify Cache-Control Directives in responses to control Caching behavior" (see [HTTP cache headers](../../HTTP%20headers.md))
+  * Client: "Server should specify [Cache-Control Directives](../../HTTP%20headers.md) in responses to control Caching behavior"
     * For example, for stock prices, that isn't cacheable, the server must include on response that it isn't cacheable 
 
   * Proxies and Gateways

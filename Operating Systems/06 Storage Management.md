@@ -3,13 +3,11 @@
 
 A file system is the method and data structure used by an operating system (OS) to store, organize, and access files on a storage device.
 
-For the security perspective on file systems, see [Endpoint Security](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md).
-
 - **The LBA Foundation:** The Operating System interacts with modern storage drives through Logical Block Addressing (LBA), viewing the device simply as a massive, flat array of numbered blocks.    
 - **The File Abstraction:** Human beings (and most application software) do not want to keep track of raw block numbers (e.g., remembering that a specific document is stored starting at block 4,092,110). The **File System** bridges this gap by abstracting that flat array of blocks into named, structured data units called **files**.
 - **Directories and Hierarchy:** Beyond just files, the file system introduces folders (directories), allowing users to organize data into a logical, easily navigable tree structure.
 - **Metadata (Data About Data):** To manage these files, the file system doesn't just store the file's contents; it must also store metadata.
-    - This includes the file's name, size, creation/modification timestamps, and security permissions.
+    - This includes the file's name, size, creation/modification timestamps, and [security permissions](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md).
     - **Block Mapping:** Critically, the metadata includes an index (such as an **inode** in Linux) that acts as a map, pointing the OS to the exact, non-sequential LBA block numbers where the file's actual fragmented data is physically stored on the drive.
 - **Free Space Management:** The file system is continually responsible for maintaining a ledger of which blocks are currently in use by files and which blocks are free. When you save a new file or expand an existing one, the file system consults this ledger to allocate empty blocks, ensuring data is never accidentally overwritten.
 

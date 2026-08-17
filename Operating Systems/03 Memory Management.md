@@ -162,7 +162,7 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 > You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at `/proc/[pid]/maps`. It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
 
 > [!example] Python’s `None` and the Copy-on-Write Penalty
-> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. For the full walkthrough, see [[Python Internals#Hardware Collisions and Immortal Objects]].
+> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
 
 
 > [!example] Architecture Story: Redis & The Persistence

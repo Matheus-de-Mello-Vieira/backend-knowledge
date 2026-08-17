@@ -7,7 +7,6 @@
 * TCP uses ports so one host can serve many processes at the same time.
 * A TCP header is 20 bytes minimum and can grow to 60 bytes with options.
 
-For server-side socket lifecycle details such as `bind()`, `listen()`, `accept()`, SYN queues, and accept queues, see [How Connections are Established](../03%20Connections/01%20How%20Connections%20are%20Established.md). For send buffers, receive buffers, blocking I/O, and `TCP_NODELAY`, see [Reading and Sending Data](../03%20Connections/02%20Reading%20and%20Sending%20Data.md).
 
 ## Why TCP exists
 

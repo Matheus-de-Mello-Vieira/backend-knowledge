@@ -86,9 +86,7 @@ Because CPU cycles are a scarce hardware resource, the Go runtime aggressively b
 
 ### Goroutine Preemption
 
-The Go runtime has its own scheduler for deciding which goroutine (**G**) executes on an OS thread (**M**) using a logical processor (**P**). This scheduling layer is independent from the operating-system scheduler: the OS preemptively schedules the **M**, while the Go runtime decides which **G** that M should execute.
-
-For the general distinction between cooperative and preemptive scheduling, see [Cooperative vs. Preemptive Multitasking](https://chatgpt.com/Operating%20Systems/05%20Process%20Management.md#cooperative-vs-preemptive-multitasking).
+The Go runtime has its own scheduler for deciding which goroutine (**G**) executes on an OS thread (**M**) using a logical processor (**P**). This scheduling layer is independent from the operating-system scheduler: the OS [preemptively schedules](../../../Operating%20Systems/05%20Process%20Management.md#Cooperative%20vs.%20Preemptive%20Multitasking) the **M**, while the Go runtime decides which **G** that M should execute.
 
 A goroutine cannot be interrupted at an arbitrary instruction unless the runtime knows that its execution state can be safely preserved and inspected. These locations are called **safe points**. The modern runtime distinguishes three categories:
 

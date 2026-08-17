@@ -121,7 +121,7 @@ A firewall should not be an isolated tool; it should be the "brain" of your secu
 
 ## Firewalls Across the OSI Model Layers
 
-A firewall can act across multiple layers of the OSI model. For the broader catalog of security controls applied at each layer, see [Layered Security Techniques](Layered%20Security%20Techniques.md). This section focuses only on what a firewall can inspect and enforce.
+A firewall can act across multiple layers of the OSI model, but [security controls applied at each layer](Layered%20Security%20Techniques.md) extend beyond what a firewall can inspect and enforce.
 
 ### Layer 1: Physical Layer
 

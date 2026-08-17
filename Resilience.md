@@ -461,13 +461,12 @@ There are different approaches and patterns available
 
 #### Monitor
 
-- Observe unit behavior and interactions from the outside
+- [Observe unit behavior and interactions from the outside](05%20Observability.md)
 - Automatically respond to detected failures
   - Simply notifying an administrator is insufficient—failures are routine and constant.
   - Don’t drive operators to burnout; embed self-healing behavior directly into the system.
 - Part of the system – complex failure handling strategies possible
 - Outside the system – more robust against system-level failures
-See [05 Observability](05%20Observability.md)
 #### Error Handler
 
 * Units often don’t have enough time or information to handle errors

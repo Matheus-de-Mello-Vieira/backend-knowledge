@@ -76,7 +76,7 @@ A plain hash can prove that two copies of data are identical, but it cannot prov
 
 HMAC is about **integrity + authenticity**, not confidentiality. It proves that the message came from someone who knows the secret and that the signed fields were not altered after signing.
 
-For a protocol-oriented example, see [Authentication](../02%20Identity%20and%20Access/01%20Authentication.md#HMAC).
+A [protocol-oriented example](../02%20Identity%20and%20Access/01%20Authentication.md#HMAC) appears in authentication flows that use HMAC.
 
 ## Password Hashing Threat Model
 

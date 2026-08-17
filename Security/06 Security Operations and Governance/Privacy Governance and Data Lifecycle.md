@@ -2,7 +2,7 @@
 
 Privacy governance is the operating model that turns privacy obligations into repeatable controls over how personal data is classified, mapped, used, retained, documented, and destroyed. It matters because user rights, lawful processing, and audit readiness fail when the organization cannot explain where data exists, why it exists, who can use it, and when it must stop being processed.
 
-This note focuses on the internal operating side of privacy. For legal concepts such as personal data, lawful bases, controller versus processor, consent, and cross-border transfer duties, see [Data Privacy and Compliance](Data%20Privacy%20and%20Compliance.md). For the broader governance layer that assigns security ownership and standards across the organization, see [Cybersecurity Governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md).
+This note focuses on the internal operating side of privacy rather than [legal concepts such as personal data, lawful bases, controller versus processor, consent, and cross-border transfer duties](Data%20Privacy%20and%20Compliance.md). [Cybersecurity governance](../01%20Foundations%20and%20Risk/04%20Cybersecurity%20Governance.md) covers the broader layer that assigns security ownership and standards across the organization.
 
 ## Operating scope
 

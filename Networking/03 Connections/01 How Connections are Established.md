@@ -1,6 +1,6 @@
 # How connections are Established
 
-This note covers how a server and the OS kernel establish a TCP connection and hand it off to a backend process. For TCP segment structure, flags, retransmission, and transport-level guarantees, see [TCP](../02%20Protocols/05%20TCP.md).
+This note covers how a server and the OS kernel establish a [TCP connection](../02%20Protocols/05%20TCP.md) and hand it off to a backend process.
 
 - **The TCP 3-Way Handshake (Network Perspective):** To establish a reliable connection, the client and server must exchange three specific packets.
     - **Client → Server (`SYN`):** The client requests to synchronize and open a connection.
@@ -51,7 +51,5 @@ Modern [Firewall Technologies](../../Security/05%20Architecture%20and%20Infrastr
     - **Blocking State:** By default, if a backend calls `accept()` while the Accept Queue is empty, the process is blocked (paused) until a new connection arrives. To maintain high performance, modern applications configure this call to be non-blocking or handle it asynchronously.
     - **Queue Saturation:** If the backend processes connections slower than the Kernel receives them, the Accept Queue will fill up. Once full, the Kernel cannot move connections out of the SYN Queue, causing the SYN Queue to eventually fill up as well. When both queues are saturated, new incoming connections are dropped or rejected.
     - **The Reverse Proxy Solution:** This queue saturation bottleneck is the primary problem reverse proxies and API gateways (like Nginx or HAProxy) are designed to solve. Sitting at the network edge, their main job is to execute `accept()` as fast as possible to keep the OS queues empty, hold the active connections, and then safely route them to the slower backend services.
-- **File Descriptor Creation:** Upon a successful `accept()`, a unique file descriptor is generated in User Space. This descriptor uniquely identifies the active connection and allows the backend code to finally read and write data to the client.
-
-For what happens after `accept()` returns, including receive buffers, send buffers, blocking reads, and `send()`, see [Reading and Sending Data](02%20Reading%20and%20Sending%20Data.md).
+- **File Descriptor Creation:** Upon a successful `accept()`, a unique file descriptor is generated in User Space. This descriptor uniquely identifies the active connection and allows the backend code to finally [read and write data](02%20Reading%20and%20Sending%20Data.md) to the client.
 
