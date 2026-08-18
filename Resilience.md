@@ -285,30 +285,11 @@ The producer sends an event and does not track it further. Any interested consum
 
 ### Idempotency
 
-Idempotency means a repeated operation leaves the system in the same final state as the first successful application. It matters because distributed systems often cannot tell whether a missing response means “the server never ran the operation” or “the operation succeeded but the response was lost.”
+Retries are an important resilience mechanism, but after a timeout or lost response the caller may not know whether the remote operation actually executed. Retrying a non-idempotent operation can therefore repeat its business side effects.
 
-For resilience, that distinction controls whether retries are safe. If an operation is not idempotent, a retry can execute the side effect twice. If the operation is idempotent, the client, proxy, or retry engine can repeat the request without compounding the result.
+[Idempotency](Concurrency/04%20Distributed%20Concurrency.md#Idempotency) makes these ambiguous failures easier to recover from by allowing the same logical operation to be delivered more than once without applying its intended effect more than once.
 
-For example:
-
-1. `increase(1)` — not idempotent
-   - Call it once: value goes from `10` → `11`.
-   - Call it again: `11` → `12`.
-   - Each repetition changes state again, so the outcome depends on how many times the call runs.
-
-2. `set(5)` — idempotent
-   - Call it once: value becomes `5`.
-   - Call it again: still `5`.
-   - The first call may change state, but subsequent identical calls do not add new side effects.
-
-Idempotency improves resilience because:
-
-* Non-idempotent operations increase coupling between participants.
-  * If the caller does not know whether the first attempt succeeded, it cannot retry safely.
-* Idempotent operations make failure recovery simpler.
-  * Clients and intermediaries can retry after timeouts, disconnects, or lost responses without risking duplicate execution.
-* It is a fundamental resilience and scalability pattern.
-  * Safe retries reduce the amount of coordination required between nodes.
+This makes retries safer and reduces the coordination required between distributed components. It does not make unlimited retries safe: retry limits, backoff, jitter, and protection against retry amplification remain resilience concerns.
 
 ### HTTP semantics and retry safety
 

@@ -41,4 +41,4 @@ upload_vault_ftp:
 .PHONY: update_qdm
 update_qdm:
 	qmd update
-	qmd embed
+	QMD_LLAMA_GPU=metal qmd embed

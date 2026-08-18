@@ -35,7 +35,7 @@ The exact machine instructions depend on the compiler and CPU, but unless the op
 One possible interleaving is:
 
 | Time | Thread A | Thread B | Shared `a` |
-|---|---|---|---:|
+| --- | --- | --- | ---: |
 | `t0` | Reads `a = 0` | — | `0` |
 | `t1` | Computes `0 + 1 = 1` | — | `0` |
 | `t2` | — | Reads `a = 0` | `0` |
@@ -115,7 +115,7 @@ Spinlocks are particularly problematic if the lock holder cannot run. A waiting 
 >
 > PostgreSQL uses multiple backend processes that coordinate through shared memory. For extremely short critical sections, it sometimes uses **spinlocks**: if one backend owns the lock, another backend does not immediately sleep. It remains runnable and repeatedly checks the lock, based on the assumption that the owner will release it very quickly.
 >
-> The problematic interaction appeared when a backend acquired a spinlock and then triggered a [page fault](03%20Memory%20Management.md#Limitations%20of%20Virtual%20Memory). Although execution had entered the kernel to service the fault, the PostgreSQL backend still logically owned the userspace spinlock. With the changed preemption behavior, that backend could be preempted before the fault handling completed and before it returned to PostgreSQL to release the lock.
+> The problematic interaction appeared when a backend acquired a spinlock and then triggered a [page fault](../../Operating%20Systems/03%20Memory%20Management.md#Limitations%20of%20Virtual%20Memory). Although execution had entered the kernel to service the fault, the PostgreSQL backend still logically owned the userspace spinlock. With the changed preemption behavior, that backend could be preempted before the fault handling completed and before it returned to PostgreSQL to release the lock.
 >
 > This is where a **spinlock is substantially worse than a blocking mutex**. Other PostgreSQL backends waiting for the same spinlock remain runnable. The scheduler can therefore spend CPU time running processes whose only useful action is repeatedly checking a lock that cannot possibly become available until the preempted lock owner runs again.
 >
@@ -123,9 +123,10 @@ Spinlocks are particularly problematic if the lock holder cannot run. A waiting 
 >
 > With a blocking mutex, waiters would normally become non-runnable after failing to acquire the lock. They would still suffer the lock holder's latency, but they would not continuously consume CPU while waiting. The PostgreSQL regression was therefore not merely an example of the general rule that “a delayed lock holder delays its waiters”; it exposed the specific danger of a spinlock when the assumption that **the owner will continue running and release the lock almost immediately** stops being true.
 >
-> PostgreSQL's process-heavy architecture and memory behavior further amplified the workload, with the investigation pointing to page faults and TLB-related effects as important contributors. 
+> PostgreSQL's process-heavy architecture and memory behavior further amplified the workload, with the investigation pointing to page faults and TLB-related effects as important contributors.
 >
 > The key lesson is that a spinlock is efficient only when waiting is expected to be extremely short **and the lock holder is expected to keep executing**. If the operating system can suspend the owner while leaving the waiters runnable, spinning can turn scheduler time into wasted CPU cycles instead of helping the protected operation finish.
+>
 ### Semaphores
 
 A **semaphore** maintains a number of available permits. Unlike a mutex or spinlock, it can allow more than one actor to proceed concurrently.
@@ -152,6 +153,244 @@ This is the main distinction from mutexes and spinlocks:
 * A **counting semaphore** represents capacity: up to `N` concurrent acquisitions.
 
 A semaphore can also be used for signaling. If initialized to `0`, a consumer that calls `wait` immediately blocks until another actor calls `signal`, making a permit available.
+Yes. Your process-management note gives a stronger foundation because it already establishes that the scheduler operates on **threads**, and that a thread waiting for an event can become **blocked/non-runnable**, allowing another runnable thread to use the CPU.
+
+### Condition Variables
+
+A **condition variable** allows a thread to stop executing until some condition over shared state may have become true. It is normally paired with a mutex because the condition itself depends on shared state that must be inspected and modified safely.
+
+Consider a bounded queue shared by producers and consumers. A mutex can prevent concurrent modifications from corrupting the queue, but mutual exclusion alone does not solve what happens when a consumer acquires the mutex and discovers that the queue is empty.
+
+The consumer cannot simply keep checking:
+
+```c
+lock(mutex);
+
+while (queue_is_empty()) {
+    // keep checking
+}
+
+item = dequeue();
+
+unlock(mutex);
+```
+
+If it keeps the mutex while waiting, a producer cannot acquire that mutex to insert the item the consumer is waiting for. If it repeatedly releases and reacquires the mutex, it effectively performs a form of polling and wastes CPU or introduces arbitrary delays.
+
+A condition variable solves this by connecting **synchronization state** with the thread's [scheduling state](../../Operating%20Systems/05%20Process%20Management.md#Processes%20vs.%20Threads).
+
+Conceptually:
+
+```text
+wait(condition, mutex)
+```
+
+performs two closely coupled operations:
+
+1. releases the mutex;
+2. suspends the calling thread on the condition variable.
+
+The release and transition into waiting must behave atomically with respect to the condition-variable protocol. Otherwise another thread could change the state and signal between those operations, causing the waiter to miss the notification.
+
+Once waiting, the thread is no longer a runnable execution context competing for CPU time. The operating system can schedule another runnable thread instead, just as with other forms of blocking described in [Process Management](../../Operating%20Systems/05%20Process%20Management.md).
+
+Suppose the queue is initially empty and the mutex is unlocked:
+
+|Time|Consumer|Producer|Consumer state|Mutex|Queue|
+|---|---|---|---|---|---|
+|`t0`|Acquires mutex|—|Running|Consumer|Empty|
+|`t1`|Checks queue → empty|—|Running|Consumer|Empty|
+|`t2`|`wait(not_empty)` releases mutex and waits|—|**Blocked**|Unlocked|Empty|
+|`t3`|—|Acquires mutex|Blocked|Producer|Empty|
+|`t4`|—|Enqueues item|Blocked|Producer|1 item|
+|`t5`|—|Signals `not_empty`|**Runnable**|Producer|1 item|
+|`t6`|—|Releases mutex|Runnable|Unlocked|1 item|
+|`t7`|Reacquires mutex|—|Running|Consumer|1 item|
+|`t8`|Dequeues item|—|Running|Consumer|Empty|
+|`t9`|Releases mutex|—|Running|Unlocked|Empty|
+
+The scheduling transition is important. When the producer signals `not_empty`, the consumer does **not necessarily begin executing immediately**. The signal makes the waiting thread eligible to continue, but the operating-system scheduler still decides when it receives CPU time.
+
+This connects directly to [context switching](../../Operating%20Systems/05%20Process%20Management.md#Context%20Switching). At `t2`, the consumer can no longer make progress and gives up the CPU. After it is awakened, the scheduler eventually dispatches it again and restores its execution context.
+
+There is one more synchronization step before `wait` can return: the consumer must **reacquire the mutex**. If another thread owns the mutex when the consumer is scheduled, it may have to wait again until the mutex becomes available.
+
+The normal usage is therefore:
+
+```c
+lock(mutex);
+
+while (queue_is_empty()) {
+    wait(not_empty, mutex);
+}
+
+item = dequeue();
+
+unlock(mutex);
+```
+
+The condition is checked with `while`, not `if`, because being awakened does not guarantee that the predicate is still true when the thread eventually executes.
+
+For example, another consumer may acquire the mutex first and remove the newly inserted item:
+
+|Time|Consumer A|Consumer B|Queue|
+|---|---|---|---|
+|`t0`|Waiting on `not_empty`|Waiting on `not_empty`|Empty|
+|`t1`|Becomes runnable|Becomes runnable|1 item|
+|`t2`|—|Acquires mutex and removes item|Empty|
+|`t3`|Acquires mutex later|—|Empty|
+|`t4`|Checks condition again → false|—|Empty|
+|`t5`|Waits again|—|Empty|
+
+Condition-variable implementations may also permit **spurious wakeups**, making the same rule necessary even when no competing consumer consumed the state.
+
+Therefore, a signal should be interpreted as:
+
+> **Something changed that may make your condition true; reacquire the lock and check again.**
+
+The mutex and condition variable have different responsibilities:
+
+* the **mutex** protects the shared state while it is inspected or modified;
+* the **condition variable** allows a thread that cannot currently make progress to become non-runnable until another actor changes relevant state.
+
+This makes condition variables fundamentally different from spinlocks. A thread waiting on a spinlock remains runnable and consumes CPU while checking the lock; a thread waiting on a condition variable gives up the CPU until it has a reason to try again.
+
+> [!example] The Classic Bounded Producer/Consumer Problem  
+> The **bounded producer/consumer problem** is a classic synchronization problem involving a shared queue with finite capacity.
+>
+> Producers add items to the queue, while consumers remove them. Because both operate on the same shared state, access to the queue must be synchronized. The bounded capacity introduces two additional conditions:
+>
+> * a producer cannot insert when the queue is full;
+>
+> * a consumer cannot remove when the queue is empty.
+>
+>
+> A typical solution therefore combines **mutual exclusion** with two condition variables:
+>
+> ```text
+> not_empty
+> not_full
+> ```
+>
+> Producers wait on `not_full` when the queue has reached its capacity, while consumers wait on `not_empty` when there is nothing to consume.
+>
+> The problem is useful because it demonstrates that mutual exclusion alone is insufficient. A mutex can prevent concurrent corruption of the queue, but condition variables are needed to suspend threads whose operation is currently invalid and wake them when the shared state changes.
+>
+### Monitors
+
+A **monitor** is a higher-level synchronization abstraction that combines:
+
+* shared mutable state;
+* operations that manipulate that state;
+* mutual exclusion around those operations;
+* condition variables for operations that cannot currently make progress.
+
+A monitor therefore packages mechanisms already introduced separately into one synchronization boundary.
+
+Without a monitor, callers might manipulate shared state manually:
+
+```c
+lock(mutex);
+
+while (queue_is_empty()) {
+    wait(not_empty, mutex);
+}
+
+item = dequeue();
+
+unlock(mutex);
+```
+
+A monitor instead encapsulates the state and synchronization together:
+
+```text
+monitor BoundedQueue:
+    mutex
+    queue
+
+    condition not_empty
+    condition not_full
+
+    put(item):
+        lock(mutex)
+
+        while queue is full:
+            wait(not_full, mutex)
+
+        enqueue(item)
+        signal(not_empty)
+
+        unlock(mutex)
+
+    take():
+        lock(mutex)
+
+        while queue is empty:
+            wait(not_empty, mutex)
+
+        item = dequeue()
+        signal(not_full)
+
+        unlock(mutex)
+
+        return item
+```
+
+Entering a monitor operation conceptually acquires exclusive access to the monitor's protected state. If another thread is already executing a protected operation, the entering thread must wait.
+
+This provides **mutual exclusion**, but a monitor also needs conditional waiting because exclusive access does not imply that an operation can make progress.
+
+Suppose a consumer enters `take()` while the queue is empty:
+
+|Time|Consumer|Producer|Consumer state|Monitor|Queue|
+|---|---|---|---|---|---|
+|`t0`|Enters `take()`|—|Running|Consumer|Empty|
+|`t1`|Finds queue empty|—|Running|Consumer|Empty|
+|`t2`|Waits on `not_empty` and gives up monitor|—|**Blocked**|Free|Empty|
+|`t3`|—|Enters `put()`|Blocked|Producer|Empty|
+|`t4`|—|Enqueues item|Blocked|Producer|1 item|
+|`t5`|—|Signals `not_empty`|**Runnable**|Producer|1 item|
+|`t6`|—|Leaves `put()`|Runnable|Free|1 item|
+|`t7`|Re-enters monitor|—|Running|Consumer|1 item|
+|`t8`|Dequeues item|—|Running|Consumer|Empty|
+|`t9`|Leaves `take()`|—|Running|Free|Empty|
+
+The important step is `t2`. The consumer cannot remain the monitor's exclusive owner while waiting, because the state it needs can only become true if another thread is allowed to enter the monitor and modify that state.
+
+`wait(not_empty)` therefore performs the same scheduling transition described for condition variables: the consumer gives up exclusive access and becomes blocked. The [scheduler](../../Operating%20Systems/05%20Process%20Management.md#Processes%20vs.%20Threads) can then execute some other runnable thread, such as the producer.
+
+When the producer signals `not_empty`, the consumer becomes eligible to execute again. The signal does not transfer the CPU directly to the consumer, nor does it generally mean that the consumer immediately owns the monitor. The scheduler must eventually run it, and the consumer must regain exclusive access before continuing.
+
+A monitor therefore coordinates **two different kinds of waiting**:
+
+* **Waiting to enter the monitor** occurs when another thread currently owns the monitor. The thread has not entered the protected region yet and waits for the monitor's mutual-exclusion lock to become available.
+* **Waiting on a condition variable** occurs after a thread has entered the monitor and inspected the protected state, but discovers that its operation cannot currently proceed. It calls `wait()` on a particular condition variable, such as `not_empty` or `not_full`, which releases the monitor and blocks the thread until relevant state changes.
+
+That distinction is important. A mutex answers:
+
+> **May I access this state now?**
+
+A condition variable answers:
+
+> **Is the state currently suitable for the operation I want to perform?**
+
+A monitor combines both questions into the abstraction that owns the state.
+
+Conceptually:
+
+```text
+Monitor
+    = protected shared state
+    + mutual exclusion
+    + condition-based waiting
+    + operations that enforce those rules
+```
+
+The main advantage is **encapsulation of synchronization policy**. Callers do not need to know which mutex protects the object or which condition variables must be signaled after a state transition. They call operations such as `put()` and `take()`, while the monitor itself maintains the synchronization invariants.
+
+From the operating system's perspective, however, there is nothing special about the monitor abstraction. The kernel still schedules [threads](../../Operating%20Systems/05%20Process%20Management.md#Processes%20vs.%20Threads). Threads that can execute are runnable; threads waiting on synchronization may become blocked; waking them makes them runnable again; and actual execution occurs only when the scheduler dispatches them onto a CPU core.
+
+So monitors are best understood as a **programming-level structure built on top of the thread scheduling and synchronization mechanisms described in Process Management**, rather than as a new kind of scheduler primitive.
 
 ### Atomic Operations
 
@@ -210,9 +449,9 @@ Deadlocks are not specific to threads. The same dependency pattern can occur bet
 
 Common causes include:
 
-- unfair lock acquisition;
-- a continuous stream of other actors acquiring the resource first;
-- scheduling policies that repeatedly favor other runnable threads.
+* unfair lock acquisition;
+* a continuous stream of other actors acquiring the resource first;
+* scheduling policies that repeatedly favor other runnable threads.
 
 Unlike a deadlock, the system as a whole may continue making progress while one particular participant waits indefinitely.
 
@@ -238,11 +477,11 @@ Synchronization and parallel execution interact with the scheduler and CPU memor
 
 Common performance costs include:
 
-- **Lock contention:** As more threads compete for the same lock, an increasing fraction of execution time is spent waiting instead of performing useful work.
-- **Blocking and wakeups:** Moving threads between runnable and blocked states introduces scheduler and [context-switching overhead](../../Operating%20Systems/05%20Process%20Management.md#Context%20Switching%20Overhead).
-- **Cache locality:** Moving execution between CPU cores can reduce reuse of data already present in a particular core's [cache hierarchy](../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy).
-- **Cache-line bouncing:** When multiple cores repeatedly modify shared cache lines, the [cache-coherence protocol](../../Operating%20Systems/04%20Inside%20The%20CPU.md#Cache%20coherency) must repeatedly transfer ownership of those lines between cores.
-- **False sharing:** Independent variables modified by different threads can accidentally occupy the same cache line, causing unnecessary coherence traffic even though the threads do not logically share the variables. This is covered in [False Sharing](../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Developer%20Trap:%20False%20Sharing).
+* **Lock contention:** As more threads compete for the same lock, an increasing fraction of execution time is spent waiting instead of performing useful work.
+* **Blocking and wakeups:** Moving threads between runnable and blocked states introduces scheduler and [context-switching overhead](../../Operating%20Systems/05%20Process%20Management.md#Context%20Switching%20Overhead).
+* **Cache locality:** Moving execution between CPU cores can reduce reuse of data already present in a particular core's [cache hierarchy](../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy).
+* **Cache-line bouncing:** When multiple cores repeatedly modify shared cache lines, the [cache-coherence protocol](../../Operating%20Systems/04%20Inside%20The%20CPU.md#Cache%20coherency) must repeatedly transfer ownership of those lines between cores.
+* **False sharing:** Independent variables modified by different threads can accidentally occupy the same cache line, causing unnecessary coherence traffic even though the threads do not logically share the variables. This is covered in [False Sharing](../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Developer%20Trap:%20False%20Sharing).
 
 Adding concurrency therefore introduces a trade-off. More execution contexts can expose additional parallelism or allow useful work to proceed while other operations wait, but they can also increase synchronization, scheduling, memory, and cache-coherence costs.
 
@@ -309,7 +548,6 @@ This makes **lock duration** particularly important. A lock should normally cove
 > The conflict is therefore prevented before it occurs rather than detected afterward.
 >
 > If the lock holder is descheduled, blocked on I/O, handling a page fault, or otherwise delayed, the waiting threads remain blocked as well. This is related to the dependency described for [spinlocks](#Spinlocks), although a blocking mutex normally puts waiters to sleep instead of making them consume CPU while they wait.
-
 > [!example]- Database Row Lock  
 > Databases can apply the same strategy by locking data before performing a read-modify-write operation.
 >
@@ -339,6 +577,7 @@ This makes **lock duration** particularly important. A lock should normally cove
 > The important property is that the lock is held across the read and subsequent write, preventing another conflicting transaction from changing the protected state in between.
 >
 > The cost is that a slow transaction delays every transaction waiting for the same lock. Holding database locks while performing network calls, slow computation, or unrelated work can therefore create substantial contention.
+>
 #### Lock Granularity
 
 Pessimistic control must also decide **how much state a lock protects**.
@@ -361,11 +600,11 @@ If one critical section takes `5 ms` and only one actor can execute it at a time
 
 This can turn a small protected region into a system-wide bottleneck when:
 
-- the critical section takes too long;
-- the lock protects too much state;
-- many operations need the same resource;
-- the lock holder is frequently delayed;
-- several locks create dependency chains between actors.
+* the critical section takes too long;
+* the lock protects too much state;
+* many operations need the same resource;
+* the lock holder is frequently delayed;
+* several locks create dependency chains between actors.
 
 Pessimistic concurrency control therefore trades **conflict prevention** for **waiting and reduced concurrency**. It works best when avoiding wasted or conflicting work is more valuable than allowing every actor to proceed independently.
 
