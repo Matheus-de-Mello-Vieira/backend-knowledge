@@ -460,27 +460,73 @@ These mechanisms are forms of optimistic concurrency control, while idempotency 
 
 ## Message Delivery and Duplicate Processing
 
-Asynchronous systems have the same problem as request-response systems.
+Asynchronous systems have the same [failure ambiguity](#Failure%20Ambiguity) as request-response communication, but it can appear on **both sides of the broker**.
 
-A producer may publish a message successfully but fail before learning whether the broker accepted it. A broker may redeliver a message because it did not receive an acknowledgment from the consumer. A consumer may commit its business effect but crash before acknowledging the message.
+On the producer side, the application needs confirmation that responsibility for a message successfully moved to the broker. If the broker accepts a message but its confirmation is lost, the producer cannot distinguish that case from one in which the message never reached the broker.
 
-Therefore, many reliable messaging designs intentionally permit duplicate delivery.
+| Time | Producer | Broker |
+| --- | --- | --- |
+| `t0` | Sends `M1` | — |
+| `t1` | — | Accepts `M1` |
+| `t2` | Waits for confirmation | Sends confirmation |
+| `t3` | Connection fails before receiving it | Already accepted `M1` |
+| `t4` | Retries `M1` | Receives the publication again |
 
-Suppose a consumer processes message `M1`.
+The retry happens because the result is **ambiguous**, not because the producer knows that the original publication failed.
+
+Some brokers can recognize particular producer retransmissions and avoid storing another copy. This is another form of idempotency, but its identity belongs to the messaging protocol rather than to the business operation. It does not determine whether two independent publications represent the same logical purchase, payment, or order.
+
+On the consumer side, the broker must determine whether a delivered message was successfully processed. If processing cannot be confirmed, reliable messaging systems commonly make the work available again rather than risk losing it. This deliberately introduces the possibility of duplicate processing.
+
+### Queue-Based Redelivery
+
+In queue-oriented messaging, delivering a message usually gives a consumer temporary responsibility for processing it. The broker keeps enough state to determine that processing has not yet been confirmed.
+
+If completion is not confirmed, the message can become eligible for delivery again. Different brokers determine this point differently.
+
+> [!example] SQS and RabbitMQ
+> **Amazon SQS** temporarily hides a received message from other consumers. If the consumer does not complete processing and remove the message before this visibility period expires, the message becomes visible and can be delivered again.
+>
+> **RabbitMQ** instead tracks whether a delivery has been acknowledged. If a consumer disappears while a message remains unacknowledged, or explicitly asks for it to be requeued, the message can be delivered again.
+>
+> Both mechanisms solve the same problem: the broker cannot assume that delivering a message means its business effect completed successfully.
+
+Suppose a consumer processes `M1` and commits its business effect, but fails before confirming completion to the broker.
 
 | Time | Consumer | Broker |
 | --- | --- | --- |
-| `t0` | Receives `M1` | Marks `M1` in-flight |
-| `t1` | Commits business effect | — |
-| `t2` | Crashes before ACK | Still considers delivery incomplete |
-| `t3` | Restarts | Redelivers `M1` |
+| `t0` | Receives `M1` | Considers `M1` in progress |
+| `t1` | Commits business effect | Waits for completion |
+| `t2` | Crashes before confirming completion | Still considers delivery incomplete |
+| `t3` | — | Makes `M1` eligible for delivery again |
 | `t4` | Receives `M1` again | — |
 
-Without deduplication, the business effect can occur twice.
+The broker faces a fundamental trade-off. If it assumes success, it can lose work that actually failed. If it retries, it can repeat work that actually succeeded. **At-least-once delivery chooses the second trade-off:** preserve the work even if duplicate processing must be tolerated.
 
-The consumer can instead treat the message ID as an idempotency key and atomically record that the logical message has already been applied.
+Without deduplication, the business effect can therefore occur twice. The consumer can instead treat the message ID as an [idempotency key](#Idempotency%20Keys) and atomically record that the logical message has already been applied.
 
-This is why **at-least-once delivery requires idempotent processing or equivalent deduplication whenever duplicate effects are unsafe**.
+### Log-Based Replay
+
+Log-oriented messaging uses a different model. Consuming a message does not necessarily remove it from the broker. Messages remain in an ordered log, while consumers separately record how far through that log they have successfully processed.
+
+If a consumer applies a business effect but fails before recording its new progress, a later consumer can resume from the older position and process the same message again.
+
+| Time | Consumer | Business state | Recorded progress |
+| --- | --- | --- | --- |
+| `t0` | Reads `M1` | Unchanged | Before `M1` |
+| `t1` | Applies business effect | Changed | Before `M1` |
+| `t2` | Crashes | Changed | Before `M1` |
+| `t3` | Restarts | Changed | Before `M1` |
+| `t4` | Reads `M1` again | Effect may repeat | Before `M1` |
+
+Kafka is a common example of this model. It records consumer progress using **offsets**. The message itself does not need to be requeued: it remained in the log, and the consumer simply resumes from a position from which that message is still visible.
+
+> [!example] Kafka Producer Idempotency
+> Kafka can distinguish a producer retry from a new publication by associating publications with a producer identity and sequence information. If the producer retransmits the same publication because its acknowledgement was lost, Kafka can recognize the retransmission instead of appending another copy.
+>
+> This is different from an application-level [idempotency key](#Idempotency%20Keys). Two explicit publications from the application are still two messages, even if their payloads are identical. Kafka cannot infer whether they mean “retry purchase A” or “the customer bought the same product again.” That distinction requires a business identity such as an order or payment ID.
+
+Queue redelivery and log replay therefore reach the same application-level consequence through different transport mechanisms: **the same logical operation may be processed more than once**. This is why at-least-once messaging requires idempotent processing or equivalent deduplication whenever duplicate effects are unsafe.
 
 ## Atomic Business Update and Deduplication
 
