@@ -57,34 +57,64 @@ class c1title title
 ```
 
 - **Streaming Multiprocessor (SM):** The main computational building block of the GPU. An SM contains many execution units together with Warp Schedulers, registers, local memory, and the control logic required to coordinate them. A complete GPU contains many SMs operating in parallel.
-- **Warp Scheduler:** The hardware responsible for selecting which group of threads should execute. Rather than issuing an independent instruction stream to every thread, the scheduler operates on groups called **Warps**.
+- **Warp Scheduler:** The hardware responsible for selecting which Warp should execute. GPU threads are grouped into fixed-size Warps, and the scheduler issues instructions for those groups rather than scheduling each thread as an independent hardware instruction stream.
 - **Arithmetic Logic Units (ALUs):** Perform integer arithmetic and bitwise operations according to the same basic principles described in [Inside The CPU](04%20Inside%20The%20CPU.md). The important difference is scale: GPU hardware contains large numbers of execution units so similar calculations can occur across many elements simultaneously.
 - **Floating-Point Units (FPUs):** Perform floating-point arithmetic. Because graphics, scientific simulation, and machine learning rely heavily on this kind of math, GPUs dedicate significant computational capacity to floating-point operations.
 - **Registers:** Store the values and execution state actively used by GPU threads. GPU register files are large because an SM must keep the state of many threads resident at the same time.
-- **Shared Memory / L1 Cache:** Low-latency SRAM located close to the execution units. In addition to normal caching behavior, Shared Memory can be explicitly managed by software so threads within the same Thread Block can rapidly exchange and reuse data.
+- **Shared Memory / L1 Cache:** Low-latency SRAM located close to the execution units. In addition to normal caching behavior, Shared Memory can be explicitly managed by software so threads assigned to the same cooperative group can rapidly exchange and reuse data; in CUDA, this cooperation is scoped to a **Thread Block**.
 - **Global Memory (VRAM):** The GPU's primary large-capacity memory. It provides much more storage than the on-chip memories but has substantially higher access latency, making efficient access patterns critical to performance.
 
 ## Single Instruction, Multiple Threads (SIMT)
 
-GPUs obtain much of their parallel throughput through an execution model called **SIMT — Single Instruction, Multiple Threads**. SIMT is closely related to [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)), but the two expose parallelism differently. CPU SIMD explicitly packs several values into a wide vector register and executes one vector operation against those values, while GPU SIMT presents the programmer with many individual software threads and lets the hardware group them together for execution.
+GPUs obtain much of their parallel throughput through an execution model called **SIMT — Single Instruction, Multiple Threads**. SIMT is closely related to [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)), but the two expose parallelism differently. CPU SIMD explicitly packs several values into a wide vector register and executes one vector operation against those values, while GPU SIMT presents the programmer with many logical software threads and lets the hardware group compatible threads together for execution.
 
-This distinction is important because a SIMT program can still be written using an ordinary scalar mental model. Each software thread has its own logical state and operates on its own element, yet threads that reach the same instruction together can be executed collectively by the GPU.
+This means GPU code can still be written using an ordinary scalar mental model: the programmer describes what one logical thread should do, launches many such threads, and lets the GPU map those logical executions onto its parallel hardware.
+
+### GPU Threads
+
+A **GPU thread** is a lightweight logical execution context representing one execution of a GPU kernel. It should not be confused with an operating-system thread: the OS does not independently schedule thousands of GPU threads onto CPU-like cores. Instead, a kernel launch creates many logical thread executions, and the GPU hardware later groups and schedules them collectively.
+
+Each GPU thread conceptually has its own input identity and execution state, including its register values and local variables. This lets the same scalar kernel body operate on different pieces of data depending on which thread is executing it.
+
+CUDA makes this model explicit. Consider a kernel that doubles every value in an array:
+
+```cpp
+__global__ void double_values(float *values, int count) {
+    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (thread_id < count) {
+        values[thread_id] = values[thread_id] * 2;
+    }
+}
+```
+
+The function body describes the work performed by **one logical thread**. `threadIdx.x` identifies the thread inside its Thread Block, `blockIdx.x` identifies the block inside the kernel launch, and `blockDim.x` gives the number of threads in each block. Combining them produces a global index that lets each thread operate on a different array element.
+
+CUDA launches a kernel using the syntax:
+
+```cpp
+kernel<<<number_of_blocks, threads_per_block>>>(...);
+```
+
+For example:
+
+```cpp
+double_values<<<4, 256>>>(values, 1024);
+```
+
+creates a grid containing **4 Thread Blocks with 256 threads each**, for a total of `4 × 256 = 1024` logical GPU threads. Every one of those threads executes the same `double_values()` kernel body, but each observes different values for its thread and block identifiers and therefore works on a different element.
+
+A **Thread Block** is a programmer-visible group of threads that can cooperate through Shared Memory and synchronization. CUDA assigns each block to one SM for its lifetime, although an SM can keep multiple blocks resident at the same time when resources allow. The block abstraction therefore determines which threads can directly cooperate, while the hardware still performs instruction scheduling at a smaller granularity.
+
+The important hierarchy is therefore: a kernel launch creates a **grid of Thread Blocks**, each block contains many **GPU threads**, and the hardware groups those threads into **Warps** for execution on Streaming Multiprocessors.
 
 ### Warps and Hardware Execution
 
-Inside an SM, threads are organized into fixed groups called **Warps**. The Warp Scheduler issues an instruction for a Warp, and the active threads in that Warp perform the operation on their respective data.
+Inside an SM, GPU threads are organized into fixed-size hardware execution groups called **Warps**. In NVIDIA CUDA hardware, a Warp contains 32 threads. The Warp Scheduler selects a ready Warp and issues an instruction for its active threads, which perform that operation on their respective data.
 
-Conceptually, a program might contain many independent operations:
+The programmer therefore sees many independent logical kernel executions, while the hardware sees groups of threads that can share instruction issue. If the threads in a Warp reach the same instruction together, the GPU can execute that instruction across many data elements in parallel rather than maintaining a completely independent instruction stream for every thread.
 
-```text
-Thread 0  -> value[0]  + 1
-Thread 1  -> value[1]  + 1
-Thread 2  -> value[2]  + 1
-...
-Thread 31 -> value[31] + 1
-```
-
-From the programmer's perspective, these are individual threads working on different elements. At the hardware level, however, the Warp Scheduler sees that they are executing the same instruction and coordinates their execution together. This allows the programming model to remain thread-oriented while the physical hardware obtains throughput from wide parallel execution.
+This is the central abstraction of SIMT: **the developer writes the logic of one scalar thread, launches many logical threads, and the GPU groups those threads into Warps for parallel execution**.
 
 ### GPU Occupancy
 
@@ -100,34 +130,6 @@ Occupancy is not unlimited because every resident thread consumes physical hardw
 >
 > Higher occupancy gives the scheduler more work to choose from, but maximum occupancy does not automatically mean maximum performance.
 
-### The Developer Abstraction
-
-SIMT hides much of the hardware grouping from the programmer. With explicit CPU SIMD, developers may need to work with specialized compiler intrinsics such as `_mm512_add_ps()` and reason directly about several values packed inside one vector register. GPU programming instead allows the developer to describe the work from the perspective of a single thread and then launch many copies of that thread across different pieces of data.
-
-For example, imagine an array containing 32 numbers that must all be doubled. The GPU program can conceptually describe the work of **one thread** like this:
-
-```c
-void double_value(float *values, int thread_id) {
-    values[thread_id] = values[thread_id] * 2;
-}
-```
-
-The function itself contains ordinary scalar code: it reads one value, multiplies it by `2`, and writes one result. The parallelism appears when many threads execute that same function with different `thread_id` values:
-
-```text
-Thread 0  -> values[0]  = values[0]  * 2
-Thread 1  -> values[1]  = values[1]  * 2
-Thread 2  -> values[2]  = values[2]  * 2
-Thread 3  -> values[3]  = values[3]  * 2
-...
-Thread 31 -> values[31] = values[31] * 2
-```
-
-From the developer's perspective, these are 32 independent executions of the same scalar function, each operating on a different array element. The programmer does not explicitly construct a 32-element hardware vector or manually describe how those operations should execute together.
-
-The GPU hardware performs that grouping. If these threads belong to the same Warp and reach the multiplication instruction together, the Warp Scheduler issues that instruction across the active threads
-
-This is the central abstraction of SIMT: **the developer writes the logic of one scalar thread, launches many independent threads, and the GPU groups compatible threads into Warps for parallel execution**. Each thread maintains its own logical state and data, even though the hardware executes their common instructions together.
 ### Branch Divergence
 
 SIMT works most efficiently when all active threads in a Warp follow the same instruction path. Conditional logic becomes expensive when different threads evaluate the same condition differently because the Warp cannot freely execute two unrelated instruction streams at the same time.
@@ -170,7 +172,7 @@ GPU register files are particularly large because the architecture must keep the
 
 ### Shared Memory / L1 Cache
 
-**Shared Memory** is a small, low-latency memory space located on the SM and explicitly accessible by threads within a Thread Block. Unlike an ordinary CPU or GPU cache, whose contents and eviction decisions are automatically managed by hardware, Shared Memory is managed by the program. Threads can cooperatively load data from VRAM into Shared Memory, synchronize, and then reuse or exchange those values without repeatedly accessing Global Memory.
+**Shared Memory** is a small, low-latency memory space located on the SM and explicitly accessible by threads within a Thread Block. Because a Thread Block remains assigned to one SM for its lifetime, its threads can use that SM's Shared Memory to exchange and reuse data. Unlike an ordinary CPU or GPU cache, whose contents and eviction decisions are automatically managed by hardware, Shared Memory is managed by the program. Threads can cooperatively load data from VRAM into Shared Memory, synchronize, and then reuse or exchange those values without repeatedly accessing Global Memory.
 
 On some GPU architectures, Shared Memory and the L1 cache use the same underlying on-chip SRAM, but they serve different logical roles: **L1 automatically caches memory accesses, while Shared Memory acts as a programmer-controlled scratchpad.**
 ### Global Memory / VRAM
