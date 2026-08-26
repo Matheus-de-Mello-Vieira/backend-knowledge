@@ -1,22 +1,7 @@
 # System Architecture
 
 
-## Storage
-
-- **Persistent Storage:** Unlike volatile RAM, storage retains data permanently, even when the system loses power.
-- **Mainly HDD and SSD:** The two primary architectures used for non-volatile storage.
-- **Hard Disk Drives (HDD):**
-	- *Sector-Level Access:** HDDs are block devices that operate in fixed-size chunks called **sectors** (typically 4KB). To change a single piece of data, the OS must read the entire sector, update it in memory, and rewrite the entire sector back to the disk.
-    - **Sequential Dependency:** HDDs rely on a physical spinning magnetic platter and a mechanical arm. Because the arm must physically move to locate data (seek time), random access is extremely slow. They perform significantly better when reading and writing data **sequentially**.
-- **Slower than Memory:** Both HDDs and SSDs are significantly slower than RAM.
-- **Solid State Drives (SSD):**
-    - **Random Access:** Built with electronic flash memory and no moving parts, SSDs execute fast, **random** reads and writes.
-    - **Pages vs. Blocks:** SSDs read and write data in small units called **pages** (usually 4KB to 16KB). However, flash memory can only _erase_ data in much larger chunks called **blocks** (which contain dozens or hundreds of pages).
-    - **The Update Overhead:** SSDs cannot overwrite a page in place. To update a value, the drive marks the existing page as "stale", finds a brand new empty page, and writes the updated data there.
-    - **Garbage Collection:** As the drive fills up with invalid pages, the controller must occasionally read all the valid pages in a block, copy them to a new block, and erase the entire original block to free up space. This background cleanup process is called **Garbage Collection** and introduces performance overhead and hardware wear.
-    - **The Shift to Integrated Controllers:** Early HDDs lacked built-in "brains," forcing the OS to manually manage physical disk geometry (CHS - Cylinder / Head / Sector), bad sectors, and mechanical timing. The industry solved this by moving the controller directly onto the drive (IDE), which abstracted physical complexities into simple Logical Block Addressing (LBA) and provided the necessary architectural foundation for modern, controller-dependent SSDs to exist.
-	    - **Hardware-OS Coupling:** Under the old model, the Operating System was tightly coupled to the specific hardware it was running on. Because the OS had to be explicitly aware of the drive's physical characteristics, simply swapping or upgrading a drive was extremely difficult; it required manually reconfiguring the OS or BIOS with the new drive's exact physical geometry, making hardware changes rigid, tedious, and highly prone to data corruption.
-
+[06 Storage Management](06%20Storage%20Management.md)
 ## Network
 
 - [See more](Networking/01%20Introduction.md)
