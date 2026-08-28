@@ -1,4 +1,0 @@
-interface:
-  display_name: "Obsidian Workspace Context"
-  short_description: "Extract useful study-vault context"
-  default_prompt: "Use $obsidian-workspace-context to identify the active and related notes from .obsidian/workspace.json."

@@ -13,6 +13,13 @@ matcher = "^Bash$"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"
-command = "/usr/bin/python3 .codex/hooks/python_interceptor.py"
+command = "uv run .codex/hooks/python_interceptor.py"
 timeout = 30
 statusMessage = "Validating Python environment"
+
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = "uv run .codex/hooks/obsidian_active_file.py"
+timeout = 5

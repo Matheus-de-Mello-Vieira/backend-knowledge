@@ -5,7 +5,7 @@ description: Fix Markdown lint issues with `/usr/local/bin/markdownlint`. Use wh
 
 # Markdownlint Fix
 
-When the user does not name any file, load the `obsidian-workspace-context` skill first. Use its `active_note` as the lint target. If it reports no `active_note`, ask the user which note to use from `open_notes` instead of guessing.
+When the user does not name any file, use the Obsidian `UserPromptSubmit` hook context already attached to the turn. Use `systemMessage` in the form `Current note: Foo.md` and the `Primary Obsidian file: path/to/Foo.md` line from `additionalContext` as the lint target. If the hook does not provide a primary note but does list `Open Markdown notes:`, ask the user which open note to lint instead of guessing.
 
 ## Workflow
 
@@ -19,11 +19,10 @@ Run it from the repository root when possible:
 
 When the user omits targets, the note-selection flow is:
 
-1. Load the `obsidian-workspace-context` skill.
-2. Read its output.
-3. If it returns an `active_note`, pass that note to `markdownlint_fix.py` as the positional target.
-4. If it returns no `active_note` but does return `open_notes`, ask the user which open note to lint.
-5. If it returns neither, ask the user for an explicit target.
+1. Read the Obsidian hook context already attached to the turn.
+2. If it includes a `Primary Obsidian file: ...` line, pass that path to `markdownlint_fix.py` as the positional target.
+3. If it does not include a primary note but does include `Open Markdown notes:`, ask the user which open note to lint.
+4. If it includes neither, ask the user for an explicit target.
 
 The script:
 
@@ -42,10 +41,10 @@ Pass only the files or directories the user asked to fix. Do not run the script 
 
 If the user does not specify targets:
 
-1. Load the `obsidian-workspace-context` skill.
-2. If it returns an `active_note`, pass that note to `markdownlint_fix.py` as the positional target.
-3. If it returns no `active_note` but does return `open_notes`, ask the user which open note to lint.
-4. If it returns neither, ask the user for an explicit target.
+1. Read the Obsidian hook context already attached to the turn.
+2. If it includes a `Primary Obsidian file: ...` line, pass that path to `markdownlint_fix.py` as the positional target.
+3. If it does not include a primary note but does include `Open Markdown notes:`, ask the user which open note to lint.
+4. If it includes neither, ask the user for an explicit target.
 
 Use quoted globs so the script can expand them consistently:
 
