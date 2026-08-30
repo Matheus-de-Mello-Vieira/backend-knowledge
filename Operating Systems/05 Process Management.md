@@ -25,6 +25,7 @@ To understand how the kernel manages work, you must separate the concept of _res
        - Every process starts with exactly one main thread, but it can spawn dozens of child threads.
        - The OS scheduler does not actually schedule processes; it schedules _threads_ onto physical CPU cores.
        - All threads within a single process share [exact same memory](#Multi-Threaded%20Memory%20Layout) and open files, but each thread is given its own isolated Stack and CPU Registers (like the Program Counter).
+
 ### The Process Control Block (PCB)
 
 The Process Control Block (in Linux, known as the `task_struct`) is the definitive data structure representing a process inside the operating system. It is the kernel's internal ledger tracking every single detail about a process's state, memory boundaries, and security permissions.
@@ -47,6 +48,92 @@ Because a system might have thousands of active processes, the kernel cannot sea
 - **The Mapping:** It is a highly optimized kernel-space data structure (functioning like a hash map) that maps a numeric **PID to its specific PCB**.
 - **O(1) Lookups:** This allows the OS scheduler and system calls to find a process instantly.
 - **Real-World Example:** If you type `kill -9 4052` in your terminal, the kernel immediately checks the Process Table for PID `4052`, retrieves its PCB, checks if your user has the security permissions to modify it, and then forcefully changes its execution state to Terminated.
+
+## Daemons
+
+A **daemon is a role and lifecycle convention, not a kernel primitive**. From the kernel's perspective, a daemon is an ordinary process with the same PID, virtual address space, file descriptors, threads, scheduling state, and other resources as any other process.
+
+What makes a process a daemon is how it is used: it is typically long-lived, operates independently of an interactive user session, and provides a persistent service or performs recurring system work. Examples include SSH servers, database servers, logging systems, schedulers, and network services.
+
+> [!note] Where the name "daemon" comes from
+>
+> The word **daemon** comes from the Ancient Greek _daímōn_, which referred to a spirit or supernatural being. Unlike the modern word **demon**, a _daímōn_ was not necessarily evil; it could simply represent an unseen force or agent acting in the world.
+>
+> Computing adopted **daemon** as a fitting name for programs that operate without direct user interaction, quietly performing work on behalf of the system. The term is also commonly associated with **Maxwell's demon**, the hypothetical agent from a physics thought experiment that continuously observes and acts on a system in the background.
+
+Daemons commonly:
+
+- remain alive for long periods, sometimes for the entire system uptime;
+- wait for requests, events, timers, or other work rather than continuously consuming CPU;
+- operate independently of an interactive terminal or login session;
+- start automatically during system initialization or when their service is first needed;
+- expose functionality to other processes through sockets, pipes, files, or other IPC mechanisms.
+
+> [!info] Daemons and Services
+> 
+> The terms **daemon** and **service** are closely related but describe slightly different perspectives. A daemon refers primarily to the **process performing the work**, while a service refers more broadly to the functionality being provided and managed.
+> 
+> On Unix-like systems, services are commonly implemented by one or more daemon processes. On Windows, the corresponding operating-system concept is normally called a **Windows Service**.
+
+### Common Use Cases
+
+Daemons are useful whenever some functionality must remain available independently of a particular interactive user session. Their work is often event-driven or periodic: the process spends much of its lifetime waiting, then wakes when there is something to handle.
+
+Common use cases include:
+
+- **Network services:** SSH servers, web servers, DNS servers, proxies, and database servers wait for incoming connections or requests and respond as needed.
+- **Logging:** logging daemons collect messages from applications and the kernel, then store, forward, filter, or rotate them.
+- **Scheduled work:** schedulers such as `cron` remain available to start jobs at configured times.
+- **Monitoring and observability:** monitoring agents collect metrics, logs, traces, health information, and other runtime data.
+- **Networking infrastructure:** DHCP clients, VPN agents, routing daemons, and network managers maintain connectivity and react to network changes.
+- **Background maintenance:** daemons can perform tasks such as cache refreshes, cleanup, log rotation, backups, certificate renewal, or periodic synchronization.
+- **Queue and job processing:** worker processes can wait for messages or jobs and process them as they arrive.
+- **System coordination:** some daemons provide shared functionality to other processes through sockets, files, pipes, or other IPC mechanisms.
+
+The common pattern is not that the work is secondary, but that it must continue to exist **without requiring a user to keep an interactive program or terminal session open**. A web server, for example, may be the primary workload of an entire machine while still fitting the daemon role.
+
+### Daemon vs. Background Process
+
+A **background process** is a process executing without occupying the user's interactive shell. For example, a shell may start a command in the background using `&`.
+
+A daemon is often associated with background execution, but the concepts are not equivalent. A short-lived command started with `&` may still belong to the user's session, inherit its terminal and standard streams, and terminate when that session ends. It is therefore a background process without necessarily being a daemon.
+
+The defining property of a daemon is instead its independence from an interactive user session and its persistent operational role.
+
+> [!example] Containers: a daemon does not have to "go into the background"
+>
+> Containers are a useful example of why defining a daemon simply as a **background process** is incomplete.
+>
+> A web server running inside a [container](08%20More%20OS%20Concepts.md#Containers) is commonly the container's main process and may run as **PID 1** inside it. The server normally stays in the foreground rather than performing traditional daemonization. This allows the container runtime to directly observe its lifetime, collect its standard output and error, and detect when it terminates.
+>
+> Nevertheless, the server can still fulfill the role normally associated with a daemon: it is long-lived, operates independently of an interactive user session, waits for requests, and provides a persistent service.
+>
+> **Foreground and background describe how a process is attached to and managed by its execution environment; daemon describes its operational role and lifecycle.**
+
+### Traditional Daemonization
+
+Historically, Unix programs often had to make themselves independent of the interactive session that launched them. This procedure is commonly called **daemonization**.
+
+Traditional daemonization could involve:
+
+- calling `fork()` and allowing the original process to exit;
+- calling `setsid()` to create a new session and detach from the controlling terminal;
+- sometimes performing another `fork()`;
+- changing the working directory;
+- configuring the process's file-creation mask;
+- closing inherited [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs));
+- redirecting standard input, output, and error;
+- configuring signal handling and, historically, sometimes maintaining a PID file.
+
+These steps made the process independent of the terminal and login session that originally launched it. They were conventions used to achieve the daemon's desired lifecycle rather than requirements imposed by the kernel.
+
+### Modern Service Managers
+
+Modern Unix-like systems often delegate lifecycle management to a **service manager**. On many Linux distributions, for example, `systemd` starts and supervises services.
+
+A service manager can start and stop processes, track them, capture their output, manage dependencies, restart them after failures, configure privileges, and coordinate system startup and shutdown.
+
+Because the service manager provides this surrounding lifecycle management, the application usually does not need to perform traditional daemonization. It can remain in the foreground from its own perspective while the service manager ensures that it operates independently as a long-lived service.
 
 ## Threads
 
@@ -82,13 +169,9 @@ Threads therefore provide a useful middle ground between a single execution path
 Besides **OS threads**, also commonly called **native threads**, **kernel threads**, or **system threads**, applications and language runtimes can maintain their own **user-space execution units** and multiplex them over a smaller number of OS threads. Depending on the runtime and programming model, these may be called **Green Threads**, **Fibers**, **Coroutines**, or **Virtual Threads**. These terms are related but not completely interchangeable—for example, a coroutine does not necessarily behave like a thread.
 
 - **Multiplexing Over OS Threads:** The operating system only schedules the underlying native threads. A runtime may internally manage thousands of user-space tasks and decide which one executes whenever one of its OS threads receives CPU time.
-
 - **User-Space Scheduling:** Because the runtime controls these execution units, switching between them can often happen without invoking the kernel scheduler. The runtime saves whatever execution state its abstraction requires and resumes another task on the same OS thread. The exact state depends on the implementation: some abstractions have their own stacks and resumable execution state, while others, such as stackless coroutines, are represented differently.
-
 - **Lower Per-Task Memory Cost:** Every native thread requires its own stack and kernel bookkeeping. Native thread stacks commonly reserve a relatively large **virtual address range**, but this does not mean the entire reservation is immediately backed by physical RAM—the MMU allows the stack to appear contiguous while its physical pages are allocated and mapped as needed. User-space runtimes can still be more memory-efficient because their execution units can start with much smaller stacks, use dynamically growing stacks, or avoid dedicated stacks entirely depending on the model.
-
 - **Lower Scheduling Overhead:** Native threads are managed by the kernel scheduler, so switching between them involves kernel-maintained scheduling and execution state. Switching between user-space tasks can often be handled entirely by the runtime, avoiding a kernel scheduling operation. This makes very large numbers of concurrent tasks more practical than creating the same number of native OS threads.
-
 - **Blocking Depends on the Runtime Model:** If many user-space tasks are multiplexed onto a single OS thread, a synchronous blocking system call can block that OS thread and prevent the other tasks assigned to it from executing. Event-loop systems therefore rely heavily on non-blocking I/O. More sophisticated runtimes can multiplex tasks across multiple OS threads and compensate when one underlying thread blocks, although some operations can still temporarily pin or occupy an OS thread.
 
 ### The Thread Control Block (TCB)
@@ -149,6 +232,7 @@ A context switch happens whenever the currently running thread stops using the C
 - **I/O Wait:** If a thread performs a blocking operation, such as waiting for disk, network, or user input, it cannot make progress on the CPU. The kernel moves it into a blocked/waiting state and schedules another runnable thread. When the I/O operation completes, an interrupt or kernel event wakes the blocked thread and makes it runnable again.
 
 A context switch can therefore be triggered either because the **scheduler takes the CPU away from a thread** or because the **thread voluntarily stops being runnable**, for example by blocking on I/O or waiting for synchronization.
+
 #### Scheduling Algorithms
 
 The scheduler decides **which runnable thread executes on which CPU core and for how long**. Designing a good scheduling policy is difficult because the operating system must balance competing goals such as fairness, responsiveness, throughput, latency, and efficient CPU utilization.
@@ -164,6 +248,7 @@ Some classic scheduling algorithms include:
 - **Round Robin (RR):** Each runnable task receives a fixed **time slice**. When its slice expires, the scheduler preempts it and gives another task a turn. This improves fairness and responsiveness but introduces additional context-switch overhead.
 
 Real operating systems usually use more sophisticated scheduling policies that combine ideas such as priorities, time slicing, CPU affinity, fairness, and workload history rather than relying on a single simple algorithm.
+
 #### Cooperative vs. Preemptive Multitasking
 
 - **Cooperative multitasking** relies on the running thread voluntarily giving control of the CPU back to the operating system, usually by yielding, blocking, or reaching some point where the program allows another task to run. If a program fails to yield—for example, because it enters an infinite loop or performs a long computation—other tasks may receive little or no CPU time.
@@ -173,6 +258,7 @@ Modern general-purpose operating systems primarily use preemptive multitasking, 
 
 > [!example] Windows 3.1  
 > Windows 3.1 used cooperative multitasking between 16-bit Windows applications. Applications were expected to periodically yield control, commonly while processing their message loop. If an application entered an infinite loop or performed a long-running computation without yielding, other applications could stop receiving CPU time and the graphical environment could appear frozen.
+>
 ### Thread Prioritization
 
 When multiple threads are **runnable** at the same time, the scheduler must decide which one should receive CPU time. One of the inputs to that decision is **priority**.
@@ -206,4 +292,3 @@ For example:
 starts a program with a lower scheduling preference than the default. Conversely, decreasing the nice value gives the task a greater share of CPU time, although increasing priority is normally restricted by permissions.
 
 Linux also provides separate **real-time scheduling policies**, such as `SCHED_FIFO` and `SCHED_RR`, whose threads take precedence over ordinary time-sharing tasks. These policies are conceptually closer to strict priority scheduling and must be used carefully because a CPU-bound real-time thread can starve ordinary work.
-
