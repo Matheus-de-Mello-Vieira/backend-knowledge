@@ -1,4 +1,0 @@
-interface:
-  display_name: "Section Style Aligner"
-  short_description: "Align Markdown section formatting"
-  default_prompt: "Use $markdown-section-style-aligner to make a Markdown section match the surrounding note's formatting style without changing its meaning."

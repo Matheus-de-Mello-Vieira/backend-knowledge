@@ -52,15 +52,12 @@ Once the head is correctly positioned, contiguous sectors can be transferred rap
 With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement. With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
 
 This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
+
 #### Logical Block Addressing (LBA)
 
 Exposing CHS geometry forced software to understand details of the physical disk layout. **Logical Block Addressing (LBA)** replaces this interface with a much simpler abstraction.
 
-Under LBA, the disk is presented as a linear sequence of fixed-size logical blocks:
-
-`LBA 0, LBA 1, LBA 2, ...`
-
-Software therefore requests a block by its number rather than specifying a cylinder, head, and sector.
+Under LBA, the disk is presented as a linear sequence of fixed-size logical blocks such as `LBA 0, LBA 1, LBA 2, ...`. Software therefore requests a block by its number rather than specifying a cylinder, head, and sector.
 
 The drive's internal controller and firmware determine where each logical block is physically stored. The mapping does not need to correspond to a simple CHS calculation: modern drives can internally reorganize storage, compensate for differences in track geometry, and transparently replace defective sectors with spare sectors.
 
@@ -69,14 +66,28 @@ This indirection allows the physical implementation of the drive to evolve indep
 The same abstraction also makes **bad-sector remapping** possible. If a physical sector becomes unreliable, the drive can redirect its LBA to a spare physical sector while continuing to expose the same logical address to the operating system. From the software's perspective, the location of the block has not changed.
 
 > [!note] LBA Blocks and Virtual Memory Pages
-> 
+>
 > **LBA logical blocks** and **[virtual memory](03%20Memory%20Management.md#Virtual%20Memory)** are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
-> 
+>
 > The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
-> 
+>
 > The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
-> 
+>
 > Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
+
+
+> [!note] Logical vs. Physical Sector Size
+>
+> **LBA (Logical Block Addressing)** identifies blocks in the logical address space exposed by the storage device to the operating system. An LBA is an **address**, while the **logical sector size** describes how many bytes each address represents.
+>
+> Internally, the device may operate using a different **physical sector size**. The physical location corresponding to logical data is sometimes described using a **Physical Block Address (PBA)**, although the exact internal addressing scheme is device-specific and normally hidden from the host.
+>
+> The logical and physical sizes do not need to match. For example, a **512e** HDD may expose 512-byte logical sectors while internally using 4 KiB physical sectors, so `8 × 512 B logical sectors → 1 × 4 KiB physical sector`.
+>
+> A **4Kn** drive instead exposes 4 KiB logical sectors directly, making the logical and physical sector sizes equal.
+>
+> This distinction is possible because the storage controller translates the host-visible LBA space into the device's internal physical organization.
+>
 #### File Fragmentation and Defragmentation
 
 Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem. When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous **extents**. This is known as **file fragmentation**.
@@ -92,6 +103,7 @@ The more fragmented the file is, the more often the HDD may pay **seek time** an
 After defragmentation, reading a file can require fewer seeks and allow the HDD to spend more time performing efficient sequential transfers. This can significantly improve workloads involving large fragmented files or systems where fragmentation has accumulated for a long time.
 
 Because software operates through LBA, it does not directly control the exact physical platter coordinates. Defragmentation therefore primarily makes the file's **logical blocks** contiguous. HDD firmware generally maps nearby sequential LBAs to nearby physical locations, so this still tends to preserve physical locality, although internal remapping such as bad-sector replacement can prevent the correspondence from being perfect.
+
 ### SSD
 
 A **Solid-State Drive (SSD)** is a non-volatile storage device built primarily from **NAND flash memory**. Unlike HDDs, SSDs have no moving mechanical parts: data is accessed electronically rather than by moving a head over a rotating platter. This gives SSDs much lower access latency and makes **random reads and writes** dramatically faster than on HDDs.
@@ -113,9 +125,9 @@ This creates an important asymmetry:
 A physical block can contain hundreds or even thousands of pages depending on the NAND generation. Because erase operations happen at this larger granularity, individual pages cannot simply be erased and reused independently.
 
 > [!note] Page and Block Terminology
-> 
+>
 > **Page** and **block** are heavily overloaded terms in computer systems. In storage, a **logical block** refers to a unit in the LBA address space exposed to the operating system, while a NAND **physical block** refers to an erase unit containing many flash pages.
-> 
+>
 > In these notes, **logical block** refers to storage addressed through LBA, while **physical block** refers to the NAND erase unit inside an SSD.
 
 This read/program/erase asymmetry is the fundamental reason SSDs need mechanisms such as the **Flash Translation Layer**, out-of-place writes, garbage collection, and wear leveling.
@@ -132,21 +144,22 @@ The important property of the mapping is that it is **dynamic rather than perman
 
 For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
 
-This indirection is fundamental to SSD operation. It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host. 
+This indirection is fundamental to SSD operation. It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host.
 
 As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
 
 The FTL must maintain metadata describing these logical-to-physical mappings. Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage. SSDs commonly cache frequently accessed mapping information in **DRAM**, while smaller amounts of SRAM are used internally by the controller. DRAM-less SSDs rely more heavily on NAND metadata or, in some designs, host memory.
 
 > [!note] The One-LBA-to-One-Page Model Is a Simplification
-> 
+>
 > Treating the FTL as `1 logical block → 1 physical NAND page` is a convenient model for understanding SSD behavior, but it is not a requirement of the hardware.
-> 
+>
 > The **LBA logical block size** exposed to the host and the internal **NAND page size** are independent. For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
-> 
+>
 > Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
-> 
+>
 > The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
+>
 #### States of a Page
 
 From the SSD controller's perspective, a NAND page can usually be understood as being in one of three logical states:
@@ -220,22 +233,23 @@ The controller can then invalidate the corresponding mappings and treat their ph
 TRIM therefore communicates filesystem knowledge to the SSD, reducing unnecessary data movement and potentially lowering write amplification.
 
 > [!note] TRIM Extends the Basic LBA Abstraction
-> 
+>
 > A minimal **LBA** interface only needs to let the host **read** and **write** logical blocks. It does not communicate whether the data currently stored at an LBA is still useful.
-> 
+>
 > This was usually sufficient for traditional HDDs because a sector can simply be overwritten later. NAND flash is different: an SSD cannot overwrite a programmed page in place, so knowing that some logical data has been discarded allows the controller to treat the corresponding physical pages as invalid instead of preserving them during garbage collection.
-> 
+>
 > **TRIM** therefore extends the basic block-device interface with an additional semantic operation: the host can tell the device that it no longer cares about the contents of a range of logical blocks.
-> 
+>
 > Conceptually, the interface becomes:
-> 
+>
 > - `read(LBA)`
-> - `write(LBA, data)` 
+> - `write(LBA, data)`
 > - `discard(LBA range)`
-> 
+>
 > **TRIM** is the ATA name for this operation. Other storage interfaces provide equivalent mechanisms, such as **SCSI UNMAP** and **NVMe deallocation**. The more general concept is usually called **discard** or **block deallocation**.
-> 
+>
 > Although this mechanism became especially important with SSDs, it is not inherently SSD-specific. Thin-provisioned storage, virtual disks, and other storage systems can also use discard information to reclaim underlying resources.
+>
 #### Wear Leveling
 
 NAND flash has limited endurance. A physical block can tolerate only a finite number of **program/erase cycles** before its cells become unreliable.
@@ -315,31 +329,168 @@ These operations consume NAND endurance while providing little of the locality b
 - **UFS (Universal Flash Storage):** An embedded NAND-based storage technology designed as a higher-performance successor to eMMC. Unlike eMMC's more limited command model, UFS supports features such as command queuing and simultaneous reads and writes, making it better suited to modern smartphones and embedded systems.
 - **Persistent Memory / NVRAM:** Technologies that retain data without power while providing access characteristics closer to memory than conventional block storage. Some designs can be accessed directly through the CPU's memory address space rather than through traditional block I/O, partially blurring the distinction between **memory** and **storage**.
 
-====
-
 ## File Systems
 
-A file system is the method and data structure used by an operating system (OS) to store, organize, and access files on a storage device.
+A **file system** is the set of data structures and rules an operating system uses to organize persistent data on a storage device.
 
-- **The LBA Foundation:** The Operating System interacts with modern storage drives through Logical Block Addressing (LBA), viewing the device simply as a massive, flat array of numbered blocks.
-- **The File Abstraction:** Human beings (and most application software) do not want to keep track of raw block numbers (e.g., remembering that a specific document is stored starting at block 4,092,110). The **File System** bridges this gap by abstracting that flat array of blocks into named, structured data units called **files**.
-- **Directories and Hierarchy:** Beyond just files, the file system introduces folders (directories), allowing users to organize data into a logical, easily navigable tree structure.
-- **Metadata (Data About Data):** To manage these files, the file system doesn't just store the file's contents; it must also store metadata.
-    - This includes the file's name, size, creation/modification timestamps, and [security permissions](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md).
-    - **Block Mapping:** Critically, the metadata includes an index (such as an **inode** in Linux) that acts as a map, pointing the OS to the exact, non-sequential LBA block numbers where the file's actual fragmented data is physically stored on the drive.
-- **Free Space Management:** The file system is continually responsible for maintaining a ledger of which blocks are currently in use by files and which blocks are free. When you save a new file or expand an existing one, the file system consults this ledger to allocate empty blocks, ensuring data is never accidentally overwritten.
+At the block-device level, storage is exposed as a flat **Logical Block Addressing (LBA)** space: essentially a large sequence of numbered logical blocks. This interface is convenient for the operating system but not for applications or users, which generally want to work with concepts such as **files, directories, paths, names, and permissions** rather than raw block numbers.
+
+The file system provides this higher-level abstraction. It determines which logical blocks belong to each file, maintains the directory hierarchy used to locate files by name, records metadata about them, tracks which storage regions are free, and coordinates reads and writes to persistent storage.
+
+A file therefore does not need to occupy one contiguous region of the device. The filesystem maintains metadata describing which logical blocks contain its contents, allowing a logically continuous file to be assembled from multiple physical regions.
 
 ### Basic Concepts
 
-- **Directory (Folder):** The fundamental organizational unit within a file system, which can contain files as well as other directories (subdirectories).
-- **File:** A distinct set of information stored on a device. Files possess names and extensions that indicate both their type and their content.
-- **File Extension:** The specific set of characters that appears after the filename, serving to indicate the file's type or format.
-- **Path:** The exact location or address of a file or directory within the file system.
-    - *Absolute Path:* Traces the location starting from the very root of the file system.
-    - *Relative Path:* Traces the location starting from the current working directory.
-- **File Permissions:** Security controls that define exactly who is allowed to access, read, write, or execute a specific file. These permissions can be individually configured for the file's owner, a specific group of users, and all other users.
-- **Disk Formatting:** The initial process of preparing a physical storage device to be used as a file system. This creates the foundational structure needed to store files and directories, and the process can erase all previously existing data on the device.
-- **File Fragmentation:** A condition that occurs when a single file is broken into smaller pieces and stored in scattered, non-contiguous parts of the disk. This typically happens when there is not enough continuous free space available to store the file in one place. Fragmentation negatively affects file system performance, resulting in slower read and write operations.
+- **File:** A named logical sequence of data managed by the filesystem. The filesystem associates the file's contents with metadata describing properties such as its size, ownership, permissions, and timestamps.
+- **Directory (Folder):** A structure that associates names with files and other directories, allowing files to be organized hierarchically. A directory is therefore not merely a visual container; it is part of the filesystem's name-resolution mechanism.
+- **Path:** A sequence of directory names used to locate a filesystem object.
+    - **Absolute Path:** Identifies an object starting from the filesystem's root
+    - **Relative Path:** Identifies an object starting from some current directory.
+- **File Extension:** A suffix such as `.txt`, `.jpg`, or `.exe` conventionally used to indicate a file's format or intended interpretation. The extension is normally just part of the filename; the filesystem itself does not necessarily use it to determine the actual type of the file.
+- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md) build on this metadata to enforce access control.
+
+### Mapping Files to Logical Blocks
+
+Applications work with files as logical sequences of bytes, while the storage device exposes a flat **LBA address space**. The filesystem bridges these views by dividing file data into allocation units and maintaining metadata that records where those units are stored.
+
+A file therefore does not need to occupy one contiguous region of the device. Its contents can be distributed across multiple logical-block ranges while still appearing to the application as one continuous byte sequence.
+
+#### Filesystem Blocks
+
+Filesystems commonly introduce their own allocation unit called a **filesystem block**. This is distinct from the logical block size exposed by the storage device through LBA.
+
+For example, if the device exposes `LBA logical sector = 512 B` and the filesystem uses `Filesystem block = 4 KiB`, then one filesystem block spans eight consecutive logical sectors: `1 filesystem block → 8 × 512 B logical sectors`. If the device instead exposes 4 KiB logical sectors, the relationship may be `1 filesystem block → 1 × 4 KiB logical sector`.
+
+The filesystem block size is normally chosen when the filesystem is **created during formatting**. Tools such as `mkfs` may allow it to be configured explicitly, although they usually select a sensible default. Changing the block size later generally requires recreating the filesystem.
+
+The first constraint comes from the storage device's **logical sector size**. Because filesystem I/O is ultimately translated into LBA operations, a filesystem block must be representable as an integer number of logical sectors.
+
+The filesystem should also align its blocks with the device's **physical sector size** when possible. For example, on a drive with `Logical sector = 512 B` and `Physical sector = 4 KiB`, a 4 KiB filesystem block can map cleanly to eight logical sectors while also fitting exactly inside one physical sector: `1 × 4 KiB filesystem block → 8 × 512 B logical sectors → 1 × 4 KiB physical sector`.
+
+This is efficient because a filesystem block can be updated without unnecessarily touching multiple physical sectors.
+
+A smaller filesystem block may still be valid. For example, a 1 KiB filesystem block can be represented by two 512-byte logical sectors. However, four such filesystem blocks share the same 4 KiB physical sector. Updating only one of them may require the storage device to preserve the rest of the physical sector, potentially introducing a **read-modify-write** operation.
+
+Block **boundaries** matter as well as block size. Even a 4 KiB filesystem block can be poorly aligned if it begins in the middle of a 4 KiB physical sector, causing one filesystem block to span parts of two physical sectors. Partitioning and filesystem creation tools therefore normally align filesystem structures to the device's reported physical geometry.
+
+Once these storage constraints are satisfied, the filesystem can choose among its supported block sizes according to workload characteristics.
+
+In the conventional allocation model, a data block allocated to one file is not reused by another unrelated file. If the file does not completely fill its final block, the remaining bytes become **slack space**, a form of internal fragmentation.
+
+For example, with 4 KiB filesystem blocks, a `6 KiB file → 4 KiB full block + 2 KiB used in another 4 KiB block`. The remaining 2 KiB in the second block is unused by that file and normally unavailable to unrelated files.
+
+This creates a secondary trade-off:
+
+- **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
+- **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
+
+Some filesystems reduce this waste using techniques such as **inline data**, **tail packing**, or shared blocks through mechanisms such as reflinks or deduplication.
+
+For general-purpose systems, **4 KiB is a common choice** because it aligns well with several common granularities, including 4 KiB physical sectors, 4Kn logical sectors, and 4 KiB virtual-memory pages. These are still independent abstractions, however; their sizes do not need to be identical.
+
+A filesystem block is primarily an **allocation and mapping unit**. It does not restrict applications to reading or writing exactly one block at a time. Applications can request arbitrary byte ranges, while the filesystem, page cache, and block layer translate those requests into the necessary underlying operations.
+
+#### Extents
+
+Instead of recording every filesystem block individually, modern filesystems often group adjacent blocks into **extents**.
+
+An extent represents a contiguous range of file data stored in a contiguous range of filesystem blocks or logical blocks. For example, rather than storing mappings for 1,000 adjacent blocks separately, the filesystem can describe them as one extent containing a starting location and length.
+
+A file may contain multiple extents when sufficient contiguous free space is unavailable or when the file grows over time. This is the mechanism behind [file fragmentation](https://chatgpt.com/g/g-p-6a7a84d6766881919bab2085541ba9fd/c/6a908492-3274-83e9-9907-211602a49160#File%20Fragmentation%20and%20Defragmentation): one logical file becomes distributed across several non-contiguous extents.
+
+#### Inodes and Directory Entries
+
+Different filesystems use different structures to record these mappings. In Unix-like filesystems, the central per-file structure is the **inode**.
+
+An inode stores information about a filesystem object together with references to the blocks or extents containing its data. Directories provide the naming layer by storing entries that associate human-readable filenames with inode numbers.
+
+This produces a resolution path such as `Filename → Inode → Extents / Filesystem Blocks → LBAs → File Data`.
+
+When an application accesses a path, the filesystem traverses directory entries until it reaches the target inode. It then uses the inode's extent or block mappings to determine which regions of the LBA address space contain the requested portion of the file.
+
+The filename and inode are separate filesystem objects. This separation is what allows multiple names to refer to the same underlying file.
+
+> [!info] Hard vs. Soft Links Under the Hood
+>
+> Because filenames are separate from inodes, Unix-like filesystems can implement two different linking mechanisms.
+>
+> - **Hard Links (`ln`):** Multiple directory entries reference the **same inode**. There is no privileged "original" filename; each hard link is an equal name for the same filesystem object. Removing one name does not delete the underlying data while other hard links remain. The inode and its data can be reclaimed once its link count reaches zero and no process still holds the file open.
+>
+> - **Soft/Symbolic Links (`ln -s`):** A symbolic link is a separate filesystem object with its **own inode**. Rather than referring directly to the target inode, it stores a pathname that the filesystem resolves when the link is followed. If that pathname no longer resolves to an existing object, the symbolic link becomes **dangling**.
+
+### Metadata
+
+A filesystem must store information not only about file contents, but also about **how those contents and filesystem objects are organized, located, interpreted, and protected**. This information is called **metadata**.
+
+The inode and directory entries described above are examples of filesystem metadata, but metadata exists at several levels.
+
+Per-file metadata can include:
+
+- file type and size,
+- ownership and permissions,
+- creation, modification, and access timestamps,
+- references to filesystem blocks or extents.
+
+Other filesystem metadata includes:
+
+- directory entries and name mappings,
+- free-space tracking structures,
+- allocation indexes,
+- filesystem-wide configuration,
+- consistency and recovery information.
+
+Metadata is essential because the underlying block device exposes only numbered logical blocks containing bytes. Those blocks do not intrinsically reveal which bytes belong to a particular file, what that file is called, how its pieces are arranged, who may access it, or which regions are available for reuse.
+
+The filesystem's metadata gives meaning and structure to that otherwise flat LBA space.
+
+Because metadata describes how file contents are located, corruption of metadata can make otherwise intact data difficult or impossible to recover. This is why filesystems devote significant machinery to maintaining metadata consistency, especially when writes are interrupted by crashes or power loss.
+
+### Free Space Management
+
+The filesystem must also know which logical blocks are already occupied and which are available for new data.
+
+When creating or extending a file, the filesystem's allocator searches its free-space metadata for suitable regions and assigns them to the file. When data is deleted, those logical blocks become available for future allocations.
+
+Filesystems use structures such as **bitmaps, free-space trees, or extent-based indexes** to maintain this information efficiently.
+
+Allocation policy has an important effect on performance. When possible, the filesystem tries to place logically related data near each other so that files require fewer extents and storage accesses have better locality.
+
+Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem. New files may then need to be split across several extents, producing [file fragmentation](#File%20Fragmentation%20and%20Defragmentation).
+
+### Caching
+
+Filesystems also integrate closely with the operating system's **page cache**. Accessing RAM is far faster than accessing persistent storage, so recently or frequently accessed file data can be retained in memory.
+
+When an application reads a file, the kernel can first check whether the requested data already exists in the page cache. If it does, the read can be satisfied from RAM without accessing the storage device.
+
+Writes are also frequently buffered. Instead of immediately sending every small modification to storage, the kernel can modify cached pages and later flush those **dirty pages** to the device in larger and more efficient operations.
+
+Caching therefore provides several benefits:
+
+- repeated reads can avoid storage I/O,
+- small writes can be combined,
+- sequential access can be detected and prefetched,
+- applications can benefit from shared cached data.
+
+The trade-off is that data acknowledged in memory may not yet have reached persistent storage. Filesystems and applications therefore provide synchronization mechanisms when durability must be guaranteed.
+
+### Filesystem I/O vs. Raw Block Access
+
+Applications normally access storage through files, allowing the filesystem to manage naming, permissions, allocation, and the mapping between file offsets and logical blocks.
+
+Some applications, particularly databases, use [Direct I/O (`O_DIRECT`)](03%20Memory%20Management.md#Direct%20I/O%20(`O_DIRECT`)) to bypass the operating system's **page cache** and manage caching themselves. However, Direct I/O does **not** bypass the filesystem. The application still opens a file, and the filesystem still resolves its metadata and translates file offsets into storage operations.
+
+Bypassing the filesystem entirely is also possible by accessing a **raw block device**. In that case, the application operates directly on the device's logical block address space rather than storing its data inside ordinary filesystem files.
+
+This gives the application complete control over the storage layout, but it also means taking responsibility for functionality normally provided by the filesystem, such as **space allocation, metadata organization, consistency, and recovery**. Raw block access is therefore much less common than using filesystem files, even among applications that bypass the page cache.
+
+### Disk Formatting
+
+**Formatting** prepares a storage region for use with a particular filesystem. During formatting, the filesystem creates its initial metadata structures, such as the root directory, free-space tracking structures, allocation metadata, and other filesystem-specific information.
+
+Formatting usually operates on a **partition or logical volume**, rather than necessarily on an entire physical device.
+
+A **quick format** may primarily recreate filesystem metadata and mark existing storage regions as free without immediately overwriting their previous contents. A more thorough format may additionally scan or overwrite storage. Therefore, formatting makes previous files inaccessible through the old filesystem structures, but it does not necessarily erase every underlying byte immediately.
 
 ### Common File Systems
 
@@ -350,6 +501,8 @@ A file system is the method and data structure used by an operating system (OS) 
 - **exFAT (Extended File Allocation Table):** A modernized file system designed specifically to bridge the gap between platforms. It allows for seamless compatibility with external storage devices and USB flash drives across different operating systems, while fully supporting the storage of large files that FAT32 cannot handle.
 - **Btrfs (B-Tree File System):** A modern, advanced file system designed for Linux that focuses on fault tolerance, simplified administration, and data integrity. It utilizes a copy-on-write (CoW) mechanism and natively supports powerful features like instant system snapshots, pooling multiple drives into a single volume, and continuous data checksumming to automatically detect and repair silent data corruption.
 - **tmpfs (Temporary File System):** A specialized file system that resides entirely in volatile system memory (RAM) and swap space, rather than on persistent physical storage like HDDs or SSDs. Because it completely bypasses the latency of storage drives, it offers exceptionally fast read and write speeds for temporary data, but all files stored within it are permanently lost the moment the system reboots or loses power.
+
+====
 
 ## Network Storage and Redundancy
 

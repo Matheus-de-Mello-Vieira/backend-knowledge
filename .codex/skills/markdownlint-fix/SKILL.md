@@ -27,6 +27,7 @@ When the user omits targets, the note-selection flow is:
 The script:
 
 - Requires `/usr/local/bin/markdownlint`.
+- First folds stray standalone inline-code lines back into nearby prose when they appear to be broken-out sentence fragments rather than intentional code blocks or lists.
 - Expands explicit files, directories, and globs into Markdown files.
 - Normalizes bold-only ATX headings such as `# **Title**` into `# Title`.
 - Removes all blank lines (single or multiple) between adjacent list items.

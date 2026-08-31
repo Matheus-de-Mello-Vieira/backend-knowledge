@@ -21,6 +21,16 @@ CODE_SNIPPET_RE = re.compile(
     re.IGNORECASE,
 )
 CODE_FENCE_RE = re.compile(r"^```\s*$")
+INLINE_CODE_ONLY_RE = re.compile(r"^`[^`\n]+`$")
+HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s")
+BLOCKQUOTE_RE = re.compile(r"^\s{0,3}>")
+TABLE_ROW_RE = re.compile(r"^\s*\|")
+BLOCKQUOTE_LINE_RE = re.compile(r"^(\s{0,3}>\s?)(.*)$")
+CONTINUATION_RE = re.compile(
+    r"^(?:in that case,|for example,|for instance,|if\b|then\b|so\b|thus\b|therefore\b|as a result,)",
+    re.IGNORECASE,
+)
+LOWERCASE_START_RE = re.compile(r"^[a-z]")
 
 
 def parse_args() -> argparse.Namespace:
@@ -144,10 +154,170 @@ def find_next_non_blank_line(lines: list[str], start_index: int) -> str | None:
     return None
 
 
+def split_blockquote_prefix(line: str) -> tuple[str, str]:
+    match = BLOCKQUOTE_LINE_RE.match(line)
+    if not match:
+        return "", line
+    return match.group(1), match.group(2)
+
+
+def is_blank_separator(line: str) -> bool:
+    prefix, body = split_blockquote_prefix(line)
+    if prefix:
+        return body.strip() == ""
+    return line.strip() == ""
+
+
+def inline_code_body(line: str) -> str | None:
+    _, body = split_blockquote_prefix(line)
+    stripped = body.strip()
+    if INLINE_CODE_ONLY_RE.match(stripped):
+        return stripped
+    return None
+
+
+def prose_prefix(line: str) -> str | None:
+    prefix, body = split_blockquote_prefix(line)
+    stripped = body.strip() if prefix else line.strip()
+    if not stripped:
+        return None
+    if stripped.startswith("```"):
+        return None
+    if HEADING_RE.match(stripped):
+        return None
+    if LIST_ITEM_RE.match(stripped):
+        return None
+    if TABLE_ROW_RE.match(stripped):
+        return None
+    return prefix
+
+
+def prose_body(line: str) -> str:
+    prefix, body = split_blockquote_prefix(line)
+    return body if prefix else line
+
+
+def ensure_terminal_punctuation(text: str, punctuation: str = ".") -> str:
+    stripped = text.rstrip()
+    if not stripped:
+        return text
+    if stripped.endswith((".", ":", ";", "!", "?")):
+        return stripped
+    return f"{stripped}{punctuation}"
+
+
+def natural_join(parts: list[str], conjunction: str = "and") -> str:
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    if len(parts) == 2:
+        return f"{parts[0]} {conjunction} {parts[1]}"
+    return f"{', '.join(parts[:-1])}, {conjunction} {parts[-1]}"
+
+
+def next_prose_line(
+    lines: list[str], start_index: int, required_prefix: str
+) -> tuple[int | None, str | None]:
+    for i in range(start_index, len(lines)):
+        if is_blank_separator(lines[i]):
+            continue
+        if prose_prefix(lines[i]) == required_prefix:
+            return i, prose_body(lines[i]).strip()
+        break
+    return None, None
+
+
+def merge_stray_inline_code_lines(lines: list[str]) -> list[str]:
+    """Fold isolated inline-code-only lines back into nearby prose."""
+    merged: list[str] = []
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+
+        if is_blank_separator(line) and merged and index + 2 < len(lines):
+            previous = merged[-1]
+            previous_prefix = prose_prefix(previous)
+            if previous_prefix is not None:
+                scan = index
+                code_lines: list[str] = []
+                code_prefix = ""
+
+                while (
+                    scan + 2 < len(lines)
+                    and is_blank_separator(lines[scan])
+                    and inline_code_body(lines[scan + 1])
+                    and is_blank_separator(lines[scan + 2])
+                ):
+                    current_prefix, _ = split_blockquote_prefix(lines[scan + 1])
+                    if code_lines and current_prefix != code_prefix:
+                        break
+                    if current_prefix != previous_prefix:
+                        break
+                    code_prefix = current_prefix
+                    code_lines.append(inline_code_body(lines[scan + 1]) or "")
+                    scan += 2
+
+                if code_lines:
+                    previous_text = prose_body(previous).rstrip()
+                    previous_trimmed = previous_text.rstrip()
+                    merged_text = previous_trimmed
+
+                    if previous_trimmed.endswith("with:"):
+                        merged_text = (
+                            f"{previous_trimmed[:-1].rstrip()} "
+                            f"{natural_join(code_lines)}"
+                        )
+                    elif previous_trimmed.endswith(":"):
+                        merged_text = (
+                            f"{previous_trimmed[:-1].rstrip()}: "
+                            f"{natural_join(code_lines, conjunction='and')}"
+                        )
+                    else:
+                        merged_text = f"{previous_trimmed} {natural_join(code_lines)}"
+
+                    next_index, next_text = next_prose_line(lines, scan + 1, previous_prefix)
+                    consumed_next_prose = False
+                    if next_text:
+                        if previous_trimmed.endswith("with:") and LOWERCASE_START_RE.match(
+                            next_text
+                        ):
+                            merged_text = f"{merged_text}, {next_text}"
+                            scan = next_index or scan
+                            consumed_next_prose = True
+                        elif CONTINUATION_RE.match(next_text):
+                            merged_text = f"{merged_text}. {next_text}"
+                            scan = next_index or scan
+                            consumed_next_prose = True
+                        elif previous_trimmed.endswith("with:"):
+                            merged_text = ensure_terminal_punctuation(
+                                merged_text, punctuation=":"
+                            )
+                        else:
+                            merged_text = ensure_terminal_punctuation(merged_text)
+                    else:
+                        merged_text = ensure_terminal_punctuation(merged_text)
+
+                    if previous_prefix:
+                        merged[-1] = f"{previous_prefix}{merged_text}"
+                    else:
+                        merged[-1] = merged_text
+                    if next_text and not consumed_next_prose:
+                        merged.append("")
+                    index = scan + 1
+                    continue
+
+        merged.append(line)
+        index += 1
+
+    return merged
+
+
 def normalize_content(content: str) -> str:
     newline = "\r\n" if "\r\n" in content else "\n"
     has_trailing_newline = content.endswith(("\n", "\r"))
-    lines = content.splitlines()
+    lines = merge_stray_inline_code_lines(content.splitlines())
     normalized: list[str] = []
     in_code_block = False
 
