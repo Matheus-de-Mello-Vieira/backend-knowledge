@@ -74,8 +74,6 @@ The same abstraction also makes **bad-sector remapping** possible. If a physical
 > The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
 >
 > Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
-
-
 > [!note] Logical vs. Physical Sector Size
 >
 > **LBA (Logical Block Addressing)** identifies blocks in the logical address space exposed by the storage device to the operating system. An LBA is an **address**, while the **logical sector size** describes how many bytes each address represents.
@@ -492,15 +490,73 @@ Formatting usually operates on a **partition or logical volume**, rather than ne
 
 A **quick format** may primarily recreate filesystem metadata and mark existing storage regions as free without immediately overwriting their previous contents. A more thorough format may additionally scan or overwrite storage. Therefore, formatting makes previous files inaccessible through the old filesystem structures, but it does not necessarily erase every underlying byte immediately.
 
+### FAT32
+
+**FAT32 (File Allocation Table 32)** is an older filesystem that remains common on removable storage because of its broad compatibility across operating systems, firmware, cameras, game consoles, and other devices.
+
+FAT32 organizes file data using **clusters**, its filesystem allocation unit. A cluster groups one or more consecutive logical sectors from the underlying LBA address space.
+
+For example: `Logical sector = 512 B` and `Cluster = 8 logical sectors`. therefore: `Cluster size = 4 KiB`.
+
+The filesystem allocates storage to files in whole clusters rather than individual logical sectors.
+
+To keep track of which clusters belong to each file, FAT32 maintains a large **File Allocation Table (FAT)**. Conceptually, the FAT is an array indexed by cluster number whose values identify the next cluster in the same file: `FAT[cluster] = next cluster`.
+
+A directory entry stores metadata about a file, including its name, size, and **first cluster**. From that starting point, the filesystem follows entries in the FAT until it reaches an end-of-chain marker: `Directory entry → First cluster → FAT → Next cluster → ... → End of chain`.
+
+For example: `FAT[120] = 121`, `FAT[121] = 450`, and `FAT[450] = EOF`.
+
+A file beginning at cluster `120` therefore occupies clusters `120`, `121`, and `450`. Each cluster can then be translated into the corresponding range of LBAs when the filesystem performs storage I/O.
+
+This linked structure makes FAT32 conceptually simple, but it also means that finding data deep inside a fragmented file may require following a chain of FAT entries unless the filesystem caches that information.
+
+Each FAT32 entry occupies **32 bits**, but only the lower **28 bits** are available for identifying clusters. The remaining bits are reserved. Some values from the usable range are also reserved to represent states such as **free cluster**, **bad cluster**, and **end of chain**.
+
+Using clusters is important because each FAT entry can represent considerably more storage than if it represented only one logical sector. With roughly 28 bits available for cluster identifiers, FAT32 can represent on the order of: `2^28 clusters`. If each cluster contained only one 512-byte logical sector, this would correspond to roughly: `2^28 × 512 B ≈ 128 GiB`.
+
+With 32 KiB clusters instead: `2^28 × 32 KiB ≈ 8 TiB`.
+
+The practical maximum FAT32 volume size is lower and depends on filesystem and operating-system restrictions, but the mechanism is important: **increasing the cluster size increases how much storage the same number of FAT entries can represent**.
+
+The cost is **internal fragmentation**. In the conventional FAT32 allocation model, a cluster allocated to one file cannot simultaneously store unrelated file data. If a file does not completely fill its final cluster, the remaining capacity becomes **slack space**.
+
+For example, with 32 KiB clusters: `1 KiB file → 1 × 32 KiB cluster`.
+
+Most of that cluster remains unused.
+
+Cluster size therefore creates a trade-off:
+
+- **Smaller clusters** reduce slack space, particularly when storing many small files, but require more FAT entries to represent the same volume.
+- **Larger clusters** allow the filesystem to represent larger volumes with fewer allocation entries, but increase internal fragmentation.
+
+Clusters are FAT32's implementation of the more general **filesystem block/allocation-unit** concept: they determine the granularity at which storage is assigned to files.
+
+> [!note] Why FAT32 Has a 4 GiB File-Size Limit
+> 
+> FAT32's maximum individual file size is **not caused by the FAT cluster chain itself**.
+> 
+> The FAT determines **which clusters are allocated to a file**, but it does not record the exact byte at which the file ends inside its final cluster. FAT32 therefore stores the file's total logical length separately in a **32-bit `FileSize` field** inside the directory entry.
+> 
+> This makes operations such as checking a file's size or determining its logical EOF very cheap, because the filesystem can read the value directly instead of traversing the entire FAT chain and counting clusters.
+> 
+> The trade-off is that a 32-bit byte counter can represent at most:
+> 
+> `2^32 - 1 bytes = 4 GiB - 1 byte`
+> 
+> This is the actual origin of FAT32's maximum file-size limit.
+> 
+> The limitation is therefore a **metadata format decision**, not an inherent property of linked-cluster allocation. A differently designed filesystem could store the number of bytes used in the final cluster and derive the total size from the chain length, or simply use a larger file-size field.
 ### Common File Systems
 
-- **NTFS (New Technology File System):** The default file system used for Windows operating systems. It allows for the creation of folders and subfolders, as well as the robust management of file and directory permissions.
-- **HFS (Hierarchical File System):** The standard file system traditionally used for MacOS. It allows for the organization of files into folders and subfolders, in addition to providing built-in support for large files and data compression.
-- **EXT4 (Fourth Extended File System):** The default file system for Linux operating systems. It enables the management of large files and supports both fragmentation and data compression.
-- **FAT32 (File Allocation Table 32-bit):** An older, legacy file system that has been widely used for external storage devices and USB flash drives. While it offers high compatibility across many different operating systems, it has strict limitations and does not support large individual files or folders containing a massive number of files.
-- **exFAT (Extended File Allocation Table):** A modernized file system designed specifically to bridge the gap between platforms. It allows for seamless compatibility with external storage devices and USB flash drives across different operating systems, while fully supporting the storage of large files that FAT32 cannot handle.
-- **Btrfs (B-Tree File System):** A modern, advanced file system designed for Linux that focuses on fault tolerance, simplified administration, and data integrity. It utilizes a copy-on-write (CoW) mechanism and natively supports powerful features like instant system snapshots, pooling multiple drives into a single volume, and continuous data checksumming to automatically detect and repair silent data corruption.
-- **tmpfs (Temporary File System):** A specialized file system that resides entirely in volatile system memory (RAM) and swap space, rather than on persistent physical storage like HDDs or SSDs. Because it completely bypasses the latency of storage drives, it offers exceptionally fast read and write speeds for temporary data, but all files stored within it are permanently lost the moment the system reboots or loses power.
+- **NTFS (New Technology File System):** The primary filesystem used by modern Windows installations. It supports large files and volumes, journaling, access-control lists (ACLs), compression, encryption, hard links, symbolic links, and other features expected from a general-purpose desktop and server filesystem.
+- **APFS (Apple File System):** The default filesystem for modern macOS, iOS, and other Apple operating systems. It was designed primarily for flash storage and uses **copy-on-write (CoW)** metadata. APFS supports features such as snapshots, cloning, encryption, and space sharing between multiple volumes inside the same container.
+- **HFS+ (Hierarchical File System Plus):** Apple's previous primary filesystem, used by macOS before APFS replaced it. HFS+ supports journaling, large files, permissions, and hierarchical directories, but is now mainly relevant for compatibility with older Apple systems and storage devices.
+- **ext4 (Fourth Extended File System):** A widely used general-purpose Linux filesystem and the default choice in many Linux distributions. It uses journaling for crash recovery and **extents** to efficiently represent contiguous file regions. ext4 supports large files and volumes but does not natively provide features such as transparent compression, snapshots, or checksumming of file data.
+- **XFS:** A high-performance journaling filesystem commonly used on Linux servers, particularly for workloads involving very large files, large filesystems, and high levels of parallel I/O. It uses extent-based allocation and B-tree structures extensively to scale filesystem metadata operations.
+- **Btrfs (B-Tree File System):** A modern Linux filesystem built around **copy-on-write (CoW)**. It supports snapshots, subvolumes, checksumming of data and metadata, compression, and integrated management of multiple storage devices. Checksums allow Btrfs to detect silent corruption, and when another valid copy of the data is available through redundancy, it may use that copy to repair the damaged data.
+- **FAT32:** An older and relatively simple filesystem whose broad support makes it useful for removable media and compatibility between devices. Its major limitations include a maximum individual file size of approximately **4 GiB** and fewer features for permissions, reliability, and large-volume management than modern filesystems.
+- **exFAT (Extended File Allocation Table):** A filesystem designed primarily for removable flash storage. It retains much of FAT's simplicity and broad cross-platform compatibility while supporting much larger files and volumes than FAT32, making it common on SD cards, USB drives, and external storage exchanged between different operating systems.
+- **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to **swap** under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
 
 ====
 
