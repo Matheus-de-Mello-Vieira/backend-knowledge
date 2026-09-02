@@ -186,7 +186,6 @@ While this highly orchestrated lookup saves the interconnect bus from collapsing
 
 Because of this physical hardware design, modern Operating Systems and databases (like PostgreSQL or Redis) are heavily **NUMA-Aware**. The OS scheduler will aggressively try to pin an application's threads and its memory allocations strictly to the exact same NUMA node, actively preventing the software from ever accidentally crossing the interconnect bridge.
 
-Here is the reformatted text with non-question headings, converted sub-bullet structures, and a Mermaid diagram replacing the ASCII art.
 #### Ideal Use Cases for NUMA Architecture
 
 While NUMA introduces a latency penalty for cross-node accesses, it is not a "flaw"—it is the **only physically viable way to scale compute density and memory capacity** on a single motherboard.

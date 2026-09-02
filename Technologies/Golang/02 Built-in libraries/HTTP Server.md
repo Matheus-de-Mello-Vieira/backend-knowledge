@@ -1,10 +1,5 @@
 # HTTP Server
 
-Excellent — let’s break the Go web server down piece by piece so you fully understand how it works.
- We’ll walk through each block of the code and what it does.
-
-Sure — here’s a **self-contained explanation** of how to build a basic web server in Go using the `net/http` package, **without assuming you’ve already seen the full code**.
-
 ## Creating the router
 
 Inside your `main()` function, you start by creating a **router**, called a *ServeMux* in Go:
@@ -28,8 +23,6 @@ mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     w.Write([]byte("hello from net/http"))
 })
 ```
-
-Here’s what’s happening:
 
 - `HandleFunc` connects the path `/` to the given handler function.
 - Every handler function receives:
@@ -66,8 +59,6 @@ Example output:
   "when": "2025-10-24T16:10:45Z"
 }
 ```
-
-Absolutely — here’s a clear, self-contained block explaining how **POST requests** work in Go using the `net/http` package.
 
 ## Handling POST Requests (Receiving Data)
 
@@ -183,8 +174,6 @@ This works automatically for form submissions like:
   <button type="submit">Send</button>
 </form>
 ```
-
-Sure — here’s a concise version that assumes the reader already understands what headers are, focusing purely on how to use them in Go:
 
 ## Using Headers in Go’s `net/http`
 

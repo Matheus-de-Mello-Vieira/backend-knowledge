@@ -43,8 +43,6 @@ While testing methodologies (like Penetration Testing or SAST/DAST) focus on exe
 
 Security testing is rarely a one-off event; to be effective, it must be treated as a continuous, structured lifecycle. Approaching it as a rigid methodology ensures that testing is comprehensive, legal, and translates directly into actionable security improvements rather than just a list of raw vulnerabilities.
 
-Here is how you can break down the eight phases of the lifecycle for your notes:
-
 **1. Plan and Scope**
 
 - **The Goal:** Define exactly what is being tested and, just as importantly, what is _out of bounds_.

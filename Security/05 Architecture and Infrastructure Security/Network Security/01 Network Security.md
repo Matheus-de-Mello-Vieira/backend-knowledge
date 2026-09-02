@@ -6,8 +6,6 @@ Network security encompasses a comprehensive set of technologies and practices d
 
 Network segmentation is one of the most effective ways to stop a cyberattack from turning into a company-wide catastrophe. Think of it like the bulkhead doors on a ship: if water floods one compartment, the doors seal it off so the whole ship doesn't sink.
 
-Here is a deeper look into each of those strategies, including how they work, their real-world use cases, and how they fit together.
-
 ## VLAN Segmentation (Layer 2)
 
 - It uses [Virtual Local Area Networks (VLANs)](02%20Ethernet.md#VLAN%20Tagging) to segment a network at the Layer 2

@@ -107,8 +107,6 @@ To determine how relevant two vectors are to one another, vector databases calcu
 - **Recommendation Systems:** Default to **Dot Product**. In recommendation algorithms, magnitude often represents a specific weight like user "popularity," "intensity," or "click-through rate," which you explicitly want to influence the final sorting.
 - **Computer Vision and Clustering:** Default to **Euclidean ($L_2$)**. When processing image embeddings or strict data clusters, the exact absolute position in space matters far more than the directional "vibe."
 
-Here is the polished, engineering-focused version of your notes on **Chunking**. I have reorganized the strategies into a logical hierarchy, integrated the "overlap" concept directly into the fixed-size section where it belongs, and tightened the architectural decision matrix at the end.
-
 ## Vector Databases
 
 Generating an embedding is only half the battle. The real engineering challenge is **retrieval at scale**. If you have a database of a billion vectors, you cannot afford to compute the geometric distance between your query and every single record every time a user hits "search."
@@ -217,7 +215,7 @@ To determine if a problem is a vector search problem, use this checklist:
 
 ### **3. Conclusion: The Semantic Hash**
 
-As you noted in your first section, think of embeddings as a **Semantic Hash**.
+A useful mental model is to think of embeddings as a **Semantic Hash**.
 
 - **Traditional Hash:** Used for exact lookups (is $A == B$?).
 - **Vector Embedding:** Used for similarity lookups (is $A \approx B$?).
@@ -299,16 +297,6 @@ Most mature systems use **Hybrid Search**:
 1. **Keyword Search (BM25)** for the exact "What" (e.g., "iPhone 15 Pro").
 2. **Vector Search** for the conceptual "Why" (e.g., "high-end photography phone").
 3. **Reciprocal Rank Fusion (RRF)** to combine them into one list.
-
-Adding a **"Tools"** section is a great way to ground all this theory in the real world. In production, you don't build everything from scratch; you pick specific components for your "AI Stack."
-
-Here is the final section to add to your notes:
-
-Gemini said
-
-Got it—let's stick to the formal Information Retrieval (IR) terminology. This is much better for technical documentation or if you're planning to implement evaluation frameworks like **Ragas** or **TruLens**, as they use these exact names.
-
-Here is your note on measuring RAG systems using standard industry metrics.
 
 ## **The Modern AI Stack: Tools & Ecosystem**
 

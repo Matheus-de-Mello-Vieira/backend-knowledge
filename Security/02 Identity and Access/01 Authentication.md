@@ -168,10 +168,6 @@ If the user visits `/metrics` without a header, Nginx sends the `401` challenge,
 * **State vs. REST**: While sending credentials every time is technically "stateless" (aligning with REST principles), it is inefficient. If the server starts storing session data to avoid re-verifying, it violates pure REST architecture.
 * **Logout Issues**: There is no standard "logout" button for Basic Auth; the browser caches the credentials until the session is closed or cleared manually.
 
-This is a great addition to your documentation. You've correctly identified that API keys and secrets are essentially "passwords for machines."
-
-To improve this, I’ve refined the distinction between **identification** and **authentication**, and clarified how a "secret" differs from a "digital signature"—as they are often used together but aren't exactly the same thing.
-
 ### HMAC
 
 It is one of the most secure ways to use an API Secret because, unlike Basic Auth, **the secret itself is never sent over the network.** HMAC is not meant to hide your data; it’s meant to prove the data is legitimate.
@@ -220,7 +216,6 @@ X-Signature: 7e9b234a6d... (The result of hashing the request + secret)
 
 #### Digital Signature vs. HMAC
 
-It is important to note the technical difference for your documentation:
 * **HMAC (Symmetric):** Uses a **single private key** known by both the sender and the receiver. It is fast and efficient for APIs.
 * **Digital Signature (Asymmetric):** Uses a **Private Key** to sign and a **Public Key** to verify (like RSA). This is common in JWTs and SSL/TLS certificates.
 

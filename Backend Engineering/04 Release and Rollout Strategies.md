@@ -8,8 +8,6 @@ A release strategy in backend engineering is the comprehensive blueprint and set
 
 A thoughtful release strategy is the safety net that stands between new backend code and a catastrophic system failure. When updates are pushed to live production environments, simply hoping for the best isn't an option. Having a structured approach to rollouts ensures that system changes are predictable and safe, ultimately shifting deployments from high-stress, risky events to routine, automated operations.
 
-Here is why having a strong release strategy matters:
-
 - **Reduce blast radius during a change:** If a critical bug slips through, a phased rollout ensures it only impacts a tiny fraction of users or a single server, preventing a total system-wide outage.    
 - **Validate correctness before full exposure:** By gradually routing live traffic to the new version, engineering teams can monitor real-world performance and catch hidden errors before the update reaches the entire user base.
 - **Improve confidence in deploy, rollback, and migration steps:** When the mechanisms to push code forward or immediately pull it back are reliable and well-practiced, engineers can deploy updates more frequently without the paralyzing fear of breaking production.

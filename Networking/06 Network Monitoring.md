@@ -90,8 +90,6 @@ While trend analysis helps plan for the future, **availability monitoring** focu
 Availability monitoring is the bedrock of any Service Level Agreement (SLA). It shifts an organization from a _reactive_ stance (waiting for human reports of an outage) to a _proactive_ stance (detecting and isolating a failure seconds after it occurs).
 ## How to Monitor: Active vs. Passive Methods
 
-Here is a breakdown of the advantages and disadvantages of both monitoring methods to add to your notes. Understanding these trade-offs helps in designing a robust, hybrid monitoring strategy.
-
 ### Active Monitoring (Polling/Synthetic)
 
 In active monitoring, the system acts as an investigator, periodically knocking on the doors of your devices to ask, "Are you still there? How are you performing?"

@@ -55,14 +55,6 @@ Query expansion acts as a **Recall** optimization strategy that uses increased *
 4. **Post-Processing:** Results are merged, **deduplicated**, and usually **reranked** to filter out noise.
 5. **Generation:** The cleaned context is passed to the generator.
 
-### Main Approaches to Query Expansion
-
-To keep your notes consistent with your new terminology, we should frame these approaches as the "how-to" for increasing **Semantic Coverage**.
-
-Here is the breakdown of the first major approach, formatted for your personal documentation.
-
----
-
 ## **Main Approaches to Query Expansion**
 
 ### **1. Synonym / Paraphrase Expansion**
@@ -183,8 +175,6 @@ Instead of transforming the user’s query into more queries, HyDE uses an LLM t
 - **Latency/Token Usage (Con):** You are generating a full (albeit short) paragraph before even starting the retrieval process.
 
 > **Note:** HyDE is a **Recall** powerhouse when you have a **Vocabulary Mismatch** (e.g., the user asks a casual question, but the documents are dense academic papers). The hypothetical answer "translates" the user's intent into the professional dialect of the corpus.
-
-Gemini said
 
 This final approach is the bridge between **Dense Retrieval** (semantic/vector-based) and **Sparse Retrieval** (keyword/BM25-based). It focuses on "textual overlap" rather than just conceptual meaning.
 

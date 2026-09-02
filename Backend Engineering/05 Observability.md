@@ -38,8 +38,6 @@ Causes (or root causes) are the specific, underlying technical failures deep wit
 
 ### Core Concepts
 
-Here is the breakdown rewritten with technical depth, using the terminology and context that backend engineers use day-to-day:
-
 - **Observability:** The ability to interrogate your system and understand its internal state based purely on the data it outputs. It provides the deep, granular context needed to debug unpredictable, novel issues (the "unknown unknowns") in production—allowing you to figure out exactly _why_ something broke without needing to push new code just to gather more clues.
 - ***Monitoring:** The continuous, reactive tracking of specific, predefined health metrics and Service Level Objectives (SLOs). It relies on high-level, aggregated data to act as your "check engine" light, answering one straightforward question: _Is the system currently healthy and operating within our expected baselines?_
 - **Alerting:** The automated, push-based routing of actionable system state changes to on-call operators (e.g., via PagerDuty). A well-tuned alerting strategy optimizes the signal-to-noise ratio to ensure engineers are only paged for critical, user-facing degradation, preventing alert fatigue.
@@ -311,8 +309,6 @@ There are two main strategies:
 
 If telemetry is the raw data and observability is the diagnostic capability, alerting is the sharp edge of the spear. It is the mechanism that actively interrupts a human being's day (or sleep) to fix a problem. When done poorly, a bad alerting strategy will cause severe engineer burnout, foster resentment, and ironically lead to longer outages because the team stops paying attention to the noise.
 
-Here is how to build a mature, sustainable alerting culture:
-
 ### The Core Philosophy
 
 **Alerting on Symptoms, Not Causes:** As we covered earlier, this is the golden rule. You do not page an engineer because CPU on `Node-5` hit 99% (a cause). You page an engineer because the 99th percentile response time for the checkout service just hit 10 seconds (the symptom). If a backend server dies, but the load balancer seamlessly shifts traffic and the user notices nothing, the alert should simply log a ticket for the morning, not wake someone up at 3:00 AM.
@@ -349,8 +345,6 @@ Not every problem is an emergency. A mature system strictly categorizes alerts i
 ## Debugging Production Issues
 
 The pager just went off at 2:00 AM. Your SLO-based alert triggered because the p99 latency on the checkout service spiked, and error rates are climbing. This is where the theory ends and practical observability begins.
-
-Debugging a live production incident is an exercise in managing panic through structured investigation. Here is how you combine metrics, traces, and logs to systematically hunt down and resolve the issue:
 
 ### Incident Triage & Dashboards
 

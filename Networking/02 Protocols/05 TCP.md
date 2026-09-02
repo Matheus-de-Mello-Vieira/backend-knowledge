@@ -182,8 +182,6 @@ $$\text{MSS} = \text{Path MTU} - \text{IP Header Size (typically 20B)} - \text{T
 - **Jumbo Frames:** Network fabrics configured with Jumbo Frames raise the MTU (commonly to `9000` bytes), which drastically raises the permissible MSS. This increases protocol efficiency by decreasing processing overhead for big data payloads.
 - **Algorithm Dynamics:** The configured MSS dictates packetization bounds and directly influences packet-batching logic like [Nagle's Algorithm](02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm), which holds back small segments until an MSS-sized frame can be filled or an outstanding ACK is received.
 
-Here is the streamlined, deeply integrated **Optimistic ACKing** section. It leverages the formulas and window mechanics from your newly expanded Congestion Control section to eliminate redundancy, making the notes read like a cohesive, professional deep dive.
-
 ## Optimistic ACKing
 
 **Optimistic ACKing** (also known as an _Optimistic Acknowledgement Attack_) is an exploitation technique where a receiver acknowledges TCP segments **before** they actually arrive at its network interface.

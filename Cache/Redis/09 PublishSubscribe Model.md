@@ -294,8 +294,6 @@ redis> PUNSUBSCRIBE news.*
 
 ## Demostration
 
-Here is the demonstration split into two separate consoles.
-
 **Console 1: The Subscriber**
 
 First, the client subscribes to the channel. Note that once the `SUBSCRIBE` command is issued, this client enters a listening state. The subsequent outputs appear asynchronously as they are sent by the publisher.

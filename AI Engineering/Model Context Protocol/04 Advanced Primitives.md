@@ -62,10 +62,6 @@ sequenceDiagram
     Host-->>PrimaryLLM: Injects final summary into main context
 ```
 
-#### Step-by-Step Breakdown
-
-Here is the rewritten **Step-by-Step Breakdown** for the Sampling execution flow. It incorporates the "Nested Sub-Routine" concept so that the trigger, the generation, and the final resolution are all mapped out chronologically.
-
 #### Step-by-Step Breakdown: The Nested Execution Flow
 
 Sampling rarely happens in a vacuum. It is almost always triggered as a sub-routine _while_ the server is already processing a primary request from the user's LLM.

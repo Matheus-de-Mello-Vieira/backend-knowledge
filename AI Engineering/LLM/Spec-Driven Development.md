@@ -231,13 +231,9 @@ This separation of concerns drastically improves system reliability because it p
 - **Reduced Hallucinations:** Lowers the risk of the model's hidden assumptions leaking directly into the final codebase, as the Coder Agent is instructed to _only_ obey the spec, not its own intuition.
 
 
-Here is the expanded section, formatted into a clean, actionable reference. To keep the document highly readable and avoid messy nested lists, I have structured the template components into a reference table, followed by the raw markdown scaffold you can copy and paste into your daily workflow.
-
 ### Practical Note Template
 
 Theory is only useful if it translates into execution. When drafting a specification for an AI agent, using a standardized, predictable format ensures that neither you nor the model misses critical constraints.
-
-Below is a breakdown of the core components every strong spec should include, followed by a raw markdown scaffold.
 
 #### Template Breakdown
 
@@ -250,8 +246,6 @@ Below is a breakdown of the core components every strong spec should include, fo
 |**Edge Cases**|Instructions for invalid input, partial input, and ambiguous cases.|Forces the model to write robust error handling rather than assuming the "happy path" will always occur.|
 |**Validation**|Deterministic checks, LLM grader criteria, and human review checkpoints.|Defines exactly how the system (or human) will prove that the generated implementation is correct.|
 #### Raw Markdown Scaffold
-
-You can copy and paste this block directly into your notes or prompt engineering environment to begin drafting:
 
 ```markdown
 ### Goal

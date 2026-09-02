@@ -41,8 +41,6 @@ Examples:
 - **Insider Threat:** If Bob is fired and his credentials are not immediately revoked, he may become an insider threat, using his lingering access to compromise the system's Integrity or Confidentiality.
 - **Password Rotation:** If Alice has been using the same password for years, the likelihood that Charlie will eventually crack it increases. Implementing a password rotation policy, such as every 90 days, significantly reduces this risk by limiting the attacker's "window of opportunity".
 
-Based on the provided materials, here is the section "Proper Procedures for Data Availability and Confidentiality" in English for your documentation.
-
 ## Access Control
 
 - **Definition:** Systems or equipment designed to restrict unauthorized access to specific locations, assets, or data.

@@ -288,8 +288,6 @@ This is the most prevalent topology in modern local networks. Every node is conn
 
 To complete your architectural survey, we must include the **Mesh Topology**. This is the "gold standard" for reliability and is the spiritual successor to the distributed defense models we discussed in the Cold War section.
 
-Here is the addition for your **Network Topology: The Architecture of Connectivity** section:
-
 ### Mesh Topology 
 If the Star topology is a hub-and-spoke and the Ring is a circle, the **Mesh** topology is a spiderweb. In this arrangement, nodes are interconnected with multiple redundant paths.
 

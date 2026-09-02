@@ -82,8 +82,6 @@ Notice that:
 
 ## Actions
 
-Below is a **concise, practical overview of `text/template` actions**, focused on what you can *do* with the library beyond simple interpolation. Each action includes **clear examples** aligned with the fraud / transaction domain you’re using.
-
 ### `if` / `else` — Conditional rendering
 
 Use `if` blocks to include or exclude parts of the prompt based on data presence or boolean flags.

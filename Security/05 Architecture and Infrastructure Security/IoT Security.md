@@ -85,7 +85,6 @@ Finally, a strong IoT architecture must weave these requirements through _every_
 - **Privacy by design:** Systems must inherently minimize data collection, protect what they do collect, and process it according to legal requirements.
 - **Interoperability:** Preventing vendor lock-in. Devices, gateways, and cloud services from different manufacturers should communicate smoothly using open standards.
 - **Lifecycle management:** The architecture must safely support the device from its factory provisioning, through years of patching and monitoring, all the way to its secure end-of-life decommissioning.
-- 
 ### Securing the Architecture Layers
 
 Applying defense-in-depth across the IoT ecosystem requires specific controls at every architectural layer:
@@ -101,8 +100,6 @@ Applying defense-in-depth across the IoT ecosystem requires specific controls at
 When we look at traditional IT security, the focus is almost exclusively on the "CIA Triad" (Confidentiality, Integrity, and Availability). However, because IoT systems bridge the digital and physical worlds, these objectives must expand significantly to prioritize human safety, physical interactions, and operational continuity.
 
 In many IoT scenarios, a paradigm shift occurs: integrity and availability often become more critical than confidentiality. A leaked temperature reading might be an incident, but a falsified reading that causes a boiler to overheat or a malicious command that disables a vehicle's brakes is a catastrophe.
-
-Here is a detailed breakdown of the security objectives that must be addressed when designing and defending IoT ecosystems:
 
 - **Safety:** The absolute highest priority in many deployments is to prevent cyber or operational failures from causing physical harm, equipment damage, or unsafe actuator behavior.
 	- Systems must prioritize fail-safe behavior when devices interact with people, industrial processes, vehicles, or healthcare environments. 
@@ -120,8 +117,6 @@ Here is a detailed breakdown of the security objectives that must be addressed w
 - **Traceability:** It is necessary to preserve records that show exactly who accessed what, which device performed which action, and when system changes occurred. This enables effective auditing, anomaly detection, post-incident forensics, and strict accountability across the entire device lifecycle. Even though edge devices are resource-constrained, establishing a reliable, tamper-evident audit trail at the gateway or platform level is critical for this objective.
 
 Developing an effective security strategy requires a structured understanding of the risks involved. The IoT risk model helps organizations identify what needs protecting, who might attack it, and the constraints that make defense challenging.
-
-Here is a breakdown of the risk model, expanding on the questions you provided and covering the common constraints, responsibilities, and prioritization heuristics.
 
 ## Risk Model
 ### Key Risk Questions
@@ -166,8 +161,6 @@ When everything is constrained, defenders need heuristics to determine where to 
 - **Management difficulty:** Assets that are hard to patch, replace, or physically secure require more urgent compensatory controls.
 - **Blast radius:** A gateway or hub compromise takes priority because it can affect multiple downstream endpoints simultaneously.
 - **Integrity and Availability focus:** In many IoT environments, integrity and availability outweigh confidentiality, as a falsified sensor reading or a blocked safety-critical command is generally much more severe than a leaked reading.
-Here is the breakdown of the **Threat Landscape** section, formatted for quick scanning with bolded identifiers and citations included.
-
 ## Threat Landscape
 
 IoT threats span endpoints, gateways, networks, cloud services, applications, and the physical environment. Because devices are often resource-constrained, widely distributed, and connected to real-world processes, a compromise can create both cyber and physical impact.
@@ -319,8 +312,6 @@ Responding to an IoT breach looks very different from a standard enterprise IT b
 - **Physical remediation:** Physical access risks or severely compromised local storage may require complete hardware replacement instead of a logical software fix.
 - **Safety overrides:** In industrial, automotive, or medical settings, physical safety overrides take absolute precedence over standard IT shutdown procedures.
 - **Compensating controls:** Long-lived devices may require compensating controls (like strict network isolation) during an incident if vendor patches are no longer available.
-Here is the breakdown of the **Representative Attack Cases** section. Reviewing these real-world incidents is one of the best ways to understand why the security controls we just covered are so crucial.
-
 ## Representative Attack Cases
 
 Real-world attacks demonstrate exactly how theoretical vulnerabilities translate into severe cyber and physical consequences.

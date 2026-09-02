@@ -78,8 +78,6 @@ The waterfall shows how long each phase took.
 * High `DNS lookup`, `Initial connection`, and `Waiting for server response` together.
   * Likely client-side network trouble, such as a VPN or unstable route.
 
-Here is a rewritten, highly polished version of your documentation. It improves the structural flow, enhances scannability with clearer formatting, and adds brief contextual explanations to make the technical steps more intuitive for the reader.
-
 ## Tier 2: MITM (Man-in-the-Middle) Proxy
 
 A debugging proxy intercepts and inspects network traffic flowing between a client and a server.
