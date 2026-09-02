@@ -35,81 +35,73 @@
 
 ## File Descriptors (FDs)
 
-A File Descriptor is a fundamental UNIX and Linux concept built entirely on the principle of **Indirection**. At its core, an FD is nothing more than a non-negative integer (e.g., `0`, `1`, `5`, `12`) returned by the kernel to a user-space process.
+A **File Descriptor (FD)** is a non-negative integer that a Unix-like process uses as a local handle for an open I/O resource. The integer itself contains no file data and is meaningful only inside that process's descriptor table. Many resources—not only filesystem files—use the same abstraction, allowing system calls such as `read()`, `write()`, and `close()` to operate through a common interface.
 
-Because of the overarching UNIX design philosophy—_"Everything is a file"_—this simple integer serves as the universal "coat check ticket" for almost all input/output resources in the operating system.
+### Descriptor Indirection
 
-Here is a rewritten and expanded version of that section. It clarifies exactly what the File Descriptor (FD) integer is doing and why the operating system requires multiple layers to connect that integer to a physical file.
+Each process has a **File Descriptor Table**. An FD is an index into this process-local table, and the corresponding entry refers to a kernel object called an **open file description**. The open file description represents one open instance of a resource and stores shared state such as the current file offset and [[06 Storage Management#Open Flags|file status flags]].
 
-### The Table Hierarchy
+For a regular file, the open file description ultimately refers to the filesystem object represented by structures such as its [[06 Storage Management#Inodes and Directory Entries|inode]]. The inode describes the filesystem object itself; it is not a universal final layer behind every FD. A socket instead refers to networking state, a pipe refers to a kernel pipe object, and event facilities such as `epoll` refer to their own kernel objects.
 
-When your program receives a File Descriptor (FD)—which is just a simple, non-negative integer like `3` or `5`—it doesn't actually possess the file. To maintain security and strict isolation, the operating system never lets your program hold the actual resource in its own memory.
+The distinction is important: an **inode** identifies a filesystem object, an **open file description** represents one open instance of a resource, and a **file descriptor** is one process's reference to that open instance.
 
-Instead, that integer acts as a starting point. When your program asks to read or write data, it hands the integer back to the kernel. The kernel then safely resolves that integer into a physical hardware action by following a chain of pointers through three distinct tables:
+Opening the same regular file twice normally creates two different open file descriptions even though both refer to the same inode:
 
-1. **The File Descriptor Table (Per-Process)**
-    - **The FD Connection:** The integer your program holds (e.g., `5`) is literally just the index number for this specific array.
-    - **What it is:** This is a private array completely isolated to your specific process.
-    - **Its Job:** It maps your program's local, arbitrary integer to a broader system-wide session. The entry at index 5 doesn't contain the file data; it contains a pointer to the next table.
-2. **The Open File Table (System-Wide)**
-    - **The FD Connection:** The index from your private process array points directly to an entry in this global kernel table.
-    - **What it is:** A shared table that tracks the active "session" or connection of the open file.
-    - **Its Job:** This table tracks the state of your connection, including your access permissions and your current Read/Write offset. Because the offset is tracked here, sequential `read()` calls will naturally walk forward through a file without the programmer needing to manually track their byte position.
-3. **The Inode Table (System-Wide)**
-    - **The FD Connection:** The state entry in the Open File Table points down to a specific Inode here.
-    - **What it is:** The final global table that represents the actual physical or virtual reality of the resource.
-    - **Its Job:** This table holds the absolute metadata of the file, completely independent of how any process is reading it. This points the kernel to where the data physically lives, such as a block of data on your hard drive.
+```c
+int a = open("data.txt", O_RDONLY);
+int b = open("data.txt", O_RDONLY);
+```
 
-**Why the separation matters:**
-By breaking this connection into three layers, the OS can manipulate how files behave behind the scenes. For example, if you duplicate an FD using the `dup()` system call, the kernel simply takes a new integer index in your private File Descriptor Table and points it to the exact same entry in the Open File Table. Your program thinks it has two different files, but the OS knows they are sharing the exact same underlying connection.
-  
+The descriptors can therefore maintain independent file offsets. By contrast, duplicating a descriptor creates another descriptor that refers to the same open file description:
+
+```c
+int a = open("data.txt", O_RDONLY);
+int b = dup(a);
+```
+
+Now `a` and `b` share the same open-file offset and file status flags. A similar sharing relationship exists when `fork()` causes a child process to inherit descriptors that refer to the same open file descriptions as the parent's descriptors. Descriptor-specific properties, such as the close-on-exec flag, still belong to individual descriptor-table entries rather than to the shared open file description.
+
 ### Types of File Descriptors
 
-Because the OS routes the data behind the scenes, your code can use the exact same `read()` and `write()` system calls regardless of what the underlying resource actually is.
+Because the descriptor is only a handle, the same integer interface can represent several kinds of resources:
 
-- **Regular Files:** The most common type. An FD pointing to an Inode that represents a literal block of data on your physical hard drive (e.g., `database.db` or `config.json`).
-- **Standard Streams (0, 1, 2):** When a process launches, the kernel pre-allocates three FDs automatically.
-    - `0` (**stdin**): Reads input, defaulting to the user's keyboard.
-    - `1` (**stdout**): Writes output, defaulting to the terminal screen.
-    - `2` (**stderr**): Writes error messages, also defaulting to the screen but kept logically separate so it can be routed elsewhere if the program crashes.
-- **Network Sockets:** FDs created via the `socket()` system call. Instead of pointing to a disk, the Open File Table points directly to a massive kernel-space TCP/IP data structure. When you execute `write(fd, data)`, the kernel intercepts it, wraps the data in TCP headers using the IP/Port stored in its internal structure, and fires it out of the physical Network Interface Card (NIC).
-- **Pipes (IPC):** FDs used for Inter-Process Communication. When you pipe commands in a terminal (e.g., `cat logs | grep error`), the OS creates a unidirectional, purely in-RAM data channel. It hands a "write-end" FD to the first process and a "read-end" FD to the second. There is no disk and no network involved.
-- **Device Files (`/dev`):** Hardware components are abstracted as files. If you open `/dev/urandom`, the kernel hands you an FD. When you `read()` from it, you aren't reading a file—the OS hardware dynamically generates random numbers and streams them into your buffer. Writing to `/dev/null` simply tells the kernel to instantly discard the data.
-- **Event Monitors (`epoll` / `kqueue`):** Advanced system calls allow you to create a special FD whose sole purpose is to monitor _other_ FDs. High-performance web servers use an `epoll` FD to watch thousands of network socket FDs simultaneously, waiting for the kernel to notify them the exact millisecond one receives new network data.
+- **Regular Files:** The open file description refers to a filesystem object, whose persistent identity and storage mapping are represented through structures such as an inode.
+- **Standard Streams (`0`, `1`, `2`):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
+- **Network Sockets:** A descriptor can refer to kernel networking state representing a socket. `read()` and `write()` then receive or send bytes through the networking stack rather than through a filesystem file.
+- **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
+- **Device Files (`/dev`):** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
+- **Event Facilities:** Interfaces such as Linux `epoll` can themselves return descriptors used to monitor other descriptors.
 
 ### The Universal Interface
 
-Because all these diverse resources are wrapped in the exact same integer abstraction, low-level C code can handle them identically:
+Because these resources share the descriptor abstraction, low-level code can often process them through the same `read()` and `write()` interface:
 
 ```c
-// This function doesn't care WHAT the fd is.
-// It could be a text file, a TCP socket to Japan, or a local pipe.
 void stream_data(int read_fd, int write_fd) {
     char buffer[4096];
     ssize_t bytes_read;
 
-    // Read from the source
     while ((bytes_read = read(read_fd, buffer, sizeof(buffer))) > 0) {
-        // Write to the destination
-        write(write_fd, buffer, bytes_read); 
+        write(write_fd, buffer, bytes_read);
     }
 }
 ```
 
-### Manipulating the Open File Table
+The function does not need to know whether `read_fd` represents a regular file, pipe, or socket as long as that resource supports the requested operation.
 
-While the file descriptor itself is just a static integer array index, the system calls that act upon it are what drive actual state changes within the kernel's underlying Open File Table.
+### Operations and Shared Open-File State
 
-- **Stateful Operations (`read` & `write`):** When you execute a standard `read()` or `write()`, the kernel processes the requested bytes and automatically advances a hidden **File Offset** pointer stored inside the system-wide Open File Table. This means sequential calls to `read()` will naturally walk forward through a file, pulling the next continuous chunk of data each time without the programmer needing to manually track their position.
-- **Manual Navigation (`lseek`):** If you need to jump to a specific location in a regular file (e.g., to read a specific database record or rewrite a specific header), you use `lseek()`. This system call does not transfer any data; it simply tells the kernel to fast-forward or rewind the File Offset pointer to a specific byte index. _(Note: `lseek` only works on physical/block resources; you cannot seek a network socket or a pipe)._
-- **Stateless Operations (`pread` & `pwrite`):** In multi-threaded applications, relying on the shared Open File Table's hidden offset is highly dangerous. If Thread A and Thread B both call `read()` on the same file descriptor simultaneously, a data race occurs, and they will scramble the file offset. `pread()` (positional read) and `pwrite()` solve this by requiring you to pass an explicit byte offset as an argument. They perform the I/O at that exact physical location and **do not** update the shared Open File Table offset, allowing thousands of concurrent threads to safely hammer the exact same file descriptor without requiring expensive mutex locks.
-- **Resource Duplication (`dup` & `dup2`):** These system calls allow a process to clone a file descriptor. The kernel simply takes a new integer index in your Per-Process File Descriptor Table and points it to the exact same entry in the Open File Table. This is the underlying magic of terminal redirection (like `ls > output.txt`)—the shell opens the text file, uses `dup2()` to overwrite standard output (`fd 1`) with the text file's descriptor, and instantly tricks the child process into writing to the disk instead of the screen.
-- **Zero-Copy Transfer (`sendfile`)**: Traditionally, sending a file over a network requires a `read()` to pull data from disk into a user-space buffer, followed by a `write()` to push it back down into the kernel's network socket buffer. This wastes CPU cycles on context switches and redundant memory copying. The `sendfile()` system call solves this by transferring data directly between two file descriptors (typically a local file and a network socket) entirely within the kernel space. By bypassing user-space completely—a technique known as "zero-copy" I/O—it allows high-performance web servers to stream massive amounts of data (like video or static assets) to clients with minimal CPU overhead.
+For seekable resources such as regular files, ordinary `read()` and `write()` operations use the current offset stored in the **open file description** and advance it as data is transferred. Consequently, descriptors created with `dup()` or inherited through `fork()` can observe changes to the same shared offset.
 
-> [!note] FD Exhaustion (FD Leaks)
+- **Manual Navigation (`lseek`):** `lseek()` changes the current file offset without transferring data. It works only for resources that support seeking; pipes, FIFOs, and sockets are non-seekable and reject this operation.
+- **Positional I/O (`pread` and `pwrite`):** These calls take an explicit byte offset and do not modify the shared open-file offset. They are useful when concurrent operations should not coordinate through one mutable offset. They do not make overlapping accesses inherently safe; concurrent writes to the same byte ranges can still require application-level synchronization.
+- **Descriptor Duplication (`dup` and `dup2`):** These calls allocate another descriptor that refers to the same open file description. Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open file description before launching another program.
+- **Kernel-Space Transfer (`sendfile`):** `sendfile()` can transfer file data toward another compatible descriptor, commonly a socket, without first copying the payload through a user-space buffer. This can reduce CPU copying and memory-bandwidth consumption for file-to-network workloads.
+
+> [!note] FD Exhaustion
 >
-> The Per-Process File Descriptor Table is a fixed-size array in system RAM. Operating systems enforce a strict limit on how many FDs a single process can have open at once (historically `1024`, though easily increased today). If a program opens files or network connections but forgets to call `close(fd)` when finished, it "leaks" descriptors. Once the table fills up, the OS will aggressively refuse to open anything else, resulting in the fatal `EMFILE` ("Too many open files") error.
->
+> Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`. If a program repeatedly opens files, sockets, or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files"). System-wide limits can also exist independently of the per-process limit.
+
 ## Producing machine code
 
 During compilation, high-level human-readable code is translated into low-level assembly language. Given this C code:
@@ -157,12 +149,12 @@ By doing this work at compile time, the resulting program is smaller (takes up l
 > [!note] The Side Effects of Compiler Optimization
 > While optimizations make programs faster and smaller, altering the underlying machine code can introduce unintended consequences, particularly in low-level systems programming.
 > - **Debugging Nightmares:** Because the compiler fundamentally changes the structure of the code—removing variables entirely or rearranging logic—the resulting assembly no longer maps 1:1 with your human-readable source code. If you try to step through a highly optimized program with a debugger, variables you want to inspect may simply not exist in memory or CPU registers, making troubleshooting extremely difficult.
-> - **Breaking Hardware Polling:** As noted in the [Device Drivers](00%20System%20Architecture%20Overview.md#Device%20Drivers) section, high-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume that since the _software_ isn't changing `status` inside the loop, the check is redundant. It will optimize the read away, breaking the driver. To prevent this, developers must use the `volatile` keyword in C, which strictly forbids the compiler from optimizing reads and writes to that specific memory location.
+> - **Breaking Hardware Polling:** As noted in the [[00 System Architecture Overview#Device Drivers|Device Drivers]] section, high-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume that since the _software_ isn't changing `status` inside the loop, the check is redundant. It will optimize the read away, breaking the driver. To prevent this, developers must use the `volatile` keyword in C, which strictly forbids the compiler from optimizing reads and writes to that specific memory location.
 > - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. In an isolated, single-threaded process, this is perfectly safe. However, if multiple threads are running concurrently across different CPU cores, this reordering can cause disastrous synchronization bugs (data races) if one thread depends on memory being updated in the exact sequential order written in the original source code.
 
 ### SIMD in code generation
 
-While you will rarely write [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) assembly by hand, understanding how compilers use it is crucial for analyzing performance. When a loop's memory layout and dependency pattern make it safe to do so, the compiler performs **auto-vectorization**—automatically replacing scalar instructions with vector instructions.
+While you will rarely write [[04 Inside The CPU#Single Instruction, Multiple Data (SIMD)|SIMD]]) assembly by hand, understanding how compilers use it is crucial for analyzing performance. When a loop's memory layout and dependency pattern make it safe to do so, the compiler performs **auto-vectorization**—automatically replacing scalar instructions with vector instructions.
 
 This has a profound impact on throughput. SIMD does not split your program into multiple instruction streams; instead, it dramatically increases the amount of data processed per instruction by applying one decoded operation across multiple packed data lanes simultaneously.
 
@@ -180,7 +172,7 @@ At the machine-code level, this means your instruction stream often stops being 
 
 - **Direct-to-Binary (Skipping the Assembly File):** While compilation is conceptually a multi-step pipeline (Source Code -> Assembly -> Machine Code), modern compilers (like Clang or GCC) often skip generating a physical, intermediate assembly text file. To optimize the build process and reduce disk I/O, they translate the high-level code directly into binary object files in memory.
 - **Read-Only Text Segment (Security & Caching):** Once the machine code (the Text/Code segment) is loaded into virtual memory, the OS enforces strict hardware-level protection marking that region as **read-only** and **executable** (a principle known as Write XOR Execute, or W^X).
-       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#Buffer%20Overflow)) to inject and execute their own rogue machine instructions.
+       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [[#Buffer Overflow|buffer overflows]]) to inject and execute their own rogue machine instructions.
        - **Cache Coherency:** Because the CPU knows the instructions will never change, it can aggressively load them into the L1 cache without ever worrying about complex cache coherency issues or invalidating the data.
 - **Just-In-Time (JIT) and Interpreted Languages:** The traditional ahead-of-time (AOT) assembly step is bypassed entirely by languages like Python, JavaScript, and Java. Instead of pre-compiling a static executable bound to a specific CPU architecture, these languages rely on a runtime engine. The engine either interprets the code line-by-line or uses a JIT compiler to generate the necessary raw machine instructions on the fly, right as the program is executing.
        - **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
@@ -349,7 +341,7 @@ main()
     - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
 - **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
 - **Cache Coherency Penalty:** Reads of global variables can be cache hits, but writes in a modern multi-core system can be costly. If Core A updates a global variable, the hardware invalidates copies held by other cores. A later access on another core may need to obtain the updated cache line, potentially from another cache or RAM.
-- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
+- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [[03 Memory Management#Spatial Locality|Spatial Locality]]. Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
 
 ## The Heap
 
@@ -364,92 +356,176 @@ main()
 - **The Program Break (`brk`):** The absolute "top" boundary of the heap's available memory is called the Program Break.
        - To request more raw memory from the kernel, the allocator uses the `brk` or `sbrk` system calls to push the Program Break upwards.
        - Unlike the Stack Pointer, we cannot simply lower the Program Break to deallocate memory, because heap allocations are completely out of order (fragmented).
-- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [Escape Analysis](Go%20Internals.md#Escape%20Analysis)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
+- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [[Go Internals#Escape Analysis|Escape Analysis]]—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
 
 ### The `mmap` System Call (Memory Mapping)
 
-While the traditional Heap grows sequentially via the `brk` system call, modern allocators use `mmap` (Memory Map) to parachute chunks of memory directly into the wide-open virtual address space between the Stack and the Heap.
+`mmap` creates a region in a process's **virtual address space** and defines what backs that region, how it may be accessed, and whether changes are private or shared. The mapping does not necessarily allocate physical RAM immediately; physical pages are commonly attached lazily as the process accesses the mapped addresses.
+
+Unlike `brk`, which historically expands the heap by moving the program break, `mmap` can create independent virtual-memory regions wherever the operating system finds suitable address-space ranges. The backing may be an existing file or anonymous memory with no file associated with it.
 
 ```mermaid
 flowchart LR
-    subgraph Process_A["Process A (Virtual Memory)"]
+    subgraph Process_A["Process A — Virtual Address Space"]
         direction TB
-        A_Mmap_File["mmap (MAP_SHARED)"]
-        A_Mmap_Anon["mmap (MAP_ANONYMOUS)"]
+        A_Mmap_File["File-backed mmap"]
+        A_Mmap_Anon["Anonymous mmap"]
     end
 
-    subgraph Process_B["Process B (Virtual Memory)"]
+    subgraph Process_B["Process B — Virtual Address Space"]
         direction TB
-        B_Mmap_File["mmap (MAP_SHARED)"]
+        B_Mmap_File["Shared file-backed mmap"]
     end
 
-    subgraph Physical_RAM["Kernel Space (Physical RAM)"]
+    subgraph Physical_RAM["Physical RAM"]
         direction TB
-        PageCache["OS Page Cache"]
-        AnonRAM["Zero-Filled Physical RAM"]
+        PageCache["File-backed Pages / Page Cache"]
+        AnonRAM["Anonymous Pages"]
     end
 
-    Disk[("Hard Drive")]
+    Storage[("Persistent Storage")]
+    Swap[("Swap")]
 
-    %% Connections
-    A_Mmap_File -- MMU Hardware --> PageCache
-    B_Mmap_File -- MMU Hardware --> PageCache
-    A_Mmap_Anon -- MMU Hardware --> AnonRAM
-    
-    PageCache <-->|Page Faults / msync| Disk
+    A_Mmap_File --> PageCache
+    B_Mmap_File --> PageCache
+    A_Mmap_Anon --> AnonRAM
 
-
+    PageCache <--> Storage
+    AnonRAM -. under memory pressure .-> Swap
 ```
 
 #### The OS Page Cache
 
-To understand `mmap`, you must understand the OS Page Cache. The Page Cache is not a separate physical chip on your motherboard; it is simply a dynamic, massive pool of **standard physical RAM residing in Kernel Space**.
+The **page cache** is a kernel-managed cache of file data stored in physical RAM. It reduces storage I/O by keeping recently or frequently accessed portions of files in memory.
 
-- **Greedy by Design:** The OS actively hates unused RAM. Any physical memory not currently assigned to an active application is automatically consumed by the kernel to expand the Page Cache.
-- **The Unified Middleman:** It acts as a global deduplicator for the entire system. Whether a program uses standard `read()`/`write()` calls or maps a file via `mmap`, the data lands in this exact same pool of Kernel Space RAM.
-- **4KB Chunks:** The kernel manages this memory strictly in 4KB blocks called "pages."
+- **Opportunistic Use of RAM:** Operating systems generally use otherwise idle physical memory for caches because cached pages can often be reclaimed later if applications need more RAM.
+- **Shared File Cache:** Buffered `read()` / `write()` operations and file-backed mappings can operate on the same cached file pages. The page cache is therefore a system-wide cache of file contents rather than a separate cache for each process.
+- **Page Granularity:** File-backed memory is managed in page-sized units. On many systems the base page size is commonly 4 KiB, although the exact size depends on the architecture and operating system.
 
-#### What "Mapping" Actually Means
-
-In operating system terminology, the word "mapping" does not strictly require a file. Instead, **mapping is the act of connecting a Virtual Address to a Physical Resource.** It is simply the OS configuring your process's Page Table to tell the CPU where to route memory requests.
-
-- **File-Backed Mapping:** Virtual Address → Page Table → Physical RAM (Page Cache) → Hard Drive File.
-- **Anonymous Mapping:** Virtual Address → Page Table → Physical RAM (and it stops there).
-
-Because the `mmap` system call allows the kernel to parachute these virtual addresses anywhere in the process's memory layout, it is used as a highly flexible allocation tool for pure RAM, even when no file system is involved.
+> [!example] LMDB — Delegating Working-Set Management to the Operating System
+>
+> [[../Databases/LMDB#Storage Model|LMDB]] stores its ordered key-value data in a file-backed B+ tree and memory-maps the database into the process's virtual address space. Once the necessary tree pages are resident in RAM, reads can operate directly on those mapped pages rather than first copying them into a separate database buffer pool.
+>
+> The operating system therefore participates directly in managing the database's resident working set. Frequently accessed pages tend to remain in memory, while colder clean pages can be reclaimed because their contents can be loaded again from the database file.
 
 #### File-Backed Mapping
 
-Mapping a file creates the illusion that the entire file is just a standard array sitting in RAM.
+`mmap` is not primarily about creating the illusion that storage is RAM; the broader **virtual-memory system** already provides mechanisms for keeping only part of a process's address space resident.
 
-- **Bypassing Syscalls:** `mmap` entirely eliminates the overhead of copying data back and forth between the physical disk, the kernel, and user space.
-- **Lazy Loading & Page Faults:** Mapping a 1GB file does not immediately load 1GB of data; it only configures the virtual addresses. When the CPU touches an unmapped address, it triggers a hardware trap called a **Page Fault**. The OS pauses execution, fetches the required page into the Page Cache, and then resumes execution; the faulting access is much slower than an access to a resident page.
+The important distinction is that a file-backed mapping connects a virtual-memory region directly to an **existing file**. The file itself becomes the recoverable backing store for clean mapped pages.
+
+Conceptually:
+
+#### Virtual Address → mapped file region → resident page-cache page when needed
+
+When the page is resident, the page table translates the virtual address to a physical page. If it is not resident, a page fault transfers control to the kernel, which uses the mapping metadata to determine which file and offset must be loaded.
+
+- **Avoiding an Extra Copy:** With conventional buffered `read()`, file data commonly enters the page cache and is then copied into an application-provided buffer. With `mmap`, the cached file page itself can be mapped into the process's address space, avoiding that additional page-cache-to-user-buffer copy.
+- **Ordinary Memory Access:** Once resident, mapped file contents are accessed with normal CPU loads and stores rather than requiring a `read()` system call for each access. Page faults and storage I/O still involve the kernel.
+- **Lazy Loading:** Mapping a 1 GiB file does not immediately consume 1 GiB of physical RAM. The mapping reserves virtual address space, and individual file pages can be loaded only when they are accessed.
+- **Cheap Eviction of Clean Pages:** If a clean file-backed page becomes cold, the kernel can simply discard it from RAM. Its contents do not need to be copied to swap because the original file already contains the data. A later access can load that page from the file again.
+
+> [!example] Lucene — Searching an Index Larger Than Available RAM
+>
+> [[../AI Engineering/Lexical Information Retrieval#Apache Lucene (Java)|Lucene]]) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
+>
+> Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
+> [!example] llama.cpp — Mapping Read-Only Model Weights
+>
+> During [[../AI Engineering/LLM/LLM Processing Pipeline#Inference vs. Training|LLM inference]], billions of frozen model parameters are repeatedly read while tokens pass through the Transformer layers. `llama.cpp` can memory-map the model file so CPU inference can access resident weight pages without first copying the complete model into a second anonymous heap allocation.
+>
+> These persistent model weights are different from the [[../AI Engineering/LLM/LLM Processing Pipeline#6. Iterative Generation Loop|KV Cache]], which is temporary runtime state produced from the current context.
+>
+> Mapping a model does not mean that arbitrarily large models can be executed efficiently with little RAM. Dense inference repeatedly needs most of the model weights. If the active weight working set exceeds available RAM and pages must constantly be reloaded from storage, inference can become dominated by page faults and storage latency. GPU offloading and VRAM placement remain separate memory-placement decisions.
+> [!example] SQLite — `mmap` as an Optional Optimization
+>
+> [[../Databases/SQLite#Storage Model|SQLite]] normally manages database pages using its own pager and page cache, but it can optionally memory-map portions of the database for reads. When a suitable page is mapped, SQLite can inspect the file-backed page directly rather than copying it into another SQLite-managed buffer.
+>
+> SQLite demonstrates that `mmap` is not automatically the best I/O mechanism. It can reduce copying and explicit read operations, but page faults make some I/O occur implicitly as a consequence of ordinary memory access. Explicit I/O gives the application more direct control over when reads happen and how I/O errors are handled.
 
 #### Anonymous Mapping (`MAP_ANONYMOUS`)
 
-This flag bypasses the file system entirely to provide pure, file-less RAM directly to a process. While it functions as a raw memory allocator, it utilizes a brilliant architectural shortcut to save time and hardware resources.
+`MAP_ANONYMOUS` creates a virtual-memory mapping with **no file backing**. Its contents initially read as zero, and physical pages are commonly allocated only when they are actually needed.
 
-- **Large Heap Allocations:** When `malloc()` needs to allocate massive objects (typically anything > 128KB), it automatically bypasses the standard Heap and uses an anonymous `mmap`. This prevents severe memory fragmentation because the entire block can be instantly deleted and returned to the OS (via `munmap()`) without leaving a permanent hole in the standard Heap.
-- **The "Demand Zero" Magic Trick:** If you ask for 1GB of anonymous memory, the kernel does not freeze your program to fetch and scrub 1GB of physical RAM upfront. Instead, it uses **Demand Zero Paging**:
-    - **The Illusion:** The OS points all of your newly mapped virtual addresses to a _single_, shared 4KB page in physical RAM that is permanently filled with zeros, marked as Read-Only. If your program reads the array, it just reads this single zeroed page.
-    - **The Write Fault (The Reality):** The exact millisecond your program attempts to _write_ data to a specific virtual address, the CPU hits the Read-Only lock and triggers a Page Fault.
-    - **Just-in-Time Allocation:** The kernel intercepts the fault, grabs a real, free 4KB physical page, scrubs just that single page with zeros, updates your Page Table to point to it (with Write permissions), and lets your program proceed. You only consume physical RAM at the exact moment you write to it.
+Once populated, these pages behave like ordinary anonymous process memory. Because there is no original file from which modified contents can be reconstructed, the operating system cannot simply discard an anonymous page that still contains live data. Under memory pressure, such pages may instead be moved to **swap**, if swap is available.
 
-#### Memory Visibility & IPC
+Conceptually:
 
-Because `mmap` controls how virtual addresses route to physical RAM, it is the ultimate tool for Inter-Process Communication (IPC).
+#### Virtual Address → anonymous physical page → swap if the page must be evicted
 
-- **`MAP_SHARED`:** If two processes map the exact same file, the OS points their isolated virtual addresses to the exact same physical RAM chips in the Page Cache. Writes by one process are instantly visible to the other, completely bypassing kernel communication overhead.
-- **File System Security:** The OS secures shared memory using standard file permissions. If a process does not have OS-level write access to the underlying file, the kernel blocks the mapping attempt.
-- **Total Invisibility:** If a parent creates a `MAP_ANONYMOUS | MAP_SHARED` mapping _before_ calling `fork()`, the child inherits the page tables. They now share RAM that lacks a filename or file descriptor, making it invisible and inaccessible to any other process on the system.
-- **Copy-on-Write (`MAP_PRIVATE`):** Maps shared memory strictly as Read-Only. The exact moment a process attempts to execute a write, the hardware MMU intercepts the action and creates a secret, private copy of that 4KB page in RAM, leaving the original data untouched.
+This is the major distinction from a clean file-backed page:
 
-> [!note] Best Practices & Edge Cases
-> - **Manual Cleanup:** Memory is not garbage collected. The program must explicitly call `munmap()` to destroy the mapping and release the RAM.
-> - **Persisting Data:** The kernel lazily writes "dirty" (modified) shared pages back to the disk. Developers must explicitly call `msync()` to force a save and prevent data loss during a crash.
-> - **Thrashing:** Accessing random addresses across a mapped file that is significantly larger than the available physical RAM forces the kernel to constantly drop and fetch pages. This destroys performance, making the CPU wait for the hard drive's mechanical latency.
-> - **Swap Space:** If physical RAM runs out, the kernel may write inactive `MAP_ANONYMOUS` pages to the hard drive's Swap Partition to keep the system running.
+- **File-backed page:** can be discarded and reconstructed from the original file.
+- **Anonymous page:** must remain in RAM or have its contents preserved somewhere such as swap.
+- **Large Allocations:** Some memory allocators use anonymous `mmap` for sufficiently large allocations rather than extending the traditional heap with `brk`. The exact threshold and strategy depend on the allocator and configuration.
+- **Independent Deallocation:** A separately mapped region can be returned to the operating system with `munmap()` without requiring the surrounding heap layout to shrink.
+- **Demand-Zero Paging:** Requesting a large anonymous mapping does not normally cause every corresponding physical page to be allocated immediately. The kernel can defer allocation until pages are first accessed.
+    - **Initial State:** Newly allocated anonymous memory must appear zero-initialized to the process.
+    - **First Write:** When a process first writes to a page that has not yet received private physical storage, a page fault can transfer control to the kernel.
+    - **Physical Allocation:** The kernel allocates a physical page, ensures it is zero-initialized, updates the page table, and resumes execution.
+    - **Shared Zero-Page Optimization:** Some operating systems, including Linux, can optimize reads from untouched anonymous memory by mapping many virtual pages to a shared read-only zero page. The first write then causes a private physical page to be allocated.
+
+#### Memory Visibility & Inter-Process Communication (IPC)
+
+Mappings can also be used to make the same underlying physical pages accessible from multiple processes.
+
+##### `MAP_SHARED`
+
+When multiple processes create compatible `MAP_SHARED` mappings of the same file region, their different virtual addresses can ultimately refer to the same underlying file-backed physical pages.
+
+Changes to shared mapped memory can therefore be observed by other processes without copying the data through a separate IPC channel such as a pipe or socket.
+
+`MAP_SHARED` provides the **shared storage**, but not synchronization. Processes still need mechanisms such as locks, atomic operations, or other concurrency protocols to determine when data is safe to read or modify.
+
+For file-backed shared mappings, write permissions also depend on how the file was opened and the protection requested for the mapping.
+
+##### Anonymous Shared Mappings
+
+A process can also combine:
+
+```c
+MAP_ANONYMOUS | MAP_SHARED
+```
+
+to create shared memory without an underlying file.
+
+If such a mapping exists before `fork()`, the child inherits the mapping and both processes can access the same underlying anonymous pages. The mapping has no filesystem pathname, but access is not inherently limited to exactly those two processes; the exact sharing possibilities depend on how the mapping is created and distributed by the operating system.
+
+##### Copy-on-Write (`MAP_PRIVATE`)
+
+`MAP_PRIVATE` creates a **private copy-on-write mapping**.
+
+Reads may initially use the same file-backed physical pages as other mappings. However, if the process writes to a mapped page, the kernel creates a private anonymous copy of that page for the writing process.
+
+The modification is therefore:
+
+- visible to the writing process;
+- not visible through other processes' mappings of the original file;
+- not written back to the underlying file through that private mapping.
+
+The mapping may still be writable from the process's perspective when created with `PROT_WRITE`; `MAP_PRIVATE` does not mean read-only.
+
+> [!example] PostgreSQL — Shared Memory Across Backend Processes
 >
+> [[../Databases/PostgreSQL#Process Architecture|PostgreSQL]] uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
+>
+> Each backend keeps its own virtual address space, but selected mappings can ultimately refer to the same physical pages. `mmap` provides the shared memory itself; PostgreSQL still requires locks, atomics, and other synchronization mechanisms to coordinate access safely.
+
+#### Best Practices & Edge Cases
+
+When using `mmap`, several lifecycle and performance characteristics matter:
+
+- **Unmapping:** `munmap()` removes a mapping from the calling process's virtual address space. This does not necessarily remove the corresponding physical page from RAM. File-backed pages, for example, may remain in the page cache or remain mapped by other processes.
+- **Process Termination:** Explicit `munmap()` is necessary when a process wants to release a mapping during its lifetime, but the operating system automatically removes the process's mappings when the process exits.
+- **Dirty Shared Pages:** Modified `MAP_SHARED` file-backed pages are eventually written back by the operating system. `msync()` can be used when an application needs greater control over when changes are synchronized with the backing file. Exact durability guarantees across crashes or power failures depend on the operating system, filesystem, storage device, and synchronization options being used.
+- **Thrashing:** Mapping a file larger than RAM is not inherently problematic. Performance degrades when the **actively accessed working set** exceeds available physical memory. The kernel may then repeatedly evict and reload pages, causing execution to become dominated by storage latency.
+- **Swap:** Anonymous pages cannot normally be reconstructed from an original file. Under memory pressure, inactive anonymous pages may therefore be written to swap so their physical frames can be reused.
+
+The central distinction is therefore not simply **RAM versus disk**. Both anonymous memory and file-backed mappings participate in the virtual-memory system. The difference is **where an evicted page can be reconstructed from**:
+
+- file-backed mapping → the original file;
+- anonymous memory → RAM or a temporary backing mechanism such as swap.
+
 ### Pointers
 
 - **The Concept:** A pointer is simply a variable that stores a raw memory address instead of a standard value. They can point to data on the Stack, the Heap, or the Data section.
@@ -474,7 +550,7 @@ Because `mmap` controls how virtual addresses route to physical RAM, it is the u
 ### Performance (Stack vs Heap)
 
 - **Allocation Overhead:** Stack allocation commonly requires only an adjustment to the Stack Pointer. Heap allocation generally performs more allocator bookkeeping and may request additional memory from the OS, so it can cost more than stack allocation.
-- **Cache Efficiency:** The Stack is tightly packed and can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Heap allocations may be scattered, so pointer-heavy access patterns can produce more cache misses and more RAM accesses. This depends on the allocator and workload.
+- **Cache Efficiency:** The Stack is tightly packed and can benefit from [[03 Memory Management#Spatial Locality|Spatial Locality]]. Heap allocations may be scattered, so pointer-heavy access patterns can produce more cache misses and more RAM accesses. This depends on the allocator and workload.
 
 ### Bulk Allocations
 

@@ -171,33 +171,33 @@ While increasing the page size can reduce the total number of required entries�
 > - $V$ = virtual-address width in bits
 > - $P$ = page size in bytes
 > - $E$ = PTE size in bytes
-> 
-> The virtual address space contains $2^V$ bytes. 
+>
+> The virtual address space contains $2^V$ bytes.
 > The number of possible virtual pages is $\frac{2^V}{P}$, so a flat table requires:
 > $$S_{\text{flat}} = \frac{2^V E}{P} \text{ bytes}$$
-> 
+>
 > Its space complexity is tightly:
 > $$\boxed{\Theta\left(\frac{2^V E}{P}\right)}$$
-> *This does not depend on how many pages are actually mapped.*
-> 
+> _This does not depend on how many pages are actually mapped._
+>
 > **Example 1: 4 KiB pages**
 > - $V = 48$
 > - $P = 4 \text{ KiB} = 2^{12} \text{ bytes}$
 > - $E = 8 \text{ bytes} = 2^3$
-> 
-> The number of possible virtual pages is $2^{48-12} = 2^{36}$. 
+>
+> The number of possible virtual pages is $2^{48-12} = 2^{36}$.
 > The table requires:
 > $$2^{36} \times 2^3 = 2^{39} \text{ bytes} = 512 \text{ GiB}$$
-> 
+>
 > **Example 2: 2 MiB pages**
 > - $P = 2 \text{ MiB} = 2^{21} \text{ bytes}$
-> 
+>
 > The table requires:
 > $$2^{48-21} \times 2^3 = 2^{27} \times 2^3 = 2^{30} \text{ bytes} = 1 \text{ GiB}$$
 
 #### Multi-Level Paging as a Sparse Radix Tree
 
-Multi-level paging solves the sparsity problem by splitting the VPN into smaller indexes and organizing the mappings using the same mechanism as a [Radix Tree](../Data%20Structures.md#Radix%20Tree).
+Multi-level paging solves the sparsity problem by splitting the VPN into smaller indexes and organizing the mappings using the same mechanism as a [[../Data Structures#Radix Tree|Radix Tree]].
 
 Each group of VPN bits selects an entry at one level of the hierarchy. That entry either points to the next page-table level or indicates that no mappings exist for the entire virtual-address range represented by that branch.
 
@@ -425,7 +425,6 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > L+\frac{M}{B}  
 > \right)  
 > \right)  
-> $$
 > becomes:
 > $$
 > \boxed{  
@@ -667,6 +666,7 @@ Contrary to what the name implies, a page fault does not necessarily mean data m
 When a fault occurs, the CPU hands control over to the operating system to determine if the error is recoverable. If the access is valid but unready (like demand paging or CoW), the kernel creates or modifies the mapping behind the scenes and resumes the process. If the access is genuinely invalid, the kernel terminates the process.
 
 This separation of concerns is fundamental to modern computing: the **hardware (MMU)** blindly detects and enforces the current rules, while the **software (OS kernel)** dictates the policy and decides how to resolve violations.
+
 #### Huge Pages
 
 The page-table walk does not always need to reach the lowest level.
@@ -840,10 +840,8 @@ Because the hardware limits the TLB to a fixed number of entries, the most effec
 
 This is the primary performance argument for using **huge pages** in memory-intensive applications. Because a 2 MiB page maps 512 times more memory than a standard 4 KiB page, a single TLB entry theoretically covers 512 times as much ground.
 
-  
-
 > **Demonstration: Calculating TLB Reach**
-> 
+>
 > Let $T$ represent the number of available TLB entries and $X$ represent the page size. The total TLB reach ($R$) is:
 > $$R=T \times X$$
 > With standard 4 KiB pages, the reach is:
@@ -852,6 +850,7 @@ This is the primary performance argument for using **huge pages** in memory-inte
 > $$R_{2M}=T \times 2\text{ MiB}$$
 > Comparing the two reveals the exact scale of the efficiency gain. The same number of TLB entries can cover 512 times more memory:
 > $$\frac{R_{2M}}{R_{4K}}=\frac{2\text{ MiB}}{4\text{ KiB}}=512$$
+>
 #### Context Switches and Address Spaces
 
 Different processes can use the same virtual address while mapping it to different physical memory. A TLB translation belonging to one process therefore cannot be blindly reused as if it belonged to another.
@@ -898,15 +897,14 @@ This differs from PCID. Global mappings are reusable because the mapping itself 
 > B:K\rightarrow P_K  
 > $$
 > Because the translation is the same in both address spaces, it can potentially be represented by shared page-table structures and reusable global TLB state.
-
-
 > **Note: Modern Linux and KPTI**
-> 
+>
 > Traditionally, operating systems mapped the entire kernel into every process's virtual address space, relying on **supervisor-mode permissions** in the page table to block unauthorized user access. However, speculative-execution vulnerabilities like **Meltdown** proved that relying solely on permission bits was no longer secure; the mere presence of those kernel mappings in user mode became an attack vector.
-> 
+>
 > In response, modern Linux relies on **Kernel Page-Table Isolation (KPTI)**. Under KPTI, when a process executes in user space, its active page table contains only the bare minimum kernel mappings required to trigger a system call or handle an interrupt. When the CPU actually enters the kernel, it must immediately swap to a completely different page table to access the full kernel view.
-> 
+>
 > Consequently, the classic model—where every process permanently shares a complete view of the kernel in its upper memory—remains vital for understanding fundamental operating system design, but it no longer accurately describes how modern, secure systems actually operate in the wild.
+>
 #### TLB Invalidation
 
 A cached TLB entry can outlive the page-table entry from which it was originally created.
@@ -932,7 +930,7 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 > [!tip] Inspecting the Map in Linux
 > You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at `/proc/[pid]/maps`. It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
 > [!example] Python’s `None` and the Copy-on-Write Penalty
-> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
+> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [[../Technologies/Python/Python Internals#The Fix: Immortal Objects|immortal objects]].
 > [!example] Architecture Story: Redis & The Persistence
 > Because Redis is fundamentally an in-memory database, it faces a massive existential threat: if the physical server loses power or crashes, every single piece of data is permanently wiped from RAM. To handle crashes, Redis engineers needed a way to periodically persist (save) this in-memory data to the physical hard drive.
 > Because Redis is famously single-threaded, saving this data presented a massive architectural bottleneck:
@@ -985,7 +983,7 @@ To understand why this matters, think of the CPU and RAM as a frontend and backe
 
 - **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access the immediately adjacent memory addresses next.
 - **The Benefit:** Because CPUs fetch data in cache lines, sequential accesses can reuse a line that was fetched for a previous access. These cache hits have lower latency than fetching the same data from RAM.
-- **Where it Applies:** Arrays (on the [Heap](02%20The%20Anatomy%20of%20a%20Process.md#The%20Heap) and [Data Section](02%20The%20Anatomy%20of%20a%20Process.md#The%20Data%20Section)) and sequential local variables (packed tightly on the [Stack](02%20The%20Anatomy%20of%20a%20Process.md#The%20Stack)) can be processed with fewer cache misses than scattered data.
+- **Where it Applies:** Arrays (on the [[02 The Anatomy of a Process#The Heap|Heap]] and [[02 The Anatomy of a Process#The Data Section|Data Section]]) and sequential local variables (packed tightly on the [[02 The Anatomy of a Process#The Stack|Stack]]) can be processed with fewer cache misses than scattered data.
 
 > [!example] Sequential Reads
 >
@@ -1092,12 +1090,12 @@ While saving memory footprint is good, prioritizing CPU cache efficiency is ofte
 
 > **Optimization 1: Spatial Locality (Ignoring the Size Rule)**
 > If variables are frequently accessed together in the same loop (e.g., `x_velocity` and `y_velocity`), they should be placed next to each other in the struct—even if it means intentionally wasting a few bytes of padding. This guarantees one cache fetch brings all necessary data to the CPU, preventing expensive secondary memory reads.
-> **Optimization 2: Preventing [False Sharing](04%20Inside%20The%20CPU.md#The%20Developer%20Trap:%20False%20Sharing) (Intentional Wasting)**
+> **Optimization 2: Preventing [[04 Inside The CPU#The Developer Trap: False Sharing|False Sharing]] (Intentional Wasting)**
 > In multithreaded environments, if Thread A modifies `Var1` and Thread B modifies `Var2`, placing them on the _same_ 64-byte cache line will cause the CPU cores to constantly invalidate each other's caches, severely degrading performance. Engineers will intentionally insert large blocks of padding (e.g., `char padding[64];`) between these variables to force them onto separate cache lines. Se more at
 
 ### Direct Memory Access (DMA)
 
-As described in the physical [RAM](#RAM), memory access is highly complex. Normally, if the system needs to copy a large block of data from the hard drive into RAM (or send a file out to the Network Interface Card), the CPU has to act as the middleman. It reads the data from the disk into its own internal registers, and then writes it back out to the RAM.
+As described in the physical [[#RAM|RAM]], memory access is highly complex. Normally, if the system needs to copy a large block of data from the hard drive into RAM (or send a file out to the Network Interface Card), the CPU has to act as the middleman. It reads the data from the disk into its own internal registers, and then writes it back out to the RAM.
 
 For small transfers, CPU-mediated copying may be appropriate. For large transfers, using the CPU as an intermediary consumes cycles and memory bandwidth that could otherwise be used for computation.
 
@@ -1109,40 +1107,28 @@ To solve this, hardware engineers created the **DMA Controller**.
 - **The Modern Fix (IOMMU):** In modern hardware, managing contiguous physical addresses for massive peripherals (like a heavy GPU or high-speed Network Card) is incredibly difficult due to physical fragmentation. To fix this, modern motherboards include an **IOMMU (Input/Output Memory Management Unit)**.
     - Just like the CPU's MMU translates virtual memory for software, the IOMMU translates memory for hardware peripherals. It allows devices to safely use virtual addresses for DMA transfers, providing them with the exact same isolation, security, and fragmentation-solving benefits that standard programs enjoy!
 
-#### Direct I/O (`O_DIRECT`)
-
-While the OS Page Cache is fantastic for general-purpose applications, it can be a massive bottleneck for specialized, high-performance software like relational databases (e.g., PostgreSQL, Oracle, or InnoDB in MySQL).
-
-- **The Double-Caching Problem:** Databases are highly complex and manage their own incredibly optimized in-memory caches (Buffer Pools). If a database uses standard file reading, the data is pulled from the disk, cached in the OS Page Cache, and _then_ copied into the database's own cache. This "double caching" wastes massive amounts of physical RAM and burns unnecessary CPU cycles copying data between kernel space and user space.
-- **Bypassing the Kernel:** Opening a file with the `O_DIRECT` flag explicitly tells the Operating System: _"I know exactly what I am doing. Do not use the Page Cache, do not do any read-ahead prediction, and stay out of my way."_
-- **User-Space DMA:** With `O_DIRECT`, the kernel arranges for the device to transfer data between storage and an application buffer without populating the page cache. This can reduce copying and cache pollution for some large, aligned workloads, but it does not eliminate all kernel involvement or guarantee lower latency.
-- **The Hardware Catch (Strict Alignment):** Because the DMA controller is interacting directly with your application's RAM without the kernel smoothing things out, the software must play exactly by the hardware's physical rules. The memory addresses and the I/O request sizes _must_ be strictly aligned to the physical sector size of the disk (usually 512 bytes or 4KB). If a program tries to use `O_DIRECT` to read an unaligned chunk (like 17 bytes), the physical hardware will outright reject the request and throw an error.
-
-> [!example] Architecture Story: Kafka & the Zero-Copy Miracle  
-> To understand why Apache Kafka can handle millions of messages per second with extremely low latency, consider the hardware overhead of a traditional network transfer—and how Kafka avoids much of it.
-> **The Traditional Network Bottleneck: Four Copies**
-> In a standard application, reading data from disk and sending it over the network requires a redundant journey between **kernel space** and **user space**:
-> 1. **DMA read**: The DMA controller copies data from the physical disk into the operating system’s page cache in kernel space.
-> 2. **CPU copy to user space** : The CPU copies the data from the page cache into the application’s memory buffer.
-> 3. **CPU copy back to kernel space**: The application calls `write()`, causing the CPU to copy the same data into the operating system’s socket buffer.
-> 4. **DMA write**: The DMA controller copies the data from the socket buffer to the network interface card, which sends it over the network.
-> **Result:** Four data copies, including two CPU-mediated copies, plus repeated transitions between user space and kernel space.
-> **The Zero-Copy Approach: `sendfile`**
-> Because Kafka acts primarily as a message broker, it usually does not need to inspect or modify the message payload before sending it.
-> Instead of copying data into the Java Virtual Machine, Kafka can use the `sendfile` system call:
-> - `sendfile` instructs the operating system to transfer data from a file directly to a network socket.
-> - Data is loaded from disk into the operating system’s page cache.
-> - The kernel then transfers that data toward the network device without copying it through the application’s user-space buffer.
-> - On supported hardware and operating systems, DMA mechanisms can further reduce CPU involvement.
-> **Result:** The payload does not enter Kafka’s user-space heap. This eliminates application-level CPU copies, reduces context switching, and allows Kafka to achieve high network throughput with comparatively low CPU usage.
-> **Kafka’s Page-Cache Strategy**
-> Some database systems use mechanisms such as `O_DIRECT` to bypass the operating system’s page cache and manage memory themselves. Kafka generally takes the opposite approach: it relies heavily on the page cache.
-> This design provides several benefits:
-> - Frequently accessed log segments remain cached in operating-system memory.
-> - Kafka does not need to maintain a large application-level cache inside the JVM heap.
-> - A smaller heap reduces garbage-collection pressure and the risk of long garbage-collection pauses.
-> - Restarting the Kafka process does not necessarily discard cached log data, because the page cache is managed independently by the operating system.
-> By combining sequential disk access, the operating system’s page cache, and zero-copy transfer techniques, Kafka can move large volumes of data efficiently while keeping CPU and JVM-memory overhead relatively low.
+> [!example] Architecture Story: Kafka, DMA, and Zero-Copy
+>
+> Kafka often serves records that already exist in log files and does not need to modify their payload before sending them over the network. This makes it a useful example of how avoiding CPU-mediated copies can complement DMA.
+>
+> **Traditional File-to-Network Path**
+>
+> With a conventional `read()` followed by `write()`, the payload can pass through four major data movements:
+>
+> 1. **Storage DMA:** the storage device transfers file data into the operating system's [[06 Storage Management#Caching|page cache]].
+> 2. **CPU copy to user space:** `read()` copies the requested bytes from the page cache into the application's buffer.
+> 3. **CPU copy back to kernel space:** `write()` copies those bytes from the application buffer into the networking path.
+> 4. **Network DMA:** the network interface reads the outgoing data from memory and transmits it.
+>
+> The first and last movements can be performed by devices using DMA, but the two middle copies consume CPU cycles and memory bandwidth merely to move an unchanged payload through the application.
+>
+> **Zero-Copy with `sendfile()`**
+>
+> Kafka can instead use a zero-copy file-to-socket mechanism such as `sendfile()`. The kernel can move the file data from the file/page-cache side of the kernel toward the socket without first copying the payload into Kafka's user-space buffer and then copying it back into kernel space.
+>
+> The storage device may still use DMA to place uncached file data into RAM, and the network interface may still use DMA when transmitting it. What disappears from the payload path are the intermediate application-level CPU copies.
+>
+> The term **zero-copy** is therefore relative: the bytes still physically move between storage, RAM, and the network device, but they do not need to be copied through Kafka's user-space heap. This reduces CPU work and memory-bandwidth consumption while leaving the actual device transfers to the I/O hardware.
 
 #### Pros and Cons
 
@@ -1165,7 +1151,7 @@ Because traditional Direct Memory Access (DMA) operates purely on physical addre
 - **Bypassing the Operating System:** Because the malicious device talks directly to the physical RAM via the DMA controller, the Operating System is completely blind to the attack. The OS cannot log the event, antivirus software cannot scan it, and lock screens cannot block it.
 - **The Impact (Total System Compromise):**
        - **Key Extraction:** The attacker can instruct the device to silently read the physical memory to find full-disk encryption keys (like BitLocker or FileVault) or plain-text passwords stored in RAM.
-    - **Code Injection:** The device can overwrite kernel memory space to inject a malicious [rootkits](../Security/01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Rootkits) or instantly disable the operating system's lock screen password check.
+    - **Code Injection:** The device can overwrite kernel memory space to inject a malicious [[../Security/01 Foundations and Risk/03 Common Threats and Attacks#Rootkits|rootkits]] or instantly disable the operating system's lock screen password check.
 
 To prevent someone from completely compromising a locked laptop just by plugging a rogue device into a Thunderbolt port, hardware and software engineers had to combine forces:
 - **The Hardware Sandbox (IOMMU):** As mentioned earlier, the IOMMU (Input/Output Memory Management Unit) acts as a bouncer for hardware devices. Instead of letting a Thunderbolt device see raw physical RAM, the IOMMU forces the device to use virtual addresses. If the malicious device tries to read memory outside its strictly assigned sandbox, the IOMMU blocks the request at the hardware level.
@@ -1175,7 +1161,7 @@ To prevent someone from completely compromising a locked laptop just by plugging
 
 Memory PSI (`/proc/pressure/memory`) measures the time threads spend stalled waiting for the OS to organize RAM—such as waiting for page faults, page reclaims, or swapping to disk. It goes beyond simply asking "How much RAM is free?" by measuring actual performance degradation.
 
-Unlike the [CPU](04%20Inside%20The%20CPU.md#CPU%20Pressure%20Stall%20Information), Memory PSI tracks two distinct metrics:
+Unlike the [[04 Inside The CPU#CPU Pressure Stall Information|CPU]], Memory PSI tracks two distinct metrics:
 
 - **`some` (Partial Starvation):** At least one thread is stalled waiting for memory operations, but the CPU is still executing other threads. The system is "thrashing" slightly (swapping or clearing page cache), which hurts latency, but the app is surviving.
 - **`full` (Total Lockup):** **ALL** runnable threads are stalled waiting for memory. The CPU has absolutely no work to do and is sitting idle.

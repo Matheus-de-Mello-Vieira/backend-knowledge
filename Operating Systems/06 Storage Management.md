@@ -67,7 +67,7 @@ The same abstraction also makes **bad-sector remapping** possible. If a physical
 
 > [!note] LBA Blocks and Virtual Memory Pages
 >
-> **LBA logical blocks** and **[virtual memory](03%20Memory%20Management.md#Virtual%20Memory)** are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
+> **LBA logical blocks** and **[[03 Memory Management#Virtual Memory|virtual memory]]** are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
 >
 > The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
 >
@@ -142,7 +142,7 @@ The important property of the mapping is that it is **dynamic rather than perman
 
 For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
 
-This indirection is fundamental to SSD operation. It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host.
+This indirection is fundamental to SSD operation. It allows the controller to perform [[#Out-of-Place Writes|out-of-place writes]], relocate data during [[#Garbage Collection|garbage collection]], and distribute writes through [[#Wear Leveling|wear leveling]] without changing the LBA addresses exposed to the host.
 
 As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
 
@@ -307,7 +307,7 @@ The performance model is therefore different from an HDD rather than completely 
 
 #### Fragmentation and Defragmentation on SSDs
 
-The [file fragmentation](#File%20Fragmentation%20and%20Defragmentation) described for HDDs also exists at the filesystem level on SSDs: a file can still be split across multiple non-contiguous extents. What changes is the performance consequence.
+The [[#File Fragmentation and Defragmentation|file fragmentation]] described for HDDs also exists at the filesystem level on SSDs: a file can still be split across multiple non-contiguous extents. What changes is the performance consequence.
 
 On an HDD, defragmentation improves locality because reading separated extents may require expensive mechanical seeks and rotational waiting. An SSD has no equivalent mechanical movement, so accessing distant logical addresses is much closer in cost to accessing adjacent ones. Fragmentation therefore has a much smaller effect on read performance.
 
@@ -345,7 +345,28 @@ A file therefore does not need to occupy one contiguous region of the device. Th
     - **Absolute Path:** Identifies an object starting from the filesystem's root
     - **Relative Path:** Identifies an object starting from some current directory.
 - **File Extension:** A suffix such as `.txt`, `.jpg`, or `.exe` conventionally used to indicate a file's format or intended interpretation. The extension is normally just part of the filename; the filesystem itself does not necessarily use it to determine the actual type of the file.
-- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](../Security/05%20Architecture%20and%20Infrastructure%20Security/02%20Endpoint%20Security.md) build on this metadata to enforce access control.
+- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [[../Security/05 Architecture and Infrastructure Security/02 Endpoint Security|security permissions]] build on this metadata to enforce access control.
+
+### Opening Files and File Descriptors
+
+Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file. A call such as `open()` resolves a pathname, checks the requested access against filesystem permissions, creates or reuses the kernel state needed for the open file, and returns a small integer called a **file descriptor** to the process.
+
+Subsequent operations such as `read()`, `write()`, and `fsync()` use the file descriptor rather than resolving the pathname again for every operation. The open file also carries state such as the current file offset and status flags that affect later I/O. When the process no longer needs that reference, it releases it with `close()`.
+
+This is different from the `mode` argument sometimes passed to `open()`. When a new file is created, that argument describes its initial permission bits. Behaviors such as append-only positioning, synchronous writes, or Direct I/O are selected using **open flags**.
+
+#### Open Flags
+
+An `open()` call includes an access mode such as `O_RDONLY`, `O_WRONLY`, or `O_RDWR`, describing whether the descriptor can read, write, or do both. Additional flags modify the behavior of operations performed through that open file.
+
+Common examples include:
+
+- **`O_APPEND`:** before each `write()`, the kernel positions the open file offset at the current end of the file and performs the offset adjustment and write as one operation. This allows multiple writes to append without each caller separately seeking to the current end first.
+- **`O_DIRECT`:** requests [[#Direct I/O (`O_DIRECT`)|Direct I/O]]), so transferred file data generally bypasses the normal page-cache path.
+- **`O_SYNC`:** gives writes synchronized file-integrity completion semantics: a successful `write()` does not return until the written data and the metadata required by the stronger synchronization guarantee have been committed as required by the storage stack.
+- **`O_DSYNC`:** provides the narrower data-integrity form of synchronous writing. It waits for the written data and metadata necessary to retrieve that data, without requiring unrelated metadata updates to become durable as part of every write.
+
+These flags control different properties and can be conceptually independent. For example, `O_DIRECT` controls whether transferred file data normally participates in the page cache, while `O_SYNC` and `O_DSYNC` control what durability work must complete before a write returns.
 
 ### Mapping Files to Logical Blocks
 
@@ -394,7 +415,7 @@ Instead of recording every filesystem block individually, modern filesystems oft
 
 An extent represents a contiguous range of file data stored in a contiguous range of filesystem blocks or logical blocks. For example, rather than storing mappings for 1,000 adjacent blocks separately, the filesystem can describe them as one extent containing a starting location and length.
 
-A file may contain multiple extents when sufficient contiguous free space is unavailable or when the file grows over time. This is the mechanism behind [file fragmentation](https://chatgpt.com/g/g-p-6a7a84d6766881919bab2085541ba9fd/c/6a908492-3274-83e9-9907-211602a49160#File%20Fragmentation%20and%20Defragmentation): one logical file becomes distributed across several non-contiguous extents.
+A file may contain multiple extents when sufficient contiguous free space is unavailable or when the file grows over time. This is the mechanism behind [[#File Fragmentation and Defragmentation|file fragmentation]]: one logical file becomes distributed across several non-contiguous extents.
 
 #### Inodes and Directory Entries
 
@@ -407,6 +428,36 @@ This produces a resolution path such as `Filename → Inode → Extents / Filesy
 When an application accesses a path, the filesystem traverses directory entries until it reaches the target inode. It then uses the inode's extent or block mappings to determine which regions of the LBA address space contain the requested portion of the file.
 
 The filename and inode are separate filesystem objects. This separation is what allows multiple names to refer to the same underlying file.
+
+##### Storing and Locating Inodes
+
+An **inode number** identifies a filesystem object, but the number is not itself a memory address or storage location. The filesystem must maintain metadata that maps that identifier to the persistent **inode record** containing the object's metadata and references to its data blocks or extents.
+
+How this collection of inode records is organized depends on the filesystem. There is therefore no universal operating-system-wide "inode table" shared by every filesystem. Some Unix-like filesystems use fixed-size inode records stored in dedicated filesystem metadata regions, while other filesystems use different indexing structures.
+
+**ext4** provides a useful concrete example. Instead of keeping all filesystem metadata in one enormous region, ext4 divides the filesystem into **block groups**. Each block group contains metadata for managing resources associated with that part of the filesystem, including:
+
+- an **inode bitmap**, which records which inode numbers in the group are allocated or free;
+- an **inode table**, which stores the fixed-size inode records belonging to that group;
+- block-allocation metadata and the data blocks themselves.
+
+The filesystem's metadata records where each block group's inode table is located. Because ext4 also knows how many inodes belong to each group, it can determine where an inode should be found directly from its inode number.
+
+For an inode number `i`, with `N` inodes per block group, ext4 can conceptually calculate: `block group = (i - 1) / N`.
+
+and: `index within inode table = (i - 1) % N`.
+
+The subtraction is necessary because inode numbers begin at `1`, while array-like indexes begin at `0`.
+
+For example, suppose each block group contains `8,192` inodes and the filesystem needs inode `20,000`. `block group = (20,000 - 1) / 8,192 = 2` and `index = (20,000 - 1) % 8,192 = 3,615`.
+
+The inode therefore belongs to block group `2` and occupies entry `3,615` in that group's inode table. Once the filesystem knows the beginning of that inode table and the size of each inode record, it can calculate the record's byte offset within the table.
+
+This lookup is fundamentally different from following a filename. A directory entry first maps a **filename** to an **inode number**. The filesystem then uses its internal inode-storage structures to locate the corresponding inode record. That inode contains the metadata and mappings needed to locate the file's [[#Extents|extents]] or blocks.
+
+The **inode bitmap** serves a different purpose from the inode table. The inode table stores the inode records themselves, while the bitmap tracks which inode slots are currently allocated. When creating a new filesystem object, ext4 can search the bitmap for an available inode slot, mark it as allocated, and initialize the corresponding record in the inode table.
+
+This separation also explains why deleting a filename does not necessarily immediately free an inode. Directory entries provide names for an inode, while the inode separately tracks information such as its link count. Only when the filesystem determines that the inode is no longer referenced and no open use prevents reclamation can its inode slot and associated data blocks be returned to the filesystem's free-space structures.
 
 > [!info] Hard vs. Soft Links Under the Hood
 >
@@ -453,35 +504,124 @@ Filesystems use structures such as **bitmaps, free-space trees, or extent-based 
 
 Allocation policy has an important effect on performance. When possible, the filesystem tries to place logically related data near each other so that files require fewer extents and storage accesses have better locality.
 
-Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem. New files may then need to be split across several extents, producing [file fragmentation](#File%20Fragmentation%20and%20Defragmentation).
+Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem. New files may then need to be split across several extents, producing [[#File Fragmentation and Defragmentation|file fragmentation]].
 
 ### Caching
 
-Filesystems also integrate closely with the operating system's **page cache**. Accessing RAM is far faster than accessing persistent storage, so recently or frequently accessed file data can be retained in memory.
+Filesystems integrate closely with the operating system's **page cache**, which uses available RAM to retain file contents. Normal buffered reads and writes generally pass through this cache rather than interacting synchronously with the storage device for every operation.
 
-When an application reads a file, the kernel can first check whether the requested data already exists in the page cache. If it does, the read can be satisfied from RAM without accessing the storage device.
+When an application reads part of a file, the kernel first looks for the corresponding file region in the page cache. On a **cache hit**, the data can be returned directly from RAM. On a **cache miss**, the filesystem reads the data from storage and normally keeps it in the page cache so later accesses can reuse it.
 
-Writes are also frequently buffered. Instead of immediately sending every small modification to storage, the kernel can modify cached pages and later flush those **dirty pages** to the device in larger and more efficient operations.
+The page cache is system-wide rather than private to one application. If two processes read the same region of the same file, the second process can generally reuse the pages already cached by the first instead of causing another storage read.
 
-Caching therefore provides several benefits:
+Sequential access can also trigger **read-ahead**. If the kernel observes that an application is reading consecutive regions of a file, it may load upcoming data into the page cache before it is explicitly requested, hiding part of the storage latency.
 
-- repeated reads can avoid storage I/O,
-- small writes can be combined,
-- sequential access can be detected and prefetched,
-- applications can benefit from shared cached data.
+Caching therefore allows the operating system to exploit both **temporal locality**—reusing recently accessed data—and **spatial locality**—predicting that nearby file data will soon be accessed.
 
-The trade-off is that data acknowledged in memory may not yet have reached persistent storage. Filesystems and applications therefore provide synchronization mechanisms when durability must be guaranteed.
+#### Writes, Writeback, and Durability
 
-### Filesystem I/O vs. Raw Block Access
+Buffered writes also pass through the page cache.
 
-Applications normally access storage through files, allowing the filesystem to manage naming, permissions, allocation, and the mapping between file offsets and logical blocks.
+When an application writes to a file, the kernel locates or creates the corresponding page-cache entry, modifies the data in RAM, and marks that cached page as **dirty**. A successful `write()` therefore does not normally mean that the corresponding bytes have already reached persistent storage.
 
-Some applications, particularly databases, use [Direct I/O (`O_DIRECT`)](03%20Memory%20Management.md#Direct%20I/O%20(`O_DIRECT`)) to bypass the operating system's **page cache** and manage caching themselves. However, Direct I/O does **not** bypass the filesystem. The application still opens a file, and the filesystem still resolves its metadata and translates file offsets into storage operations.
+Conceptually: `Application → Dirty Page Cache → Storage`.
 
-Bypassing the filesystem entirely is also possible by accessing a **raw block device**. In that case, the application operates directly on the device's logical block address space rather than storing its data inside ordinary filesystem files.
+The dirty pages are later persisted by the kernel through **writeback**. Writeback can happen because pages have remained dirty for some time, because the amount of dirty memory has grown sufficiently large, because memory needs to be reclaimed, or because an application explicitly requests synchronization.
 
-This gives the application complete control over the storage layout, but it also means taking responsibility for functionality normally provided by the filesystem, such as **space allocation, metadata organization, consistency, and recovery**. Raw block access is therefore much less common than using filesystem files, even among applications that bypass the page cache.
+This delayed-write design decouples the application's write pattern from the storage device's write pattern. An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
 
+For example, instead of immediately performing: `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`.
+
+multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
+
+This should not be understood simply as the operating system assuming that application developers will write inefficient code. The abstraction deliberately allows applications to express writes according to their own semantics while the kernel handles device-level batching, scheduling, and locality. Even well-designed applications often have legitimate reasons to issue many small logical updates.
+
+However, delayed writeback creates a distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty, the version present only in RAM is lost.
+
+Applications that need a durability boundary can call **`fsync()`**. For a regular file, `fsync()` forces the file's dirty data and required metadata toward persistent storage and blocks until the storage stack reports completion.
+
+The storage device may itself contain another cache. HDDs and SSDs commonly have controller-managed **write-back caches** that allow the device to acknowledge a write before the data has reached its final non-volatile location.
+
+The complete write path can therefore look approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
+
+A proper `fsync()` must account for this additional layer. The filesystem and block layer issue the necessary synchronization operations so that relevant data does not remain only in a volatile device cache when `fsync()` successfully returns.
+
+This means that `fsync()` is considerably more expensive than an ordinary buffered `write()`: it deliberately breaks the normal asynchronous batching behavior and introduces a durability barrier that the application may need to wait for.
+
+##### Synchronous Writes: `O_SYNC` and `O_DSYNC`
+
+Instead of performing ordinary buffered writes and explicitly calling `fsync()` at selected durability boundaries, an application can request synchronized write semantics when it opens the file.
+
+With **`O_SYNC`**, each `write()` waits for **synchronized file-integrity completion** before returning. Conceptually, it provides durability semantics similar to performing the write and then synchronizing the file with `fsync()`: the written data and the associated metadata required by the full synchronization guarantee must be committed before the operation is considered complete.
+
+**`O_DSYNC`** provides the narrower **data-integrity** form. The write waits for the data itself and metadata necessary to retrieve that data, such as a file-size change when the write extends the file, but does not need to force unrelated metadata such as a modification timestamp as part of every operation. Its role is therefore comparable to performing a write followed by `fdatasync()` rather than the stronger `fsync()`.
+
+These flags do not mean that the page cache is bypassed or that the entire system cache is flushed after every write. They change the completion guarantee of writes made through that open file. This is fundamentally different from [[#Direct I/O (`O_DIRECT`)|`O_DIRECT`]]), which controls page-cache participation rather than durability.
+
+Synchronous writes can be expensive because each write may introduce a durability wait that prevents the application and operating system from freely batching many updates behind one later synchronization point. They are useful when each write, or each deliberately constructed write operation, must itself establish the required persistence guarantee.
+
+Append-oriented durability structures such as [[../Databases/00 Overview#Write-Ahead Logging (WAL)|Write-Ahead Logging (WAL)]]) are an important example of where these primitives can be useful. A database must ensure that required log records become durable before it treats dependent state as safely committed, but it can implement that boundary in different ways: it may use synchronized open flags such as `O_SYNC` or `O_DSYNC`, or perform ordinary writes followed by explicit `fsync()` or `fdatasync()` calls so that several writes can be grouped before synchronization.
+
+> [!example] Firefox 3 and Excessive `fsync()`
+>
+> During the development of **Firefox 3 in 2008**, Mozilla received [Bug 421482](https://bugzilla.mozilla.org/show_bug.cgi?id=421482), titled *Firefox 3 uses fsync excessively*. A reporter tracing Firefox's system calls observed roughly **eight `fsync()` calls while loading a new page** and reported severe responsiveness problems when the system was already performing other intensive disk I/O.
+>
+> The problem involved Firefox's SQLite-backed storage. Firefox was performing many small database transactions, and committing those transactions caused SQLite to request durability barriers repeatedly. At the time, SQLite's `synchronous=FULL` behavior could perform multiple synchronization operations during a transaction.
+>
+> This defeated one of the major advantages of buffered writing. Instead of allowing many changes to accumulate and eventually be persisted together, repeated synchronization points forced the storage stack to establish durability again and again. Because `fsync()` waits for the required storage operations to complete, these barriers could become visible directly as application latency.
+>
+> Mozilla investigated reducing the synchronization frequency and approved a change that made its storage connections default to SQLite's `synchronous=NORMAL` mode. In one test discussed in the bug, `NORMAL` reduced the number of synchronization calls by roughly one third compared with `FULL`.
+>
+> The lesson is not that `fsync()` should be avoided. Durability-sensitive software such as databases needs explicit synchronization at carefully chosen points. The problem is **unnecessarily frequent durability barriers**: an application that calls `fsync()` after every tiny modification can destroy write batching and turn storage latency into application latency.
+
+Buffered writes can also expose crash-atomicity limits below the page cache. The storage stack does not generally promise that an arbitrarily large application-level structure will reach persistent storage as one indivisible operation. If one logical update spans several lower-level writes, a crash or power loss can leave only part of that update durable.
+
+This problem is independent of whether the data passed through the page cache: bypassing buffered I/O does not automatically make a larger logical update atomic. Higher-level software that requires crash consistency must therefore design its own recovery protocol around the atomicity and ordering guarantees provided by the storage stack.
+
+#### Direct I/O (`O_DIRECT`)
+
+For most applications, buffered I/O provides a useful default. Some applications, however, maintain their own long-lived cache of file data and have workload-specific information that the kernel's generic page-cache policy does not have.
+
+With buffered I/O, the same underlying file data can then exist in both the page cache and an application-managed cache. The two layers consume memory independently and may make different decisions about what to retain, evict, prefetch, or write back.
+
+On systems such as Linux, an application can request **Direct I/O** using `O_DIRECT`. File data then generally bypasses the normal page-cache path and is transferred between the storage stack and application-provided memory buffers.
+
+Conceptually: `Buffered I/O: Application ↔ Page Cache ↔ Filesystem / Block Layer ↔ Device` and `Direct I/O: Application Buffer ↔ Filesystem / Block Layer ↔ Device`.
+
+Direct I/O does **not** bypass the filesystem or the kernel. The filesystem still resolves the file, manages its metadata and allocation, translates file offsets into underlying storage locations, and submits operations through the block-device stack. What is primarily avoided is caching the transferred file contents in the normal page cache.
+
+Bypassing the page cache also means giving up some services that buffered I/O normally provides. The application may lose automatic caching and read-ahead, and Direct I/O can impose alignment requirements on memory buffers, file offsets, and I/O sizes. The exact restrictions depend on the operating system, filesystem, kernel version, and storage device.
+
+`O_DIRECT` also does **not by itself provide the durability guarantee of `fsync()` or `O_SYNC`**. Avoiding the page cache and forcing data to stable storage are separate decisions; the storage device may still contain volatile caches and the filesystem may still need to synchronize metadata.
+
+`O_DIRECT` is therefore not inherently faster. It is useful when an application has enough knowledge of its workload to take responsibility for caching and I/O policy more effectively than the generic page cache. For ordinary applications, bypassing the page cache can instead increase storage accesses and reduce performance.
+
+> [!example] When Direct I/O Makes Sense
+>
+> Consider an application that keeps a large cache of fixed-size records in its own memory. It already decides which records should remain resident, which should be evicted, and which regions should be prefetched based on application-specific access patterns.
+>
+> With buffered I/O, the underlying file data may also remain in the operating system's page cache. The application and kernel would then maintain two independent caches for the same data and compete for the same physical RAM.
+>
+> Direct I/O allows the application to avoid the normal page-cache copy and make its own cache the primary long-lived copy. This can be useful when the application has deliberately taken responsibility for the caching work that the kernel would otherwise perform.
+>
+> The important point is not that Direct I/O is a faster mode by itself. It is useful when **moving cache ownership from the kernel to the application** is a good architectural trade-off.
+> [!example] Kafka Takes the Opposite Approach
+>
+> High-performance software does not always benefit from owning its own file cache. **Apache Kafka** generally takes the opposite approach and relies heavily on the operating system's page cache for its log-segment files.
+>
+> Kafka's workload is well suited to this design. Log data is written and read largely as files, access commonly has strong sequential locality, and recently used regions can remain cached in system memory without Kafka maintaining an equivalent large cache inside the JVM heap.
+>
+> Keeping that cache outside the Kafka process also means a process restart does not necessarily discard the cached file pages; the operating system can retain them independently of the JVM's lifetime.
+>
+> Kafka can then combine this page-cache-oriented design with zero-copy file-to-network techniques when serving data. The result illustrates the opposite side of the Direct I/O decision: sometimes the generic page cache already provides the behavior an application needs, so bypassing it would remove useful functionality rather than improve the design.
+> [!note] Direct I/O vs. Raw Block Access
+>
+> **Direct I/O** bypasses the normal page-cache path but still operates through the filesystem. The filesystem continues to manage filenames, permissions, allocation, metadata, and the mapping from file offsets to logical blocks.
+>
+> **Raw block access** bypasses the filesystem itself. An application opens the block device directly and operates on its LBA address space, taking responsibility for storage layout and other functionality that a filesystem would normally provide.
+>
+> Therefore: `Direct I/O = filesystem without normal page-cache caching` and `Raw block access = block device without filesystem abstraction`.
+>
 ### Disk Formatting
 
 **Formatting** prepares a storage region for use with a particular filesystem. During formatting, the filesystem creates its initial metadata structures, such as the root directory, free-space tracking structures, allocation metadata, and other filesystem-specific information.
@@ -532,20 +672,18 @@ Cluster size therefore creates a trade-off:
 Clusters are FAT32's implementation of the more general **filesystem block/allocation-unit** concept: they determine the granularity at which storage is assigned to files.
 
 > [!note] Why FAT32 Has a 4 GiB File-Size Limit
-> 
+>
 > FAT32's maximum individual file size is **not caused by the FAT cluster chain itself**.
-> 
+>
 > The FAT determines **which clusters are allocated to a file**, but it does not record the exact byte at which the file ends inside its final cluster. FAT32 therefore stores the file's total logical length separately in a **32-bit `FileSize` field** inside the directory entry.
-> 
+>
 > This makes operations such as checking a file's size or determining its logical EOF very cheap, because the filesystem can read the value directly instead of traversing the entire FAT chain and counting clusters.
-> 
-> The trade-off is that a 32-bit byte counter can represent at most:
-> 
-> `2^32 - 1 bytes = 4 GiB - 1 byte`
-> 
+>
+> The trade-off is that a 32-bit byte counter can represent at most: `2^32 - 1 bytes = 4 GiB - 1 byte`.
 > This is the actual origin of FAT32's maximum file-size limit.
-> 
+>
 > The limitation is therefore a **metadata format decision**, not an inherent property of linked-cluster allocation. A differently designed filesystem could store the number of bytes used in the final cluster and derive the total size from the chain length, or simply use a larger file-size field.
+>
 ### Common File Systems
 
 - **NTFS (New Technology File System):** The primary filesystem used by modern Windows installations. It supports large files and volumes, journaling, access-control lists (ACLs), compression, encryption, hard links, symbolic links, and other features expected from a general-purpose desktop and server filesystem.
@@ -601,7 +739,7 @@ NAS (`/næz/` or `/næs/`) is a dedicated, file-sharing storage device connected
 
 A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that connects servers to a consolidated pool of block-level storage.
 
-- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [LBA](#Logical%20Block%20Addressing%20(LBA)) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
+- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [[#Logical Block Addressing (LBA)|LBA]]) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
 - **Common Protocols:**
     - **Fibre Channel (FC):** Uses dedicated fiber-optic cables and switches for ultra-low latency and massive throughput.
     - **iSCSI:** Runs block-level SCSI commands over standard Ethernet cables, making it a cheaper alternative to Fibre Channel.
