@@ -273,15 +273,16 @@ A repeated request using the same key is then treated as another delivery of the
 
 Conceptually:
 
-| Time | Client | Server |
-| --- | --- | --- |
-| `t0` | Sends operation with key `K` | — |
-| `t1` | — | Atomically claims `K` |
-| `t2` | — | Performs business operation |
-| `t3` | Response is lost | Records result for `K` |
-| `t4` | Retries with key `K` | — |
-| `t5` | — | Finds existing `K`; does not repeat side effect |
-| `t6` | Receives original/equivalent result | — |
+| Time | Client                              | Server                                          |
+| ---- | ----------------------------------- | ----------------------------------------------- |
+| `t0` | Sends operation with key `K`        | —                                               |
+| `t1` | —                                   | Atomically claims `K`                           |
+| `t2` | —                                   | Performs business operation                     |
+| `t3` | Response is lost                    | Records result for `K`                          |
+| `t4` | Retries with key `K`                | —                                               |
+| `t5` | —                                   | Finds existing `K`; does not repeat side effect |
+| `t6` | Receives original/equivalent result | —                                               |
+|      |                                     |                                                 |
 
 The key must remain stable across retries. Generating a new key for every network attempt defeats the mechanism because the server can no longer distinguish a retry from a genuinely new operation.
 

@@ -326,7 +326,65 @@ These operations consume NAND endurance while providing little of the locality b
 - **eMMC:** An embedded storage package combining NAND flash and a controller in a single chip. It is soldered directly onto the device rather than being removable and is commonly found in inexpensive embedded systems and older mobile devices. It provides a simple block-device interface but generally offers less parallelism and performance than modern SSDs.
 - **UFS (Universal Flash Storage):** An embedded NAND-based storage technology designed as a higher-performance successor to eMMC. Unlike eMMC's more limited command model, UFS supports features such as command queuing and simultaneous reads and writes, making it better suited to modern smartphones and embedded systems.
 - **Persistent Memory / NVRAM:** Technologies that retain data without power while providing access characteristics closer to memory than conventional block storage. Some designs can be accessed directly through the CPU's memory address space rather than through traditional block I/O, partially blurring the distinction between **memory** and **storage**.
+### Partitions
 
+A **partition** divides a block device's [Logical Block Addressing (LBA)](#Logical%20Block%20Addressing%20(LBA)) space into logical regions. Instead of exposing the entire disk as one storage region, the operating system can treat each partition as an independent block device.
+
+Partition boundaries are defined in terms of the storage device's logical blocks. Conceptually, a partition occupies a contiguous range of LBAs with a beginning and a length or ending LBA.
+
+For example, a disk may contain a partition whose storage region begins at LBA `2048` and ends at LBA `1,000,447`. Reads and writes to that partition are ultimately translated into accesses within that range of the underlying disk.
+
+The exact representation depends on the **partition-table format**. GPT, for example, records the first and last LBA belonging to each partition, while older MBR partition entries describe a starting LBA and a number of sectors.
+
+Partitioning therefore provides **logical segmentation**, not another physical storage technology. The blocks still belong to the same underlying HDD, SSD, or other block device; the partition table simply describes which ranges are assigned to which logical regions.
+
+A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain swap space, participate in a volume-management system, or be accessed as a raw block device.
+
+When a filesystem is created on a partition, that filesystem manages only the block-address range exposed by that partition. Different partitions can therefore contain completely different filesystems.
+
+For example, one disk could contain an ext4 partition and an NTFS partition. Each filesystem independently creates its own metadata structures and chooses its own supported [filesystem block](#Filesystem%20Blocks) size.
+
+The filesystem block size is distinct from both the partition size and the underlying LBA logical-sector size. For example, a device might expose 512-byte logical sectors while one partition contains an ext4 filesystem using 4 KiB filesystem blocks. Another partition on the same device could use a filesystem with a different allocation-unit size.
+
+Partition boundaries are normally aligned to suitable storage boundaries. Modern partitioning tools commonly choose boundaries such as multiples of 1 MiB, which align cleanly with common logical-sector, physical-sector, filesystem-block, and SSD erase-related granularities. Poor alignment can cause one higher-level write to span multiple lower-level storage units and introduce unnecessary work.
+
+The important hierarchy is therefore:
+
+- the **storage device** exposes an LBA address space;
+- the **partition table** assigns ranges of that LBA space to partitions;
+- each partition is exposed as its own logical block device;
+- a **filesystem** may be created inside that partition and introduce its own filesystem-block and metadata structures.
+
+These layers have related boundaries, but their granularities are independent.
+#### Partition Alignment
+
+A partition can begin at any logical-sector boundary allowed by the partition table, but not every starting LBA is equally efficient. **Partition alignment** means choosing the partition's starting LBA so that higher-level structures such as filesystem blocks align cleanly with the storage device's underlying physical boundaries.
+
+This matters when the device exposes a smaller **logical sector size** than its actual **physical sector size**. A common example is a **512e** drive, which exposes 512-byte logical sectors while internally reading and writing 4 KiB physical sectors.
+
+Because:
+
+`4 KiB / 512 B = 8`
+
+each 4 KiB physical sector corresponds to eight logical sectors. A partition whose starting LBA is divisible by `8` begins on a 4 KiB physical-sector boundary.
+
+If the filesystem inside that partition also uses 4 KiB blocks, a properly aligned filesystem block can fit completely inside one physical sector. A write to that block can therefore be handled as one physical-sector update.
+
+With an **improperly aligned partition**, the filesystem may still create perfectly regular 4 KiB blocks relative to the beginning of the partition, but those blocks are shifted relative to the device's physical-sector boundaries. A single 4 KiB filesystem block may consequently overlap two different 4 KiB physical sectors.
+
+Updating that one filesystem block can then require the storage device to preserve portions of both physical sectors. On devices that cannot update those portions independently, this can introduce additional **read-modify-write** work: the device reads the affected physical sectors, modifies the relevant portions, and writes them back.
+
+Partition alignment is therefore about aligning **boundaries between abstraction layers**. The filesystem reasons about offsets relative to the beginning of its partition, while the storage device reasons about physical sectors relative to the beginning of the disk. If the partition itself begins at an unsuitable offset, every filesystem structure created inside it can inherit that displacement.
+
+Modern partitioning tools commonly align partitions on **1 MiB boundaries**. With 512-byte logical sectors:
+
+`1 MiB / 512 B = 2048 logical sectors`
+
+so LBA `2048` is a common starting point for the first partition. A 1 MiB boundary is divisible by many common sector and allocation sizes, making it a practical alignment choice across devices with different internal granularities.
+
+Alignment can matter beyond physical sectors as well. Storage stacks may contain other granularities such as RAID stripe sizes or SSD internal allocation units. There is no single partition boundary that exposes and perfectly matches every internal implementation detail, but using sufficiently large, regularly aligned boundaries such as 1 MiB avoids the most common misalignment problems.
+
+Partition alignment does **not** require the filesystem block size to equal the physical-sector size. Different layers may use different granularities. The important requirement is that their boundaries interact cleanly enough that a higher-level operation does not unnecessarily span additional lower-level units.
 ## File Systems
 
 A **file system** is the set of data structures and rules an operating system uses to organize persistent data on a storage device.
@@ -624,12 +682,27 @@ Bypassing the page cache also means giving up some services that buffered I/O no
 >
 ### Disk Formatting
 
-**Formatting** prepares a storage region for use with a particular filesystem. During formatting, the filesystem creates its initial metadata structures, such as the root directory, free-space tracking structures, allocation metadata, and other filesystem-specific information.
+**Formatting** prepares a block device for use with a particular filesystem by creating that filesystem's initial on-disk data structures.
 
-Formatting usually operates on a **partition or logical volume**, rather than necessarily on an entire physical device.
+The target is commonly a [partition](#Partitions) or logical volume rather than an entire physical disk. From the filesystem's perspective, that target is simply the block-device address space it is allowed to manage.
 
-A **quick format** may primarily recreate filesystem metadata and mark existing storage regions as free without immediately overwriting their previous contents. A more thorough format may additionally scan or overwrite storage. Therefore, formatting makes previous files inaccessible through the old filesystem structures, but it does not necessarily erase every underlying byte immediately.
+During formatting, the filesystem initializes structures such as:
 
+- filesystem-wide metadata and configuration;
+- free-space tracking structures;
+- inode or equivalent file-metadata structures;
+- the root directory;
+- allocation metadata and other filesystem-specific indexes.
+
+Formatting also establishes filesystem-level parameters such as the supported **filesystem block size**. This choice is independent from the partition size and from the logical-sector size exposed by the underlying storage device, although compatible alignment between these layers is important for efficient I/O.
+
+For example, a disk may expose 512-byte logical sectors, while one partition on that disk is formatted as ext4 using 4 KiB filesystem blocks. Another partition on the same disk could be formatted with a different filesystem and use a different allocation-unit size.
+
+Formatting therefore does not create the partition itself. **Partitioning defines which range of the underlying block device belongs to a logical region; formatting defines how a filesystem organizes the blocks inside that region.**
+
+A **quick format** generally recreates the filesystem's metadata structures and marks data regions as available without overwriting every previously stored byte. The previous filesystem's files become inaccessible through the newly created metadata, but remnants of their data may remain on storage until those blocks are reused.
+
+A more thorough formatting or sanitization operation may additionally overwrite, discard, or otherwise process the underlying storage. This is separate from the basic act of creating a filesystem.
 ### FAT32
 
 **FAT32 (File Allocation Table 32)** is an older filesystem that remains common on removable storage because of its broad compatibility across operating systems, firmware, cameras, game consoles, and other devices.
@@ -696,7 +769,19 @@ Clusters are FAT32's implementation of the more general **filesystem block/alloc
 - **exFAT (Extended File Allocation Table):** A filesystem designed primarily for removable flash storage. It retains much of FAT's simplicity and broad cross-platform compatibility while supporting much larger files and volumes than FAT32, making it common on SD cards, USB drives, and external storage exchanged between different operating systems.
 - **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to **swap** under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
 
-====
+> [!example] Allegro — Migrating Kafka from ext4 to XFS
+>
+> In 2024, Allegro investigated large **tail-latency spikes** in its main Kafka cluster. Although median produce latency was only a few milliseconds, p99 latency could reach roughly **1 second** and p999 roughly **3 seconds**.
+>
+> Using eBPF tracing, the engineers traced many of the slow requests back to filesystem writes on **ext4**. In particular, periodic ext4 journal commits could occasionally make individual writes much slower. Because Kafka serializes some work around its log files, even an isolated slow filesystem operation could create contention and cause a cascade of slow produce requests.
+>
+> Allegro first experimented with ext4 itself. Changing the journaling mode to `data=writeback` reduced produce p999 latency from about **3 seconds to 800 milliseconds**, while enabling ext4 fast commits reduced it to about **500 milliseconds**.
+>
+> They then migrated one Kafka broker from **ext4 to XFS**. XFS was especially notable not merely for lower latency, but for much more **consistent tail latency**: brokers using the ext4 configurations continued to experience periodic p999 spikes, while the XFS broker running with its default configuration had only a few such spikes.
+>
+> After testing the configuration for several weeks, Allegro migrated the entire Kafka cluster to XFS. The final result was an **82% reduction in produce requests exceeding their 65 ms SLO**.
+>
+> This illustrates that the filesystem is not merely a neutral container for application files. Different filesystems use different allocation, locking, writeback, and journaling mechanisms, and those implementation choices can interact strongly with a workload. Kafka's append-heavy log storage benefited substantially from XFS's behavior in Allegro's particular environment; this does not imply that XFS universally outperforms ext4 for every workload.
 
 ## Network Storage and Redundancy
 
