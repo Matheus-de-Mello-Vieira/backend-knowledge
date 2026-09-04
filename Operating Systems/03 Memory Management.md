@@ -407,72 +407,46 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > $$
 > Expanding the derived variables:
 > $$
-> \boxed{  
-> \Theta\left(  
-> \left\lceil  
-> \frac{V-\log_2P}  
-> {\log_2(P/E)}  
-> \right\rceil  
-> +  
-> \frac{ME}{P}  
-> \right)  
-> }  
+> \boxed{\Theta\left(\left\lceil \frac{V-\log_2 P}{\log_2(P/E)} \right\rceil + \frac{ME}{P}\right)}
 > $$
 > Since every page-table node occupies (P) bytes:
 > $$
-> \Theta\left(  
-> P\left(  
-> L+\frac{M}{B}  
-> \right)  
-> \right)  
+> \Theta\left(P\left(L+\frac{M}{B}\right)\right)
+> $$
 > becomes:
 > $$
-> \boxed{  
-> \Theta\left(  
-> P  
-> \left\lceil  
-> \frac{V-\log_2P}  
-> {\log_2(P/E)}  
-> \right\rceil  
-> +  
-> ME  
-> \right)  
-> }  
+> \boxed{\Theta\left(P \left\lceil \frac{V-\log_2 P}{\log_2(P/E)} \right\rceil + ME\right)}
 > $$
+
 > [!note]- Demonstration: One 4 KiB Mapping  
 > In a four-level hierarchy, mapping one isolated 4 KiB page can require one page-table page at each level:
 > $$
-> 4\times4\text{ KiB}
-> 16\text{ KiB}  
+> 4\times4\text{ KiB} = 16\text{ KiB}
 > $$
 > of page-table metadata.
 > This is large compared with one 4 KiB data page, but nearby mappings can reuse almost all of this initial structure.
+
 > [!note]- Demonstration: Mapping 2 MiB with 4 KiB Pages  
 > A 2 MiB region contains:
 > $$
-> \frac{2\text{ MiB}}{4\text{ KiB}}
-> 512  
+> \frac{2\text{ MiB}}{4\text{ KiB}} = 512  
 > $$
 > normal pages.
 > One lowest-level table contains exactly 512 entries, so those mappings fit into one leaf table.
 > The complete four-level hierarchy therefore needs approximately:
 > $$
-> 4\times4\text{ KiB}
-> 16\text{ KiB}  
+> 4\times4\text{ KiB} = 16\text{ KiB}  
 > $$
 > of metadata.
 > Mapping the 513th page requires another lowest-level table, increasing the total to approximately:
 > $$
-> 5\times4\text{ KiB}
-> 20\text{ KiB}  
+> 5\times4\text{ KiB} = 20\text{ KiB}  
 > $$
+
 > [!note]- Demonstration: Mapping 1 GiB with 4 KiB Pages  
 > A 1 GiB region contains:
 > $$
-> M=  
-> \frac{1\text{ GiB}}{4\text{ KiB}}
-> 262,144
-> 512^2  
+> M = \frac{1\text{ GiB}}{4\text{ KiB}} = 262{,}144 = 512^2
 > $$
 > pages.
 > The hierarchy requires:
@@ -482,23 +456,23 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > - 1 root
 > for:
 > $$
-> 515  
+> 515
 > $$
 > page-table pages.
 > Their physical memory consumption is:
 > $$
-> 515\times4096
-> 2,109,440\text{ bytes}  
+> 515\times4096 = 2{,}109{,}440\text{ bytes}
 > $$
 > or approximately:
 > $$
-> 2.01\text{ MiB}  
+> 2.01\text{ MiB}
 > $$
 > of metadata for a 1 GiB mapping.
 > The metadata ratio is approximately:
 > $$
-> 0.196%  
+> 0.196\%
 > $$
+
 > [!note]- Complexity: Highly Scattered Mappings  
 > Let:
 > $$
@@ -904,7 +878,8 @@ This differs from PCID. Global mappings are reusable because the mapping itself 
 > In response, modern Linux relies on **Kernel Page-Table Isolation (KPTI)**. Under KPTI, when a process executes in user space, its active page table contains only the bare minimum kernel mappings required to trigger a system call or handle an interrupt. When the CPU actually enters the kernel, it must immediately swap to a completely different page table to access the full kernel view.
 >
 > Consequently, the classic model—where every process permanently shares a complete view of the kernel in its upper memory—remains vital for understanding fundamental operating system design, but it no longer accurately describes how modern, secure systems actually operate in the wild.
->
+
+
 #### TLB Invalidation
 
 A cached TLB entry can outlive the page-table entry from which it was originally created.

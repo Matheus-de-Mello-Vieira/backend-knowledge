@@ -35,31 +35,29 @@
 
 ## File Descriptors (FDs)
 
-A **File Descriptor (FD)** is a non-negative integer that a Unix-like process uses as a local handle for an open I/O resource. The integer itself contains no file data and is meaningful only inside that process's descriptor table. Many resources—not only filesystem files—use the same abstraction, allowing system calls such as `read()`, `write()`, and `close()` to operate through a common interface.
+- **File Descriptor (FD)**: A **File Descriptor (FD)** is a non-negative integer that a Unix-like process uses as a local handle for an open I/O resource.
+- **Integer Meaning**: The integer itself contains no file data and is meaningful only inside that process's descriptor table.
+- **Common Interface**: Many resources—not only filesystem files—use the same abstraction, allowing system calls such as `read()`, `write()`, and `close()` to operate through a common interface.
+- **Regular-File Entry Point**: When the resource is a regular file, `open()` first resolves a pathname and then returns one of these descriptors.
+- **Storage-Specific Details**: The storage-specific details of pathname resolution, open flags, and regular-file I/O live in [[06 Storage Management#Opening Files|Opening Files]].
+- **Section Boundary**: This section keeps the process-level model: what an FD is, where its shared state lives, and why the same abstraction also applies to sockets, pipes, and devices.
 
 ### Descriptor Indirection
 
-Each process has a **File Descriptor Table**. An FD is an index into this process-local table, and the corresponding entry refers to a kernel object called an **open file description**. The open file description represents one open instance of a resource and stores shared state such as the current file offset and [[06 Storage Management#Open Flags|file status flags]].
-
-For a regular file, the open file description ultimately refers to the filesystem object represented by structures such as its [[06 Storage Management#Inodes and Directory Entries|inode]]. The inode describes the filesystem object itself; it is not a universal final layer behind every FD. A socket instead refers to networking state, a pipe refers to a kernel pipe object, and event facilities such as `epoll` refer to their own kernel objects.
-
-The distinction is important: an **inode** identifies a filesystem object, an **open file description** represents one open instance of a resource, and a **file descriptor** is one process's reference to that open instance.
-
-Opening the same regular file twice normally creates two different open file descriptions even though both refer to the same inode:
-
-```c
+- **The File Descriptor Table:** Each process maintains its own local File Descriptor Table. A File Descriptor (FD) is simply an index into this process-local table.
+- **Open File Descriptions:** The table entry corresponding to an FD refers to a kernel object called an **open file description**. This object represents one active, open instance of a resource and stores shared state, such as the current file offset and file status flags.
+- **The Underlying Object:** For regular files, the open file description ultimately points to the physical filesystem object, typically represented by an inode. However, the inode is not a universal final layer; other resources point to entirely different kernel objects (e.g., sockets refer to networking state, while pipes refer to kernel pipe objects).
+- **Independent State (Opening Twice):** Opening the same regular file twice naturally creates two completely different open file descriptions, even though both ultimately point to the exact same underlying inode. This allows the descriptors to maintain completely independent file offsets.
+```java
 int a = open("data.txt", O_RDONLY);
 int b = open("data.txt", O_RDONLY);
 ```
-
-The descriptors can therefore maintain independent file offsets. By contrast, duplicating a descriptor creates another descriptor that refers to the same open file description:
-
-```c
-int a = open("data.txt", O_RDONLY);
-int b = dup(a);
-```
-
-Now `a` and `b` share the same open-file offset and file status flags. A similar sharing relationship exists when `fork()` causes a child process to inherit descriptors that refer to the same open file descriptions as the parent's descriptors. Descriptor-specific properties, such as the close-on-exec flag, still belong to individual descriptor-table entries rather than to the shared open file description.
+- **Shared State (Duplication and Forking):** By contrast, duplicating a descriptor using `dup()` creates a new FD that refers to the exact _same_ open file description. As a result, both descriptors share the same open-file offset and status flags. A similar sharing relationship occurs when `fork()` causes a child process to inherit descriptors that refer to the same open file descriptions as the parent.    
+    ```java
+    int a = open("data.txt", O_RDONLY);
+    int b = dup(a);
+    ```
+- **Descriptor-Specific Properties:** While file offsets and status flags are shared at the open file description layer, properties specific to the descriptor itself (such as the close-on-exec flag) belong exclusively to the individual descriptor-table entry.
 
 ### Types of File Descriptors
 
@@ -136,29 +134,31 @@ str r3, #0xffeeddcc
 
 ### Compiler Optimization
 
-In the previous example, `a` and `b` are hardcoded constants (`1` and `3`). A modern compiler will realize that there is no reason to force the CPU to calculate `1 + 3` every single time the program runs. Instead, the compiler does the math itself _during_ the compilation phase. It simply "folds" the constants together into the final value of `4`.
-- **Dead Code Elimination:** Because the original variables `a` and `b` are never used again after `c` is calculated, the compiler won't even bother wasting CPU registers or stack memory on them. It completely strips those steps out of the final executable.
+- **Constant Folding:** Instead of forcing the CPU to calculate hardcoded mathematical operations (e.g., `1 + 3`) at runtime, a modern compiler evaluates and folds these constants into the final value during the compilation phase.
+- **Dead Code Elimination:** If original variables are never used again after a calculation, the compiler completely strips those steps from the final executable to avoid wasting CPU registers or stack memory.
+- **Efficiency Gains:** By performing this work at compile time, the resulting program is smaller (taking up less disk space and memory) and faster (requiring fewer execution cycles from the CPU's ALU) while producing the exact same final output.
 
-```armasm
-mov r3, #4
-str r3, #0xffeeddcc
-```
+> [!note] The Side Effects of Compiler Optimization While optimizations make programs faster and smaller, altering the underlying machine code can introduce unintended consequences, particularly in low-level systems programming.
+>
+>
+>
+> - **Debugging Nightmares:** Because the compiler fundamentally changes the code's structure—removing variables entirely or rearranging logic—the resulting assembly no longer maps 1:1 with the human-readable source code. If you try to step through a highly optimized program with a debugger, target variables may simply not exist in memory or CPU registers, making troubleshooting extremely difficult.
+>
+>
+>
+> - **Breaking Hardware Polling:** High-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
+>
+>
+>
+> - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. While perfectly safe in an isolated, single-threaded process, this reordering can cause disastrous synchronization bugs (data races) if multiple threads running concurrently across different CPU cores depend on memory being updated in the exact sequential order written in the original source code.
+>
 
-By doing this work at compile time, the resulting program is smaller (takes up less disk space and memory) and faster (requires fewer execution cycles from the CPU's ALU) while producing the exact same final output.
+### SIMD in Code Generation
 
-> [!note] The Side Effects of Compiler Optimization
-> While optimizations make programs faster and smaller, altering the underlying machine code can introduce unintended consequences, particularly in low-level systems programming.
-> - **Debugging Nightmares:** Because the compiler fundamentally changes the structure of the code—removing variables entirely or rearranging logic—the resulting assembly no longer maps 1:1 with your human-readable source code. If you try to step through a highly optimized program with a debugger, variables you want to inspect may simply not exist in memory or CPU registers, making troubleshooting extremely difficult.
-> - **Breaking Hardware Polling:** As noted in the [[00 System Architecture Overview#Device Drivers|Device Drivers]] section, high-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume that since the _software_ isn't changing `status` inside the loop, the check is redundant. It will optimize the read away, breaking the driver. To prevent this, developers must use the `volatile` keyword in C, which strictly forbids the compiler from optimizing reads and writes to that specific memory location.
-> - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. In an isolated, single-threaded process, this is perfectly safe. However, if multiple threads are running concurrently across different CPU cores, this reordering can cause disastrous synchronization bugs (data races) if one thread depends on memory being updated in the exact sequential order written in the original source code.
-
-### SIMD in code generation
-
-While you will rarely write [[04 Inside The CPU#Single Instruction, Multiple Data (SIMD)|SIMD]]) assembly by hand, understanding how compilers use it is crucial for analyzing performance. When a loop's memory layout and dependency pattern make it safe to do so, the compiler performs **auto-vectorization**—automatically replacing scalar instructions with vector instructions.
-
-This has a profound impact on throughput. SIMD does not split your program into multiple instruction streams; instead, it dramatically increases the amount of data processed per instruction by applying one decoded operation across multiple packed data lanes simultaneously.
-
-At the machine-code level, this means your instruction stream often stops being purely scalar. Source code written to process one element per iteration regularly compiles into machine code that handles chunks of data at once. This shift in register usage and throughput explains why highly optimized assembly can diverge so sharply from the original source-level structure.
+- **Auto-Vectorization:** While developers rarely write SIMD assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
+- **Throughput Impact:** SIMD does not split a program into multiple instruction streams; instead, it dramatically increases throughput by applying a single decoded operation across multiple packed data lanes simultaneously.
+- **Machine-Code Transformation:** Because of auto-vectorization, the compiled instruction stream often stops being purely scalar. Source code explicitly written to process a single element per iteration will regularly compile into machine code that processes chunks of data all at once.
+- **Assembly Divergence:** This fundamental shift in register usage and data throughput is a primary reason why highly optimized assembly code can look completely different from the original human-readable source structure.
 
 ### Assembling into Machine Code
 
@@ -204,44 +204,19 @@ At the machine-code level, this means your instruction stream often stops being 
 
 ### Function Prologue and Epilogue
 
-When a function begins executing, it may need to create a **stack frame** for local variables, saved registers, and other temporary state. The compiler generates a short sequence of machine instructions called the **function prologue** to prepare this environment.
+- **The Prologue:** When a function begins executing, the compiler generates a short sequence of machine instructions called the **function prologue** to create a stack frame for local variables, saved registers, and other temporary state.
+    - **Preserving Registers:** It saves registers whose current values must survive the function call.
+    - **Reserving Stack Space:** It moves the Stack Pointer (`sp`) to allocate space for local variables and temporary data.
+    - **Establishing a Frame Pointer:** It optionally saves the previous Frame Pointer and makes `bp` / `fp` point to the new stack frame.
+    - **Runtime-Specific Checks:** It performs additional runtime work, such as the stack-growth checks that Go places in the prologue of many functions.
+- **The Epilogue:** After the function body finishes, the compiler generates a corresponding **function epilogue** that reverses the setup performed by the prologue.
+    - **Releasing Stack Space:** It releases the current function's stack space by restoring the Stack Pointer.
+    - **Restoring Registers:** It restores the registers that were saved by the function.
+    - **Restoring the Frame Pointer:** It restores the previous Frame Pointer, if one was used.
+    - **Returning Execution:** It returns control flow back to the caller.
 
-A prologue generally may:
-
-1. **Preserve Required Registers:** Save registers whose current values must survive the function call.
-2. **Reserve Stack Space:** Move the Stack Pointer (`sp`) to allocate space for local variables and temporary data.
-3. **Establish a Frame Pointer:** Optionally save the previous Frame Pointer and make `bp` / `fp` point to the new stack frame.
-4. **Perform Runtime-Specific Checks:** Some runtimes insert additional work into function prologues. For example, Go places stack-growth checks in the prologue of many functions.
-
-Conceptually:
-
-```text
-Before entering the function:
-
-        caller's frame
-        ──────────────
-sp  →   top of stack
-
-
-Function prologue:
-
-        caller's frame
-        ──────────────
-        saved state
-        local variables
-        temporary data
-sp  →   ──────────────
-        current function's frame
-```
-
-After the function body finishes, the compiler may generate a corresponding **function epilogue**. It reverses the setup performed by the prologue:
-
-1. Release the current function's stack space by restoring the Stack Pointer.
-2. Restore registers that were saved by the function.
-3. Restore the previous Frame Pointer, if one was used.
-4. Return execution to the caller.`
-
-Not every function has a large or even clearly visible prologue and epilogue. Optimizing compilers can eliminate unnecessary stack frames, omit the Frame Pointer, keep local values entirely in registers, or inline the function into its caller.
+> [!note] Optimization Exemptions
+> Not every function has a large or even clearly visible prologue and epilogue. Optimizing compilers can eliminate unnecessary stack frames, omit the Frame Pointer, keep local values entirely in registers, or inline the function directly into its caller.
 
 ### Nested Function Calls
 
@@ -414,10 +389,6 @@ The **page cache** is a kernel-managed cache of file data stored in physical RAM
 
 The important distinction is that a file-backed mapping connects a virtual-memory region directly to an **existing file**. The file itself becomes the recoverable backing store for clean mapped pages.
 
-Conceptually:
-
-#### Virtual Address → mapped file region → resident page-cache page when needed
-
 When the page is resident, the page table translates the virtual address to a physical page. If it is not resident, a page fault transfers control to the kernel, which uses the mapping metadata to determine which file and offset must be loaded.
 
 - **Avoiding an Extra Copy:** With conventional buffered `read()`, file data commonly enters the page cache and is then copied into an application-provided buffer. With `mmap`, the cached file page itself can be mapped into the process's address space, avoiding that additional page-cache-to-user-buffer copy.
@@ -430,6 +401,7 @@ When the page is resident, the page table translates the virtual address to a ph
 > [[../AI Engineering/Lexical Information Retrieval#Apache Lucene (Java)|Lucene]]) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
 >
 > Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
+
 > [!example] llama.cpp — Mapping Read-Only Model Weights
 >
 > During [[../AI Engineering/LLM/LLM Processing Pipeline#Inference vs. Training|LLM inference]], billions of frozen model parameters are repeatedly read while tokens pass through the Transformer layers. `llama.cpp` can memory-map the model file so CPU inference can access resident weight pages without first copying the complete model into a second anonymous heap allocation.
@@ -437,6 +409,7 @@ When the page is resident, the page table translates the virtual address to a ph
 > These persistent model weights are different from the [[../AI Engineering/LLM/LLM Processing Pipeline#6. Iterative Generation Loop|KV Cache]], which is temporary runtime state produced from the current context.
 >
 > Mapping a model does not mean that arbitrarily large models can be executed efficiently with little RAM. Dense inference repeatedly needs most of the model weights. If the active weight working set exceeds available RAM and pages must constantly be reloaded from storage, inference can become dominated by page faults and storage latency. GPU offloading and VRAM placement remain separate memory-placement decisions.
+
 > [!example] SQLite — `mmap` as an Optional Optimization
 >
 > [[../Databases/SQLite#Storage Model|SQLite]] normally manages database pages using its own pager and page cache, but it can optionally memory-map portions of the database for reads. When a suitable page is mapped, SQLite can inspect the file-backed page directly rather than copying it into another SQLite-managed buffer.
@@ -448,10 +421,6 @@ When the page is resident, the page table translates the virtual address to a ph
 `MAP_ANONYMOUS` creates a virtual-memory mapping with **no file backing**. Its contents initially read as zero, and physical pages are commonly allocated only when they are actually needed.
 
 Once populated, these pages behave like ordinary anonymous process memory. Because there is no original file from which modified contents can be reconstructed, the operating system cannot simply discard an anonymous page that still contains live data. Under memory pressure, such pages may instead be moved to **swap**, if swap is available.
-
-Conceptually:
-
-#### Virtual Address → anonymous physical page → swap if the page must be evicted
 
 This is the major distinction from a clean file-backed page:
 

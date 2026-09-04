@@ -20,88 +20,64 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 
 #### Physical Geometry and CHS
 
-An HDD contains one or more **platters** mounted on a spindle and rotating at a fixed speed. Each recording surface is accessed by a **read/write head** positioned extremely close to the platter. The heads are attached to the same actuator assembly, so moving the actuator changes the radial position of all heads together.
-
-Each platter surface is organized into concentric circles called **tracks**, and each track is divided into **sectors** containing chunks of data. Tracks at the same radial position across the different platter surfaces form a **cylinder**.
-
-Early systems exposed this geometry directly through **CHS (Cylinder, Head, Sector)** addressing. A location was identified using three values:
-
-- **Cylinder:** selects the radial position of the actuator.
-- **Head:** selects a particular recording surface.
-- **Sector:** selects a region of the track as the platter rotates.
-
-CHS therefore reflected the physical organization of early disks relatively closely. However, as HDDs became more sophisticated, their internal geometry stopped mapping cleanly to a simple fixed number of tracks and sectors. For example, modern drives can place more sectors on outer tracks because those tracks have a greater circumference.
-
-This made exposing physical disk geometry to software increasingly inconvenient and eventually led to the adoption of **Logical Block Addressing**.
-
+- **Platters and Heads**: An HDD contains one or more **platters** mounted on a spindle and rotating at a fixed speed.
+	- Each recording surface is accessed by a **read/write head** positioned extremely close to the platter.
+	- The heads are attached to the same actuator assembly, so moving the actuator changes the radial position of all heads together.
+- **Tracks and Sectors**: Each platter surface is organized into concentric circles called **tracks**, and each track is divided into **sectors** containing chunks of data.
+- **Cylinders**: Tracks at the same radial position across the different platter surfaces form a **cylinder**.
+- **CHS Addressing**: Early systems exposed this geometry directly through **CHS (Cylinder, Head, Sector)** addressing. A location was identified using three values:
+    - **Cylinder:** selects the radial position of the actuator.
+    - **Head:** selects a particular recording surface.
+    - **Sector:** selects a region of the track as the platter rotates.
+- **Geometric Evolution**: CHS reflected the physical organization of early disks relatively closely. However, as HDDs became more sophisticated, their internal geometry stopped mapping cleanly to a simple fixed number of tracks and sectors.
+	- **Variable Circumference**: For example, modern drives can place more sectors on outer tracks because those tracks have a greater circumference.
+	- **Shift to LBA**: This made exposing physical disk geometry to software increasingly inconvenient and eventually led to the adoption of Logical Block Addressing.
 #### Data Access
 
-HDDs are **block devices**: software addresses storage in blocks rather than requesting arbitrary individual bytes directly from the device.
-
-At the hardware level, HDDs traditionally used **512-byte sectors**, while modern drives commonly use **4 KiB physical sectors**, known as **Advanced Format**. Some drives expose those 4 KiB sectors directly, while others maintain compatibility by exposing 512-byte **logical sectors** even though the underlying physical sector is 4 KiB.
-
-This distinction matters for writes. If a drive has 4 KiB physical sectors but software requests an unaligned modification smaller than 4 KiB, the drive may need to read the existing physical sector, modify the relevant portion, and write the entire sector again. This is a **read-modify-write** operation and adds additional I/O.
-
-The mechanical nature of HDDs has an even larger effect on performance. Accessing a block generally involves two important delays:
-
-- **Seek time:** moving the actuator so that the head reaches the correct track.
-- **Rotational latency:** waiting for the desired sector to rotate underneath the head.
-
-Once the head is correctly positioned, contiguous sectors can be transferred rapidly as they pass beneath it. Consequently, HDD performance depends strongly on the access pattern.
-
-With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement. With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
-
-This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
-
+* **Block Devices**: HDDs are **block devices**, software addresses storage in blocks rather than requesting arbitrary individual bytes directly from the device.
+* **Sector Sizes**: At the hardware level, HDDs traditionally used **512-byte sectors**, while modern drives commonly use **4 KiB physical sectors**, known as **Advanced Format**.
+	* **Logical Sectors**: Some drives expose those 4 KiB sectors directly, while others maintain compatibility by exposing 512-byte **logical sectors** even though the underlying physical sector is 4 KiB.
+	* **Read-Modify-Write**: This distinction matters for writes. If a drive has 4 KiB physical sectors but software requests an unaligned modification smaller than 4 KiB, the drive may need to read the existing physical sector, modify the relevant portion, and write the entire sector again. This is a **read-modify-write** operation and adds additional I/O.
+* **Mechanical Delays**: The mechanical nature of HDDs has an even larger effect on performance. Accessing a block generally involves two important delays:
+	* **Seek time:** moving the actuator so that the head reaches the correct track.
+	* **Rotational latency:** waiting for the desired sector to rotate underneath the head.
+* **Access Patterns**: Once the head is correctly positioned, contiguous sectors can be transferred rapidly as they pass beneath it. Consequently, HDD performance depends strongly on the access pattern.
+	* **Sequential Access**: With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement.
+	* **Random Access**: With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
+* **Workload Distribution**: This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
 #### Logical Block Addressing (LBA)
 
-Exposing CHS geometry forced software to understand details of the physical disk layout. **Logical Block Addressing (LBA)** replaces this interface with a much simpler abstraction.
-
-Under LBA, the disk is presented as a linear sequence of fixed-size logical blocks such as `LBA 0, LBA 1, LBA 2, ...`. Software therefore requests a block by its number rather than specifying a cylinder, head, and sector.
-
-The drive's internal controller and firmware determine where each logical block is physically stored. The mapping does not need to correspond to a simple CHS calculation: modern drives can internally reorganize storage, compensate for differences in track geometry, and transparently replace defective sectors with spare sectors.
-
-This indirection allows the physical implementation of the drive to evolve independently from the interface exposed to the operating system. The OS only needs to understand a linear address space of logical blocks, while the HDD manages its actual physical geometry internally.
-
-The same abstraction also makes **bad-sector remapping** possible. If a physical sector becomes unreliable, the drive can redirect its LBA to a spare physical sector while continuing to expose the same logical address to the operating system. From the software's perspective, the location of the block has not changed.
+- **Simpler Abstraction**: Exposing CHS geometry forced software to understand details of the physical disk layout, so **Logical Block Addressing (LBA)** replaces this interface with a much simpler abstraction.
+- **Linear Sequence**: Under LBA, the disk is presented as a linear sequence of fixed-size logical blocks such as `LBA 0, LBA 1, LBA 2, ...`. Software therefore requests a block by its number rather than specifying a cylinder, head, and sector.
+- **Internal Mapping**: The drive's internal controller and firmware determine where each logical block is physically stored. The mapping does not need to correspond to a simple CHS calculation: modern drives can internally reorganize storage, compensate for differences in track geometry, and transparently replace defective sectors with spare sectors.
+- **Indirection**: This indirection allows the physical implementation of the drive to evolve independently from the interface exposed to the operating system. The OS only needs to understand a linear address space of logical blocks, while the HDD manages its actual physical geometry internally.
+- **Bad-Sector Remapping**: The same abstraction also makes **bad-sector remapping** possible. If a physical sector becomes unreliable, the drive can redirect its LBA to a spare physical sector while continuing to expose the same logical address to the operating system. From the software's perspective, the location of the block has not changed.
 
 > [!note] LBA Blocks and Virtual Memory Pages
->
-> **LBA logical blocks** and **[[03 Memory Management#Virtual Memory|virtual memory]]** are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
->
-> The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
->
-> The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
->
-> Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
+> - **Independent Abstractions**: **LBA logical blocks** and virtual memory are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
+> - **Swapping Units**: The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
+> - **Page-Sized Slots**: The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
+> - **Aligned Granularities**: Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
 > [!note] Logical vs. Physical Sector Size
->
-> **LBA (Logical Block Addressing)** identifies blocks in the logical address space exposed by the storage device to the operating system. An LBA is an **address**, while the **logical sector size** describes how many bytes each address represents.
->
-> Internally, the device may operate using a different **physical sector size**. The physical location corresponding to logical data is sometimes described using a **Physical Block Address (PBA)**, although the exact internal addressing scheme is device-specific and normally hidden from the host.
->
-> The logical and physical sizes do not need to match. For example, a **512e** HDD may expose 512-byte logical sectors while internally using 4 KiB physical sectors, so `8 × 512 B logical sectors → 1 × 4 KiB physical sector`.
->
-> A **4Kn** drive instead exposes 4 KiB logical sectors directly, making the logical and physical sector sizes equal.
->
-> This distinction is possible because the storage controller translates the host-visible LBA space into the device's internal physical organization.
+> - **Logical Sector Size**: **LBA (Logical Block Addressing)** identifies blocks in the logical address space exposed by the storage device to the operating system. An LBA is an **address**, while the **logical sector size** describes how many bytes each address represents.
+> - **Physical Sector Size**: Internally, the device may operate using a different **physical sector size**. The physical location corresponding to logical data is sometimes described using a **Physical Block Address (PBA)**, although the exact internal addressing scheme is device-specific and normally hidden from the host.
+> - **Size Mismatch**: The logical and physical sizes do not need to match. For example, a **512e** HDD may expose 512-byte logical sectors while internally using 4 KiB physical sectors, so `8 × 512 B logical sectors → 1 × 4 KiB physical sector`. A **4Kn** drive instead exposes 4 KiB logical sectors directly, making the logical and physical sector sizes equal.
+> - **Translation**: This distinction is possible because the storage controller translates the host-visible LBA space into the device's internal physical organization.
 >
 #### File Fragmentation and Defragmentation
 
-Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem. When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous **extents**. This is known as **file fragmentation**.
+- **Contiguous Allocation**: Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem.
+- **File Fragmentation**: When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous **extents**. This is known as **file fragmentation**.
+	- **Partially Random Operations**: A logically sequential operation can therefore become a sequence of smaller, partially random operations: `Extent A → seek → Extent B → seek → Extent C`.
+- **Mechanical Seeks**: Fragmentation is particularly expensive on an HDD because sequential file access can turn into multiple mechanical seeks. Suppose a large file consists of three extents located in distant regions of the disk. Reading each extent internally may be sequential, but when the read reaches the end of one extent, the actuator may need to move to another track and wait for the correct sector to rotate under the head before continuing.
+- **Performance Penalty**: The more fragmented the file is, the more often the HDD may pay **seek time** and **rotational latency** instead of continuously transferring data.
+- **Defragmentation**: **Defragmentation** attempts to reverse this process. The filesystem or defragmentation utility moves file extents so that the logical blocks belonging to the same files become more contiguous. It may also consolidate free space, making it easier for future files to receive contiguous allocations.
+- **Sequential Transfers**: After defragmentation, reading a file can require fewer seeks and allow the HDD to spend more time performing efficient sequential transfers. This can significantly improve workloads involving large fragmented files or systems where fragmentation has accumulated for a long time.
 
-Fragmentation is particularly expensive on an HDD because sequential file access can turn into multiple mechanical seeks. Suppose a large file consists of three extents located in distant regions of the disk. Reading each extent internally may be sequential, but when the read reaches the end of one extent, the actuator may need to move to another track and wait for the correct sector to rotate under the head before continuing.
-
-A logically sequential operation can therefore become a sequence of smaller, partially random operations: `Extent A → seek → Extent B → seek → Extent C`
-
-The more fragmented the file is, the more often the HDD may pay **seek time** and **rotational latency** instead of continuously transferring data.
-
-**Defragmentation** attempts to reverse this process. The filesystem or defragmentation utility moves file extents so that the logical blocks belonging to the same files become more contiguous. It may also consolidate free space, making it easier for future files to receive contiguous allocations.
-
-After defragmentation, reading a file can require fewer seeks and allow the HDD to spend more time performing efficient sequential transfers. This can significantly improve workloads involving large fragmented files or systems where fragmentation has accumulated for a long time.
-
-Because software operates through LBA, it does not directly control the exact physical platter coordinates. Defragmentation therefore primarily makes the file's **logical blocks** contiguous. HDD firmware generally maps nearby sequential LBAs to nearby physical locations, so this still tends to preserve physical locality, although internal remapping such as bad-sector replacement can prevent the correspondence from being perfect.
-
+> [!note] Logical vs. Physical Contiguity
+> - **Logical Contiguity**: Because software operates through LBA, it does not directly control the exact physical platter coordinates. Defragmentation therefore primarily makes the file's **logical blocks** contiguous.
+> - **Physical Locality**: HDD firmware generally maps nearby sequential LBAs to nearby physical locations, so this still tends to preserve physical locality, although internal remapping such as bad-sector replacement can prevent the correspondence from being perfect.
+>
 ### SSD
 
 A **Solid-State Drive (SSD)** is a non-volatile storage device built primarily from **NAND flash memory**. Unlike HDDs, SSDs have no moving mechanical parts: data is accessed electronically rather than by moving a head over a rotating platter. This gives SSDs much lower access latency and makes **random reads and writes** dramatically faster than on HDDs.
@@ -112,66 +88,54 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
 
 #### NAND Pages and Physical Blocks
 
-NAND flash is organized hierarchically. The smallest unit normally read or programmed is a **page**, commonly several KiB to tens of KiB in modern NAND. Many pages are grouped into a much larger **physical block**, which is the smallest unit that NAND can erase.
-
-This creates an important asymmetry:
-
-- **Read:** operates on pages.
-- **Program/write:** operates on pages.
-- **Erase:** operates on entire physical blocks containing many pages.
-
-A physical block can contain hundreds or even thousands of pages depending on the NAND generation. Because erase operations happen at this larger granularity, individual pages cannot simply be erased and reused independently.
-
-> [!note] Page and Block Terminology
+- **Hierarchical Organization**: NAND flash is organized hierarchically.
+    - **Pages**: The smallest unit normally read or programmed is a **page**, commonly several KiB to tens of KiB in modern NAND.
+    - **Physical Blocks**: Many pages are grouped into a much larger **physical block**, which is the smallest unit that NAND can erase.
+- **Operation Asymmetry**: This creates an important asymmetry:
+    - **Read**: operates on pages.
+    - **Program/write**: operates on pages.
+    - **Erase**: operates on entire physical blocks containing many pages.
+- **Erase Granularity**: A physical block can contain hundreds or even thousands of pages depending on the NAND generation.
+    - **Page Reuse Constraints**: Because erase operations happen at this larger granularity, individual pages cannot simply be erased and reused independently.
+- **Architectural Impact**: This read/program/erase asymmetry is the fundamental reason SSDs need mechanisms such as the **Flash Translation Layer**, out-of-place writes, garbage collection, and wear leveling.
+> [!note]
+> - **Overloaded Terms**: **Page** and **block** are heavily overloaded terms in computer systems.
+>     - **Logical Blocks**: In storage, a **logical block** refers to a unit in the LBA address space exposed to the operating system.
+>     - **Physical Blocks**: A NAND **physical block** refers to an erase unit containing many flash pages.
+> - **Terminology Usage**: In these notes, **logical block** refers to storage addressed through LBA, while **physical block** refers to the NAND erase unit inside an SSD.
 >
-> **Page** and **block** are heavily overloaded terms in computer systems. In storage, a **logical block** refers to a unit in the LBA address space exposed to the operating system, while a NAND **physical block** refers to an erase unit containing many flash pages.
->
-> In these notes, **logical block** refers to storage addressed through LBA, while **physical block** refers to the NAND erase unit inside an SSD.
-
-This read/program/erase asymmetry is the fundamental reason SSDs need mechanisms such as the **Flash Translation Layer**, out-of-place writes, garbage collection, and wear leveling.
-
 #### Flash Translation Layer
 
-The operating system does not address NAND flash directly. An SSD exposes a **Logical Block Addressing (LBA)** interface, presenting storage as a linear sequence of logical blocks.
-
-The SSD controller bridges this logical address space and the physical NAND through the **Flash Translation Layer (FTL)**. A useful simplified model is to imagine that each logical block maps to one physical NAND page: `Logical block → Physical NAND page`
-
-For example, `LBA 100 → Page P40`: Under this model, when the host reads `LBA 100`, the FTL looks up its mapping and retrieves the data from physical page `P40`.
-
-The important property of the mapping is that it is **dynamic rather than permanent**. Because NAND pages cannot normally be overwritten in place, updating a logical block may cause the SSD to write the new value into another free physical page and then change the mapping.
-
-For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
-
-This indirection is fundamental to SSD operation. It allows the controller to perform [[#Out-of-Place Writes|out-of-place writes]], relocate data during [[#Garbage Collection|garbage collection]], and distribute writes through [[#Wear Leveling|wear leveling]] without changing the LBA addresses exposed to the host.
-
-As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
-
-The FTL must maintain metadata describing these logical-to-physical mappings. Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage. SSDs commonly cache frequently accessed mapping information in **DRAM**, while smaller amounts of SRAM are used internally by the controller. DRAM-less SSDs rely more heavily on NAND metadata or, in some designs, host memory.
+* The **Flash Translation Layer (FTL)** acts as a bridge that abstracts the physical NAND flash, allowing the operating system to interact with a standard, linear Logical Block Addressing (LBA) interface rather than addressing the memory directly.
+* **Simplified Model**: A useful simplified model is to imagine that each logical block maps to one physical NAND page: `Logical block → Physical NAND page`.
+	* **Read Lookup**: For example, `LBA 100 → Page P40`: Under this model, when the host reads `LBA 100`, the FTL looks up its mapping and retrieves the data from physical page `P40`.
+* **Dynamic Mapping**: The important property of the mapping is that it is **dynamic rather than permanent**.
+	* **Mapping Changes**: Because NAND pages cannot normally be overwritten in place, updating a logical block may cause the SSD to write the new value into another free physical page and then change the mapping.
+	* **Transparent Updates**: For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
+	* **Enabling Mechanisms**: It allows the controller to perform [[#Out-of-Place Writes|out-of-place writes]], relocate data during [[#Garbage Collection|garbage collection]], and distribute writes through [[#Wear Leveling|wear leveling]] without changing the LBA addresses exposed to the host.
+	* **Physical Adjacency**: As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
+	* **Mapping Metadata**: The FTL must maintain metadata describing these logical-to-physical mappings.
+	* **Persistence**: Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage.
+* **Metadata Caching**: SSDs commonly cache frequently accessed mapping information in **DRAM**, while smaller amounts of SRAM are used internally by the controller.
+	* **DRAM-less SSDs**: DRAM-less SSDs rely more heavily on NAND metadata or, in some designs, host memory.
 
 > [!note] The One-LBA-to-One-Page Model Is a Simplification
->
-> Treating the FTL as `1 logical block → 1 physical NAND page` is a convenient model for understanding SSD behavior, but it is not a requirement of the hardware.
->
-> The **LBA logical block size** exposed to the host and the internal **NAND page size** are independent. For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
->
-> Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
->
-> The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
->
+> * **Convenient Model**: Treating the FTL as `1 logical block → 1 physical NAND page` is a convenient model for understanding SSD behavior, but it is not a requirement of the hardware.
+> * **Independent Sizes**: The **LBA logical block size** exposed to the host and the internal **NAND page size** are independent.
+> * **Shared Pages**: For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
+> * **Complex Schemes**: Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
+> * **Essential Abstraction**: The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
 #### States of a Page
 
-From the SSD controller's perspective, a NAND page can usually be understood as being in one of three logical states:
-
-- **Free / erased:** the page belongs to an erased physical block and is available to receive new data.
-- **Valid:** the page contains the current physical representation of some logical data and is referenced by the FTL.
-- **Invalid / stale:** the page still physically contains old data, but the FTL no longer references it because that logical data was updated or discarded.
-
-The distinction between **valid** and **invalid** therefore depends on the FTL mapping rather than on whether bits are physically present in the page.
-
-A crucial constraint is that an invalid page cannot simply transition back to **free** by itself. NAND erase operations apply to an entire physical block, so invalid pages become reusable only after the whole block containing them is erased.
-
-As updates accumulate, physical blocks gradually become mixtures of valid and invalid pages. Reclaiming the space occupied by those invalid pages is the purpose of garbage collection.
-
+- **Logical States**: From the SSD controller's perspective, a NAND page can usually be understood as being in one of three logical states:
+    - **Free / erased**: the page belongs to an erased physical block and is available to receive new data.
+    - **Valid**: the page contains the current physical representation of some logical data and is referenced by the FTL.
+    - **Invalid / stale**: the page still physically contains old data, but the FTL no longer references it because that logical data was updated or discarded.
+- **Mapping Dependency**: The distinction between **valid** and **invalid** therefore depends on the FTL mapping rather than on whether bits are physically present in the page.
+- **Transition Constraints**: A crucial constraint is that an invalid page cannot simply transition back to **free** by itself.
+    - **Block Erasure**: NAND erase operations apply to an entire physical block, so invalid pages become reusable only after the whole block containing them is erased.
+- **State Mixtures**: As updates accumulate, physical blocks gradually become mixtures of valid and invalid pages.
+    - **Space Reclamation**: Reclaiming the space occupied by those invalid pages is the purpose of garbage collection.
 #### Out-of-Place Writes
 
 Because NAND pages cannot normally be overwritten directly, SSD updates use **out-of-place writes**.
@@ -191,120 +155,103 @@ Out-of-place writes avoid performing an expensive block erase for every small up
 
 #### Garbage Collection
 
-Because NAND can erase only entire physical blocks, the SSD cannot independently reclaim individual invalid pages. A physical block may also contain valid pages that must be preserved before the block can be erased.
-
-When the controller needs additional reusable space, it performs **Garbage Collection (GC)**. It selects a physical block containing invalid pages, copies any remaining valid pages into free locations elsewhere, updates their FTL mappings, and erases the original physical block.
-
-For example, suppose a physical block contains 100 pages:
-
-- 80 invalid pages
-- 20 valid pages
-
-The SSD can copy the 20 valid pages elsewhere and then erase the entire physical block. After the erase, all 100 pages become free again.
-
-Garbage collection therefore converts fragmented invalid space into reusable erased blocks. The trade-off is that the SSD must perform additional internal reads and writes that were never explicitly requested by the host.
-
-Garbage collection is particularly expensive when the drive has little free space. If candidate blocks contain many valid pages, the controller must relocate more data before it can reclaim a block.
-
+- **Erase Limitations**: Because NAND can erase only entire physical blocks, the SSD cannot independently reclaim individual invalid pages.
+    - **Preserving Data**: A physical block may also contain valid pages that must be preserved before the block can be erased.
+- **Garbage Collection (GC)**: When the controller needs additional reusable space, it performs **Garbage Collection (GC)**.
+    - **Relocation and Erasure**: It selects a physical block containing invalid pages, copies any remaining valid pages into free locations elsewhere, updates their FTL mappings, and erases the original physical block.
+- **Relocation Example**: For example, suppose a physical block contains 100 pages:
+    - 80 invalid pages.
+    - 20 valid pages.
+    - **Block Recovery**: The SSD can copy the 20 valid pages elsewhere and then erase the entire physical block. After the erase, all 100 pages become free again.
+- **Space Conversion**: Garbage collection therefore converts fragmented invalid space into reusable erased blocks.
+> [!note] The Cost of Garbage Collection
+> - **Internal Overhead**: The trade-off is that the SSD must perform additional internal reads and writes that were never explicitly requested by the host.
+> - **Free Space Dependency**: Garbage collection is particularly expensive when the drive has little free space.
+>     - **Relocation Cost**: If candidate blocks contain many valid pages, the controller must relocate more data before it can reclaim a block.
 #### Write Amplification
 
 Garbage collection and other internal relocation operations mean that the amount of data physically written to NAND can exceed the amount requested by the host. This effect is called **write amplification**.
-
-It can be expressed as: `Write Amplification = NAND bytes written / Host bytes written`
-
-For example, if the host writes 1 GiB but the SSD internally writes 1.5 GiB because it also needs to relocate existing pages, the write amplification factor is: `1.5 GiB / 1 GiB = 1.5`
-
-Write amplification matters for two reasons. First, additional internal writes consume NAND bandwidth and can reduce sustained write performance. Second, NAND cells tolerate only a finite number of program/erase cycles, so unnecessary writes also consume part of the drive's endurance.
-
-Garbage collection, filesystem access patterns, free-space availability, over-provisioning, and the efficiency of the FTL all influence write amplification.
+- **Formula**: It can be expressed as: `Write Amplification = NAND bytes written / Host bytes written`.
+    - **Example Calculation**: For example, if the host writes 1 GiB but the SSD internally writes 1.5 GiB because it also needs to relocate existing pages, the write amplification factor is: `1.5 GiB / 1 GiB = 1.5`.
+- **Performance and Endurance Impact**: Write amplification matters for two reasons:
+    - **Bandwidth**: First, additional internal writes consume NAND bandwidth and can reduce sustained write performance.
+    - **Lifespan**: Second, NAND cells tolerate only a finite number of program/erase cycles, so unnecessary writes also consume part of the drive's endurance.
+- **Influencing Factors**: Garbage collection, filesystem access patterns, free-space availability, over-provisioning, and the efficiency of the FTL all influence write amplification.
 
 #### TRIM
 
-When a file is deleted, the filesystem usually does not overwrite all of its previous data. It simply updates its own metadata and considers the corresponding logical blocks available for reuse.
-
-Without additional information, the SSD cannot know that those logical blocks are no longer useful. From the drive's perspective, their physical pages may still appear valid because they remain mapped by the FTL.
-
-The **TRIM** command allows the operating system to tell the SSD that specific logical blocks are no longer needed.
-
-The controller can then invalidate the corresponding mappings and treat their physical pages as stale. During future garbage collection, those pages no longer need to be copied elsewhere.
-
-TRIM therefore communicates filesystem knowledge to the SSD, reducing unnecessary data movement and potentially lowering write amplification.
+- **Filesystem Deletion**: When a file is deleted, the filesystem usually does not overwrite all of its previous data.
+    - **Metadata Updates**: It simply updates its own metadata and considers the corresponding logical blocks available for reuse.
+- **SSD Blindness**: Without additional information, the SSD cannot know that those logical blocks are no longer useful.
+    - **Apparent Validity**: From the drive's perspective, their physical pages may still appear valid because they remain mapped by the FTL.
+- **The TRIM Command**: The **TRIM** command allows the operating system to tell the SSD that specific logical blocks are no longer needed.
+    - **Mapping Invalidation**: The controller can then invalidate the corresponding mappings and treat their physical pages as stale.
+    - **Garbage Collection Efficiency**: During future garbage collection, those pages no longer need to be copied elsewhere.
+- **Reduced Amplification**: TRIM therefore communicates filesystem knowledge to the SSD, reducing unnecessary data movement and potentially lowering write amplification.
 
 > [!note] TRIM Extends the Basic LBA Abstraction
->
-> A minimal **LBA** interface only needs to let the host **read** and **write** logical blocks. It does not communicate whether the data currently stored at an LBA is still useful.
->
-> This was usually sufficient for traditional HDDs because a sector can simply be overwritten later. NAND flash is different: an SSD cannot overwrite a programmed page in place, so knowing that some logical data has been discarded allows the controller to treat the corresponding physical pages as invalid instead of preserving them during garbage collection.
->
-> **TRIM** therefore extends the basic block-device interface with an additional semantic operation: the host can tell the device that it no longer cares about the contents of a range of logical blocks.
->
-> Conceptually, the interface becomes:
->
-> - `read(LBA)`
-> - `write(LBA, data)`
-> - `discard(LBA range)`
->
-> **TRIM** is the ATA name for this operation. Other storage interfaces provide equivalent mechanisms, such as **SCSI UNMAP** and **NVMe deallocation**. The more general concept is usually called **discard** or **block deallocation**.
->
-> Although this mechanism became especially important with SSDs, it is not inherently SSD-specific. Thin-provisioned storage, virtual disks, and other storage systems can also use discard information to reclaim underlying resources.
+> - **Minimal LBA Interface**: A minimal **LBA** interface only needs to let the host **read** and **write** logical blocks. It does not communicate whether the data currently stored at an LBA is still useful.
+> - **HDD vs. NAND**: This was usually sufficient for traditional HDDs because a sector can simply be overwritten later. NAND flash is different: an SSD cannot overwrite a programmed page in place, so knowing that some logical data has been discarded allows the controller to treat the corresponding physical pages as invalid instead of preserving them during garbage collection.
+> - **Semantic Extension**: **TRIM** therefore extends the basic block-device interface with an additional semantic operation: the host can tell the device that it no longer cares about the contents of a range of logical blocks.
+> - **Conceptual Interface**: Conceptually, the interface becomes:
+>     - `read(LBA)`
+>     - `write(LBA, data)`
+>     - `discard(LBA range)`
+> - **Alternative Terminology**: **TRIM** is the ATA name for this operation. Other storage interfaces provide equivalent mechanisms, such as **SCSI UNMAP** and **NVMe deallocation**. The more general concept is usually called **discard** or **block deallocation**.
+> - **Broader Applications**: Although this mechanism became especially important with SSDs, it is not inherently SSD-specific. Thin-provisioned storage, virtual disks, and other storage systems can also use discard information to reclaim underlying resources.
 >
 #### Wear Leveling
 
-NAND flash has limited endurance. A physical block can tolerate only a finite number of **program/erase cycles** before its cells become unreliable.
-
-Workloads also tend to access data unevenly. Some pages are rewritten frequently, while others remain unchanged for long periods. SSD terminology often describes these as:
-
-- **Hot pages:** data that is updated frequently.
-- **Cold pages:** data that changes rarely or remains static for long periods.
-
-If the controller always reused the same convenient physical blocks for hot data, those blocks would accumulate erase cycles much faster than blocks holding cold data. Some parts of the NAND could therefore wear out while others had experienced relatively little use.
-
-SSDs avoid this through **wear leveling**, which distributes program/erase cycles across the available physical blocks. The indirection provided by the FTL makes this possible because logical addresses are not permanently tied to particular physical locations.
-
-Wear leveling generally has two forms:
-
-- **Dynamic wear leveling:** when writing or relocating hot data, the controller prefers physical blocks with lower erase counts. This spreads future writes across blocks that have experienced less wear.
-- **Static wear leveling:** the controller may also relocate cold data. A physical block containing cold pages might otherwise remain occupied for years while hotter blocks are repeatedly erased. Moving that cold data into a more heavily worn block frees the less-worn block so it can participate in future writes.
-
-Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all. The purpose is not to improve that data's access performance, but to prevent cold data from permanently reserving the least-worn physical blocks.
-
-Wear leveling trades additional internal data movement for a more uniform distribution of wear across the NAND, increasing the usable lifetime of the drive.
-
+- **Limited Endurance**: NAND flash has limited endurance. A physical block can tolerate only a finite number of **program/erase cycles** before its cells become unreliable.
+- **Uneven Access**: Workloads also tend to access data unevenly. Some pages are rewritten frequently, while others remain unchanged for long periods.
+    - **SSD Terminology**: SSD terminology often describes these as:
+        - **Hot pages**: data that is updated frequently.
+        - **Cold pages**: data that changes rarely or remains static for long periods.
+- **Uneven Wear**: If the controller always reused the same convenient physical blocks for hot data, those blocks would accumulate erase cycles much faster than blocks holding cold data. Some parts of the NAND could therefore wear out while others had experienced relatively little use.
+- **Wear Leveling Mechanism**: SSDs avoid this through **wear leveling**, which distributes program/erase cycles across the available physical blocks.
+    - **FTL Indirection**: The indirection provided by the FTL makes this possible because logical addresses are not permanently tied to particular physical locations.
+- **Forms of Wear Leveling**: Wear leveling generally has two forms:
+    - **Dynamic wear leveling**: when writing or relocating hot data, the controller prefers physical blocks with lower erase counts. This spreads future writes across blocks that have experienced less wear.
+    - **Static wear leveling**: the controller may also relocate cold data. A physical block containing cold pages might otherwise remain occupied for years while hotter blocks are repeatedly erased. Moving that cold data into a more heavily worn block frees the less-worn block so it can participate in future writes.
+	    -  **Counterintuitive Movement**: Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all.
+	    - **Preventing Reservation**: The purpose is not to improve that data's access performance, but to prevent cold data from permanently reserving the least-worn physical blocks.
+	    - **Lifespan Trade-off**: Wear leveling trades additional internal data movement for a more uniform distribution of wear across the NAND, increasing the usable lifetime of the drive.
 #### Over-Provisioning
 
-An SSD usually contains more physical NAND capacity than it exposes to the operating system. The portion that is deliberately kept outside the host-visible LBA address space is called **over-provisioning**.
+- **Reserved Capacity**: An SSD usually contains more physical NAND capacity than it exposes to the operating system. The portion that is deliberately kept outside the host-visible LBA address space is called **over-provisioning**.
+    - **Spare Pool**: For example, an SSD might physically contain more NAND than its advertised usable capacity. The operating system can never allocate this reserved space directly, so the SSD controller can rely on it as a permanent pool of spare physical pages and blocks.
+- **Out-of-Place Writes**: This matters because SSD writes are [**out-of-place**](#Out-of-Place%20Writes).
+    - **Temporary Space Needs**: When the host updates data, the controller needs a free physical page where it can write the new version before invalidating the old one. Garbage collection also needs temporary free space when it copies valid pages out of a physical block before erasing that block. 
+- **Free Space Constraints**: Without enough free space, these operations become increasingly difficult.
+    - **Costly Operations**: The controller may need to perform garbage collection before it can satisfy a new write, and it may be forced to choose physical blocks containing many valid pages. That means more pages must be copied simply to reclaim a small amount of reusable space.
+- **Controller Freedom**: Over-provisioning prevents the host from consuming all physical NAND, giving the controller additional freedom to:
+    - satisfy out-of-place writes without first performing expensive cleanup,
+    - choose better victim blocks during garbage collection,
+    - relocate fewer valid pages when reclaiming space,
+    - reduce **write amplification**,
+    - distribute writes more effectively for **wear leveling**,
+    - keep spare physical blocks available to replace worn or defective ones.
+- **The Nearly Full SSD Effect**: The effect can be understood by considering a nearly full SSD.
+    - **Reclaiming Blocks**: If almost every physical page contains valid data, reclaiming one physical block may require copying nearly all of its pages elsewhere before erasing it.
+    - **Candidate Blocks**: With additional over-provisioned space, the controller has more free pages and more candidate blocks to work with, making it more likely that it can reclaim blocks containing mostly invalid data.
+- **Efficient Management**: Over-provisioning therefore does not directly make NAND faster. Instead, it gives the SSD controller **working space to manage NAND efficiently**, which improves sustained write performance, reduces internal data movement, and helps extend the lifetime of the flash.
 
-For example, an SSD might physically contain more NAND than its advertised usable capacity. The operating system can never allocate this reserved space directly, so the SSD controller can rely on it as a permanent pool of spare physical pages and blocks.
-
-This matters because SSD writes are **out-of-place**. When the host updates data, the controller needs a free physical page where it can write the new version before invalidating the old one. Garbage collection also needs temporary free space when it copies valid pages out of a physical block before erasing that block.
-
-Without enough free space, these operations become increasingly difficult. The controller may need to perform garbage collection before it can satisfy a new write, and it may be forced to choose physical blocks containing many valid pages. That means more pages must be copied simply to reclaim a small amount of reusable space.
-
-Over-provisioning prevents the host from consuming all physical NAND, giving the controller additional freedom to:
-
-- satisfy out-of-place writes without first performing expensive cleanup,
-- choose better victim blocks during garbage collection,
-- relocate fewer valid pages when reclaiming space,
-- reduce **write amplification**,
-- distribute writes more effectively for **wear leveling**,
-- keep spare physical blocks available to replace worn or defective ones.
-
-The effect can be understood by considering a nearly full SSD. If almost every physical page contains valid data, reclaiming one physical block may require copying nearly all of its pages elsewhere before erasing it. With additional over-provisioned space, the controller has more free pages and more candidate blocks to work with, making it more likely that it can reclaim blocks containing mostly invalid data.
-
-Over-provisioning therefore does not directly make NAND faster. Instead, it gives the SSD controller **working space to manage NAND efficiently**, which improves sustained write performance, reduces internal data movement, and helps extend the lifetime of the flash.
-
-There is also a related but distinct effect when the user leaves filesystem space unused. If the operating system communicates that unused space through **TRIM**, the SSD can treat the corresponding physical pages as reclaimable and use them similarly to additional spare space. Unlike factory over-provisioning, however, this space is not permanently reserved: the host may allocate it again later.
-
+> [!note] TRIM and Unused Filesystem Space
+> - **Related Effect**: There is also a related but distinct effect when the user leaves filesystem space unused.
+> - **Reclaimable Pages**: If the operating system communicates that unused space through **TRIM**, the SSD can treat the corresponding physical pages as reclaimable and use them similarly to additional spare space.
+> - **Temporary Reservation**: Unlike factory over-provisioning, however, this space is not permanently reserved: the host may allocate it again later.
 #### SSD Performance Characteristics
 
-SSDs eliminate the **seek time** and **rotational latency** that dominate random-access performance on HDDs. Accessing physically distant NAND pages therefore does not incur the same mechanical penalty as jumping between distant locations on a disk platter.
+- **Mechanical Delays Eliminated**: SSDs eliminate the **seek time** and **rotational latency** that dominate random-access performance on HDDs.
+    - **No Mechanical Penalty**: Accessing physically distant NAND pages therefore does not incur the same mechanical penalty as jumping between distant locations on a disk platter.
+- **Random I/O Advantage**: As a result, SSDs provide much higher random I/O performance and much lower latency than HDDs.
+- **Non-Uniform Access**: However, SSD access is not completely uniform.
+    - **Read vs. Write Cost**: Reads are generally cheaper than writes, and writes can become significantly more expensive when the drive must perform garbage collection or erase physical blocks.
+- **Sequential Throughput**: Large sequential operations can also achieve higher throughput than small random operations because they make more efficient use of the SSD controller, NAND channels, and internal parallelism.
 
-As a result, SSDs provide much higher random I/O performance and much lower latency than HDDs.
-
-However, SSD access is not completely uniform. Reads are generally cheaper than writes, and writes can become significantly more expensive when the drive must perform garbage collection or erase physical blocks. Large sequential operations can also achieve higher throughput than small random operations because they make more efficient use of the SSD controller, NAND channels, and internal parallelism.
-
-The performance model is therefore different from an HDD rather than completely free of locality effects. HDD performance is dominated by mechanical positioning, while SSD performance is strongly influenced by **NAND parallelism, free-space availability, garbage collection, write amplification, and the read/program/erase asymmetry of flash memory**.
-
+> [!note] The SSD Performance Model
+> - **Locality Effects**: The performance model is therefore different from an HDD rather than completely free of locality effects.
+> - **Influencing Factors**: HDD performance is dominated by mechanical positioning, while SSD performance is strongly influenced by **NAND parallelism, free-space availability, garbage collection, write amplification, and the read/program/erase asymmetry of flash memory**.
 #### Fragmentation and Defragmentation on SSDs
 
 The [[#File Fragmentation and Defragmentation|file fragmentation]] described for HDDs also exists at the filesystem level on SSDs: a file can still be split across multiple non-contiguous extents. What changes is the performance consequence.
@@ -328,63 +275,225 @@ These operations consume NAND endurance while providing little of the locality b
 - **Persistent Memory / NVRAM:** Technologies that retain data without power while providing access characteristics closer to memory than conventional block storage. Some designs can be accessed directly through the CPU's memory address space rather than through traditional block I/O, partially blurring the distinction between **memory** and **storage**.
 ### Partitions
 
-A **partition** divides a block device's [Logical Block Addressing (LBA)](#Logical%20Block%20Addressing%20(LBA)) space into logical regions. Instead of exposing the entire disk as one storage region, the operating system can treat each partition as an independent block device.
+- **Logical Regions**: A **partition** divides a block device's Logical Block Addressing (LBA) space into logical regions. Instead of exposing the entire disk as one storage region, the operating system can treat each partition as an independent block device.
+- **Partition Boundaries**: Partition boundaries are defined in terms of the storage device's logical blocks. Conceptually, a partition occupies a contiguous range of LBAs with a beginning and a length or ending LBA.
+    - **Access Translation**: For example, a disk may contain a partition whose storage region begins at LBA `2048` and ends at LBA `1,000,447`. Reads and writes to that partition are ultimately translated into accesses within that range of the underlying disk.
+- **Partition-Table Format**: The exact representation depends on the **partition-table format**. GPT, for example, records the first and last LBA belonging to each partition, while older MBR partition entries describe a starting LBA and a number of sectors.
+- **Logical Segmentation**: Partitioning therefore provides **logical segmentation**, not another physical storage technology. The blocks still belong to the same underlying HDD, SSD, or other block device; the partition table simply describes which ranges are assigned to which logical regions.
+- **Usage Options**: A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain swap space, participate in a volume-management system, or be accessed as a raw block device.
+- **Independent Filesystems**: When a filesystem is created on a partition, that filesystem manages only the block-address range exposed by that partition. Different partitions can therefore contain completely different filesystems.
+    - **Filesystem Diversity**: For example, one disk could contain an ext4 partition and an NTFS partition. Each filesystem independently creates its own metadata structures and chooses its own supported filesystem block size.
+- **Distinct Block Size**: The filesystem block size is distinct from both the partition size and the underlying LBA logical-sector size.
+    - **Size Independence**: For example, a device might expose 512-byte logical sectors while one partition contains an ext4 filesystem using 4 KiB filesystem blocks. Another partition on the same device could use a filesystem with a different allocation-unit size.
+- **Suitable Boundaries**: Partition boundaries are normally aligned to suitable storage boundaries.
+    - **Clean Alignment**: Modern partitioning tools commonly choose boundaries such as multiples of 1 MiB, which align cleanly with common logical-sector, physical-sector, filesystem-block, and SSD erase-related granularities.
+    - **Poor Alignment Consequences**: Poor alignment can cause one higher-level write to span multiple lower-level storage units and introduce unnecessary work.
 
-Partition boundaries are defined in terms of the storage device's logical blocks. Conceptually, a partition occupies a contiguous range of LBAs with a beginning and a length or ending LBA.
-
-For example, a disk may contain a partition whose storage region begins at LBA `2048` and ends at LBA `1,000,447`. Reads and writes to that partition are ultimately translated into accesses within that range of the underlying disk.
-
-The exact representation depends on the **partition-table format**. GPT, for example, records the first and last LBA belonging to each partition, while older MBR partition entries describe a starting LBA and a number of sectors.
-
-Partitioning therefore provides **logical segmentation**, not another physical storage technology. The blocks still belong to the same underlying HDD, SSD, or other block device; the partition table simply describes which ranges are assigned to which logical regions.
-
-A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain swap space, participate in a volume-management system, or be accessed as a raw block device.
-
-When a filesystem is created on a partition, that filesystem manages only the block-address range exposed by that partition. Different partitions can therefore contain completely different filesystems.
-
-For example, one disk could contain an ext4 partition and an NTFS partition. Each filesystem independently creates its own metadata structures and chooses its own supported [filesystem block](#Filesystem%20Blocks) size.
-
-The filesystem block size is distinct from both the partition size and the underlying LBA logical-sector size. For example, a device might expose 512-byte logical sectors while one partition contains an ext4 filesystem using 4 KiB filesystem blocks. Another partition on the same device could use a filesystem with a different allocation-unit size.
-
-Partition boundaries are normally aligned to suitable storage boundaries. Modern partitioning tools commonly choose boundaries such as multiples of 1 MiB, which align cleanly with common logical-sector, physical-sector, filesystem-block, and SSD erase-related granularities. Poor alignment can cause one higher-level write to span multiple lower-level storage units and introduce unnecessary work.
-
-The important hierarchy is therefore:
-
-- the **storage device** exposes an LBA address space;
-- the **partition table** assigns ranges of that LBA space to partitions;
-- each partition is exposed as its own logical block device;
-- a **filesystem** may be created inside that partition and introduce its own filesystem-block and metadata structures.
-
-These layers have related boundaries, but their granularities are independent.
+> [!note] The Storage Hierarchy
+> 
+> The important hierarchy is therefore:
+> - the **storage device** exposes an LBA address space;
+> - the **partition table** assigns ranges of that LBA space to partitions;
+> - each partition is exposed as its own logical block device;
+> - a **filesystem** may be created inside that partition and introduce its own filesystem-block and metadata structures.
+> These layers have related boundaries, but their granularities are independent.
 #### Partition Alignment
 
-A partition can begin at any logical-sector boundary allowed by the partition table, but not every starting LBA is equally efficient. **Partition alignment** means choosing the partition's starting LBA so that higher-level structures such as filesystem blocks align cleanly with the storage device's underlying physical boundaries.
+- **Starting LBA Efficiency**: A partition can begin at any logical-sector boundary permitted by the partition table, but not every starting LBA is equally efficient.
+- **Partition alignment** means choosing the partition's starting LBA so that higher-level structures, such as filesystem blocks, align cleanly with important boundaries in the underlying storage device.
+##### Logical vs. Physical Sectors
 
-This matters when the device exposes a smaller **logical sector size** than its actual **physical sector size**. A common example is a **512e** drive, which exposes 512-byte logical sectors while internally reading and writing 4 KiB physical sectors.
+- **Size Discrepancies**: Alignment becomes especially important when the device exposes a smaller **logical sector size** than its actual **physical sector size**.
+- **512e Drive Example**: A common example is a **512e drive**, which exposes 512-byte logical sectors while internally reading and writing 4 KiB physical sectors.
+- **Physical-Sector Boundary Calculation**: Because `4 KiB / 512 B = 8`, each 4 KiB physical sector corresponds to **eight logical sectors**. Therefore, a partition whose starting LBA is divisible by `8` begins on a 4 KiB physical-sector boundary.
 
-Because:
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title 512e Drive: 8 Logical Sectors per Physical Sector
+    dateFormat m
+    axisFormat %M KiB
+    tickInterval 8minute
+    
+    section Logical sectors
+    LBA 0–7   :l0, 0, 8m
+    LBA 8–15  :l1, 8, 8m
+    LBA 16–23 :l2, 16, 8m
+    
+    section Physical sectors
+    Physical sector 0 :p0, 0, 8m
+    Physical sector 1 :p1, 8, 8m
+    Physical sector 2 :p2, 16, 8m
+```
+##### Proper Alignment
 
-`4 KiB / 512 B = 8`
+- **Filesystem Blocks**: Suppose the filesystem inside the partition also uses 4 KiB blocks.
+- **Direct Alignment**: If the partition begins on a 4 KiB physical-sector boundary, the filesystem's 4 KiB blocks can line up directly with the device's 4 KiB physical sectors.
 
-each 4 KiB physical sector corresponds to eight logical sectors. A partition whose starting LBA is divisible by `8` begins on a 4 KiB physical-sector boundary.
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title Properly Aligned 4 KiB Filesystem Blocks
+    dateFormat m
+    axisFormat %M KiB
+    tickInterval 4minute
 
-If the filesystem inside that partition also uses 4 KiB blocks, a properly aligned filesystem block can fit completely inside one physical sector. A write to that block can therefore be handled as one physical-sector update.
+    section Physical sectors
+    Physical sector 0 :p0, 0, 4m
+    Physical sector 1 :p1, 4, 4m
+    Physical sector 2 :p2, 8, 4m
 
-With an **improperly aligned partition**, the filesystem may still create perfectly regular 4 KiB blocks relative to the beginning of the partition, but those blocks are shifted relative to the device's physical-sector boundaries. A single 4 KiB filesystem block may consequently overlap two different 4 KiB physical sectors.
+    section Filesystem blocks
+    Filesystem block 0 :f0, 0, 4m
+    Filesystem block 1 :f1, 4, 4m
+    Filesystem block 2 :f2, 8, 4m
+```
 
-Updating that one filesystem block can then require the storage device to preserve portions of both physical sectors. On devices that cannot update those portions independently, this can introduce additional **read-modify-write** work: the device reads the affected physical sectors, modifies the relevant portions, and writes them back.
+- **Clean Updates**: In this case, updating one 4 KiB filesystem block can correspond cleanly to one 4 KiB physical-sector update.
+##### Improper Alignment
 
-Partition alignment is therefore about aligning **boundaries between abstraction layers**. The filesystem reasons about offsets relative to the beginning of its partition, while the storage device reasons about physical sectors relative to the beginning of the disk. If the partition itself begins at an unsuitable offset, every filesystem structure created inside it can inherit that displacement.
+- **Shifted Grid**: Now suppose the partition begins one 512-byte logical sector after a physical-sector boundary. The filesystem still creates perfectly regular 4 KiB blocks relative to the beginning of the partition, but the entire filesystem grid is shifted by 512 bytes relative to the physical-sector grid.
 
-Modern partitioning tools commonly align partitions on **1 MiB boundaries**. With 512-byte logical sectors:
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title Misaligned 4 KiB Filesystem Blocks
+    dateFormat m
+    axisFormat %M KiB
+    tickInterval 8minute
 
-`1 MiB / 512 B = 2048 logical sectors`
+    section Physical sectors
+    Physical sector 0 :p0, 0, 8m
+    Physical sector 1 :p1, 8, 8m
+    Physical sector 2 :p2, 16, 8m
+    Physical sector 3 :p3, 24, 8m
 
-so LBA `2048` is a common starting point for the first partition. A 1 MiB boundary is divisible by many common sector and allocation sizes, making it a practical alignment choice across devices with different internal granularities.
+    section Filesystem blocks
+    Filesystem block 0 :f0, 1, 8m
+    Filesystem block 1 :f1, 9, 8m
+    Filesystem block 2 :f2, 17, 8m
+```
 
-Alignment can matter beyond physical sectors as well. Storage stacks may contain other granularities such as RAID stripe sizes or SSD internal allocation units. There is no single partition boundary that exposes and perfectly matches every internal implementation detail, but using sufficiently large, regularly aligned boundaries such as 1 MiB avoids the most common misalignment problems.
+- **Sector Overlap**: A single 4 KiB filesystem block now overlaps **two physical sectors** instead of fitting inside one.
+- **Span Example**: For example, the first filesystem block spans logical sectors `1–8`, while the physical-sector boundaries are `Physical sector 0: LBA 0–7` and `Physical sector 1: LBA 8–15`.
+- **Affected Portions**: Updating that filesystem block therefore affects portions of two different physical sectors.
+- **Read-Modify-Write Penalty**: On devices that cannot update those portions independently, this can introduce additional **read-modify-write** work: the device reads the affected physical sectors, modifies the necessary portions, and writes the sectors back.
 
-Partition alignment does **not** require the filesystem block size to equal the physical-sector size. Different layers may use different granularities. The important requirement is that their boundaries interact cleanly enough that a higher-level operation does not unnecessarily span additional lower-level units.
+> [!note] Alignment Between Abstraction Layers
+> - **Different Origins**: The underlying issue is that different layers measure offsets from different origins.
+> - **Offset Reasoning**: The filesystem places blocks relative to the **beginning of the partition**, while the storage device places physical sectors relative to the **beginning of the disk**.
+> - **Offset Calculation**: Thus `partition starting offset` + `filesystem-relative block offset` = `absolute filesystem-block offset`
+> - **Inherited Displacement**: If the partition begins at an unsuitable offset, every filesystem structure inside it can inherit that displacement.
+> ```mermaid
+> ---
+> displayMode: compact
+> ---
+> gantt
+>     title Partition Offset Shifts the Filesystem Grid
+>     dateFormat m
+>     axisFormat %M KiB
+>     tickInterval 8minute
+> 
+>     section Physical sectors
+>     Physical sector 0 :p0, 0, 8m
+>     Physical sector 1 :p1, 8, 8m
+>     Physical sector 2 :p2, 16, 8m
+>     Physical sector 3 :p3, 24, 8m
+>     section Misaligned partition
+>     Filesystem block 0 :m0, 9, 8m
+>     Filesystem block 1 :m1, 17, 8m
+> 
+>     section Aligned partition
+>     Filesystem block 0 :a0, 8, 8m
+>     Filesystem block 1 :a1, 16, 8m
+> ```
+> 
+> - **Internal Regularity**: The filesystem is internally regular in both cases. The difference is the starting offset of the partition itself.
+##### Why Modern Tools Use 1 MiB Alignment
+
+- **Modern Partitioning Tools**: Modern partitioning tools commonly align partitions on **1 MiB boundaries**.
+- **Starting Point Calculation**: With 512-byte logical sectors: `1 MiB / 512 B = 2048 logical sectors`
+- **Common Starting LBA**: Therefore, **LBA 2048** is a common starting point for the first partition.
+```mermaid
+---
+displayMode: compact
+---
+gantt
+    title Common 1 MiB Partition Alignment
+    dateFormat m
+    axisFormat %M KiB
+    tickInterval 8minute
+
+    section Disk
+    First 1 MiB :d0, 0, 8m
+    Next 1 MiB  :d1, 8, 8m
+
+    section Partition
+    Partition starts at LBA 2048 :p0, 8, 8m
+```
+
+- **Smaller Granularities**: A 1 MiB boundary is also naturally aligned to many smaller granularities. For example: `1 MiB / 4 KiB = 256`
+
+- **Natural Alignment**: So a partition starting at a 1 MiB boundary is also aligned to a 4 KiB physical-sector boundary. This makes 1 MiB alignment a practical default across devices with different internal geometries.
+##### Other Storage Granularities
+
+- **Other Granularities**: Alignment can matter beyond physical sectors. A storage stack may also contain granularities such as:
+    - RAID stripe or chunk sizes;
+    - SSD internal allocation units;
+    - erase-block boundaries;
+    - filesystem allocation units.
+- **Avoiding Misalignment Problems**: There is no single partition boundary that can expose and perfectly match every internal implementation detail. Using a sufficiently large and regularly aligned boundary such as **1 MiB**, however, avoids many of the most common misalignment problems.
+
+> [!note] Filesystem Blocks Do Not Need to Match Physical Sectors
+> - **Size vs. Boundary Alignment**: Partition alignment does **not** require the filesystem block size to equal the physical-sector size.
+> - **Clean Interaction**: For example, an 8 KiB filesystem block can be perfectly well aligned on a device with 4 KiB physical sectors.
+> ```mermaid
+> ---
+> displayMode: compact
+> ---
+> gantt
+>     title Aligned 8 KiB Block on 4 KiB Physical Sectors
+>     dateFormat m
+>     axisFormat %M KiB
+>     tickInterval 8minute
+> 
+>     section Physical sectors
+>     Physical sector 0 :p0, 0, 8m
+>     Physical sector 1 :p1, 8, 8m
+> 
+>     section Filesystem
+>     8 KiB filesystem block :f0, 0, 16m
+> ```
+> 
+> - **Natural Spanning**: The 8 KiB block naturally spans exactly two 4 KiB physical sectors.
+> - **Shifted Block**: If the same block is shifted by one logical sector, however, it spans three physical sectors:
+> ```mermaid
+> ---
+> displayMode: compact
+> ---
+> gantt
+>     title Misaligned 8 KiB Block Touches Three Physical Sectors
+>     dateFormat m
+>     axisFormat %M KiB
+>     tickInterval 8minute
+> 
+>     section Physical sectors
+>     Physical sector 0 :p0, 0, 8m
+>     Physical sector 1 :p1, 8, 8m
+>     Physical sector 2 :p2, 16, 8m
+> 
+>     section Filesystem
+>     8 KiB filesystem block :f0, 1, 16m
+> ```
+> 
+> - **Granularity Independence**: The important requirement is therefore not that different layers use the same granularity, but that their boundaries interact cleanly enough that a higher-level operation does not unnecessarily span additional lower-level units.
+>
 ## File Systems
 
 A **file system** is the set of data structures and rules an operating system uses to organize persistent data on a storage device.
@@ -403,306 +512,257 @@ A file therefore does not need to occupy one contiguous region of the device. Th
     - **Absolute Path:** Identifies an object starting from the filesystem's root
     - **Relative Path:** Identifies an object starting from some current directory.
 - **File Extension:** A suffix such as `.txt`, `.jpg`, or `.exe` conventionally used to indicate a file's format or intended interpretation. The extension is normally just part of the filename; the filesystem itself does not necessarily use it to determine the actual type of the file.
-- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [[../Security/05 Architecture and Infrastructure Security/02 Endpoint Security|security permissions]] build on this metadata to enforce access control.
+- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](File%20and%20Filesystem%20Security.md#File%20and%20Filesystem%20Security) build on this metadata to enforce access control. 
 
-### Opening Files and File Descriptors
+### Opening Files
 
-Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file. A call such as `open()` resolves a pathname, checks the requested access against filesystem permissions, creates or reuses the kernel state needed for the open file, and returns a small integer called a **file descriptor** to the process.
-
-Subsequent operations such as `read()`, `write()`, and `fsync()` use the file descriptor rather than resolving the pathname again for every operation. The open file also carries state such as the current file offset and status flags that affect later I/O. When the process no longer needs that reference, it releases it with `close()`.
-
-This is different from the `mode` argument sometimes passed to `open()`. When a new file is created, that argument describes its initial permission bits. Behaviors such as append-only positioning, synchronous writes, or Direct I/O are selected using **open flags**.
-
+- **Initial Operation**: Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file.
+- **The `open()` Call**: `open()` resolves the pathname, checks the requested access against filesystem permissions, creates the kernel state for that open instance, and returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs)).
+- **The Full Descriptor Model**: The full descriptor model belongs with [[02 The Anatomy of a Process#File Descriptors (FDs)|process-level file descriptors]] because the same abstraction also covers sockets, pipes, device nodes, and other I/O resources.
+- **Subsequent Operations**: Subsequent operations such as `read()`, `write()`, and `fsync()` use the file descriptor rather than resolving the pathname again for every operation.
+- **Associated State**: The open file also carries state such as the current file offset and status flags that affect later I/O.
+- **Releasing the Reference**: When the process no longer needs that reference, it releases it with `close()`.
 #### Open Flags
 
-An `open()` call includes an access mode such as `O_RDONLY`, `O_WRONLY`, or `O_RDWR`, describing whether the descriptor can read, write, or do both. Additional flags modify the behavior of operations performed through that open file.
-
-Common examples include:
-
-- **`O_APPEND`:** before each `write()`, the kernel positions the open file offset at the current end of the file and performs the offset adjustment and write as one operation. This allows multiple writes to append without each caller separately seeking to the current end first.
-- **`O_DIRECT`:** requests [[#Direct I/O (`O_DIRECT`)|Direct I/O]]), so transferred file data generally bypasses the normal page-cache path.
-- **`O_SYNC`:** gives writes synchronized file-integrity completion semantics: a successful `write()` does not return until the written data and the metadata required by the stronger synchronization guarantee have been committed as required by the storage stack.
-- **`O_DSYNC`:** provides the narrower data-integrity form of synchronous writing. It waits for the written data and metadata necessary to retrieve that data, without requiring unrelated metadata updates to become durable as part of every write.
-
-These flags control different properties and can be conceptually independent. For example, `O_DIRECT` controls whether transferred file data normally participates in the page cache, while `O_SYNC` and `O_DSYNC` control what durability work must complete before a write returns.
-
+- **Access Mode and Creation Permissions**
+    - - `**mode**` **argument**: The `mode` argument is relevant only when `open()` is creating a file through `O_CREAT` or `O_TMPFILE`. In those cases, it specifies the initial permission bits for the newly created file, subject to the process's `umask` and applicable default ACLs. If neither `O_CREAT` nor `O_TMPFILE` is specified, the `mode` argument is ignored.
+	- **Access modes**:
+	    - `O_RDONLY` — open for reading.
+	    - `O_WRONLY` — open for writing.
+	    - `O_RDWR` — open for both reading and writing.
+- **File Status Flags**
+    - **`O_APPEND`**: Before each `write()`, the kernel positions the open file offset at the current end of the file and performs the offset adjustment and write as a single atomic operation. This allows multiple writers to append without each caller first performing a separate seek to the end of the file. Some network filesystems, notably NFS configurations that must emulate append behavior client-side, may not provide the same guarantees.
+    - **`O_DIRECT`**: This requests [[#Direct I/O (`O_DIRECT`)|Direct I/O]], causing file data transfers to generally bypass or minimize use of the normal page-cache path. Filesystems and devices may impose alignment restrictions, and `O_DIRECT` by itself does not provide synchronous durability guarantees.
+    - **`O_SYNC`**: This gives writes **synchronized file-integrity completion** semantics. A successful `write()` does not return until the written data and the associated metadata required by the stronger synchronization guarantee have been completed or flushed as required by the storage stack.
+    - **`O_DSYNC`**: This provides the narrower **synchronized data-integrity completion** guarantee. It waits for the written data and any metadata necessary to retrieve that data, but does not require unrelated metadata changes to be made durable as part of every write.
+    - **Conceptual independence**: These flags control separate properties. `O_DIRECT` primarily affects the caching and data-transfer path, whereas `O_SYNC` and `O_DSYNC` control what synchronization and durability work must complete before a write returns. Applications that require both Direct I/O and synchronous durability may therefore combine `O_DIRECT` with `O_SYNC` or `O_DSYNC`.
 ### Mapping Files to Logical Blocks
 
-Applications work with files as logical sequences of bytes, while the storage device exposes a flat **LBA address space**. The filesystem bridges these views by dividing file data into allocation units and maintaining metadata that records where those units are stored.
-
-A file therefore does not need to occupy one contiguous region of the device. Its contents can be distributed across multiple logical-block ranges while still appearing to the application as one continuous byte sequence.
+- **Bridging the Views**: Applications work with files as logical sequences of bytes, while the storage device exposes a flat **LBA address space**. The filesystem bridges these views by dividing file data into allocation units and maintaining metadata that records where those units are stored.
+- **Distributed Contents**: A file therefore does not need to occupy one contiguous region of the device. Its contents can be distributed across multiple logical-block ranges while still appearing to the application as one continuous byte sequence.
 
 #### Filesystem Blocks
 
-Filesystems commonly introduce their own allocation unit called a **filesystem block**. This is distinct from the logical block size exposed by the storage device through LBA.
+A **filesystem block** is the basic unit of space that a filesystem uses to allocate and manage file data. Rather than tracking individual bytes or individual storage-device sectors, the filesystem groups storage into fixed-size blocks and records which blocks belong to each file or directory.
 
-For example, if the device exposes `LBA logical sector = 512 B` and the filesystem uses `Filesystem block = 4 KiB`, then one filesystem block spans eight consecutive logical sectors: `1 filesystem block → 8 × 512 B logical sectors`. If the device instead exposes 4 KiB logical sectors, the relationship may be `1 filesystem block → 1 × 4 KiB logical sector`.
+These blocks are a **filesystem-level abstraction** and are distinct from the logical blocks exposed by the storage device through LBA. A single filesystem block may correspond to one or more logical sectors on the underlying device. For example, a filesystem using 4 KiB blocks on a device with 512-byte logical sectors represents each filesystem block using eight logical sectors.
 
-The filesystem block size is normally chosen when the filesystem is **created during formatting**. Tools such as `mkfs` may allow it to be configured explicitly, although they usually select a sensible default. Changing the block size later generally requires recreating the filesystem.
+- **Block Size Selection**: The filesystem block size is normally chosen when the filesystem is **created during formatting**. Tools such as `mkfs` may allow it to be configured explicitly, although they usually select a sensible default. Changing the block size later generally requires recreating the filesystem.
+- **Logical Constraints**: The first constraint comes from the storage device's **logical sector size**. Because filesystem I/O is ultimately translated into LBA operations, a filesystem block must be representable as an integer number of logical sectors.
+- **Physical Alignment**: The filesystem should also align its blocks with the device's **physical sector size** when possible. This is efficient because a filesystem block can be updated without unnecessarily touching multiple physical sectors. Block **boundaries** matter as well as block size.
+- **Slack Space**: In the conventional allocation model, a data block allocated to one file is not reused by another unrelated file. If the file does not completely fill its final block, the remaining bytes become **slack space**, a form of internal fragmentation.
+- **Sizing Trade-offs**:
+	- **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
+	- **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
+- **Common Granularity**: For general-purpose systems, **4 KiB is a common choice** because it aligns well with several common granularities, including 4 KiB physical sectors, 4Kn logical sectors, and 4 KiB virtual-memory pages.
+#### Extents and Contiguous Ranges
 
-The first constraint comes from the storage device's **logical sector size**. Because filesystem I/O is ultimately translated into LBA operations, a filesystem block must be representable as an integer number of logical sectors.
+A filesystem does not necessarily record the location of every block in a file individually. When several consecutive portions of a file are stored in consecutive filesystem blocks, the filesystem can describe the entire run using an **extent**.
 
-The filesystem should also align its blocks with the device's **physical sector size** when possible. For example, on a drive with `Logical sector = 512 B` and `Physical sector = 4 KiB`, a 4 KiB filesystem block can map cleanly to eight logical sectors while also fitting exactly inside one physical sector: `1 × 4 KiB filesystem block → 8 × 512 B logical sectors → 1 × 4 KiB physical sector`.
+An **extent** is therefore a mapping for a contiguous range of file data to a contiguous range of storage blocks. It typically records information such as the starting block and the length of the range, allowing many adjacent blocks to be represented with a single mapping.
 
-This is efficient because a filesystem block can be updated without unnecessarily touching multiple physical sectors.
+- **Contiguous Representation**: For example, rather than storing 1,000 separate mappings for 1,000 adjacent blocks, the filesystem can represent them as one extent with a starting location and a length of 1,000 blocks.
+- **File Fragmentation**: A file may require multiple extents if sufficiently large contiguous free regions are unavailable or if the file grows over time. In that case, different portions of the file are stored in separate locations on the filesystem. This is a form of **file fragmentation**: one logical file is represented by multiple non-contiguous extents.
+#### Object Metadata and Resolution
 
-A smaller filesystem block may still be valid. For example, a 1 KiB filesystem block can be represented by two 512-byte logical sectors. However, four such filesystem blocks share the same 4 KiB physical sector. Updating only one of them may require the storage device to preserve the rest of the physical sector, potentially introducing a **read-modify-write** operation.
+- **Inodes**: In Unix-like filesystems, each filesystem object is represented by a metadata structure called an **inode**. The inode describes the object itself rather than its filename. It commonly contains:
+    - **Object type**: whether the object is a regular file, directory, symbolic link, or another supported type.
+    - **Size**: the logical size of the object's data.
+    - **Ownership**: the user ID and group ID associated with the object.
+    - **Permissions**: the access permissions that control who may read, write, or execute it.
+    - **Timestamps**: metadata such as modification, access, and status-change times.
+    - **Link count**: the number of directory entries that refer to the inode.
+    - **Data mappings**: references that identify where the object's contents are stored, often as filesystem blocks or extents.
+    - **Additional metadata**: depending on the filesystem, this may include flags, extended attributes, or filesystem-specific information.
+- **Directory Entries**: Filenames are normally stored separately from inodes.
+    - A directory contains **directory entries** that associate filenames with inode numbers.
+    - The inode number identifies the inode containing the metadata for that filesystem object.
+- **Resolution Path**: This produces a conceptual path such as:
+    - `Filename → Directory Entry → Inode → Extents / Filesystem Blocks → LBAs → File Data`
+    - When an application accesses a pathname, the filesystem traverses directory entries until it identifies the inode for the target object.
+    - For a regular file, it then uses the inode's block or extent mappings to locate the requested data on the underlying storage device.
+- **Name and Object Separation**: A filename and an inode are separate filesystem concepts.
+    - The **directory entry** provides the name.
+    - The **inode** provides the object's metadata and storage mappings.
+    - Because multiple directory entries can point to the same inode, a single file can have multiple names. This is the basis of **hard links**.
+#### Internal Inode Management
 
-Block **boundaries** matter as well as block size. Even a 4 KiB filesystem block can be poorly aligned if it begins in the middle of a 4 KiB physical sector, causing one filesystem block to span parts of two physical sectors. Partitioning and filesystem creation tools therefore normally align filesystem structures to the device's reported physical geometry.
+- **Inode Numbers and Inode Records**: An **inode number** identifies a filesystem object, but it is not itself a memory address or disk address.
+    - The filesystem uses the inode number to locate the persistent **inode record** associated with that object.
+    - That inode record contains the object's metadata and its mappings or references to file data.
+    - The mechanism used to locate inode records is filesystem-specific.
+- **Storage Organization**: There is no universal operating-system-wide inode table shared by every filesystem.
+    - Each filesystem defines how its inode records are stored and located.
+    - Some filesystems use fixed inode tables, while others may use different or more dynamic metadata structures.
 
-Once these storage constraints are satisfied, the filesystem can choose among its supported block sizes according to workload characteristics.
+> [!EXAMPLE]  
+> **ext4: Block Groups and Inode Tables**
+> 
+> ext4 provides a concrete example of how inode records can be organized on disk.
+> 
+> - The filesystem is divided into **block groups**, which partition data and filesystem metadata.
+>     
+> - Each block group contains structures such as:
+>     
+>     - an **inode bitmap**, which records which inode slots are allocated;
+>         
+>     - an **inode table**, which stores the inode records themselves;
+>         
+>     - **block-allocation metadata**, which tracks available and allocated data blocks;
+>         
+>     - the **data blocks** used to store file and directory contents.
+>         
+> - When a new filesystem object is created, ext4 can find a free inode in the bitmap, mark it as allocated, and initialize the corresponding inode-table entry.
+> 
+> Because ext4 knows how many inodes belong to each block group, it can use an inode number to determine which group contains the corresponding record.
+> 
+> For inode number `i`, with `N` inodes per block group:
+> 
+> - `block group = (i - 1) / N`
+>     
+> - `index within group = (i - 1) % N`
+> The filesystem can then use the block group's metadata to locate its inode table and calculate the position of the corresponding inode record.
+- **Filename Lookup vs. Inode Lookup**: Resolving a filename and locating an inode record are two separate operations.
+    - A **directory entry** maps a filename to an **inode number**.
+    - The filesystem then uses that inode number and its internal metadata structures to locate the corresponding **inode record**.
+    - Conceptually: `Filename → Directory Entry → Inode Number → Inode Record`
+- **Delayed Reclamation**: Removing a filename does not necessarily cause the inode and its data to be freed immediately.
+    - Removing a directory entry decreases the inode's **link count**.
+    - If other hard links still refer to the inode, the object remains accessible through those names.
+    - Even after the link count reaches zero, an inode may remain in use while a process still has the file open.
+    - Once no directory entries refer to it and no open references require it to remain alive, the filesystem can reclaim the inode and its associated storage.
+#### Hard and Symbolic Links
 
-In the conventional allocation model, a data block allocated to one file is not reused by another unrelated file. If the file does not completely fill its final block, the remaining bytes become **slack space**, a form of internal fragmentation.
+Because filenames are stored separately from inodes, Unix-like filesystems can support different types of links.
 
-For example, with 4 KiB filesystem blocks, a `6 KiB file → 4 KiB full block + 2 KiB used in another 4 KiB block`. The remaining 2 KiB in the second block is unused by that file and normally unavailable to unrelated files.
-
-This creates a secondary trade-off:
-
-- **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
-- **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
-
-Some filesystems reduce this waste using techniques such as **inline data**, **tail packing**, or shared blocks through mechanisms such as reflinks or deduplication.
-
-For general-purpose systems, **4 KiB is a common choice** because it aligns well with several common granularities, including 4 KiB physical sectors, 4Kn logical sectors, and 4 KiB virtual-memory pages. These are still independent abstractions, however; their sizes do not need to be identical.
-
-A filesystem block is primarily an **allocation and mapping unit**. It does not restrict applications to reading or writing exactly one block at a time. Applications can request arbitrary byte ranges, while the filesystem, page cache, and block layer translate those requests into the necessary underlying operations.
-
-#### Extents
-
-Instead of recording every filesystem block individually, modern filesystems often group adjacent blocks into **extents**.
-
-An extent represents a contiguous range of file data stored in a contiguous range of filesystem blocks or logical blocks. For example, rather than storing mappings for 1,000 adjacent blocks separately, the filesystem can describe them as one extent containing a starting location and length.
-
-A file may contain multiple extents when sufficient contiguous free space is unavailable or when the file grows over time. This is the mechanism behind [[#File Fragmentation and Defragmentation|file fragmentation]]: one logical file becomes distributed across several non-contiguous extents.
-
-#### Inodes and Directory Entries
-
-Different filesystems use different structures to record these mappings. In Unix-like filesystems, the central per-file structure is the **inode**.
-
-An inode stores information about a filesystem object together with references to the blocks or extents containing its data. Directories provide the naming layer by storing entries that associate human-readable filenames with inode numbers.
-
-This produces a resolution path such as `Filename → Inode → Extents / Filesystem Blocks → LBAs → File Data`.
-
-When an application accesses a path, the filesystem traverses directory entries until it reaches the target inode. It then uses the inode's extent or block mappings to determine which regions of the LBA address space contain the requested portion of the file.
-
-The filename and inode are separate filesystem objects. This separation is what allows multiple names to refer to the same underlying file.
-
-##### Storing and Locating Inodes
-
-An **inode number** identifies a filesystem object, but the number is not itself a memory address or storage location. The filesystem must maintain metadata that maps that identifier to the persistent **inode record** containing the object's metadata and references to its data blocks or extents.
-
-How this collection of inode records is organized depends on the filesystem. There is therefore no universal operating-system-wide "inode table" shared by every filesystem. Some Unix-like filesystems use fixed-size inode records stored in dedicated filesystem metadata regions, while other filesystems use different indexing structures.
-
-**ext4** provides a useful concrete example. Instead of keeping all filesystem metadata in one enormous region, ext4 divides the filesystem into **block groups**. Each block group contains metadata for managing resources associated with that part of the filesystem, including:
-
-- an **inode bitmap**, which records which inode numbers in the group are allocated or free;
-- an **inode table**, which stores the fixed-size inode records belonging to that group;
-- block-allocation metadata and the data blocks themselves.
-
-The filesystem's metadata records where each block group's inode table is located. Because ext4 also knows how many inodes belong to each group, it can determine where an inode should be found directly from its inode number.
-
-For an inode number `i`, with `N` inodes per block group, ext4 can conceptually calculate: `block group = (i - 1) / N`.
-
-and: `index within inode table = (i - 1) % N`.
-
-The subtraction is necessary because inode numbers begin at `1`, while array-like indexes begin at `0`.
-
-For example, suppose each block group contains `8,192` inodes and the filesystem needs inode `20,000`. `block group = (20,000 - 1) / 8,192 = 2` and `index = (20,000 - 1) % 8,192 = 3,615`.
-
-The inode therefore belongs to block group `2` and occupies entry `3,615` in that group's inode table. Once the filesystem knows the beginning of that inode table and the size of each inode record, it can calculate the record's byte offset within the table.
-
-This lookup is fundamentally different from following a filename. A directory entry first maps a **filename** to an **inode number**. The filesystem then uses its internal inode-storage structures to locate the corresponding inode record. That inode contains the metadata and mappings needed to locate the file's [[#Extents|extents]] or blocks.
-
-The **inode bitmap** serves a different purpose from the inode table. The inode table stores the inode records themselves, while the bitmap tracks which inode slots are currently allocated. When creating a new filesystem object, ext4 can search the bitmap for an available inode slot, mark it as allocated, and initialize the corresponding record in the inode table.
-
-This separation also explains why deleting a filename does not necessarily immediately free an inode. Directory entries provide names for an inode, while the inode separately tracks information such as its link count. Only when the filesystem determines that the inode is no longer referenced and no open use prevents reclamation can its inode slot and associated data blocks be returned to the filesystem's free-space structures.
-
-> [!info] Hard vs. Soft Links Under the Hood
->
-> Because filenames are separate from inodes, Unix-like filesystems can implement two different linking mechanisms.
->
-> - **Hard Links (`ln`):** Multiple directory entries reference the **same inode**. There is no privileged "original" filename; each hard link is an equal name for the same filesystem object. Removing one name does not delete the underlying data while other hard links remain. The inode and its data can be reclaimed once its link count reaches zero and no process still holds the file open.
->
-> - **Soft/Symbolic Links (`ln -s`):** A symbolic link is a separate filesystem object with its **own inode**. Rather than referring directly to the target inode, it stores a pathname that the filesystem resolves when the link is followed. If that pathname no longer resolves to an existing object, the symbolic link becomes **dangling**.
-
-### Metadata
-
-A filesystem must store information not only about file contents, but also about **how those contents and filesystem objects are organized, located, interpreted, and protected**. This information is called **metadata**.
-
-The inode and directory entries described above are examples of filesystem metadata, but metadata exists at several levels.
-
-Per-file metadata can include:
-
-- file type and size,
-- ownership and permissions,
-- creation, modification, and access timestamps,
-- references to filesystem blocks or extents.
-
-Other filesystem metadata includes:
-
-- directory entries and name mappings,
-- free-space tracking structures,
-- allocation indexes,
-- filesystem-wide configuration,
-- consistency and recovery information.
-
-Metadata is essential because the underlying block device exposes only numbered logical blocks containing bytes. Those blocks do not intrinsically reveal which bytes belong to a particular file, what that file is called, how its pieces are arranged, who may access it, or which regions are available for reuse.
-
-The filesystem's metadata gives meaning and structure to that otherwise flat LBA space.
-
-Because metadata describes how file contents are located, corruption of metadata can make otherwise intact data difficult or impossible to recover. This is why filesystems devote significant machinery to maintaining metadata consistency, especially when writes are interrupted by crashes or power loss.
-
+- **Hard Links (`ln`)**:
+    - A hard link is another **directory entry** that refers to the **same inode**.
+    - All hard-linked filenames therefore refer to the same underlying filesystem object and data.
+    - There is no special or privileged "original" filename; each hard link is an equal reference to the inode.
+    - Creating another hard link increases the inode's **link count**.
+    - Removing one hard link decreases the link count but does not remove the underlying object while other hard links remain.
+    - The inode and its data can be reclaimed once the link count reaches zero and no process still holds the file open.
+- **Symbolic Links (`ln -s`)**:
+    - A symbolic link is a **separate filesystem object** with its **own inode**.
+    - Its contents represent a **pathname** referring to another filesystem object.
+    - When the symbolic link is followed, the filesystem resolves that stored pathname through the normal pathname-resolution process.
+    - The symbolic link does not directly share the target's inode.
+    - If its stored pathname no longer resolves to an existing object, the symbolic link becomes **dangling**.
 ### Free Space Management
 
-The filesystem must also know which logical blocks are already occupied and which are available for new data.
+- **Tracking Availability**: The filesystem must also know which logical blocks are already occupied and which are available for new data.
+- **Allocation Process**: When creating or extending a file, the filesystem's allocator searches its free-space metadata for suitable regions and assigns them to the file.
+    - **Reclaiming Blocks**: When data is deleted, those logical blocks become available for future allocations.
+- **Tracking Structures**: Filesystems use structures such as **bitmaps, free-space trees, or extent-based indexes** to maintain this information efficiently. 
 
-When creating or extending a file, the filesystem's allocator searches its free-space metadata for suitable regions and assigns them to the file. When data is deleted, those logical blocks become available for future allocations.
-
-Filesystems use structures such as **bitmaps, free-space trees, or extent-based indexes** to maintain this information efficiently.
-
-Allocation policy has an important effect on performance. When possible, the filesystem tries to place logically related data near each other so that files require fewer extents and storage accesses have better locality.
-
-Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem. New files may then need to be split across several extents, producing [[#File Fragmentation and Defragmentation|file fragmentation]].
-
+> [!note] Allocation Policy and Fragmentation
+> 
+> - **Performance Impact**: Allocation policy has an important effect on performance.
+> - **Data Locality**: When possible, the filesystem tries to place logically related data near each other so that files require fewer [extents](#Extents%20and%20Contiguous%20Ranges) and storage accesses have better locality.
+> - **Scattered Space**: Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem.
+> - **Resulting Fragmentation**: New files may then need to be split across several extents, producing [[#File Fragmentation and Defragmentation|file fragmentation]].
 ### Caching
 
-Filesystems integrate closely with the operating system's **page cache**, which uses available RAM to retain file contents. Normal buffered reads and writes generally pass through this cache rather than interacting synchronously with the storage device for every operation.
-
-When an application reads part of a file, the kernel first looks for the corresponding file region in the page cache. On a **cache hit**, the data can be returned directly from RAM. On a **cache miss**, the filesystem reads the data from storage and normally keeps it in the page cache so later accesses can reuse it.
-
-The page cache is system-wide rather than private to one application. If two processes read the same region of the same file, the second process can generally reuse the pages already cached by the first instead of causing another storage read.
-
-Sequential access can also trigger **read-ahead**. If the kernel observes that an application is reading consecutive regions of a file, it may load upcoming data into the page cache before it is explicitly requested, hiding part of the storage latency.
-
-Caching therefore allows the operating system to exploit both **temporal locality**—reusing recently accessed data—and **spatial locality**—predicting that nearby file data will soon be accessed.
-
+- **Page Cache Integration**: Filesystems integrate closely with the operating system's **page cache**, which uses available RAM to retain file contents.
+- **Buffered I/O**: Normal buffered reads and writes generally pass through this cache rather than interacting synchronously with the storage device for every operation.
+- **Read Mechanism**: When an application reads part of a file, the kernel first looks for the corresponding file region in the page cache.
+    - **Cache Hit**: On a **cache hit**, the data can be returned directly from RAM.
+    - **Cache Miss**: On a **cache miss**, the filesystem reads the data from storage and normally keeps it in the page cache so later accesses can reuse it.
+- **System-Wide Scope**: The page cache is system-wide rather than private to one application.
+    - **Shared Access**: If two processes read the same region of the same file, the second process can generally reuse the pages already cached by the first instead of causing another storage read.
+    
+> [!note] Caching Optimization Strategies
+> - **Read-Ahead**: Sequential access can also trigger **read-ahead**. If the kernel observes that an application is reading consecutive regions of a file, it may load upcoming data into the page cache before it is explicitly requested, hiding part of the storage latency.
+> - **Locality Exploitation**: Caching therefore allows the operating system to exploit both **temporal locality**—reusing recently accessed data—and **spatial locality**—predicting that nearby file data will soon be accessed.
 #### Writes, Writeback, and Durability
 
-Buffered writes also pass through the page cache.
+* **Buffered Writes**: Buffered writes also pass through the page cache.
+* **Dirty Pages**: When an application writes to a file, the kernel locates or creates the corresponding page-cache entry, modifies the data in RAM, and marks that cached page as **dirty**.
+* **Deferred Persistence**: A successful `write()` therefore does not normally mean that the corresponding bytes have already reached persistent storage.
+* **Conceptual Flow**: Conceptually: `Application → Dirty Page Cache → Storage`.
+* **Writeback Mechanism**: The dirty pages are later persisted by the kernel through **writeback**.
+* **Writeback Triggers**: Writeback can happen because pages have remained dirty for some time, because the amount of dirty memory has grown sufficiently large, because memory needs to be reclaimed, or because an application explicitly requests synchronization.
+* **Pattern Decoupling**: This delayed-write design decouples the application's write pattern from the storage device's write pattern.
+* **Accumulation**: An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
+* **Batching Example**: For example, instead of immediately performing `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`, multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
+> [!note] Design Intent of Delayed Writeback
+> This should not be understood simply as the operating system assuming that application developers will write inefficient code: the abstraction deliberately allows applications to express writes according to their own semantics while the kernel handles device-level batching, scheduling, and locality. Even well-designed applications often have legitimate reasons to issue many small logical updates.
+>
+##### Write Durability and Synchronization
 
-When an application writes to a file, the kernel locates or creates the corresponding page-cache entry, modifies the data in RAM, and marks that cached page as **dirty**. A successful `write()` therefore does not normally mean that the corresponding bytes have already reached persistent storage.
+* **The Durability Gap**: Delayed writeback creates a critical distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty in RAM, those updates are lost.
+	* **The Complete Write Path**: Furthermore, the storage device itself usually contains a volatile, controller-managed **write-back cache**.
+	* **Hardware Acknowledgment**: This allows the drive to acknowledge a write before the data reaches physical flash or disk platters.
+	* **Four-Stage Journey**: The complete write path therefore looks approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
+* **Explicit Synchronization (`fsync()` and `fdatasync()`)**: Applications that require strict durability boundaries use explicit synchronization calls to force data along this path.
+	- **`fsync()` (File Integrity)**: Forces the file's dirty data and _all_ associated metadata (including unrelated attributes like modification timestamps) out of the OS page cache, issues the necessary commands to flush the device's write cache, and blocks until the storage stack reports physical completion.
+	- **`fdatasync()` (Data Integrity)**: Provides a narrower, potentially faster synchronization. It forces the data and only the metadata _strictly necessary_ to retrieve it (such as file-size changes), skipping unrelated metadata updates.
+	- **Performance Cost**: Both calls deliberately break the kernel's asynchronous write batching and wait for hardware persistence, making them considerably more expensive than an ordinary buffered `write()`.
+* **Synchronized Open Flags**: Instead of performing ordinary buffered writes followed by explicit `fsync()` calls at selected boundaries, an application can request synchronized semantics for every operation by opening the file with specific flags.
+	* **`O_SYNC` (File Integrity)**: Provides synchronized file-integrity completion. Every `write()` acts conceptually like an implicit `fsync()`, blocking until both the written data and all associated metadata are durable.
+	* **`O_DSYNC` (Data Integrity)**: Provides narrower synchronized data-integrity completion. It acts conceptually like an implicit `fdatasync()`, waiting only for the data itself and the metadata strictly necessary to retrieve it (such as file-size changes), without forcing unrelated metadata (such as modification timestamps) to disk on every operation.
+* **Page Cache Interaction**: Importantly, these flags **do not bypass the page cache**, different from `O_DIRECT`: The data still passes through memory; the flags simply delay the `write()` system call from returning until the persistence guarantee is met. This is fundamentally different from `O_DIRECT`, which controls page-cache participation rather than durability.
+* **Use Cases vs. Overhead**: Synchronous writes are vital for structures like a database's **Write-Ahead Log (WAL)**, where a transaction cannot complete until its log record is safe. 
+	* **Batching Trade-offs**: However, whether using `O_SYNC` or explicit `fsync()` calls, forcing a durability wait on every small update prevents the storage stack from grouping changes efficiently. Applications often perform better by batching many ordinary writes behind a single explicit synchronization point.
 
-Conceptually: `Application → Dirty Page Cache → Storage`.
-
-The dirty pages are later persisted by the kernel through **writeback**. Writeback can happen because pages have remained dirty for some time, because the amount of dirty memory has grown sufficiently large, because memory needs to be reclaimed, or because an application explicitly requests synchronization.
-
-This delayed-write design decouples the application's write pattern from the storage device's write pattern. An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
-
-For example, instead of immediately performing: `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`.
-
-multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
-
-This should not be understood simply as the operating system assuming that application developers will write inefficient code. The abstraction deliberately allows applications to express writes according to their own semantics while the kernel handles device-level batching, scheduling, and locality. Even well-designed applications often have legitimate reasons to issue many small logical updates.
-
-However, delayed writeback creates a distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty, the version present only in RAM is lost.
-
-Applications that need a durability boundary can call **`fsync()`**. For a regular file, `fsync()` forces the file's dirty data and required metadata toward persistent storage and blocks until the storage stack reports completion.
-
-The storage device may itself contain another cache. HDDs and SSDs commonly have controller-managed **write-back caches** that allow the device to acknowledge a write before the data has reached its final non-volatile location.
-
-The complete write path can therefore look approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
-
-A proper `fsync()` must account for this additional layer. The filesystem and block layer issue the necessary synchronization operations so that relevant data does not remain only in a volatile device cache when `fsync()` successfully returns.
-
-This means that `fsync()` is considerably more expensive than an ordinary buffered `write()`: it deliberately breaks the normal asynchronous batching behavior and introduces a durability barrier that the application may need to wait for.
-
-##### Synchronous Writes: `O_SYNC` and `O_DSYNC`
-
-Instead of performing ordinary buffered writes and explicitly calling `fsync()` at selected durability boundaries, an application can request synchronized write semantics when it opens the file.
-
-With **`O_SYNC`**, each `write()` waits for **synchronized file-integrity completion** before returning. Conceptually, it provides durability semantics similar to performing the write and then synchronizing the file with `fsync()`: the written data and the associated metadata required by the full synchronization guarantee must be committed before the operation is considered complete.
-
-**`O_DSYNC`** provides the narrower **data-integrity** form. The write waits for the data itself and metadata necessary to retrieve that data, such as a file-size change when the write extends the file, but does not need to force unrelated metadata such as a modification timestamp as part of every operation. Its role is therefore comparable to performing a write followed by `fdatasync()` rather than the stronger `fsync()`.
-
-These flags do not mean that the page cache is bypassed or that the entire system cache is flushed after every write. They change the completion guarantee of writes made through that open file. This is fundamentally different from [[#Direct I/O (`O_DIRECT`)|`O_DIRECT`]]), which controls page-cache participation rather than durability.
-
-Synchronous writes can be expensive because each write may introduce a durability wait that prevents the application and operating system from freely batching many updates behind one later synchronization point. They are useful when each write, or each deliberately constructed write operation, must itself establish the required persistence guarantee.
-
-Append-oriented durability structures such as [[../Databases/00 Overview#Write-Ahead Logging (WAL)|Write-Ahead Logging (WAL)]]) are an important example of where these primitives can be useful. A database must ensure that required log records become durable before it treats dependent state as safely committed, but it can implement that boundary in different ways: it may use synchronized open flags such as `O_SYNC` or `O_DSYNC`, or perform ordinary writes followed by explicit `fsync()` or `fdatasync()` calls so that several writes can be grouped before synchronization.
+> [!note] Crash-Atomicity Limits
+> * **Indivisible Operations**: Buffered writes can also expose crash-atomicity limits below the page cache. The storage stack does not generally promise that an arbitrarily large application-level structure will reach persistent storage as one indivisible operation.
+> * **Partial Updates**: If one logical update spans several lower-level writes, a crash or power loss can leave only part of that update durable. [[../Databases/00 Overview#Torn Pages|Torn pages]] are a specific kind of partial update.
+> 	* **Independent Problem**: This problem is independent of whether the data passed through the page cache: bypassing buffered I/O does not automatically make a larger logical update atomic.
+> 	* **Recovery Protocols**: Higher-level software that requires crash consistency must therefore design its own recovery protocol around the atomicity and ordering guarantees provided by the storage stack.
 
 > [!example] Firefox 3 and Excessive `fsync()`
->
-> During the development of **Firefox 3 in 2008**, Mozilla received [Bug 421482](https://bugzilla.mozilla.org/show_bug.cgi?id=421482), titled *Firefox 3 uses fsync excessively*. A reporter tracing Firefox's system calls observed roughly **eight `fsync()` calls while loading a new page** and reported severe responsiveness problems when the system was already performing other intensive disk I/O.
->
-> The problem involved Firefox's SQLite-backed storage. Firefox was performing many small database transactions, and committing those transactions caused SQLite to request durability barriers repeatedly. At the time, SQLite's `synchronous=FULL` behavior could perform multiple synchronization operations during a transaction.
->
-> This defeated one of the major advantages of buffered writing. Instead of allowing many changes to accumulate and eventually be persisted together, repeated synchronization points forced the storage stack to establish durability again and again. Because `fsync()` waits for the required storage operations to complete, these barriers could become visible directly as application latency.
->
-> Mozilla investigated reducing the synchronization frequency and approved a change that made its storage connections default to SQLite's `synchronous=NORMAL` mode. In one test discussed in the bug, `NORMAL` reduced the number of synchronization calls by roughly one third compared with `FULL`.
->
-> The lesson is not that `fsync()` should be avoided. Durability-sensitive software such as databases needs explicit synchronization at carefully chosen points. The problem is **unnecessarily frequent durability barriers**: an application that calls `fsync()` after every tiny modification can destroy write batching and turn storage latency into application latency.
-
-Buffered writes can also expose crash-atomicity limits below the page cache. The storage stack does not generally promise that an arbitrarily large application-level structure will reach persistent storage as one indivisible operation. If one logical update spans several lower-level writes, a crash or power loss can leave only part of that update durable.
-
-This problem is independent of whether the data passed through the page cache: bypassing buffered I/O does not automatically make a larger logical update atomic. Higher-level software that requires crash consistency must therefore design its own recovery protocol around the atomicity and ordering guarantees provided by the storage stack.
-
+> * **Latency Spikes**: During the development of **Firefox 3 in 2008**, Mozilla received Bug 421482, titled *Firefox 3 uses fsync excessively*. A reporter tracing Firefox's system calls observed roughly **eight `fsync()` calls while loading a new page** and reported severe responsiveness problems when the system was already performing other intensive disk I/O.
+> * **SQLite Synchronization**: The problem involved Firefox's SQLite-backed storage. Firefox was performing many small database transactions, and committing those transactions caused SQLite to request durability barriers repeatedly. At the time, SQLite's `synchronous=FULL` behavior could perform multiple synchronization operations during a transaction.
+> * **Defeating Batching**: This defeated one of the major advantages of buffered writing. Instead of allowing many changes to accumulate and eventually be persisted together, repeated synchronization points forced the storage stack to establish durability again and again. Because `fsync()` waits for the required storage operations to complete, these barriers could become visible directly as application latency.
+> * **The Fix**: Mozilla investigated reducing the synchronization frequency and approved a change that made its storage connections default to SQLite's `synchronous=NORMAL` mode. In one test discussed in the bug, `NORMAL` reduced the number of synchronization calls by roughly one third compared with `FULL`.
+> * **The Lesson**: The lesson is not that `fsync()` should be avoided. Durability-sensitive software such as databases needs explicit synchronization at carefully chosen points. The problem is **unnecessarily frequent durability barriers**: an application that calls `fsync()` after every tiny modification can destroy write batching and turn storage latency into application latency.
 #### Direct I/O (`O_DIRECT`)
 
-For most applications, buffered I/O provides a useful default. Some applications, however, maintain their own long-lived cache of file data and have workload-specific information that the kernel's generic page-cache policy does not have.
+- **Bypassing the Page Cache**: Opening a file with the **`O_DIRECT`** flag instructs the kernel to bypass the standard page cache for operations performed through that file descriptor.
+- **Direct Transfer**: Instead of copying data between user space and kernel memory, the data is transferred directly between the application's user-space buffer and the storage device.
+    - **Hardware Interaction**: This typically allows the storage controller to use Direct Memory Access (DMA) to read from or write to the application's memory directly.
+- **Strict Alignment Requirements**: Because the kernel does not buffer, repack, or align the data on the application's behalf, `O_DIRECT` imposes strict constraints.
+    - **Sector Alignment**: The user-space memory buffer's address, the file offset, and the length of the I/O operation must generally be aligned to the underlying device's **logical sector size** (and sometimes the filesystem block size).
+    - **Call Failures**: If an application attempts an unaligned read or write, the system call will typically fail with an `EINVAL` (invalid argument) error.
+- **Avoiding Double Caching**: The primary use case for Direct I/O is for applications that implement their own specialized caching and buffer-management systems, such as relational databases.
+    - **Resource Efficiency**: If a database already manages its own cache in user space, passing data through the OS page cache would cache the identical data twice. Bypassing the kernel cache saves memory and eliminates unnecessary CPU memory-copy cycles.
+- **Caching vs. Durability**: It is important to separate page-cache bypass from crash durability.
+    - **Device-Level Caches**: While `O_DIRECT` ensures the operating system does not buffer the write in RAM, the storage device may still acknowledge the write while the data is sitting in its own volatile hardware write cache.
+    - **Combined Semantics**: Applications that require absolute durability must still use synchronization mechanisms, such as combining `O_DIRECT` with `O_SYNC` or issuing explicit `fsync()` calls, to ensure the data reaches non-volatile media.
 
-With buffered I/O, the same underlying file data can then exist in both the page cache and an application-managed cache. The two layers consume memory independently and may make different decisions about what to retain, evict, prefetch, or write back.
+> [!note] Page Cache Coherency
+> - **Mixed Access Patterns**: Mixing `O_DIRECT` accesses with standard buffered accesses to the same file can lead to cache coherency problems.
+> - **Stale Data**: If one process reads a file into the page cache, and another process subsequently updates the file using `O_DIRECT`, the page cache may not be automatically invalidated. The first process could continue reading stale, out-of-date data from RAM.
+> - **Exclusive Use**: For this reason, applications that use `O_DIRECT` generally use it exclusively for a given file to avoid consistency bugs.
 
-On systems such as Linux, an application can request **Direct I/O** using `O_DIRECT`. File data then generally bypasses the normal page-cache path and is transferred between the storage stack and application-provided memory buffers.
-
-Conceptually: `Buffered I/O: Application ↔ Page Cache ↔ Filesystem / Block Layer ↔ Device` and `Direct I/O: Application Buffer ↔ Filesystem / Block Layer ↔ Device`.
-
-Direct I/O does **not** bypass the filesystem or the kernel. The filesystem still resolves the file, manages its metadata and allocation, translates file offsets into underlying storage locations, and submits operations through the block-device stack. What is primarily avoided is caching the transferred file contents in the normal page cache.
-
-Bypassing the page cache also means giving up some services that buffered I/O normally provides. The application may lose automatic caching and read-ahead, and Direct I/O can impose alignment requirements on memory buffers, file offsets, and I/O sizes. The exact restrictions depend on the operating system, filesystem, kernel version, and storage device.
-
-`O_DIRECT` also does **not by itself provide the durability guarantee of `fsync()` or `O_SYNC`**. Avoiding the page cache and forcing data to stable storage are separate decisions; the storage device may still contain volatile caches and the filesystem may still need to synchronize metadata.
-
-`O_DIRECT` is therefore not inherently faster. It is useful when an application has enough knowledge of its workload to take responsibility for caching and I/O policy more effectively than the generic page cache. For ordinary applications, bypassing the page cache can instead increase storage accesses and reduce performance.
-
-> [!example] When Direct I/O Makes Sense
->
-> Consider an application that keeps a large cache of fixed-size records in its own memory. It already decides which records should remain resident, which should be evicted, and which regions should be prefetched based on application-specific access patterns.
->
-> With buffered I/O, the underlying file data may also remain in the operating system's page cache. The application and kernel would then maintain two independent caches for the same data and compete for the same physical RAM.
->
-> Direct I/O allows the application to avoid the normal page-cache copy and make its own cache the primary long-lived copy. This can be useful when the application has deliberately taken responsibility for the caching work that the kernel would otherwise perform.
->
-> The important point is not that Direct I/O is a faster mode by itself. It is useful when **moving cache ownership from the kernel to the application** is a good architectural trade-off.
-> [!example] Kafka Takes the Opposite Approach
->
-> High-performance software does not always benefit from owning its own file cache. **Apache Kafka** generally takes the opposite approach and relies heavily on the operating system's page cache for its log-segment files.
->
-> Kafka's workload is well suited to this design. Log data is written and read largely as files, access commonly has strong sequential locality, and recently used regions can remain cached in system memory without Kafka maintaining an equivalent large cache inside the JVM heap.
->
-> Keeping that cache outside the Kafka process also means a process restart does not necessarily discard the cached file pages; the operating system can retain them independently of the JVM's lifetime.
->
-> Kafka can then combine this page-cache-oriented design with zero-copy file-to-network techniques when serving data. The result illustrates the opposite side of the Direct I/O decision: sometimes the generic page cache already provides the behavior an application needs, so bypassing it would remove useful functionality rather than improve the design.
-> [!note] Direct I/O vs. Raw Block Access
->
-> **Direct I/O** bypasses the normal page-cache path but still operates through the filesystem. The filesystem continues to manage filenames, permissions, allocation, metadata, and the mapping from file offsets to logical blocks.
->
-> **Raw block access** bypasses the filesystem itself. An application opens the block device directly and operates on its LBA address space, taking responsibility for storage layout and other functionality that a filesystem would normally provide.
->
-> Therefore: `Direct I/O = filesystem without normal page-cache caching` and `Raw block access = block device without filesystem abstraction`.
+> [!example] Apache Kafka: Embracing the Page Cache
+> - **Contrasting Philosophy**: While databases often use `O_DIRECT` to bypass the kernel and manage their own user-space caches, systems like Apache Kafka take the opposite approach by deliberately relying on the OS **page cache**.
+> - **JVM Memory Efficiency**: Kafka runs on the Java Virtual Machine (JVM).
+>     - **Avoiding GC Overhead**: Building a massive user-space cache in Java introduces significant object-memory overhead and Garbage Collection (GC) penalties.
+>     - **Kernel Delegation**: Delegating caching to the operating system keeps the heap small and fast, allowing the page cache to safely consume all remaining system RAM.
+> - **Optimized I/O Synergy**: Kafka's workload is dominated by sequential appends and sequential reads.
+>     - **Kernel Heuristics**: This pattern perfectly matches the kernel's built-in optimizations for **read-ahead** (prefetching upcoming data for consumers) and delayed **writeback** (efficiently batching producer writes).
+> - **Zero-Copy Transfers**: Because the data natively resides in the page cache, Kafka can serve consumers using the `sendfile()` system call.
+>     - **Bypassing User Space**: This instructs the kernel to copy data directly from the page cache to the network socket, completely bypassing the application's user-space memory and saving costly CPU memory-copy cycles.
+> - **Durability Strategy**: Instead of relying on frequent, expensive `fsync()` calls to guarantee local disk durability—which would destroy write batching and increase latency—Kafka achieves fault tolerance primarily through **network replication** across multiple brokers.
 >
 ### Disk Formatting
 
-**Formatting** prepares a block device for use with a particular filesystem by creating that filesystem's initial on-disk data structures.
-
-The target is commonly a [partition](#Partitions) or logical volume rather than an entire physical disk. From the filesystem's perspective, that target is simply the block-device address space it is allowed to manage.
-
-During formatting, the filesystem initializes structures such as:
-
-- filesystem-wide metadata and configuration;
-- free-space tracking structures;
-- inode or equivalent file-metadata structures;
-- the root directory;
-- allocation metadata and other filesystem-specific indexes.
-
-Formatting also establishes filesystem-level parameters such as the supported **filesystem block size**. This choice is independent from the partition size and from the logical-sector size exposed by the underlying storage device, although compatible alignment between these layers is important for efficient I/O.
-
-For example, a disk may expose 512-byte logical sectors, while one partition on that disk is formatted as ext4 using 4 KiB filesystem blocks. Another partition on the same disk could be formatted with a different filesystem and use a different allocation-unit size.
-
-Formatting therefore does not create the partition itself. **Partitioning defines which range of the underlying block device belongs to a logical region; formatting defines how a filesystem organizes the blocks inside that region.**
-
-A **quick format** generally recreates the filesystem's metadata structures and marks data regions as available without overwriting every previously stored byte. The previous filesystem's files become inaccessible through the newly created metadata, but remnants of their data may remain on storage until those blocks are reused.
-
-A more thorough formatting or sanitization operation may additionally overwrite, discard, or otherwise process the underlying storage. This is separate from the basic act of creating a filesystem.
+- **Formatting Phases**: Disk formatting generally involves two distinct phases: low-level and high-level formatting.
+- **Low-Level Formatting**: This is a physical or hardware-level preparation performed by the manufacturer at the factory.
+    - **Physical Structures**: On HDDs, it establishes the physical tracks, sectors, and control structures (such as servo data) on the magnetic platters.
+    - **SSD Initialization**: On SSDs, it involves initializing the NAND flash, identifying defective blocks, and preparing the Flash Translation Layer (FTL) mapping tables.
+    - **User Access**: Modern storage devices manage these low-level details internally and do not expose true low-level formatting to the end-user.
+- **High-Level Formatting**: This is what users and operating systems mean when they "format" a drive, partition, or logical volume.
+    - **Filesystem Creation**: It is the process of writing a new, empty **filesystem** onto a block device, establishing the logical structures needed to store and retrieve files.
+- **Initialization Tools (`mkfs`)**: On Unix-like systems, utilities such as `mkfs` (make filesystem) perform high-level formatting. They write the essential metadata required by the chosen filesystem design.
+    - **Superblocks**: The tool writes the primary and backup superblocks, which record global filesystem parameters such as the filesystem block size, total capacity, UUID, and feature flags.
+    - **Metadata Structures**: It also initializes the core tracking structures, such as the root directory, inode tables (or their starting points), and free-space tracking mechanisms like block bitmaps, free-space trees, or extent allocation maps.
+- **Quick vs. Full Format**: High-level formatting can generally be performed in two ways.
+    - **Quick Format**: This only overwrites the metadata regions necessary to establish the new empty filesystem. The vast majority of the old data remains physically intact on the storage medium until it is naturally overwritten by future file allocations.
+    - **Full Format**: This explicitly writes zeros across the entire logical address space. On HDDs, this can be used to securely erase previous data or to force the drive controller to detect and map out bad physical sectors.
+    - **SSD Considerations**: On SSDs, zero-filling is generally discouraged because it causes unnecessary wear and write amplification. Instead, a modern full format on an SSD usually issues a global **TRIM/Discard** command to tell the controller that all logical blocks in the partition are now free.
 ### FAT32
 
 **FAT32 (File Allocation Table 32)** is an older filesystem that remains common on removable storage because of its broad compatibility across operating systems, firmware, cameras, game consoles, and other devices.
