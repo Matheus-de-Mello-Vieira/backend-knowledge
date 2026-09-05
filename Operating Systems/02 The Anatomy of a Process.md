@@ -172,7 +172,7 @@ str r3, #0xffeeddcc
 
 - **Direct-to-Binary (Skipping the Assembly File):** While compilation is conceptually a multi-step pipeline (Source Code -> Assembly -> Machine Code), modern compilers (like Clang or GCC) often skip generating a physical, intermediate assembly text file. To optimize the build process and reduce disk I/O, they translate the high-level code directly into binary object files in memory.
 - **Read-Only Text Segment (Security & Caching):** Once the machine code (the Text/Code segment) is loaded into virtual memory, the OS enforces strict hardware-level protection marking that region as **read-only** and **executable** (a principle known as Write XOR Execute, or W^X).
-       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [[#Buffer Overflow|buffer overflows]]) to inject and execute their own rogue machine instructions.
+       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#Buffer%20Overflow)) to inject and execute their own rogue machine instructions.
        - **Cache Coherency:** Because the CPU knows the instructions will never change, it can aggressively load them into the L1 cache without ever worrying about complex cache coherency issues or invalidating the data.
 - **Just-In-Time (JIT) and Interpreted Languages:** The traditional ahead-of-time (AOT) assembly step is bypassed entirely by languages like Python, JavaScript, and Java. Instead of pre-compiling a static executable bound to a specific CPU architecture, these languages rely on a runtime engine. The engine either interprets the code line-by-line or uses a JIT compiler to generate the necessary raw machine instructions on the fly, right as the program is executing.
        - **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
@@ -316,7 +316,7 @@ main()
     - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
 - **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
 - **Cache Coherency Penalty:** Reads of global variables can be cache hits, but writes in a modern multi-core system can be costly. If Core A updates a global variable, the hardware invalidates copies held by other cores. A later access on another core may need to obtain the updated cache line, potentially from another cache or RAM.
-- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [[03 Memory Management#Spatial Locality|Spatial Locality]]. Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
+- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
 
 ## The Heap
 
@@ -331,7 +331,7 @@ main()
 - **The Program Break (`brk`):** The absolute "top" boundary of the heap's available memory is called the Program Break.
        - To request more raw memory from the kernel, the allocator uses the `brk` or `sbrk` system calls to push the Program Break upwards.
        - Unlike the Stack Pointer, we cannot simply lower the Program Break to deallocate memory, because heap allocations are completely out of order (fragmented).
-- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [[Go Internals#Escape Analysis|Escape Analysis]]—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
+- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [Escape Analysis](../Technologies/Golang/99%20Misc/Go%20Internals.md#Escape%20Analysis)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
 
 ### The `mmap` System Call (Memory Mapping)
 
@@ -379,7 +379,7 @@ The **page cache** is a kernel-managed cache of file data stored in physical RAM
 
 > [!example] LMDB — Delegating Working-Set Management to the Operating System
 >
-> [[../Databases/LMDB#Storage Model|LMDB]] stores its ordered key-value data in a file-backed B+ tree and memory-maps the database into the process's virtual address space. Once the necessary tree pages are resident in RAM, reads can operate directly on those mapped pages rather than first copying them into a separate database buffer pool.
+> [LMDB](../Databases/LMDB.md#Storage%20Model) stores its ordered key-value data in a file-backed B+ tree and memory-maps the database into the process's virtual address space. Once the necessary tree pages are resident in RAM, reads can operate directly on those mapped pages rather than first copying them into a separate database buffer pool.
 >
 > The operating system therefore participates directly in managing the database's resident working set. Frequently accessed pages tend to remain in memory, while colder clean pages can be reclaimed because their contents can be loaded again from the database file.
 
@@ -398,21 +398,21 @@ When the page is resident, the page table translates the virtual address to a ph
 
 > [!example] Lucene — Searching an Index Larger Than Available RAM
 >
-> [[../AI Engineering/Lexical Information Retrieval#Apache Lucene (Java)|Lucene]]) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
+> [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20(Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
 >
 > Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
 
 > [!example] llama.cpp — Mapping Read-Only Model Weights
 >
-> During [[../AI Engineering/LLM/LLM Processing Pipeline#Inference vs. Training|LLM inference]], billions of frozen model parameters are repeatedly read while tokens pass through the Transformer layers. `llama.cpp` can memory-map the model file so CPU inference can access resident weight pages without first copying the complete model into a second anonymous heap allocation.
+> During [LLM inference](../AI%20Engineering/LLM/LLM%20Processing%20Pipeline.md#Inference%20vs.%20Training), billions of frozen model parameters are repeatedly read while tokens pass through the Transformer layers. `llama.cpp` can memory-map the model file so CPU inference can access resident weight pages without first copying the complete model into a second anonymous heap allocation.
 >
-> These persistent model weights are different from the [[../AI Engineering/LLM/LLM Processing Pipeline#6. Iterative Generation Loop|KV Cache]], which is temporary runtime state produced from the current context.
+> These persistent model weights are different from the [KV Cache](../AI%20Engineering/LLM/LLM%20Processing%20Pipeline.md#6.%20Iterative%20Generation%20Loop), which is temporary runtime state produced from the current context.
 >
 > Mapping a model does not mean that arbitrarily large models can be executed efficiently with little RAM. Dense inference repeatedly needs most of the model weights. If the active weight working set exceeds available RAM and pages must constantly be reloaded from storage, inference can become dominated by page faults and storage latency. GPU offloading and VRAM placement remain separate memory-placement decisions.
 
 > [!example] SQLite — `mmap` as an Optional Optimization
 >
-> [[../Databases/SQLite#Storage Model|SQLite]] normally manages database pages using its own pager and page cache, but it can optionally memory-map portions of the database for reads. When a suitable page is mapped, SQLite can inspect the file-backed page directly rather than copying it into another SQLite-managed buffer.
+> [SQLite](../Databases/SQLite.md#Storage%20Model) normally manages database pages using its own pager and page cache, but it can optionally memory-map portions of the database for reads. When a suitable page is mapped, SQLite can inspect the file-backed page directly rather than copying it into another SQLite-managed buffer.
 >
 > SQLite demonstrates that `mmap` is not automatically the best I/O mechanism. It can reduce copying and explicit read operations, but page faults make some I/O occur implicitly as a consequence of ordinary memory access. Explicit I/O gives the application more direct control over when reads happen and how I/O errors are handled.
 
@@ -476,7 +476,7 @@ The mapping may still be writable from the process's perspective when created wi
 
 > [!example] PostgreSQL — Shared Memory Across Backend Processes
 >
-> [[../Databases/PostgreSQL#Process Architecture|PostgreSQL]] uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
+> [PostgreSQL](../Databases/PostgreSQL.md#Process%20Architecture) uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
 >
 > Each backend keeps its own virtual address space, but selected mappings can ultimately refer to the same physical pages. `mmap` provides the shared memory itself; PostgreSQL still requires locks, atomics, and other synchronization mechanisms to coordinate access safely.
 
@@ -519,7 +519,7 @@ The central distinction is therefore not simply **RAM versus disk**. Both anonym
 ### Performance (Stack vs Heap)
 
 - **Allocation Overhead:** Stack allocation commonly requires only an adjustment to the Stack Pointer. Heap allocation generally performs more allocator bookkeeping and may request additional memory from the OS, so it can cost more than stack allocation.
-- **Cache Efficiency:** The Stack is tightly packed and can benefit from [[03 Memory Management#Spatial Locality|Spatial Locality]]. Heap allocations may be scattered, so pointer-heavy access patterns can produce more cache misses and more RAM accesses. This depends on the allocator and workload.
+- **Cache Efficiency:** The Stack is tightly packed and can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Heap allocations may be scattered, so pointer-heavy access patterns can produce more cache misses and more RAM accesses. This depends on the allocator and workload.
 
 ### Bulk Allocations
 
