@@ -32,6 +32,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 - **Geometric Evolution**: CHS reflected the physical organization of early disks relatively closely. However, as HDDs became more sophisticated, their internal geometry stopped mapping cleanly to a simple fixed number of tracks and sectors.
 	- **Variable Circumference**: For example, modern drives can place more sectors on outer tracks because those tracks have a greater circumference.
 	- **Shift to LBA**: This made exposing physical disk geometry to software increasingly inconvenient and eventually led to the adoption of Logical Block Addressing.
+
 #### Data Access
 
 * **Block Devices**: HDDs are **block devices**, software addresses storage in blocks rather than requesting arbitrary individual bytes directly from the device.
@@ -45,6 +46,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 	* **Sequential Access**: With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement.
 	* **Random Access**: With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
 * **Workload Distribution**: This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
+
 #### Logical Block Addressing (LBA)
 
 - **Simpler Abstraction**: Exposing CHS geometry forced software to understand details of the physical disk layout, so **Logical Block Addressing (LBA)** replaces this interface with a much simpler abstraction.
@@ -54,16 +56,17 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 - **Bad-Sector Remapping**: The same abstraction also makes **bad-sector remapping** possible. If a physical sector becomes unreliable, the drive can redirect its LBA to a spare physical sector while continuing to expose the same logical address to the operating system. From the software's perspective, the location of the block has not changed.
 
 > [!note] LBA Blocks and Virtual Memory Pages
-> - **Independent Abstractions**: **LBA logical blocks** and virtual memory are independent abstractions, but having compatible sizes is convenient for operations such as **swapping**.
+> - **Independent Abstractions**: **LBA logical blocks** and [virtual memory](03%20Memory%20Management.md#Virtual%20Memory) are independent abstractions, but having compatible sizes is convenient for operations such as [swapping](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk).
 > - **Swapping Units**: The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
 > - **Page-Sized Slots**: The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
 > - **Aligned Granularities**: Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
+>
 > [!note] Logical vs. Physical Sector Size
 > - **Logical Sector Size**: **LBA (Logical Block Addressing)** identifies blocks in the logical address space exposed by the storage device to the operating system. An LBA is an **address**, while the **logical sector size** describes how many bytes each address represents.
 > - **Physical Sector Size**: Internally, the device may operate using a different **physical sector size**. The physical location corresponding to logical data is sometimes described using a **Physical Block Address (PBA)**, although the exact internal addressing scheme is device-specific and normally hidden from the host.
 > - **Size Mismatch**: The logical and physical sizes do not need to match. For example, a **512e** HDD may expose 512-byte logical sectors while internally using 4 KiB physical sectors, so `8 × 512 B logical sectors → 1 × 4 KiB physical sector`. A **4Kn** drive instead exposes 4 KiB logical sectors directly, making the logical and physical sector sizes equal.
 > - **Translation**: This distinction is possible because the storage controller translates the host-visible LBA space into the device's internal physical organization.
->
+
 #### File Fragmentation and Defragmentation
 
 - **Contiguous Allocation**: Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem.
@@ -77,7 +80,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 > [!note] Logical vs. Physical Contiguity
 > - **Logical Contiguity**: Because software operates through LBA, it does not directly control the exact physical platter coordinates. Defragmentation therefore primarily makes the file's **logical blocks** contiguous.
 > - **Physical Locality**: HDD firmware generally maps nearby sequential LBAs to nearby physical locations, so this still tends to preserve physical locality, although internal remapping such as bad-sector replacement can prevent the correspondence from being perfect.
->
+
 ### SSD
 
 A **Solid-State Drive (SSD)** is a non-volatile storage device built primarily from **NAND flash memory**. Unlike HDDs, SSDs have no moving mechanical parts: data is accessed electronically rather than by moving a head over a rotating platter. This gives SSDs much lower access latency and makes **random reads and writes** dramatically faster than on HDDs.
@@ -98,12 +101,13 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
 - **Erase Granularity**: A physical block can contain hundreds or even thousands of pages depending on the NAND generation.
     - **Page Reuse Constraints**: Because erase operations happen at this larger granularity, individual pages cannot simply be erased and reused independently.
 - **Architectural Impact**: This read/program/erase asymmetry is the fundamental reason SSDs need mechanisms such as the **Flash Translation Layer**, out-of-place writes, garbage collection, and wear leveling.
+
 > [!note]
 > - **Overloaded Terms**: **Page** and **block** are heavily overloaded terms in computer systems.
 >     - **Logical Blocks**: In storage, a **logical block** refers to a unit in the LBA address space exposed to the operating system.
 >     - **Physical Blocks**: A NAND **physical block** refers to an erase unit containing many flash pages.
 > - **Terminology Usage**: In these notes, **logical block** refers to storage addressed through LBA, while **physical block** refers to the NAND erase unit inside an SSD.
->
+
 #### Flash Translation Layer
 
 * The **Flash Translation Layer (FTL)** acts as a bridge that abstracts the physical NAND flash, allowing the operating system to interact with a standard, linear Logical Block Addressing (LBA) interface rather than addressing the memory directly.
@@ -112,7 +116,7 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
 * **Dynamic Mapping**: The important property of the mapping is that it is **dynamic rather than permanent**.
 	* **Mapping Changes**: Because NAND pages cannot normally be overwritten in place, updating a logical block may cause the SSD to write the new value into another free physical page and then change the mapping.
 	* **Transparent Updates**: For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
-	* **Enabling Mechanisms**: It allows the controller to perform [[#Out-of-Place Writes|out-of-place writes]], relocate data during [[#Garbage Collection|garbage collection]], and distribute writes through [[#Wear Leveling|wear leveling]] without changing the LBA addresses exposed to the host.
+	* **Enabling Mechanisms**: It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host.
 	* **Physical Adjacency**: As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
 	* **Mapping Metadata**: The FTL must maintain metadata describing these logical-to-physical mappings.
 	* **Persistence**: Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage.
@@ -125,6 +129,7 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
 > * **Shared Pages**: For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
 > * **Complex Schemes**: Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
 > * **Essential Abstraction**: The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
+
 #### States of a Page
 
 - **Logical States**: From the SSD controller's perspective, a NAND page can usually be understood as being in one of three logical states:
@@ -136,6 +141,7 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
     - **Block Erasure**: NAND erase operations apply to an entire physical block, so invalid pages become reusable only after the whole block containing them is erased.
 - **State Mixtures**: As updates accumulate, physical blocks gradually become mixtures of valid and invalid pages.
     - **Space Reclamation**: Reclaiming the space occupied by those invalid pages is the purpose of garbage collection.
+
 #### Out-of-Place Writes
 
 Because NAND pages cannot normally be overwritten directly, SSD updates use **out-of-place writes**.
@@ -164,10 +170,12 @@ Out-of-place writes avoid performing an expensive block erase for every small up
     - 20 valid pages.
     - **Block Recovery**: The SSD can copy the 20 valid pages elsewhere and then erase the entire physical block. After the erase, all 100 pages become free again.
 - **Space Conversion**: Garbage collection therefore converts fragmented invalid space into reusable erased blocks.
+
 > [!note] The Cost of Garbage Collection
 > - **Internal Overhead**: The trade-off is that the SSD must perform additional internal reads and writes that were never explicitly requested by the host.
 > - **Free Space Dependency**: Garbage collection is particularly expensive when the drive has little free space.
 >     - **Relocation Cost**: If candidate blocks contain many valid pages, the controller must relocate more data before it can reclaim a block.
+
 #### Write Amplification
 
 Garbage collection and other internal relocation operations mean that the amount of data physically written to NAND can exceed the amount requested by the host. This effect is called **write amplification**.
@@ -199,7 +207,7 @@ Garbage collection and other internal relocation operations mean that the amount
 >     - `discard(LBA range)`
 > - **Alternative Terminology**: **TRIM** is the ATA name for this operation. Other storage interfaces provide equivalent mechanisms, such as **SCSI UNMAP** and **NVMe deallocation**. The more general concept is usually called **discard** or **block deallocation**.
 > - **Broader Applications**: Although this mechanism became especially important with SSDs, it is not inherently SSD-specific. Thin-provisioned storage, virtual disks, and other storage systems can also use discard information to reclaim underlying resources.
->
+
 #### Wear Leveling
 
 - **Limited Endurance**: NAND flash has limited endurance. A physical block can tolerate only a finite number of **program/erase cycles** before its cells become unreliable.
@@ -213,15 +221,16 @@ Garbage collection and other internal relocation operations mean that the amount
 - **Forms of Wear Leveling**: Wear leveling generally has two forms:
     - **Dynamic wear leveling**: when writing or relocating hot data, the controller prefers physical blocks with lower erase counts. This spreads future writes across blocks that have experienced less wear.
     - **Static wear leveling**: the controller may also relocate cold data. A physical block containing cold pages might otherwise remain occupied for years while hotter blocks are repeatedly erased. Moving that cold data into a more heavily worn block frees the less-worn block so it can participate in future writes.
-	    -  **Counterintuitive Movement**: Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all.
+	    - **Counterintuitive Movement**: Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all.
 	    - **Preventing Reservation**: The purpose is not to improve that data's access performance, but to prevent cold data from permanently reserving the least-worn physical blocks.
 	    - **Lifespan Trade-off**: Wear leveling trades additional internal data movement for a more uniform distribution of wear across the NAND, increasing the usable lifetime of the drive.
+
 #### Over-Provisioning
 
 - **Reserved Capacity**: An SSD usually contains more physical NAND capacity than it exposes to the operating system. The portion that is deliberately kept outside the host-visible LBA address space is called **over-provisioning**.
     - **Spare Pool**: For example, an SSD might physically contain more NAND than its advertised usable capacity. The operating system can never allocate this reserved space directly, so the SSD controller can rely on it as a permanent pool of spare physical pages and blocks.
 - **Out-of-Place Writes**: This matters because SSD writes are [**out-of-place**](#Out-of-Place%20Writes).
-    - **Temporary Space Needs**: When the host updates data, the controller needs a free physical page where it can write the new version before invalidating the old one. Garbage collection also needs temporary free space when it copies valid pages out of a physical block before erasing that block. 
+    - **Temporary Space Needs**: When the host updates data, the controller needs a free physical page where it can write the new version before invalidating the old one. Garbage collection also needs temporary free space when it copies valid pages out of a physical block before erasing that block.
 - **Free Space Constraints**: Without enough free space, these operations become increasingly difficult.
     - **Costly Operations**: The controller may need to perform garbage collection before it can satisfy a new write, and it may be forced to choose physical blocks containing many valid pages. That means more pages must be copied simply to reclaim a small amount of reusable space.
 - **Controller Freedom**: Over-provisioning prevents the host from consuming all physical NAND, giving the controller additional freedom to:
@@ -240,6 +249,7 @@ Garbage collection and other internal relocation operations mean that the amount
 > - **Related Effect**: There is also a related but distinct effect when the user leaves filesystem space unused.
 > - **Reclaimable Pages**: If the operating system communicates that unused space through **TRIM**, the SSD can treat the corresponding physical pages as reclaimable and use them similarly to additional spare space.
 > - **Temporary Reservation**: Unlike factory over-provisioning, however, this space is not permanently reserved: the host may allocate it again later.
+
 #### SSD Performance Characteristics
 
 - **Mechanical Delays Eliminated**: SSDs eliminate the **seek time** and **rotational latency** that dominate random-access performance on HDDs.
@@ -252,9 +262,10 @@ Garbage collection and other internal relocation operations mean that the amount
 > [!note] The SSD Performance Model
 > - **Locality Effects**: The performance model is therefore different from an HDD rather than completely free of locality effects.
 > - **Influencing Factors**: HDD performance is dominated by mechanical positioning, while SSD performance is strongly influenced by **NAND parallelism, free-space availability, garbage collection, write amplification, and the read/program/erase asymmetry of flash memory**.
+
 #### Fragmentation and Defragmentation on SSDs
 
-The [[#File Fragmentation and Defragmentation|file fragmentation]] described for HDDs also exists at the filesystem level on SSDs: a file can still be split across multiple non-contiguous extents. What changes is the performance consequence.
+The [file fragmentation](#File%20Fragmentation%20and%20Defragmentation) described for HDDs also exists at the filesystem level on SSDs: a file can still be split across multiple non-contiguous extents. What changes is the performance consequence.
 
 On an HDD, defragmentation improves locality because reading separated extents may require expensive mechanical seeks and rotational waiting. An SSD has no equivalent mechanical movement, so accessing distant logical addresses is much closer in cost to accessing adjacent ones. Fragmentation therefore has a much smaller effect on read performance.
 
@@ -273,6 +284,7 @@ These operations consume NAND endurance while providing little of the locality b
 - **eMMC:** An embedded storage package combining NAND flash and a controller in a single chip. It is soldered directly onto the device rather than being removable and is commonly found in inexpensive embedded systems and older mobile devices. It provides a simple block-device interface but generally offers less parallelism and performance than modern SSDs.
 - **UFS (Universal Flash Storage):** An embedded NAND-based storage technology designed as a higher-performance successor to eMMC. Unlike eMMC's more limited command model, UFS supports features such as command queuing and simultaneous reads and writes, making it better suited to modern smartphones and embedded systems.
 - **Persistent Memory / NVRAM:** Technologies that retain data without power while providing access characteristics closer to memory than conventional block storage. Some designs can be accessed directly through the CPU's memory address space rather than through traditional block I/O, partially blurring the distinction between **memory** and **storage**.
+
 ### Partitions
 
 - **Logical Regions**: A **partition** divides a block device's Logical Block Addressing (LBA) space into logical regions. Instead of exposing the entire disk as one storage region, the operating system can treat each partition as an independent block device.
@@ -280,7 +292,7 @@ These operations consume NAND endurance while providing little of the locality b
     - **Access Translation**: For example, a disk may contain a partition whose storage region begins at LBA `2048` and ends at LBA `1,000,447`. Reads and writes to that partition are ultimately translated into accesses within that range of the underlying disk.
 - **Partition-Table Format**: The exact representation depends on the **partition-table format**. GPT, for example, records the first and last LBA belonging to each partition, while older MBR partition entries describe a starting LBA and a number of sectors.
 - **Logical Segmentation**: Partitioning therefore provides **logical segmentation**, not another physical storage technology. The blocks still belong to the same underlying HDD, SSD, or other block device; the partition table simply describes which ranges are assigned to which logical regions.
-- **Usage Options**: A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain swap space, participate in a volume-management system, or be accessed as a raw block device.
+- **Usage Options**: A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain [swap space](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk), participate in a volume-management system, or be accessed as a raw block device.
 - **Independent Filesystems**: When a filesystem is created on a partition, that filesystem manages only the block-address range exposed by that partition. Different partitions can therefore contain completely different filesystems.
     - **Filesystem Diversity**: For example, one disk could contain an ext4 partition and an NTFS partition. Each filesystem independently creates its own metadata structures and chooses its own supported filesystem block size.
 - **Distinct Block Size**: The filesystem block size is distinct from both the partition size and the underlying LBA logical-sector size.
@@ -297,10 +309,12 @@ These operations consume NAND endurance while providing little of the locality b
 > - each partition is exposed as its own logical block device;
 > - a **filesystem** may be created inside that partition and introduce its own filesystem-block and metadata structures.
 > These layers have related boundaries, but their granularities are independent.
+
 #### Partition Alignment
 
 - **Starting LBA Efficiency**: A partition can begin at any logical-sector boundary permitted by the partition table, but not every starting LBA is equally efficient.
 - **Partition alignment** means choosing the partition's starting LBA so that higher-level structures, such as filesystem blocks, align cleanly with important boundaries in the underlying storage device.
+
 ##### Logical vs. Physical Sectors
 
 - **Size Discrepancies**: Alignment becomes especially important when the device exposes a smaller **logical sector size** than its actual **physical sector size**.
@@ -327,6 +341,7 @@ gantt
     Physical sector 1 :p1, 8, 8m
     Physical sector 2 :p2, 16, 8m
 ```
+
 ##### Proper Alignment
 
 - **Filesystem Blocks**: Suppose the filesystem inside the partition also uses 4 KiB blocks.
@@ -354,6 +369,7 @@ gantt
 ```
 
 - **Clean Updates**: In this case, updating one 4 KiB filesystem block can correspond cleanly to one 4 KiB physical-sector update.
+
 ##### Improper Alignment
 
 - **Shifted Grid**: Now suppose the partition begins one 512-byte logical sector after a physical-sector boundary. The filesystem still creates perfectly regular 4 KiB blocks relative to the beginning of the partition, but the entire filesystem grid is shifted by 512 bytes relative to the physical-sector grid.
@@ -415,11 +431,13 @@ gantt
 > ```
 > 
 > - **Internal Regularity**: The filesystem is internally regular in both cases. The difference is the starting offset of the partition itself.
+
 ##### Why Modern Tools Use 1 MiB Alignment
 
 - **Modern Partitioning Tools**: Modern partitioning tools commonly align partitions on **1 MiB boundaries**.
 - **Starting Point Calculation**: With 512-byte logical sectors: `1 MiB / 512 B = 2048 logical sectors`
 - **Common Starting LBA**: Therefore, **LBA 2048** is a common starting point for the first partition.
+
 ```mermaid
 ---
 displayMode: compact
@@ -439,8 +457,8 @@ gantt
 ```
 
 - **Smaller Granularities**: A 1 MiB boundary is also naturally aligned to many smaller granularities. For example: `1 MiB / 4 KiB = 256`
-
 - **Natural Alignment**: So a partition starting at a 1 MiB boundary is also aligned to a 4 KiB physical-sector boundary. This makes 1 MiB alignment a practical default across devices with different internal geometries.
+
 ##### Other Storage Granularities
 
 - **Other Granularities**: Alignment can matter beyond physical sectors. A storage stack may also contain granularities such as:
@@ -493,10 +511,8 @@ gantt
 > ```
 > 
 > - **Granularity Independence**: The important requirement is therefore not that different layers use the same granularity, but that their boundaries interact cleanly enough that a higher-level operation does not unnecessarily span additional lower-level units.
->
-## File Systems
 
-A **file system** is the set of data structures and rules an operating system uses to organize persistent data on a storage device.
+## File Systems
 
 At the block-device level, storage is exposed as a flat **Logical Block Addressing (LBA)** space: essentially a large sequence of numbered logical blocks. This interface is convenient for the operating system but not for applications or users, which generally want to work with concepts such as **files, directories, paths, names, and permissions** rather than raw block numbers.
 
@@ -512,30 +528,141 @@ A file therefore does not need to occupy one contiguous region of the device. Th
     - **Absolute Path:** Identifies an object starting from the filesystem's root
     - **Relative Path:** Identifies an object starting from some current directory.
 - **File Extension:** A suffix such as `.txt`, `.jpg`, or `.exe` conventionally used to indicate a file's format or intended interpretation. The extension is normally just part of the filename; the filesystem itself does not necessarily use it to determine the actual type of the file.
-- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](File%20and%20Filesystem%20Security.md#File%20and%20Filesystem%20Security) build on this metadata to enforce access control. 
+- **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](../Security/03%20Cryptography%20and%20Data%20Protection/File%20and%20Filesystem%20Security.md#File%20and%20Filesystem%20Security) build on this metadata to enforce access control.
 
 ### Opening Files
 
 - **Initial Operation**: Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file.
-- **The `open()` Call**: `open()` resolves the pathname, checks the requested access against filesystem permissions, creates the kernel state for that open instance, and returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs)).
-- **The Full Descriptor Model**: The full descriptor model belongs with [[02 The Anatomy of a Process#File Descriptors (FDs)|process-level file descriptors]] because the same abstraction also covers sockets, pipes, device nodes, and other I/O resources.
-- **Subsequent Operations**: Subsequent operations such as `read()`, `write()`, and `fsync()` use the file descriptor rather than resolving the pathname again for every operation.
-- **Associated State**: The open file also carries state such as the current file offset and status flags that affect later I/O.
-- **Releasing the Reference**: When the process no longer needs that reference, it releases it with `close()`.
+- **The `open()` Call**: Conceptually, the interface looks like:
+
+```c
+open(path, flags, mode)
+```
+
+- **Path Resolution**: `path` identifies the filesystem object the process wants to access. The kernel resolves the pathname and checks whether the requested operation is permitted.
+- **Behavior Selection**: `flags` describe what the caller wants to do with the file. They can independently control concerns such as:
+    - whether the file is opened for reading, writing, or both;
+    - whether a missing file should be created;
+    - whether creation must fail if the pathname already exists;
+    - whether writes should append;
+    - whether normal page-cache behavior should be used;
+    - whether writes require synchronous durability semantics.
+- **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or `O_TMPFILE`. It specifies the initial permission bits, subject to mechanisms such as `umask`.
+- **Returned File Descriptor**: A successful call returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs)). The broader descriptor abstraction belongs to process management because the same mechanism also represents sockets, pipes, device nodes, and other I/O resources.
+- **Subsequent Operations**: Calls such as `read()`, `write()`, and `fsync()` operate through the descriptor rather than resolving the pathname again on every operation.
+- **Associated State**: The open file also carries state such as the current file offset and status flags that influence later operations.
+- **Closing**: When the process no longer needs the reference, it releases the descriptor using `close()`.
+
 #### Open Flags
 
-- **Access Mode and Creation Permissions**
-    - - `**mode**` **argument**: The `mode` argument is relevant only when `open()` is creating a file through `O_CREAT` or `O_TMPFILE`. In those cases, it specifies the initial permission bits for the newly created file, subject to the process's `umask` and applicable default ACLs. If neither `O_CREAT` nor `O_TMPFILE` is specified, the `mode` argument is ignored.
-	- **Access modes**:
-	    - `O_RDONLY` — open for reading.
-	    - `O_WRONLY` — open for writing.
-	    - `O_RDWR` — open for both reading and writing.
-- **File Status Flags**
-    - **`O_APPEND`**: Before each `write()`, the kernel positions the open file offset at the current end of the file and performs the offset adjustment and write as a single atomic operation. This allows multiple writers to append without each caller first performing a separate seek to the end of the file. Some network filesystems, notably NFS configurations that must emulate append behavior client-side, may not provide the same guarantees.
-    - **`O_DIRECT`**: This requests [[#Direct I/O (`O_DIRECT`)|Direct I/O]], causing file data transfers to generally bypass or minimize use of the normal page-cache path. Filesystems and devices may impose alignment restrictions, and `O_DIRECT` by itself does not provide synchronous durability guarantees.
-    - **`O_SYNC`**: This gives writes **synchronized file-integrity completion** semantics. A successful `write()` does not return until the written data and the associated metadata required by the stronger synchronization guarantee have been completed or flushed as required by the storage stack.
-    - **`O_DSYNC`**: This provides the narrower **synchronized data-integrity completion** guarantee. It waits for the written data and any metadata necessary to retrieve that data, but does not require unrelated metadata changes to be made durable as part of every write.
-    - **Conceptual independence**: These flags control separate properties. `O_DIRECT` primarily affects the caching and data-transfer path, whereas `O_SYNC` and `O_DSYNC` control what synchronization and durability work must complete before a write returns. Applications that require both Direct I/O and synchronous durability may therefore combine `O_DIRECT` with `O_SYNC` or `O_DSYNC`.
+Flags passed to `open()` describe several largely independent properties of the requested file access. An application therefore normally combines multiple flags to express the behavior it needs.
+
+##### Access Modes
+
+Exactly one primary access mode normally specifies how the descriptor may access file contents:
+
+- **`O_RDONLY`**: Opens the file for reading.
+- **`O_WRONLY`**: Opens the file for writing.
+- **`O_RDWR`**: Opens the file for both reading and writing.
+
+> [!example] SQLite — Opening a Database
+> An application using [SQLite](../Databases/SQLite.md#Opening%20the%20Database%20File) provides a concrete example of why these distinctions exist.
+>
+> A database inspection tool may open an existing database only for reading. An application that owns the database instead normally needs both reading and writing.
+>
+> At SQLite's API level, these intentions appear through options such as `SQLITE_OPEN_READONLY` and `SQLITE_OPEN_READWRITE`. SQLite has its own VFS abstraction, so these are not necessarily literal one-to-one translations into `O_RDONLY` and `O_RDWR`; they represent the same underlying distinction in required file access.
+
+##### File Creation
+
+Access mode and file creation are separate decisions.
+
+- **`O_CREAT`**: Creates the file if the pathname does not already exist. If the file already exists, it opens that existing file according to the other supplied flags.
+- **`O_EXCL` with `O_CREAT`**: Requires the creation itself to succeed. If the pathname already exists, the operation fails instead of opening the existing file.
+- **`mode` Argument**: When a new file is actually created, `mode` provides its initial permission bits, subject to mechanisms such as the process's `umask`.
+
+For example:
+
+```c
+open("app.db", O_RDWR | O_CREAT, 0600);
+```
+
+means that the process wants read/write access and wants the file created if it does not exist. The `0600` argument matters only if creation actually happens.
+
+> [!example] First Application Launch
+> A desktop application may use a local SQLite database such as `app.db`.
+>
+> - On later launches, the file already exists and is simply opened for reading and writing.
+> - On the first launch, the application also needs the file to be created.
+>
+> SQLite exposes the same conceptual combination through `SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE`.
+
+> [!example] PostgreSQL — Exclusive File Creation
+> When PostgreSQL creates a new physical relation file, accepting an unrelated file that already occupies the intended pathname would be incorrect.
+>
+> A combination such as `O_CREAT | O_EXCL` expresses this stronger requirement: create a new filesystem object, but fail if something already exists at that pathname.
+>
+> This illustrates that `open()` flags are not only performance options. They can also establish correctness requirements around file creation.
+
+##### Append Mode
+
+- **`O_APPEND`**: Before each `write()`, the kernel positions the write at the current end of the file and performs the positioning and write as one append operation.
+- **Concurrent Writers**: This avoids the race that would result if each writer independently performed `seek-to-end → write`.
+- **Network Filesystems**: Some network filesystems may need to emulate append behavior and can provide different guarantees.
+
+> [!example] Application Logs
+> A server writing `application.log` usually wants new records added to the end of the existing log rather than overwriting earlier entries.
+>
+> Conceptually:
+>
+> ```c
+> open("application.log", O_WRONLY | O_CREAT | O_APPEND, 0640);
+> ```
+>
+> The descriptor is writable, the log is created if necessary, and each write targets the current end of the file.
+
+##### Caching and Transfer Path
+
+- **`O_DIRECT`**: Requests [Direct I/O](#Direct%20I/O%20(`O_DIRECT`)), causing file data to generally bypass or minimize participation in the normal page-cache path.
+- **Independent Concern**: `O_DIRECT` primarily changes how data travels between application memory and storage. It does not by itself establish synchronous durability.
+
+##### Synchronous Completion
+
+- **`O_SYNC`**: Requests synchronized file-integrity completion. A successful write waits for the written data and the metadata required by the stronger synchronization guarantee.
+- **`O_DSYNC`**: Requests synchronized data-integrity completion. It waits for the data and metadata needed to retrieve that data, without necessarily forcing unrelated metadata updates.
+- **Independent Concern**: These flags control persistence behavior rather than page-cache participation.
+
+> [!example] PostgreSQL WAL
+> PostgreSQL's [`wal_sync_method`](../Databases/PostgreSQL.md#WAL%20Synchronization%20Method) makes this distinction concrete.
+>
+> - `open_sync` can use `O_SYNC`.
+> - `open_datasync` can use `O_DSYNC`.
+> - Other methods use ordinary writes followed by calls such as `fsync()` or `fdatasync()`.
+>
+> PostgreSQL therefore demonstrates that **how data is written** and **when a durability boundary is established** are related but separately selectable design decisions.
+
+##### Combining Flags
+
+Because these properties are independent, applications commonly combine several flags.
+
+```c
+open("application.log", O_WRONLY | O_CREAT | O_APPEND, 0640);
+```
+
+expresses:
+
+- write access;
+- create the file if necessary;
+- append every write;
+- use `0640` as the initial permissions if creation occurs.
+
+Likewise:
+
+```c
+open("data.db", O_RDWR | O_CREAT, 0600);
+```
+
+expresses a different combination without requiring a different system call.
+
 ### Mapping Files to Logical Blocks
 
 - **Bridging the Views**: Applications work with files as logical sequences of bytes, while the storage device exposes a flat **LBA address space**. The filesystem bridges these views by dividing file data into allocation units and maintaining metadata that records where those units are stored.
@@ -555,6 +682,7 @@ These blocks are a **filesystem-level abstraction** and are distinct from the lo
 	- **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
 	- **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
 - **Common Granularity**: For general-purpose systems, **4 KiB is a common choice** because it aligns well with several common granularities, including 4 KiB physical sectors, 4Kn logical sectors, and 4 KiB virtual-memory pages.
+
 #### Extents and Contiguous Ranges
 
 A filesystem does not necessarily record the location of every block in a file individually. When several consecutive portions of a file are stored in consecutive filesystem blocks, the filesystem can describe the entire run using an **extent**.
@@ -563,6 +691,7 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
 
 - **Contiguous Representation**: For example, rather than storing 1,000 separate mappings for 1,000 adjacent blocks, the filesystem can represent them as one extent with a starting location and a length of 1,000 blocks.
 - **File Fragmentation**: A file may require multiple extents if sufficiently large contiguous free regions are unavailable or if the file grows over time. In that case, different portions of the file are stored in separate locations on the filesystem. This is a form of **file fragmentation**: one logical file is represented by multiple non-contiguous extents.
+
 #### Object Metadata and Resolution
 
 - **Inodes**: In Unix-like filesystems, each filesystem object is represented by a metadata structure called an **inode**. The inode describes the object itself rather than its filename. It commonly contains:
@@ -585,6 +714,7 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
     - The **directory entry** provides the name.
     - The **inode** provides the object's metadata and storage mappings.
     - Because multiple directory entries can point to the same inode, a single file can have multiple names. This is the basis of **hard links**.
+
 #### Internal Inode Management
 
 - **Inode Numbers and Inode Records**: An **inode number** identifies a filesystem object, but it is not itself a memory address or disk address.
@@ -595,33 +725,27 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
     - Each filesystem defines how its inode records are stored and located.
     - Some filesystems use fixed inode tables, while others may use different or more dynamic metadata structures.
 
-> [!EXAMPLE]  
+> [!EXAMPLE]
 > **ext4: Block Groups and Inode Tables**
 > 
 > ext4 provides a concrete example of how inode records can be organized on disk.
 > 
 > - The filesystem is divided into **block groups**, which partition data and filesystem metadata.
->     
 > - Each block group contains structures such as:
->     
 >     - an **inode bitmap**, which records which inode slots are allocated;
->         
 >     - an **inode table**, which stores the inode records themselves;
->         
 >     - **block-allocation metadata**, which tracks available and allocated data blocks;
->         
 >     - the **data blocks** used to store file and directory contents.
->         
 > - When a new filesystem object is created, ext4 can find a free inode in the bitmap, mark it as allocated, and initialize the corresponding inode-table entry.
 > 
 > Because ext4 knows how many inodes belong to each block group, it can use an inode number to determine which group contains the corresponding record.
 > 
 > For inode number `i`, with `N` inodes per block group:
-> 
 > - `block group = (i - 1) / N`
->     
 > - `index within group = (i - 1) % N`
+> 
 > The filesystem can then use the block group's metadata to locate its inode table and calculate the position of the corresponding inode record.
+
 - **Filename Lookup vs. Inode Lookup**: Resolving a filename and locating an inode record are two separate operations.
     - A **directory entry** maps a filename to an **inode number**.
     - The filesystem then uses that inode number and its internal metadata structures to locate the corresponding **inode record**.
@@ -631,6 +755,7 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
     - If other hard links still refer to the inode, the object remains accessible through those names.
     - Even after the link count reaches zero, an inode may remain in use while a process still has the file open.
     - Once no directory entries refer to it and no open references require it to remain alive, the filesystem can reclaim the inode and its associated storage.
+
 #### Hard and Symbolic Links
 
 Because filenames are stored separately from inodes, Unix-like filesystems can support different types of links.
@@ -648,19 +773,20 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
     - When the symbolic link is followed, the filesystem resolves that stored pathname through the normal pathname-resolution process.
     - The symbolic link does not directly share the target's inode.
     - If its stored pathname no longer resolves to an existing object, the symbolic link becomes **dangling**.
+
 ### Free Space Management
 
 - **Tracking Availability**: The filesystem must also know which logical blocks are already occupied and which are available for new data.
 - **Allocation Process**: When creating or extending a file, the filesystem's allocator searches its free-space metadata for suitable regions and assigns them to the file.
     - **Reclaiming Blocks**: When data is deleted, those logical blocks become available for future allocations.
-- **Tracking Structures**: Filesystems use structures such as **bitmaps, free-space trees, or extent-based indexes** to maintain this information efficiently. 
+- **Tracking Structures**: Filesystems use structures such as **bitmaps, free-space trees, or extent-based indexes** to maintain this information efficiently.
 
 > [!note] Allocation Policy and Fragmentation
-> 
 > - **Performance Impact**: Allocation policy has an important effect on performance.
 > - **Data Locality**: When possible, the filesystem tries to place logically related data near each other so that files require fewer [extents](#Extents%20and%20Contiguous%20Ranges) and storage accesses have better locality.
 > - **Scattered Space**: Over time, however, repeated creation, deletion, and expansion of files can leave available space scattered throughout the filesystem.
-> - **Resulting Fragmentation**: New files may then need to be split across several extents, producing [[#File Fragmentation and Defragmentation|file fragmentation]].
+> - **Resulting Fragmentation**: New files may then need to be split across several extents, producing [file fragmentation](#File%20Fragmentation%20and%20Defragmentation).
+
 ### Caching
 
 - **Page Cache Integration**: Filesystems integrate closely with the operating system's **page cache**, which uses available RAM to retain file contents.
@@ -670,10 +796,11 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
     - **Cache Miss**: On a **cache miss**, the filesystem reads the data from storage and normally keeps it in the page cache so later accesses can reuse it.
 - **System-Wide Scope**: The page cache is system-wide rather than private to one application.
     - **Shared Access**: If two processes read the same region of the same file, the second process can generally reuse the pages already cached by the first instead of causing another storage read.
-    
+
 > [!note] Caching Optimization Strategies
 > - **Read-Ahead**: Sequential access can also trigger **read-ahead**. If the kernel observes that an application is reading consecutive regions of a file, it may load upcoming data into the page cache before it is explicitly requested, hiding part of the storage latency.
 > - **Locality Exploitation**: Caching therefore allows the operating system to exploit both **temporal locality**—reusing recently accessed data—and **spatial locality**—predicting that nearby file data will soon be accessed.
+
 #### Writes, Writeback, and Durability
 
 * **Buffered Writes**: Buffered writes also pass through the page cache.
@@ -685,9 +812,10 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 * **Pattern Decoupling**: This delayed-write design decouples the application's write pattern from the storage device's write pattern.
 * **Accumulation**: An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
 * **Batching Example**: For example, instead of immediately performing `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`, multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
+
 > [!note] Design Intent of Delayed Writeback
 > This should not be understood simply as the operating system assuming that application developers will write inefficient code: the abstraction deliberately allows applications to express writes according to their own semantics while the kernel handles device-level batching, scheduling, and locality. Even well-designed applications often have legitimate reasons to issue many small logical updates.
->
+
 ##### Write Durability and Synchronization
 
 * **The Durability Gap**: Delayed writeback creates a critical distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty in RAM, those updates are lost.
@@ -695,74 +823,105 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 	* **Hardware Acknowledgment**: This allows the drive to acknowledge a write before the data reaches physical flash or disk platters.
 	* **Four-Stage Journey**: The complete write path therefore looks approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
 * **Explicit Synchronization (`fsync()` and `fdatasync()`)**: Applications that require strict durability boundaries use explicit synchronization calls to force data along this path.
-	- **`fsync()` (File Integrity)**: Forces the file's dirty data and _all_ associated metadata (including unrelated attributes like modification timestamps) out of the OS page cache, issues the necessary commands to flush the device's write cache, and blocks until the storage stack reports physical completion.
-	- **`fdatasync()` (Data Integrity)**: Provides a narrower, potentially faster synchronization. It forces the data and only the metadata _strictly necessary_ to retrieve it (such as file-size changes), skipping unrelated metadata updates.
-	- **Performance Cost**: Both calls deliberately break the kernel's asynchronous write batching and wait for hardware persistence, making them considerably more expensive than an ordinary buffered `write()`.
-* **Synchronized Open Flags**: Instead of performing ordinary buffered writes followed by explicit `fsync()` calls at selected boundaries, an application can request synchronized semantics for every operation by opening the file with specific flags.
-	* **`O_SYNC` (File Integrity)**: Provides synchronized file-integrity completion. Every `write()` acts conceptually like an implicit `fsync()`, blocking until both the written data and all associated metadata are durable.
-	* **`O_DSYNC` (Data Integrity)**: Provides narrower synchronized data-integrity completion. It acts conceptually like an implicit `fdatasync()`, waiting only for the data itself and the metadata strictly necessary to retrieve it (such as file-size changes), without forcing unrelated metadata (such as modification timestamps) to disk on every operation.
-* **Page Cache Interaction**: Importantly, these flags **do not bypass the page cache**, different from `O_DIRECT`: The data still passes through memory; the flags simply delay the `write()` system call from returning until the persistence guarantee is met. This is fundamentally different from `O_DIRECT`, which controls page-cache participation rather than durability.
-* **Use Cases vs. Overhead**: Synchronous writes are vital for structures like a database's **Write-Ahead Log (WAL)**, where a transaction cannot complete until its log record is safe. 
-	* **Batching Trade-offs**: However, whether using `O_SYNC` or explicit `fsync()` calls, forcing a durability wait on every small update prevents the storage stack from grouping changes efficiently. Applications often perform better by batching many ordinary writes behind a single explicit synchronization point.
+	- **`fsync()` (File Integrity)**: Forces the file's dirty data and associated metadata required by the filesystem's synchronization semantics toward persistent storage and waits for the storage stack to report completion.
+	- **`fdatasync()` (Data Integrity)**: Provides a narrower synchronization guarantee centered on file data and metadata necessary to retrieve it, such as file-size changes.
+	- **Performance Cost**: Both calls deliberately establish a durability boundary and can reduce the amount of write batching available to the storage stack compared with ordinary buffered writes.
+* **Synchronized Open Flags**: Instead of ordinary buffered writes followed by explicit synchronization at selected boundaries, an application can request synchronized semantics for writes through flags such as `O_SYNC` or `O_DSYNC`.
+* **Page Cache Interaction**: These flags are distinct from `O_DIRECT`: synchronization controls when the required persistence work must complete, while Direct I/O primarily controls page-cache participation.
+* **Higher-Level Durability Protocols**: Storage synchronization primitives become building blocks for higher-level recovery systems. A database's [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20(WAL)), for example, requires selected log records to become durable before dependent database changes can be considered safely committed.
+* **Layer Boundary**: The storage layer defines mechanisms such as `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC`; the database layer decides where those durability boundaries belong in its own recovery protocol.
+* **Batching Trade-offs**: Forcing a durability wait on every small update prevents the storage stack from grouping changes as freely. Applications can often batch many ordinary writes behind one deliberately chosen synchronization point when their higher-level correctness protocol permits it.
 
 > [!note] Crash-Atomicity Limits
-> * **Indivisible Operations**: Buffered writes can also expose crash-atomicity limits below the page cache. The storage stack does not generally promise that an arbitrarily large application-level structure will reach persistent storage as one indivisible operation.
-> * **Partial Updates**: If one logical update spans several lower-level writes, a crash or power loss can leave only part of that update durable. [[../Databases/00 Overview#Torn Pages|Torn pages]] are a specific kind of partial update.
-> 	* **Independent Problem**: This problem is independent of whether the data passed through the page cache: bypassing buffered I/O does not automatically make a larger logical update atomic.
-> 	* **Recovery Protocols**: Higher-level software that requires crash consistency must therefore design its own recovery protocol around the atomicity and ordering guarantees provided by the storage stack.
+> - **Indivisible Operations**: The storage stack does not generally guarantee that an arbitrarily large application-level update reaches persistent media as one indivisible operation.
+> - **Partial Updates**: If one logical update requires several lower-level writes, a crash or power loss may leave only part of that update durable.
+> - **Database Example**: [Torn pages](../Databases/00%20Overview.md#Torn%20Pages) are a concrete database manifestation of this lower-level limit: one database page can be larger than the storage system's guaranteed crash-atomic write unit.
+> - **Independent from Page Cache**: Bypassing buffered I/O does not automatically make a larger logical update atomic.
+> - **Recovery Requirement**: Software that requires stronger crash consistency must build an appropriate recovery protocol on top of the ordering and persistence guarantees provided by the storage stack.
 
 > [!example] Firefox 3 and Excessive `fsync()`
-> * **Latency Spikes**: During the development of **Firefox 3 in 2008**, Mozilla received Bug 421482, titled *Firefox 3 uses fsync excessively*. A reporter tracing Firefox's system calls observed roughly **eight `fsync()` calls while loading a new page** and reported severe responsiveness problems when the system was already performing other intensive disk I/O.
-> * **SQLite Synchronization**: The problem involved Firefox's SQLite-backed storage. Firefox was performing many small database transactions, and committing those transactions caused SQLite to request durability barriers repeatedly. At the time, SQLite's `synchronous=FULL` behavior could perform multiple synchronization operations during a transaction.
-> * **Defeating Batching**: This defeated one of the major advantages of buffered writing. Instead of allowing many changes to accumulate and eventually be persisted together, repeated synchronization points forced the storage stack to establish durability again and again. Because `fsync()` waits for the required storage operations to complete, these barriers could become visible directly as application latency.
-> * **The Fix**: Mozilla investigated reducing the synchronization frequency and approved a change that made its storage connections default to SQLite's `synchronous=NORMAL` mode. In one test discussed in the bug, `NORMAL` reduced the number of synchronization calls by roughly one third compared with `FULL`.
-> * **The Lesson**: The lesson is not that `fsync()` should be avoided. Durability-sensitive software such as databases needs explicit synchronization at carefully chosen points. The problem is **unnecessarily frequent durability barriers**: an application that calls `fsync()` after every tiny modification can destroy write batching and turn storage latency into application latency.
+> - **Observed Problem**: During Firefox 3 development, developers investigated severe responsiveness problems associated with frequent filesystem synchronization.
+> - **SQLite Connection**: Firefox used SQLite-backed local storage, and many small database transactions caused SQLite to establish durability boundaries repeatedly.
+> - **Storage Consequence**: The repeated synchronization points prevented many dirty writes from remaining asynchronous long enough to benefit from normal write batching.
+> - **Configuration Change**: Mozilla investigated reducing the synchronization frequency and changed its SQLite configuration so fewer durability barriers were required.
+> - **Result**: Fewer synchronization operations reduced the amount of storage latency directly exposed to the application's critical path.
+> - **Lesson**: The problem was not that `fsync()` is inherently undesirable. Durability-sensitive software requires explicit synchronization; the performance problem comes from establishing more durability boundaries than the application's guarantees actually require.
+
 #### Direct I/O (`O_DIRECT`)
 
-- **Bypassing the Page Cache**: Opening a file with the **`O_DIRECT`** flag instructs the kernel to bypass the standard page cache for operations performed through that file descriptor.
-- **Direct Transfer**: Instead of copying data between user space and kernel memory, the data is transferred directly between the application's user-space buffer and the storage device.
-    - **Hardware Interaction**: This typically allows the storage controller to use Direct Memory Access (DMA) to read from or write to the application's memory directly.
-- **Strict Alignment Requirements**: Because the kernel does not buffer, repack, or align the data on the application's behalf, `O_DIRECT` imposes strict constraints.
-    - **Sector Alignment**: The user-space memory buffer's address, the file offset, and the length of the I/O operation must generally be aligned to the underlying device's **logical sector size** (and sometimes the filesystem block size).
-    - **Call Failures**: If an application attempts an unaligned read or write, the system call will typically fail with an `EINVAL` (invalid argument) error.
-- **Avoiding Double Caching**: The primary use case for Direct I/O is for applications that implement their own specialized caching and buffer-management systems, such as relational databases.
-    - **Resource Efficiency**: If a database already manages its own cache in user space, passing data through the OS page cache would cache the identical data twice. Bypassing the kernel cache saves memory and eliminates unnecessary CPU memory-copy cycles.
-- **Caching vs. Durability**: It is important to separate page-cache bypass from crash durability.
-    - **Device-Level Caches**: While `O_DIRECT` ensures the operating system does not buffer the write in RAM, the storage device may still acknowledge the write while the data is sitting in its own volatile hardware write cache.
-    - **Combined Semantics**: Applications that require absolute durability must still use synchronization mechanisms, such as combining `O_DIRECT` with `O_SYNC` or issuing explicit `fsync()` calls, to ensure the data reaches non-volatile media.
+- **Page-Cache Bypass**: On systems such as Linux, `O_DIRECT` requests an I/O path in which file data generally bypasses or minimizes use of the normal filesystem page cache.
+- **Application Buffers**: Data can instead be transferred between storage and application-provided memory without first becoming an ordinary long-lived page-cache entry.
+- **DMA Interaction**: Storage hardware commonly performs bulk transfers using [Direct Memory Access (DMA)](03%20Memory%20Management.md#Direct%20Memory%20Access%20(DMA)), although the complete path still involves filesystem, block-layer, driver, and device logic.
+- **Alignment Requirements**: Direct I/O commonly imposes alignment requirements on the memory address, file offset, and I/O size. The exact restrictions depend on the filesystem, kernel, device, and configuration.
+- **Misaligned Operations**: A request that does not satisfy those requirements may fail or may use different behavior depending on the operating system and filesystem. `EINVAL` is a common failure mode on Linux, but it should not be treated as a universal rule.
+- **Caching vs. Durability**: `O_DIRECT` controls page-cache participation, not whether the operation is durable. Device write caches and other volatile stages may still exist.
+- **Combined Semantics**: Software requiring both Direct I/O and synchronous completion can combine `O_DIRECT` with mechanisms such as `O_SYNC`, `O_DSYNC`, or explicit synchronization calls.
+- **Specialized Cache Ownership**: Direct I/O is particularly useful when an application deliberately wants its own cache-management layer to be the primary long-lived cache. Database [buffer pools](../Databases/00%20Overview.md#Buffer%20Pools%20and%20Storage%20Caching) are an important example.
 
-> [!note] Page Cache Coherency
-> - **Mixed Access Patterns**: Mixing `O_DIRECT` accesses with standard buffered accesses to the same file can lead to cache coherency problems.
-> - **Stale Data**: If one process reads a file into the page cache, and another process subsequently updates the file using `O_DIRECT`, the page cache may not be automatically invalidated. The first process could continue reading stale, out-of-date data from RAM.
-> - **Exclusive Use**: For this reason, applications that use `O_DIRECT` generally use it exclusively for a given file to avoid consistency bugs.
+> [!note] Mixing Buffered and Direct I/O
+> - **Overlapping Access**: Mixing buffered and Direct I/O against overlapping regions of the same file is generally discouraged.
+> - **Coherency Work**: Filesystems may need synchronization, dirty-page writeback, and page-cache invalidation to preserve coherent behavior between the two paths.
+> - **Performance Effect**: That coordination can eliminate much of the performance benefit that motivated Direct I/O in the first place.
+> - **Design Preference**: Applications that deliberately use Direct I/O commonly try to keep ownership of the affected data path consistent rather than repeatedly switching between buffered and direct access.
 
-> [!example] Apache Kafka: Embracing the Page Cache
-> - **Contrasting Philosophy**: While databases often use `O_DIRECT` to bypass the kernel and manage their own user-space caches, systems like Apache Kafka take the opposite approach by deliberately relying on the OS **page cache**.
-> - **JVM Memory Efficiency**: Kafka runs on the Java Virtual Machine (JVM).
->     - **Avoiding GC Overhead**: Building a massive user-space cache in Java introduces significant object-memory overhead and Garbage Collection (GC) penalties.
->     - **Kernel Delegation**: Delegating caching to the operating system keeps the heap small and fast, allowing the page cache to safely consume all remaining system RAM.
-> - **Optimized I/O Synergy**: Kafka's workload is dominated by sequential appends and sequential reads.
->     - **Kernel Heuristics**: This pattern perfectly matches the kernel's built-in optimizations for **read-ahead** (prefetching upcoming data for consumers) and delayed **writeback** (efficiently batching producer writes).
-> - **Zero-Copy Transfers**: Because the data natively resides in the page cache, Kafka can serve consumers using the `sendfile()` system call.
->     - **Bypassing User Space**: This instructs the kernel to copy data directly from the page cache to the network socket, completely bypassing the application's user-space memory and saving costly CPU memory-copy cycles.
-> - **Durability Strategy**: Instead of relying on frequent, expensive `fsync()` calls to guarantee local disk durability—which would destroy write batching and increase latency—Kafka achieves fault tolerance primarily through **network replication** across multiple brokers.
->
+> [!example] Apache Kafka — Using the OS Page Cache
+> - **Cache Strategy**: Kafka deliberately relies heavily on the operating system's **page cache** for log data rather than maintaining an equivalent large application-owned cache inside the JVM.
+> - **Sequential Workload**: Kafka's append-oriented log files and sequential consumer reads interact well with filesystem mechanisms such as delayed writeback and read-ahead.
+> - **Process Independence**: Cached file pages belong to the operating system rather than the Kafka process itself, so useful cached data can survive a Kafka process restart as long as the operating system remains running and retains those pages.
+> - **JVM Benefit**: Keeping the bulk of cached log data outside the JVM also avoids expanding the Java heap merely to duplicate file data already managed by the operating system.
+> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](03%20Memory%20Management.md#Zero-Copy%20with%20%60sendfile()%60) file-to-network techniques such as `sendfile()` when serving consumers.
+> - **Architectural Lesson**: Cache ownership is a design choice. Some storage engines maintain specialized user-space buffer pools, while Kafka deliberately delegates much of this responsibility to the operating system.
+
+### Journaling and Crash Consistency
+
+- **Multi-Structure Updates**: One logical filesystem operation may require changes to several persistent structures. Creating a file, for example, can involve a directory entry, inode metadata, free-space metadata, and allocated data blocks.
+- **Crash Risk**: These writes do not necessarily reach persistent storage simultaneously. A crash after only some of them become durable could otherwise leave the filesystem structures inconsistent.
+- **Journal**: A journaling filesystem maintains a special on-disk log containing enough information to recover protected filesystem changes.
+- **Transaction Model**: Related filesystem changes can be grouped into a journal transaction. The filesystem records the recoverable transaction in the journal and commits it before the corresponding changes are considered safely represented for crash recovery.
+- **Checkpointing**: Once committed, the final filesystem structures can be updated in their ordinary locations. When this has happened, the journal space can eventually be reused.
+- **Crash Recovery**: After a crash, the filesystem examines the journal. Fully committed transactions can be replayed, while incomplete transactions are not treated as successfully committed filesystem updates.
+- **Primary Goal**: Journaling primarily protects **filesystem consistency**. It should not be interpreted as a universal guarantee that every recent application data write is durable.
+
+#### Metadata and Data Journaling
+
+- **Metadata Journaling**: Many journaling filesystems primarily journal metadata rather than duplicating every ordinary file-data write through the journal.
+- **Data Ordering**: Even when file contents themselves are not journaled, the filesystem can impose ordering rules between file-data writes and metadata commits.
+- **Trade-off**: Stronger journal coverage or ordering guarantees can improve crash behavior but may require additional writes or synchronization.
+
+#### ext4 Journaling Modes
+
+- **`data=ordered`**: The default ext4 mode. File data is written to its normal location before the metadata transaction that makes the corresponding filesystem state visible is committed. The file data itself is not normally journaled.
+- **`data=writeback`**: Metadata remains journaled, but associated file data does not need to reach its final location before the metadata transaction commits. This allows weaker ordering between data and metadata.
+- **`data=journal`**: Both file data and metadata pass through the journal before reaching their final locations, increasing the amount of journal traffic.
+- **Different Guarantees**: These modes demonstrate that “journaling” is not one single durability behavior. Filesystems can make different choices about which information is journaled and which ordering guarantees are provided.
+
+#### Journal Commits and Latency
+
+- **Commit Boundary**: A journal transaction eventually needs a commit point that establishes the state required for crash recovery.
+- **Batching**: Filesystems can batch many metadata updates into transactions rather than synchronizing every filesystem operation independently.
+- **Latency Cost**: A commit can still require storage synchronization, so journal activity can become visible as application latency under some workloads.
+- **Fast Commits**: ext4 fast commits can record a smaller description of eligible metadata changes instead of requiring a traditional full journal commit for every case, reducing commit latency for suitable workloads.
+
 ### Disk Formatting
 
-- **Formatting Phases**: Disk formatting generally involves two distinct phases: low-level and high-level formatting.
-- **Low-Level Formatting**: This is a physical or hardware-level preparation performed by the manufacturer at the factory.
-    - **Physical Structures**: On HDDs, it establishes the physical tracks, sectors, and control structures (such as servo data) on the magnetic platters.
-    - **SSD Initialization**: On SSDs, it involves initializing the NAND flash, identifying defective blocks, and preparing the Flash Translation Layer (FTL) mapping tables.
-    - **User Access**: Modern storage devices manage these low-level details internally and do not expose true low-level formatting to the end-user.
-- **High-Level Formatting**: This is what users and operating systems mean when they "format" a drive, partition, or logical volume.
-    - **Filesystem Creation**: It is the process of writing a new, empty **filesystem** onto a block device, establishing the logical structures needed to store and retrieve files.
-- **Initialization Tools (`mkfs`)**: On Unix-like systems, utilities such as `mkfs` (make filesystem) perform high-level formatting. They write the essential metadata required by the chosen filesystem design.
-    - **Superblocks**: The tool writes the primary and backup superblocks, which record global filesystem parameters such as the filesystem block size, total capacity, UUID, and feature flags.
-    - **Metadata Structures**: It also initializes the core tracking structures, such as the root directory, inode tables (or their starting points), and free-space tracking mechanisms like block bitmaps, free-space trees, or extent allocation maps.
-- **Quick vs. Full Format**: High-level formatting can generally be performed in two ways.
-    - **Quick Format**: This only overwrites the metadata regions necessary to establish the new empty filesystem. The vast majority of the old data remains physically intact on the storage medium until it is naturally overwritten by future file allocations.
-    - **Full Format**: This explicitly writes zeros across the entire logical address space. On HDDs, this can be used to securely erase previous data or to force the drive controller to detect and map out bad physical sectors.
-    - **SSD Considerations**: On SSDs, zero-filling is generally discouraged because it causes unnecessary wear and write amplification. Instead, a modern full format on an SSD usually issues a global **TRIM/Discard** command to tell the controller that all logical blocks in the partition are now free.
+- **High-Level Formatting**: In ordinary operating-system usage, formatting a partition or block device usually means **creating a filesystem** on it.
+- **Filesystem Initialization**: Tools such as `mkfs` initialize the structures required by the selected filesystem, which may include:
+    - superblocks or equivalent global metadata;
+    - allocation metadata;
+    - inode or object metadata structures;
+    - the root directory;
+    - filesystem feature information.
+- **Existing Data**: Creating a new filesystem does not necessarily overwrite every previously stored byte on the device. Much of the old physical data may remain until later overwritten or otherwise reclaimed.
+- **Low-Level Device Preparation**: Modern HDDs and SSDs also require device-internal initialization, but this is normally performed and managed by the device manufacturer/controller rather than being the ordinary filesystem-formatting operation exposed to users.
+
+#### Formatting vs. Sanitization
+
+- **Separate Operations**: Creating a new filesystem and securely removing previous data are separate concerns.
+- **Overwrite**: Some tools or workflows may overwrite the logical address space, for example by writing zeros or another pattern.
+- **Discard**: Flash-oriented storage may use **Discard/TRIM** to tell the storage controller that logical ranges no longer contain useful data.
+- **Secure Erase / Sanitize**: Storage devices may also provide device-specific commands intended specifically for sanitization.
+- **No Universal “Full Format” Definition**: The exact behavior of a “quick” or “full” format depends on the operating system and tool. It should not be treated as a universal storage-layer distinction.
+
 ### FAT32
 
 **FAT32 (File Allocation Table 32)** is an older filesystem that remains common on removable storage because of its broad compatibility across operating systems, firmware, cameras, game consoles, and other devices.
@@ -816,32 +975,28 @@ Clusters are FAT32's implementation of the more general **filesystem block/alloc
 > This is the actual origin of FAT32's maximum file-size limit.
 >
 > The limitation is therefore a **metadata format decision**, not an inherent property of linked-cluster allocation. A differently designed filesystem could store the number of bytes used in the final cluster and derive the total size from the chain length, or simply use a larger file-size field.
->
+
 ### Common File Systems
 
-- **NTFS (New Technology File System):** The primary filesystem used by modern Windows installations. It supports large files and volumes, journaling, access-control lists (ACLs), compression, encryption, hard links, symbolic links, and other features expected from a general-purpose desktop and server filesystem.
+- **NTFS (New Technology File System):** The primary filesystem used by modern Windows installations. It supports large files and volumes, [journaling](#Journaling%20and%20Crash%20Consistency), access-control lists (ACLs), compression, encryption, hard links, symbolic links, and other features expected from a general-purpose desktop and server filesystem.
 - **APFS (Apple File System):** The default filesystem for modern macOS, iOS, and other Apple operating systems. It was designed primarily for flash storage and uses **copy-on-write (CoW)** metadata. APFS supports features such as snapshots, cloning, encryption, and space sharing between multiple volumes inside the same container.
 - **HFS+ (Hierarchical File System Plus):** Apple's previous primary filesystem, used by macOS before APFS replaced it. HFS+ supports journaling, large files, permissions, and hierarchical directories, but is now mainly relevant for compatibility with older Apple systems and storage devices.
-- **ext4 (Fourth Extended File System):** A widely used general-purpose Linux filesystem and the default choice in many Linux distributions. It uses journaling for crash recovery and **extents** to efficiently represent contiguous file regions. ext4 supports large files and volumes but does not natively provide features such as transparent compression, snapshots, or checksumming of file data.
+- **ext4 (Fourth Extended File System):** A widely used general-purpose Linux filesystem and the default choice in many Linux distributions. It uses [journaling](#Journaling%20and%20Crash%20Consistency) for crash recovery and **extents** to efficiently represent contiguous file regions. ext4 supports large files and volumes but does not natively provide features such as transparent compression, snapshots, or checksumming of file data.
 - **XFS:** A high-performance journaling filesystem commonly used on Linux servers, particularly for workloads involving very large files, large filesystems, and high levels of parallel I/O. It uses extent-based allocation and B-tree structures extensively to scale filesystem metadata operations.
 - **Btrfs (B-Tree File System):** A modern Linux filesystem built around **copy-on-write (CoW)**. It supports snapshots, subvolumes, checksumming of data and metadata, compression, and integrated management of multiple storage devices. Checksums allow Btrfs to detect silent corruption, and when another valid copy of the data is available through redundancy, it may use that copy to repair the damaged data.
 - **FAT32:** An older and relatively simple filesystem whose broad support makes it useful for removable media and compatibility between devices. Its major limitations include a maximum individual file size of approximately **4 GiB** and fewer features for permissions, reliability, and large-volume management than modern filesystems.
 - **exFAT (Extended File Allocation Table):** A filesystem designed primarily for removable flash storage. It retains much of FAT's simplicity and broad cross-platform compatibility while supporting much larger files and volumes than FAT32, making it common on SD cards, USB drives, and external storage exchanged between different operating systems.
-- **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to **swap** under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
+- **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to [swap](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk) under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
 
 > [!example] Allegro — Migrating Kafka from ext4 to XFS
 >
-> In 2024, Allegro investigated large **tail-latency spikes** in its main Kafka cluster. Although median produce latency was only a few milliseconds, p99 latency could reach roughly **1 second** and p999 roughly **3 seconds**.
->
-> Using eBPF tracing, the engineers traced many of the slow requests back to filesystem writes on **ext4**. In particular, periodic ext4 journal commits could occasionally make individual writes much slower. Because Kafka serializes some work around its log files, even an isolated slow filesystem operation could create contention and cause a cascade of slow produce requests.
->
-> Allegro first experimented with ext4 itself. Changing the journaling mode to `data=writeback` reduced produce p999 latency from about **3 seconds to 800 milliseconds**, while enabling ext4 fast commits reduced it to about **500 milliseconds**.
->
-> They then migrated one Kafka broker from **ext4 to XFS**. XFS was especially notable not merely for lower latency, but for much more **consistent tail latency**: brokers using the ext4 configurations continued to experience periodic p999 spikes, while the XFS broker running with its default configuration had only a few such spikes.
->
-> After testing the configuration for several weeks, Allegro migrated the entire Kafka cluster to XFS. The final result was an **82% reduction in produce requests exceeding their 65 ms SLO**.
->
-> This illustrates that the filesystem is not merely a neutral container for application files. Different filesystems use different allocation, locking, writeback, and journaling mechanisms, and those implementation choices can interact strongly with a workload. Kafka's append-heavy log storage benefited substantially from XFS's behavior in Allegro's particular environment; this does not imply that XFS universally outperforms ext4 for every workload.
+> - **Observed Problem**: In 2024, Allegro investigated large **tail-latency spikes** in its main Kafka cluster. Median produce latency was only a few milliseconds, while p99 and p999 could become dramatically larger.
+> - **Filesystem Correlation**: eBPF tracing associated many of the slow requests with filesystem writes on **ext4**, particularly periodic [journal commits](#Journal%20Commits%20and%20Latency).
+> - **Amplification Through Serialization**: Because Kafka serialized some work around its log files, an isolated slow filesystem operation could create [contention](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md) and delay additional produce requests waiting behind it.
+> - **ext4 Experiments**: Allegro tested alternative ext4 behavior, including `data=writeback` and fast commits, and observed substantial reductions in high-percentile latency.
+> - **XFS Experiment**: A broker migrated to **XFS** showed especially consistent tail latency compared with the tested ext4 configurations.
+> - **Cluster Migration**: After extended testing, Allegro migrated the Kafka cluster to XFS and reported a large reduction in produce requests exceeding its latency SLO.
+> - **Lesson**: Filesystem implementation choices can become application-level latency behavior. The result does not imply that XFS universally outperforms ext4; it shows that filesystem mechanisms interacted differently with Kafka's particular append-heavy and partially serialized workload.
 
 ## Network Storage and Redundancy
 
@@ -884,7 +1039,7 @@ NAS (`/næz/` or `/næs/`) is a dedicated, file-sharing storage device connected
 
 A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that connects servers to a consolidated pool of block-level storage.
 
-- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [[#Logical Block Addressing (LBA)|LBA]]) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
+- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [LBA](#Logical%20Block%20Addressing%20(LBA)) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
 - **Common Protocols:**
     - **Fibre Channel (FC):** Uses dedicated fiber-optic cables and switches for ultra-low latency and massive throughput.
     - **iSCSI:** Runs block-level SCSI commands over standard Ethernet cables, making it a cheaper alternative to Fibre Channel.
@@ -893,8 +1048,16 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
 
 ## I/O Pressure Stall Information (PSI)
 
-When managing sockets, network-attached storage, or databases, threads often have to wait for hardware to return data. I/O PSI (`/proc/pressure/io`) measures exactly how much time your threads spend physically blocked by block storage or network I/O devices.
+Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. `/proc/pressure/io` reports pressure associated with tasks stalled by I/O.
 
-- **Reading I/O PSI:** `cat /proc/pressure/io`
-- **`some` (The Asynchronous Ideal):** At least one thread is blocked waiting for an I/O device (like a socket read or a database disk fetch). However, because you have enough concurrent threads, the OS scheduler seamlessly switches the CPU to do other work. High `some` is normal in heavily concurrent network apps.
-- **`full` (The I/O Bottleneck):** Every single active thread in your application is blocked waiting for I/O (e.g., the network queue is totally saturated, or the disk ran out of IOPS). The CPU is sitting completely idle. Adding more CPU cores or RAM will not help; you must either upgrade your networking/storage hardware or add a caching layer (like Redis) to bypass the I/O bottleneck.
+- **`some`**: Reports periods during which at least one non-idle task is stalled because of I/O pressure. Other runnable work may still be able to execute.
+- **`full`**: Reports periods during which all non-idle tasks are simultaneously stalled by I/O pressure, so no useful non-idle task can make progress during that interval.
+- **Interpretation**: PSI measures **time lost to resource pressure**, not raw device throughput, latency, queue depth, or IOPS by itself.
+- **Concurrency Relationship**: Whether an application can continue useful work while some operations are blocked depends on its [concurrency model](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md). PSI reports the pressure; the application's execution model determines how effectively other work can proceed around it.
+- **Reading the Metric**:
+
+```bash
+cat /proc/pressure/io
+```
+
+- **Operational Use**: Sustained I/O pressure can indicate that storage or another I/O path is preventing tasks from making progress, but PSI should normally be interpreted together with device and application-level metrics.
