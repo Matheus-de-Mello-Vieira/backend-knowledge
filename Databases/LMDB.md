@@ -16,6 +16,24 @@ Internally, LMDB stores these entries in a **B+ tree**. Branch pages guide searc
 
 LMDB's storage engine is built around memory-mapping its database file into the process's [virtual address space](../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory). Once the required file-backed pages are resident in physical memory, reads can operate directly on the tree pages without maintaining a separate database buffer pool. The operating system therefore participates directly in managing which database pages form the resident working set.
 
+### File Access Through `mmap`
+
+LMDB provides a concrete example of a database architecture built around the operating system's [`mmap`](../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#The%20%60mmap%60%20System%20Call%20(Memory%20Mapping)) mechanism.
+
+A simplified read path is:
+
+1. LMDB opens the database file.
+2. The file is mapped into the process's virtual address space.
+3. A key lookup follows pointers through B+ tree pages.
+4. If a required mapped page is already resident in RAM, the CPU can access it through the mapping.
+5. If the page is not resident, accessing it can trigger a [page fault](../Operating%20Systems/03%20Memory%20Management.md#Limitations%20of%20Virtual%20Memory).
+6. The operating system brings the required file-backed page into physical memory.
+7. LMDB continues traversing the database structure.
+
+- **No Separate Read Buffer Pool**: LMDB does not need to copy every database page into a separate application-managed read cache.
+- **OS Residency Management**: The operating system's virtual-memory and file-caching mechanisms determine which mapped database pages remain physically resident.
+- **Cross-Layer Example**: LMDB therefore connects filesystem storage, process virtual-address mappings, page faults, and database access in one architecture.
+
 The configured database mapping can be much larger than physical RAM because reserving virtual address space does not make every mapped page resident immediately. Hot pages tend to remain in memory while colder clean pages can be reclaimed and loaded again from the database file when needed.
 
 The deliberately small abstraction is important to LMDB's design. Features such as relational joins, SQL parsing, and sophisticated query planning are outside its scope; the application is responsible for building any higher-level data model it needs on top of the key-value interface.
