@@ -447,7 +447,6 @@ gantt
     dateFormat m
     axisFormat %M KiB
     tickInterval 8minute
-
     section Disk
     First 1 MiB :d0, 0, 8m
     Next 1 MiB  :d1, 8, 8m
@@ -869,7 +868,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 > - **Sequential Workload**: Kafka's append-oriented log files and sequential consumer reads interact well with filesystem mechanisms such as delayed writeback and read-ahead.
 > - **Process Independence**: Cached file pages belong to the operating system rather than the Kafka process itself, so useful cached data can survive a Kafka process restart as long as the operating system remains running and retains those pages.
 > - **JVM Benefit**: Keeping the bulk of cached log data outside the JVM also avoids expanding the Java heap merely to duplicate file data already managed by the operating system.
-> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](03%20Memory%20Management.md#Zero-Copy%20with%20%60sendfile()%60) file-to-network techniques such as `sendfile()` when serving consumers.
+> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](02%20The%20Anatomy%20of%20a%20Process.md#Operations%20and%20Shared%20Open-File%20State) file-to-network techniques such as `sendfile()` when serving consumers.
 > - **Architectural Lesson**: Cache ownership is a design choice. Some storage engines maintain specialized user-space buffer pools, while Kafka deliberately delegates much of this responsibility to the operating system.
 
 ### Journaling and Crash Consistency
