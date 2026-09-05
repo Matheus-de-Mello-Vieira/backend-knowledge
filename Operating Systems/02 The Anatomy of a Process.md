@@ -39,7 +39,7 @@
 - **Integer Meaning**: The integer itself contains no file data and is meaningful only inside that process's descriptor table.
 - **Common Interface**: Many resources—not only filesystem files—use the same abstraction, allowing system calls such as `read()`, `write()`, and `close()` to operate through a common interface.
 - **Regular-File Entry Point**: When the resource is a regular file, `open()` first resolves a pathname and then returns one of these descriptors.
-- **Storage-Specific Details**: The storage-specific details of pathname resolution, open flags, and regular-file I/O live in [[06 Storage Management#Opening Files|Opening Files]].
+- **Storage-Specific Details**: The storage-specific details of pathname resolution, open flags, and regular-file I/O live in [Opening Files](06%20Storage%20Management.md#Opening%20Files).
 - **Section Boundary**: This section keeps the process-level model: what an FD is, where its shared state lives, and why the same abstraction also applies to sockets, pipes, and devices.
 
 ### Descriptor Indirection
@@ -48,12 +48,12 @@
 - **Open File Descriptions:** The table entry corresponding to an FD refers to a kernel object called an **open file description**. This object represents one active, open instance of a resource and stores shared state, such as the current file offset and file status flags.
 - **The Underlying Object:** For regular files, the open file description ultimately points to the physical filesystem object, typically represented by an inode. However, the inode is not a universal final layer; other resources point to entirely different kernel objects (e.g., sockets refer to networking state, while pipes refer to kernel pipe objects).
 - **Independent State (Opening Twice):** Opening the same regular file twice naturally creates two completely different open file descriptions, even though both ultimately point to the exact same underlying inode. This allows the descriptors to maintain completely independent file offsets.
-```java
+```c
 int a = open("data.txt", O_RDONLY);
 int b = open("data.txt", O_RDONLY);
 ```
 - **Shared State (Duplication and Forking):** By contrast, duplicating a descriptor using `dup()` creates a new FD that refers to the exact _same_ open file description. As a result, both descriptors share the same open-file offset and status flags. A similar sharing relationship occurs when `fork()` causes a child process to inherit descriptors that refer to the same open file descriptions as the parent.    
-    ```java
+    ```c
     int a = open("data.txt", O_RDONLY);
     int b = dup(a);
     ```
