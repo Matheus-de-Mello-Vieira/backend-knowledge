@@ -24,6 +24,19 @@ When a backend needs a database page, PostgreSQL checks whether that page is alr
 
 Shared buffers are therefore part of PostgreSQL's own buffer-management layer. The operating system may additionally cache the same underlying files in its filesystem page cache, so PostgreSQL intentionally has both database-managed caching and OS-managed caching in the I/O path.
 
+## Storage Files and OS I/O
+
+PostgreSQL ultimately stores relations and other persistent structures in ordinary filesystem files managed by the database server.
+
+### Creating Relation Files
+
+Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object.
+
+- **Creation Requirement**: PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname.
+- **Exclusive Creation**: On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
+- **Correctness Property**: `O_CREAT` requests creation when necessary, while `O_EXCL` causes the operation to fail if the pathname already exists.
+- **Storage Lesson**: File-opening flags can encode correctness requirements in addition to selecting access and performance behavior.
+
 ## Transactions and Concurrency
 
 PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **Multi-Version Concurrency Control (MVCC)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
@@ -44,11 +57,11 @@ PostgreSQL still needs an operating-system mechanism for forcing WAL records fro
 
 Possible methods include:
 
-- **`open_datasync`:** opens WAL files with [`O_DSYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Writes:%20`O_SYNC`%20and%20`O_DSYNC`), so writes complete with data-synchronization semantics.
+- **`open_datasync`:** opens WAL files with [`O_DSYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), so writes complete with data-synchronization semantics.
 - **`fdatasync`:** performs ordinary writes and calls `fdatasync()` when WAL must be forced durable.
 - **`fsync`:** performs ordinary writes and calls [`fsync()`](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
 - **`fsync_writethrough`:** uses a platform-specific `fsync()` variant that additionally requests write-through of a device write cache when the platform provides such a mechanism.
-- **`open_sync`:** opens WAL files with [`O_SYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Writes:%20`O_SYNC`%20and%20`O_DSYNC`), making each WAL write use synchronized file-I/O semantics.
+- **`open_sync`:** opens WAL files with [`O_SYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), making each WAL write use synchronized file-I/O semantics.
 
 Not every method is available on every operating system. If PostgreSQL's `fsync` configuration is disabled, `wal_sync_method` is irrelevant because PostgreSQL is no longer requiring WAL updates to be forced to durable storage through these mechanisms.
 
