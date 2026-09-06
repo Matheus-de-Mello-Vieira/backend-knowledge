@@ -69,7 +69,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 #### File Fragmentation and Defragmentation
 
 - **Contiguous Allocation**: Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem.
-- **File Fragmentation**: When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous **extents**. This is known as **file fragmentation**.
+- **File Fragmentation**: When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous [**extents**](#Extents%20and%20Contiguous%20Ranges). This is known as **file fragmentation**.
 	- **Partially Random Operations**: A logically sequential operation can therefore become a sequence of smaller, partially random operations: `Extent A → seek → Extent B → seek → Extent C`.
 - **Mechanical Seeks**: Fragmentation is particularly expensive on an HDD because sequential file access can turn into multiple mechanical seeks. Suppose a large file consists of three extents located in distant regions of the disk. Reading each extent internally may be sequential, but when the read reaches the end of one extent, the actuator may need to move to another track and wait for the correct sector to rotate under the head before continuing.
 - **Performance Penalty**: The more fragmented the file is, the more often the HDD may pay **seek time** and **rotational latency** instead of continuously transferring data.
