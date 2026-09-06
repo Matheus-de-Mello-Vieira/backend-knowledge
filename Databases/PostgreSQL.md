@@ -58,7 +58,7 @@ PostgreSQL still needs an operating-system mechanism for forcing WAL records fro
 Possible methods include:
 
 - **`open_datasync`:** opens WAL files with [`O_DSYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), so writes complete with data-synchronization semantics.
-- **`fdatasync`:** performs ordinary writes and calls `fdatasync()` when WAL must be forced durable.
+- **`fdatasync`:** performs ordinary writes and calls [`fdatasync()`](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
 - **`fsync`:** performs ordinary writes and calls [`fsync()`](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
 - **`fsync_writethrough`:** uses a platform-specific `fsync()` variant that additionally requests write-through of a device write cache when the platform provides such a mechanism.
 - **`open_sync`:** opens WAL files with [`O_SYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), making each WAL write use synchronized file-I/O semantics.
