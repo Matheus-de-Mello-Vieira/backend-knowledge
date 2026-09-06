@@ -58,7 +58,7 @@ sqlite3_open_v2(
 ```
 
 - **Connection to `open()`**: These choices correspond conceptually to the distinctions described by filesystem [`open()` access and creation flags](../Operating%20Systems/06%20Storage%20Management.md#Open%20Flags). SQLite's VFS sits between the database engine and the platform, so the SQLite flags should not be interpreted as requiring a literal one-to-one translation into POSIX flags.
-- **Additional Files**: Depending on configuration and operation, SQLite may also create and open rollback journals, WAL files, temporary files, and other auxiliary filesystem objects. One logical database can therefore correspond to several OS-level files with different purposes and lifetimes.
+- **Additional Files**: Depending on configuration and operation, SQLite may also create and open rollback journals, [WAL files](00%20Overview.md#Write-Ahead%20Logging%20(WAL)), temporary files, and other auxiliary filesystem objects. One logical database can therefore correspond to several OS-level files with different purposes and lifetimes.
 
 Tables and indexes are organized using B-trees. A query therefore does not generally scan arbitrary bytes in the file; the database engine navigates these tree structures to find the pages containing the requested rows or index entries.
 
