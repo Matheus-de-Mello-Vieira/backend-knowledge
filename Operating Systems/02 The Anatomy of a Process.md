@@ -45,8 +45,8 @@
 ### Descriptor Indirection
 
 - **The File Descriptor Table:** Each process maintains its own local File Descriptor Table. A File Descriptor (FD) is simply an index into this process-local table.
-- **Open File Descriptions:** The table entry corresponding to an FD refers to a kernel object called an **open file description**. This object represents one active, open instance of a resource and stores shared state, such as the current file offset and file status flags.
-- **The Underlying Object:** For regular files, the open file description ultimately points to the physical filesystem object, typically represented by an inode. However, the inode is not a universal final layer; other resources point to entirely different kernel objects (e.g., sockets refer to networking state, while pipes refer to kernel pipe objects).
+- **Open File Descriptions:** The table entry corresponding to an FD refers to a kernel object called an **open file description**. This object represents one active, open instance of a resource and stores shared state, such as the current file offset and [file status flags](06%20Storage%20Management.md#Open%20Flags).
+- **The Underlying Object:** For regular files, the open file description ultimately points to the physical filesystem object, typically represented by an [inode](06%20Storage%20Management.md#Object%20Metadata%20and%20Resolution). However, the inode is not a universal final layer; other resources point to entirely different kernel objects (e.g., sockets refer to networking state, while pipes refer to kernel pipe objects).
 - **Independent State (Opening Twice):** Opening the same regular file twice naturally creates two completely different open file descriptions, even though both ultimately point to the exact same underlying inode. This allows the descriptors to maintain completely independent file offsets.
 ```c
 int a = open("data.txt", O_RDONLY);
@@ -146,16 +146,16 @@ str r3, #0xffeeddcc
 >
 >
 >
-> - **Breaking Hardware Polling:** High-speed hardware often relies on "polling," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
+> - **Breaking Hardware Polling:** High-speed hardware often relies on "[polling](08%20More%20OS%20Concepts.md#Device%20drivers)," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
 >
 >
 >
-> - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. While perfectly safe in an isolated, single-threaded process, this reordering can cause disastrous synchronization bugs (data races) if multiple threads running concurrently across different CPU cores depend on memory being updated in the exact sequential order written in the original source code.
+> - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. While perfectly safe in an isolated, single-threaded process, this reordering can cause disastrous synchronization bugs ([data races](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions)) if multiple threads running concurrently across different CPU cores depend on memory being updated in the exact sequential order written in the original source code.
 >
 
 ### SIMD in Code Generation
 
-- **Auto-Vectorization:** While developers rarely write SIMD assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
+- **Auto-Vectorization:** While developers rarely write [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
 - **Throughput Impact:** SIMD does not split a program into multiple instruction streams; instead, it dramatically increases throughput by applying a single decoded operation across multiple packed data lanes simultaneously.
 - **Machine-Code Transformation:** Because of auto-vectorization, the compiled instruction stream often stops being purely scalar. Source code explicitly written to process a single element per iteration will regularly compile into machine code that processes chunks of data all at once.
 - **Assembly Divergence:** This fundamental shift in register usage and data throughput is a primary reason why highly optimized assembly code can look completely different from the original human-readable source structure.
@@ -208,7 +208,7 @@ str r3, #0xffeeddcc
     - **Preserving Registers:** It saves registers whose current values must survive the function call.
     - **Reserving Stack Space:** It moves the Stack Pointer (`sp`) to allocate space for local variables and temporary data.
     - **Establishing a Frame Pointer:** It optionally saves the previous Frame Pointer and makes `bp` / `fp` point to the new stack frame.
-    - **Runtime-Specific Checks:** It performs additional runtime work, such as the stack-growth checks that Go places in the prologue of many functions.
+    - **Runtime-Specific Checks:** It performs additional runtime work, such as the [stack-growth checks](../Technologies/Golang/99%20Misc/Go%20Internals.md#Stack%20Growth%20Checks) that Go places in the prologue of many functions.
 - **The Epilogue:** After the function body finishes, the compiler generates a corresponding **function epilogue** that reverses the setup performed by the prologue.
     - **Releasing Stack Space:** It releases the current function's stack space by restoring the Stack Pointer.
     - **Restoring Registers:** It restores the registers that were saved by the function.
@@ -357,7 +357,6 @@ flowchart LR
         PageCache["File-backed Pages / Page Cache"]
         AnonRAM["Anonymous Pages"]
     end
-
     Storage[("Persistent Storage")]
     Swap[("Swap")]
 
