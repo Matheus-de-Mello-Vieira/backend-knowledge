@@ -461,7 +461,7 @@ gantt
 ##### Other Storage Granularities
 
 - **Other Granularities**: Alignment can matter beyond physical sectors. A storage stack may also contain granularities such as:
-    - RAID stripe or chunk sizes;
+    - [RAID](#RAID%20(Redundant%20Array%20of%20Independent%20Disks)) stripe or chunk sizes;
     - SSD internal allocation units;
     - erase-block boundaries;
     - filesystem allocation units.
@@ -605,7 +605,7 @@ means that the process wants read/write access and wants the file created if it 
 ##### Append Mode
 
 - **`O_APPEND`**: Before each `write()`, the kernel positions the write at the current end of the file and performs the positioning and write as one append operation.
-- **Concurrent Writers**: This avoids the race that would result if each writer independently performed `seek-to-end → write`.
+- **Concurrent Writers**: This avoids the [race](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions) that would result if each writer independently performed `seek-to-end → write`.
 - **Network Filesystems**: Some network filesystems may need to emulate append behavior and can provide different guarantees.
 
 > [!example] Application Logs
@@ -798,7 +798,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 > [!note] Caching Optimization Strategies
 > - **Read-Ahead**: Sequential access can also trigger **read-ahead**. If the kernel observes that an application is reading consecutive regions of a file, it may load upcoming data into the page cache before it is explicitly requested, hiding part of the storage latency.
-> - **Locality Exploitation**: Caching therefore allows the operating system to exploit both **temporal locality**—reusing recently accessed data—and **spatial locality**—predicting that nearby file data will soon be accessed.
+> - **Locality Exploitation**: Caching therefore allows the operating system to exploit both **[temporal locality](../Cache/Caching.md#Temporal%20caching)**—reusing recently accessed data—and **[spatial locality](../Cache/Caching.md#Spatial%20caching)**—predicting that nearby file data will soon be accessed.
 
 #### Writes, Writeback, and Durability
 
@@ -840,7 +840,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 > [!example] Firefox 3 and Excessive `fsync()`
 > - **Observed Problem**: During Firefox 3 development, developers investigated severe responsiveness problems associated with frequent filesystem synchronization.
-> - **SQLite Connection**: Firefox used SQLite-backed local storage, and many small database transactions caused SQLite to establish durability boundaries repeatedly.
+> - **SQLite Connection**: Firefox used [SQLite](../Databases/SQLite.md#Synchronization%20Policy)-backed local storage, and many small database transactions caused SQLite to establish durability boundaries repeatedly.
 > - **Storage Consequence**: The repeated synchronization points prevented many dirty writes from remaining asynchronous long enough to benefit from normal write batching.
 > - **Configuration Change**: Mozilla investigated reducing the synchronization frequency and changed its SQLite configuration so fewer durability barriers were required.
 > - **Result**: Fewer synchronization operations reduced the amount of storage latency directly exposed to the application's critical path.
@@ -917,7 +917,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 - **Separate Operations**: Creating a new filesystem and securely removing previous data are separate concerns.
 - **Overwrite**: Some tools or workflows may overwrite the logical address space, for example by writing zeros or another pattern.
-- **Discard**: Flash-oriented storage may use **Discard/TRIM** to tell the storage controller that logical ranges no longer contain useful data.
+- **Discard**: Flash-oriented storage may use **[Discard/TRIM](#TRIM)** to tell the storage controller that logical ranges no longer contain useful data.
 - **Secure Erase / Sanitize**: Storage devices may also provide device-specific commands intended specifically for sanitization.
 - **No Universal “Full Format” Definition**: The exact behavior of a “quick” or “full” format depends on the operating system and tool. It should not be treated as a universal storage-layer distinction.
 
