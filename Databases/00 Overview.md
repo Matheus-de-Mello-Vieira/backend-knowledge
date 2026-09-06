@@ -32,9 +32,9 @@ There is no universally best choice. The appropriate design depends on the engin
 
 The databases in these notes provide useful examples of different ways software can divide storage responsibilities between the application and operating system.
 
-- **SQLite**: Uses ordinary filesystem files and maintains its own database page cache while still operating through the OS file and page-cache infrastructure.
-- **PostgreSQL**: Maintains its own shared buffer pool while also using the operating system's page cache for ordinary data-file I/O. Its WAL path uses explicit storage synchronization to establish transaction durability boundaries.
-- **LMDB**: Memory-maps its database and relies much more directly on the operating system's virtual-memory and file-cache machinery to manage the resident working set.
+- **[SQLite](SQLite.md#Storage%20Model)**: Uses ordinary filesystem files and maintains its own database page cache while still operating through the OS file and page-cache infrastructure.
+- **[PostgreSQL](PostgreSQL.md#Shared%20Buffers)**: Maintains its own shared buffer pool while also using the operating system's page cache for ordinary data-file I/O. Its [WAL](#Write-Ahead%20Logging%20(WAL)) path uses explicit storage synchronization to establish transaction durability boundaries.
+- **[LMDB](LMDB.md#File%20Access%20Through%20%60mmap%60)**: Memory-maps its database and relies much more directly on the operating system's virtual-memory and file-cache machinery to manage the resident working set.
 - **Design Choice**: These approaches demonstrate that there is no universal rule that a database should either “use the OS cache” or “bypass the OS cache.” Cache ownership, file access, and durability mechanisms are architectural choices made according to the engine's workload and design.
 
 ## Durability and Crash Recovery
