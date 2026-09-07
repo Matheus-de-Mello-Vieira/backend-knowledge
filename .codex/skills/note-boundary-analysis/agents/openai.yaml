@@ -1,4 +1,0 @@
-interface:
-  display_name: "Note Boundary Analysis"
-  short_description: "Separate canonical content from local context"
-  default_prompt: "Use $note-boundary-analysis to decide exactly what each note should own and what should remain only as local context or an example."

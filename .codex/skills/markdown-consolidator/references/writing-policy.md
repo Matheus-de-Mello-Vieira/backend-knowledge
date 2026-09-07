@@ -1,8 +1,8 @@
 # Publication writing policy
 
-This policy governs visible consolidated Markdown. It preserves evidence and publication constraints that are specific to consolidation.
+This policy governs visible consolidated Markdown and preserves evidence/publication constraints specific to consolidation.
 
-For **repository-integrated mode**, prose structure and note-writing behavior are delegated to `$note-writer`; note ownership and scope are delegated to `$note-home-finder` and `$note-boundary-analysis`. Do not maintain a competing repository writing style in this file.
+For **repository-integrated mode**, prose structure and note-writing behavior are delegated to `$note-writer`; note ownership and scope are delegated to `$note-home-finder` and `$note-boundary-analyzer`. Do not maintain a competing repository writing style in this file.
 
 For **standalone mode**, apply the rules below directly.
 
@@ -64,10 +64,11 @@ For **standalone mode**, apply the rules below directly.
 Repository publication must additionally:
 
 1. follow the accepted `$note-home-finder` placement;
-2. follow the accepted `$note-boundary-analysis` scope distribution;
+2. follow the accepted `$note-boundary-analyzer` scope distribution;
 3. use `$note-writer` for note prose and structure;
-4. use `$markdown-link-normalizer` for mechanical link handling;
-5. preserve complete source-unit coverage **across the publication set** without requiring duplicate full explanations in multiple destination notes.
+4. use `$note-content-mover` or `$note-refactor` when existing durable content must be structurally relocated;
+5. use `$markdown-link-normalizer` for mechanical link handling;
+6. preserve complete source-unit coverage **across the publication set** without requiring duplicate full explanations in multiple destination notes.
 
 A destination note should be complete about its own subject and abstraction level. Give enough neighboring context for local comprehension, but do not duplicate a complete prerequisite or adjacent explanation merely to make every note independently exhaustive.
 

@@ -2,7 +2,7 @@
 
 Apply this protocol only when `publication_mode` is `repository_integrated`.
 
-The consolidator owns evidence-to-publication orchestration. Repository placement, content boundaries, writing, and link mechanics are delegated to their canonical skills.
+The consolidator owns evidence-to-publication orchestration. Repository placement, content boundaries, writing/mutation, and link mechanics are delegated to their canonical skills.
 
 ## File classes
 
@@ -18,92 +18,39 @@ A context note is not evidence and does not satisfy source-unit coverage unless 
 
 Delegate placement to `$note-home-finder`.
 
-Allowed outcomes:
-
-- `reuse_existing_note`
-- `extend_existing_note`
-- `create_new_note`
-- `split_across_notes`
-
-Prefer extending a suitable canonical note over creating a duplicate. Split when distinct topics have different natural homes, abstraction levels, or reading intents.
+Allowed outcomes are `reuse_existing_note`, `extend_existing_note`, `create_new_note`, and `split_across_notes`. Prefer extending a suitable canonical note over creating a duplicate. Split when distinct topics have different natural homes, abstraction levels, or reading intents.
 
 ## Boundary analysis
 
-After placement and before integration planning, apply `$note-boundary-analysis`.
+After placement and before integration planning, apply `$note-boundary-analyzer`.
 
-Every substantial source unit must be assigned as one of:
-
-- canonical explanation in its primary destination;
-- required local context;
-- bounded example;
-- implementation/application detail assigned elsewhere;
-- intentional duplication with explicit justification.
-
-One source unit still has exactly one **primary destination**. Repeated context is secondary and must be limited to what another note genuinely needs for local comprehension.
+Every substantial source unit must be assigned as canonical explanation, required local context, bounded example, implementation/application detail assigned elsewhere, or intentional repetition with explicit justification. One source unit still has exactly one primary destination; repeated context is secondary and limited to what another note genuinely needs.
 
 ## Existing-note preservation
 
-Snapshot every existing destination and context note before synthesis.
-
-Mandatory rules:
-
-- preserve existing supported content, external references, local links, terminology, and note purpose;
-- preserve existing headings by default;
-- require an approved heading change for removal or rename;
-- integrate new content into the conceptually appropriate section;
-- keep context notes read-only unless the placement plan promotes them to destinations.
-
-Independent publication review must compare candidates with snapshots and report semantic loss, scope drift, boundary violations, or unnecessary restructuring.
+Snapshot every existing destination and context note before synthesis. Preserve supported content, external references, local links, terminology, note purpose, and headings by default. Require an approved heading change for removal or rename. Keep context notes read-only unless promoted to destinations.
 
 ## Integration plan
 
-The integration planner receives:
-
-- accepted placement;
-- repository snapshots;
-- source units;
-- conflict decisions;
-- the exact `$note-boundary-analysis` instructions.
-
-It assigns:
-
-- every source unit to one primary destination;
-- section operations for each destination;
-- protected headings and approved heading changes;
-- terminology constraints;
-- outgoing links with relationship and reason;
-- any intentionally repeated local context and its boundary justification.
+The integration planner receives accepted placement, repository snapshots, source units, conflict decisions, and the exact `$note-boundary-analyzer` instructions. It assigns every source unit one primary destination, section operations, protected headings, terminology constraints, semantic links, and intentionally repeated local context with its boundary justification.
 
 Do not invent a separate note-boundary policy inside the consolidator.
 
+## Structural mutation
+
+When accepted integration requires moving existing durable repository material between notes, apply `$note-content-mover` to the approved move/split/merge plan. When the required operation is a broader cross-note cleanup, delegate that scope to `$note-refactor`.
+
+The consolidator must not silently reimplement cross-note mutation semantics inside the synthesizer.
+
 ## Repository writing
 
-The repository synthesizer and finalizer receive the exact `$note-writer` instructions.
-
-The writer must:
-
-- write only material assigned to each destination;
-- preserve each note's center of gravity and abstraction level;
-- keep examples subordinate;
-- avoid duplicate same-level explanations;
-- preserve enough local context for the note's own argument.
+The repository synthesizer and finalizer receive the exact `$note-writer` instructions. The writer writes only assigned material, preserves each note's center of gravity and abstraction level, keeps examples subordinate, avoids same-level duplication, and preserves enough local context for the note's own argument.
 
 The consolidator's standalone writing policy does not override `$note-writer` for repository-specific prose decisions.
 
 ## Link relationships
 
-Use links only when they clarify a real relationship such as:
-
-- broader context;
-- prerequisite;
-- implementation detail;
-- contrast;
-- alternative;
-- example;
-- continuation;
-- related mechanism.
-
-Semantic link placement follows repository rules; mechanical normalization and target validation are delegated to `$markdown-link-normalizer`.
+Use links only when they clarify a real relationship such as broader context, prerequisite, implementation detail, contrast, alternative, example, continuation, or related mechanism. Semantic link placement follows repository rules; mechanical normalization and target validation are delegated to `$markdown-link-normalizer`.
 
 ## Publication set
 

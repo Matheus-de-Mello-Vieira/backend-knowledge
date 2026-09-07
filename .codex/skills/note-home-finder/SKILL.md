@@ -1,19 +1,31 @@
 ---
 name: note-home-finder
-description: Decide the canonical home and reading intent for a topic or compound draft. Use for new notes and substantial additions when placement is not trivial. Delegate repository discovery to $note-topic-search; this skill owns placement, reuse/extend/create/split decisions, not search mechanics or prose writing.
+description: Decide the canonical home and reading intent for a topic or compound draft. Use for new notes and substantial additions when placement is not trivial. Delegate repository discovery to $note-topic-search; this skill owns placement, reuse/extend/create/split decisions, not search mechanics, boundary depth, or prose writing.
 ---
 
 # Note Home Finder
 
-This skill owns **canonical placement**. It decides where knowledge belongs after repository retrieval has established the relevant existing notes.
+This skill owns **canonical placement**. It answers **where knowledge belongs** after repository retrieval has established the relevant existing notes.
 
-## Delegated capabilities
+## Capability ownership
 
-Required:
+Owns:
 
-- `$note-topic-search` — repository discovery and candidate retrieval.
+- center-of-gravity and reading-intent decisions;
+- theory/mechanism/implementation/application placement;
+- reuse, extend, create, and split outcomes;
+- canonical destinations for compound material.
 
-Do not reproduce qmd query syntax, fallback-search procedures, or retrieval heuristics here. Use the retrieval result as input to the placement decision.
+Delegates:
+
+- repository discovery and candidate retrieval to `$note-topic-search`;
+- content-depth and local-context decisions to `$note-boundary-analyzer` after placement.
+
+Must not:
+
+- reproduce qmd query syntax or fallback-search procedures;
+- decide how much neighboring content should remain locally;
+- write, move, or normalize note content.
 
 ## Inputs
 
@@ -67,11 +79,11 @@ Return:
 
 - `outcome`;
 - `recommended_path` for single-home outcomes;
-- `split_plan` when split is required, with one line per subtopic and destination;
+- `split_plan` for split outcomes, with one line per subtopic and destination;
 - `abstraction_level` for each destination;
 - `reading_intent`;
 - `confidence`;
 - `rationale` in 1–3 sentences;
-- `alternatives` only when the decision is genuinely ambiguous.
+- `alternatives` only when genuinely ambiguous.
 
-Do not write or move content. Boundary distribution belongs to `$note-boundary-analysis`; mutation belongs to authoring/refactor workflows.
+Do not write or move content. Scope distribution belongs to `$note-boundary-analyzer`.

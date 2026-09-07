@@ -7,9 +7,27 @@ description: Execute an already-approved cross-note move, merge, split, or dupli
 
 This skill owns **structural mutation across notes** after semantic decisions are complete.
 
+## Capability ownership
+
+Owns:
+
+- executing approved moves, merges, splits, and duplicate removal;
+- removing obsolete headings and repairing local structure;
+- preserving the residual context specified by the semantic plan;
+- identifying changed paths or anchors for link validation.
+
+Delegates:
+
+- placement to `$note-home-finder`;
+- scope/disposition decisions to `$note-boundary-analyzer`;
+- substantive prose repair to `$note-writer`;
+- broad link repair to `$markdown-link-normalizer`.
+
+Must not reinterpret the semantic plan.
+
 ## Required input
 
-An approved plan from `$note-boundary-analysis` or a higher-level workflow that specifies:
+An approved plan from `$note-boundary-analyzer` or a higher-level workflow specifying:
 
 - source and destination paths;
 - content to move, merge, split, or remove;
@@ -17,7 +35,7 @@ An approved plan from `$note-boundary-analysis` or a higher-level workflow that 
 - headings to preserve, rename, or remove;
 - known link targets affected by the move.
 
-If those decisions are not known, stop and delegate upward to `$note-boundary-analysis`; do not improvise placement.
+If those decisions are not known, delegate upward; do not improvise placement.
 
 ## Mutation rules
 
@@ -32,17 +50,7 @@ If those decisions are not known, stop and delegate upward to `$note-boundary-an
 
 ## Residual content
 
-Residual content should explain the source note's own subject, not justify navigation.
-
-Prefer a concise local explanation with an inline link on existing meaningful text. Do not leave “see more” sections or headings whose only content is a redirect.
-
-## Link handoff
-
-After structural mutation:
-
-- identify paths or anchors that changed;
-- hand broad link repair and validation to `$markdown-link-normalizer`;
-- do not invent targets that were not verified.
+Residual content should explain the source note's own subject, not justify navigation. Prefer concise local explanation with a natural inline link on existing meaningful text; do not leave redirect-only sections.
 
 ## Verification
 
@@ -53,5 +61,3 @@ Confirm:
 - no same-level duplicate body remains unintentionally;
 - no useful supported meaning was lost;
 - no orphan heading was introduced.
-
-This skill does not decide prose style beyond minimal adaptation. Substantive rewriting belongs to `$note-writer`.

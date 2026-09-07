@@ -7,15 +7,23 @@ description: Add substantial knowledge to this repository while preserving canon
 
 Use this workflow for substantial additions, new sections, or new notes. Small local corrections should normally be edited directly without invoking the full hierarchy.
 
-## Delegated capabilities
+## Capability ownership
 
-1. `$note-home-finder` — choose the canonical destination or split plan.
-2. `$note-boundary-analysis` — determine the exact scope each destination owns.
-3. `$note-writer` — produce or integrate the prose.
-4. `$markdown-link-normalizer` — normalize and validate local links.
-5. `$markdownlint-fix` — repair introduced Markdown lint findings when applicable.
+Owns:
 
-When boundary analysis finds existing misplaced or duplicated content that must be moved, delegate that refactor to `$note-content-boundary` rather than performing cross-note mutation inside this skill.
+- sequencing substantial note creation or expansion;
+- carrying placement and boundary decisions into a validated repository edit.
+
+Delegates:
+
+1. `$note-home-finder` — canonical destination or split plan.
+2. `$note-boundary-analyzer` — exact scope each destination owns.
+3. `$note-writer` — note prose and explanatory structure.
+4. `$markdown-link-normalizer` — mechanical local-link normalization and validation.
+5. `$markdownlint-fix` — introduced Markdown lint findings when applicable.
+6. `$note-refactor` — existing misplaced or duplicated content that must move across note boundaries before authoring can proceed cleanly.
+
+Must not reproduce the internal procedures of delegated skills.
 
 ## Workflow
 
@@ -24,11 +32,11 @@ When boundary analysis finds existing misplaced or duplicated content that must 
    - Treat a user-supplied target as strong evidence, not an exemption from architecture checks for substantial additions.
 
 2. **Bound**
-   - Send the placement result and proposed material to `$note-boundary-analysis`.
+   - Send the placement result and proposed material to `$note-boundary-analyzer`.
    - Require explicit separation of canonical explanation, local context, examples, implementation detail, application consequences, and duplicates.
 
 3. **Refactor first when necessary**
-   - If existing notes already contain misplaced or duplicate material that blocks clean ownership, invoke `$note-content-boundary`.
+   - If existing notes already contain misplaced or duplicate material that blocks clean ownership, invoke `$note-refactor`.
 
 4. **Write**
    - Give `$note-writer` the approved destination, abstraction level, boundary plan, relevant source material, and nearby note context.
@@ -51,6 +59,4 @@ The edit is complete only when:
 - links express genuine conceptual relationships;
 - the final Markdown is structurally valid.
 
-## Output
-
-Apply the edit directly when write access is available. Report the durable files changed and the substantive architectural decision in a concise completion record.
+Apply the edit directly when write access is available. Report the durable files changed and the substantive architectural decision concisely.

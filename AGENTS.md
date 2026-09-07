@@ -161,13 +161,13 @@ For foundational notes such as `Operating Systems/`, prefer durable and implemen
 
 Codex skills in `.codex/skills/` form a capability hierarchy.
 
-- **Lower-level skills own one reusable capability.** Examples include repository topic retrieval, note placement, boundary analysis, prose writing, content movement, link normalization, and lint repair.
-- **Higher-level skills orchestrate lower-level skills.** They define sequencing, handoffs, and acceptance criteria rather than restating the implementation procedure of delegated capabilities.
+- **Lower-level skills own one reusable capability.** Examples include repository retrieval, note placement, boundary analysis, prose writing, content movement, link normalization, and lint repair.
+- **Higher-level skills orchestrate lower-level skills.** They define sequencing, handoffs, and acceptance criteria rather than restating delegated implementation procedures.
 - **One capability has one canonical owner.** If a lower-level skill owns a task, a higher-level skill must invoke or inject that skill rather than copying its detailed rules.
 - **Dependencies flow downward.** Lower-level skills must not invoke higher-level workflows that depend on them.
 - **Repository-wide invariants live here.** Skills may reference these rules but should not maintain competing copies of repository architecture policy.
-- **Default writing behavior lives in `.codex/model_instructions.md` and the dedicated writing skill.** Composite skills should delegate writing instead of inventing their own style system.
-- Declare delegated capabilities explicitly in each composite skill using the `$skill-name` form.
+- **Default writing behavior lives in `.codex/model_instructions.md` and `$note-writer`.** Composite skills delegate writing instead of inventing their own style system.
+- Composite skills should make their boundaries explicit with **Owns**, **Delegates**, and **Must not** responsibilities when applicable.
 
 The intended hierarchy is:
 
@@ -176,33 +176,40 @@ Repository policy
 ├── AGENTS.md
 └── .codex/model_instructions.md
 
-Reusable primitives
+Level 1 — Mechanical and retrieval primitives
 ├── note-topic-search
-├── note-boundary-analysis
-├── note-writer
-├── note-content-mover
 ├── markdown-link-normalizer
 └── markdownlint-fix
 
-Semantic decisions
-└── note-home-finder
-    └── note-topic-search
+Level 2 — Semantic decision primitives
+├── note-home-finder
+│   └── note-topic-search
+└── note-boundary-analyzer
 
-Composite workflows
+Level 3 — Mutation primitives
+├── note-writer
+└── note-content-mover
+
+Level 4 — Note workflows
 ├── note-authoring
 │   ├── note-home-finder
-│   ├── note-boundary-analysis
+│   ├── note-boundary-analyzer
 │   ├── note-writer
 │   ├── markdown-link-normalizer
 │   └── markdownlint-fix
-├── note-content-boundary
+├── note-refactor
 │   ├── note-home-finder
-│   ├── note-boundary-analysis
+│   ├── note-boundary-analyzer
 │   ├── note-content-mover
 │   ├── note-writer
-│   └── markdown-link-normalizer
+│   ├── markdown-link-normalizer
+│   └── markdownlint-fix
+└── note-content-boundary
+    └── compatibility wrapper for note-refactor
+
+Level 5 — Repository workflows
 └── markdown-consolidator
-    └── delegates repository placement, boundaries, writing, and link mechanics
+    └── delegates repository placement, boundaries, writing/mutation, and link mechanics
         to the same lower-level capabilities
 ```
 

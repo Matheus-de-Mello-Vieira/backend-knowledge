@@ -1,36 +1,42 @@
 # Codex Skill Hierarchy
 
-Skills are organized by **capability ownership**. A higher-level workflow delegates to lower-level skills instead of copying their procedures.
+Skills are organized by **capability ownership**. Higher-level workflows delegate to lower-level skills instead of copying their procedures.
 
-## Repository policy
+## Policy layer
 
-`AGENTS.md` defines repository-wide knowledge architecture: note ownership, abstraction boundaries, acceptable duplication, examples, and semantic linking.
-
-`.codex/model_instructions.md` defines default note-writing behavior.
+- `AGENTS.md` defines repository-wide knowledge architecture: note ownership, abstraction boundaries, acceptable duplication, examples, and semantic linking.
+- `.codex/model_instructions.md` defines default note-writing behavior.
 
 Skills reference these policies rather than maintaining competing copies.
 
-## Reusable primitives
+## Level 1 — Mechanical and retrieval primitives
 
-- **`note-topic-search`** — retrieve relevant repository notes.
-- **`note-boundary-analysis`** — classify canonical content, local context, examples, implementation detail, application consequences, and duplicates.
-- **`note-writer`** — write scoped note prose after placement and boundaries are known.
-- **`note-content-mover`** — execute approved cross-note structural mutations.
-- **`markdown-link-normalizer`** — mechanically normalize and validate local links.
-- **`markdownlint-fix`** — repair Markdown lint findings.
+- **`note-topic-search`** — repository topic retrieval.
+- **`markdown-link-normalizer`** — mechanical local-link normalization and validation.
+- **`markdownlint-fix`** — Markdown lint repair.
 
-## Semantic decisions
+## Level 2 — Semantic decision primitives
 
-- **`note-home-finder`** — choose reuse/extend/create/split outcomes and canonical destinations. It delegates repository retrieval to `note-topic-search`.
+- **`note-home-finder`** — canonical placement: reuse, extend, create, or split. Delegates retrieval to `note-topic-search`.
+- **`note-boundary-analyzer`** — scope distribution after placement: canonical explanation, local context, examples, implementation/application detail, and duplication.
 
-## Composite workflows
+## Level 3 — Mutation primitives
 
-- **`note-authoring`** — substantial new notes or sections. It composes placement, boundary analysis, writing, link validation, and lint repair.
-- **`note-content-boundary`** — cross-note cleanup and refactoring. It composes placement, boundary analysis, content movement, prose repair, and link validation.
-- **`markdown-consolidator`** — multi-source evidence consolidation. It owns extraction/conflict/review lifecycle, then delegates repository placement, boundaries, writing, and links to the same lower-level capabilities.
+- **`note-writer`** — scoped note prose and explanatory structure.
+- **`note-content-mover`** — approved cross-note structural mutations.
 
-## Dependency rule
+## Level 4 — Note workflows
 
-If a lower-level skill owns a capability, a higher-level skill must invoke or inject that skill instead of reproducing its detailed procedure.
+- **`note-authoring`** — substantial note creation or expansion. Composes placement, boundary analysis, writing, link validation, and lint repair.
+- **`note-refactor`** — cross-note cleanup. Composes placement, boundary analysis, content movement, prose repair, link validation, and lint repair.
+- **`note-content-boundary`** — compatibility wrapper that delegates to `note-refactor`.
 
-Dependencies flow downward. Primitive skills must not invoke composite workflows that depend on them.
+## Level 5 — Repository workflows
+
+- **`markdown-consolidator`** — multi-source evidence consolidation. Owns evidence extraction, comparison, conflict resolution, review, and publication lifecycle, then delegates repository placement, boundaries, writing/mutation, and links to the same lower-level capabilities.
+
+## Dependency contract
+
+Every skill should make its boundary explicit with **Owns**, **Delegates**, and **Must not** responsibilities when applicable.
+
+If a lower-level skill owns a capability, a higher-level skill must invoke or inject that skill rather than reproducing its detailed procedure. Dependencies flow downward; primitives must not invoke composite workflows that depend on them.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Boundary Analyzer"
+  short_description: "Decide how much each note should own"
+  default_prompt: "Use $note-boundary-analyzer to classify what each note should explain fully, keep briefly, use as an example, or delegate elsewhere."

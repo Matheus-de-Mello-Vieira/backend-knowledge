@@ -7,27 +7,32 @@ description: Write or amend Markdown note prose after the destination, abstracti
 
 This skill owns **note prose and explanatory structure**.
 
-It receives an approved destination and scope, then writes only the material assigned to that note. Repository architecture comes from `AGENTS.md`; default writing behavior comes from `.codex/model_instructions.md`.
+Repository architecture comes from `AGENTS.md`; default writing behavior comes from `.codex/model_instructions.md`.
 
-## Capability boundary
+## Capability ownership
 
-This skill may:
+Owns:
 
-- write new sections;
-- amend existing sections;
-- integrate required local context;
-- create bounded examples or callouts;
-- restructure nearby prose when necessary for coherence;
-- add natural links from already meaningful text when the destination is known.
+- writing new sections;
+- amending existing sections;
+- integrating required local context;
+- creating bounded examples or callouts;
+- restructuring nearby prose when needed for coherence;
+- adding natural links from already meaningful text when the target is known.
 
-This skill must not:
+Delegates:
+
+- canonical placement to `$note-home-finder`;
+- scope and local-context decisions to `$note-boundary-analyzer`;
+- cross-note structural mutation to `$note-content-mover` or `$note-refactor`;
+- mechanical link normalization to `$markdown-link-normalizer`.
+
+Must not:
 
 - decide the canonical home of a topic;
 - decide whether substantial material belongs in another note;
 - perform repository-wide discovery;
 - move content between notes without an approved plan.
-
-Use `$note-home-finder` and `$note-boundary-analysis` before this skill when those decisions are unresolved.
 
 ## Writing grammar
 
@@ -47,21 +52,19 @@ Do not mechanically apply all forms to every section.
 
 - Explain the destination note's own subject completely at its assigned abstraction level.
 - Include only the neighboring context required for the local argument.
-- Keep examples shorter and narrower than the concept they illustrate.
+- Keep examples narrower than the concept they illustrate.
 - Stop implementation-specific explanation when the implementation becomes the subject.
 - Do not reproduce a complete same-level explanation that another canonical note already owns.
 
 ## Link discipline
 
-When a boundary plan identifies a useful related note:
+When the boundary plan identifies a useful related note:
 
 - prefer linking existing meaningful wording;
 - preserve visible text when possible;
 - link to the most specific stable section;
 - do not add navigation-only sentences;
 - do not repeatedly link the same concept.
-
-Mechanical link normalization belongs to `$markdown-link-normalizer`.
 
 ## Verification
 
