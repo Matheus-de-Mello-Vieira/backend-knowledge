@@ -1,4 +1,0 @@
-interface:
-  display_name: "Note Content Boundary (compatibility)"
-  short_description: "Compatibility alias for Note Refactor"
-  default_prompt: "Delegate this request to $note-refactor; $note-content-boundary is retained only as a compatibility wrapper."
