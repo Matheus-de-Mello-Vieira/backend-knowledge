@@ -1,21 +1,21 @@
 # Socket Management
 
-Socket management is how an operating system exposes network communication to user-space programs. The kernel owns the socket objects, integrates them with transport protocols such as TCP and UDP, receives incoming packets, maintains protocol and queue state, and decides when I/O can make progress. User-space programs interact with that machinery through descriptors, system calls, and kernel-managed buffers.
+Socket management is how an operating system exposes network communication to user-space programs. The kernel owns socket objects, integrates them with transport protocols such as TCP and UDP, receives incoming packets, maintains protocol and queue state, and decides when I/O can make progress. User-space programs interact with that machinery through descriptors, system calls, and kernel-managed buffers.
 
-This note focuses on the operating-system abstraction. Protocol-specific behavior such as TCP retransmission, congestion control, or UDP header structure belongs in the networking notes; application-server architectures belong in backend engineering.
+This note focuses on the operating-system abstraction and the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) socket interface commonly used on Unix-like systems. Protocol-specific behavior such as TCP retransmission, congestion control, or UDP header structure belongs in the networking notes; application-server architectures belong in backend engineering.
 
 ## Sockets as Kernel Objects
 
-Network sockets are one important kind of [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29). On Unix-like systems, `socket()` returns an FD that the process uses as a local handle. The descriptor is not the network connection itself: it refers through the process's descriptor machinery to kernel-maintained socket state.
+Network sockets are one important kind of resource referenced through a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29). On Unix-like systems, `socket()` returns an FD that the process uses as a local handle. The descriptor is not the network connection itself: it refers through the process's descriptor machinery to kernel-maintained socket state.
 
 That kernel state can include the socket type and protocol, local and remote addresses, ports, transport connection state, receive and send queues, socket options, and waiters interested in I/O readiness. Because the FD is only a handle, normal descriptor lifetime rules also apply to sockets. A descriptor can be duplicated with `dup()`, inherited across `fork()`, or shared by threads through the process's descriptor table.
 
-Closing one descriptor therefore does not necessarily destroy the underlying socket immediately. If another descriptor still refers to the same open kernel resource, the socket remains reachable through that reference. This distinction becomes important for inherited listening sockets, graceful shutdown, and descriptor leaks.
+Closing one descriptor therefore does not necessarily destroy the underlying socket immediately. If another descriptor still refers to the same open resource, the socket remains reachable through that reference. This distinction becomes important for inherited listening sockets, graceful shutdown, and descriptor leaks.
 
 > [!example] Forked Server Workers
 > A server can create and bind a listening socket before calling `fork()`. The child processes inherit descriptors referring to the same underlying listening resource, so several workers can call `accept()` on that listener. Closing the listener in one child does not remove the other inherited references.
 
-Like other descriptors, sockets consume finite process and kernel resources. A process that continually creates sockets without closing the descriptors it no longer needs can eventually hit its descriptor limit and receive errors such as `EMFILE`.
+Like other descriptor-backed resources, sockets consume finite process and kernel resources. A process that continually creates sockets without closing descriptors it no longer needs can eventually hit its descriptor limit and receive errors such as `EMFILE`.
 
 ## Socket Types
 
@@ -41,19 +41,31 @@ For an established TCP connection, the transport endpoints are commonly describe
 
 UDP has no accepted socket per peer. The kernel normally identifies the appropriate bound datagram socket using the protocol and local addressing information, with the exact matching rules affected by whether the socket has been connected and by socket options.
 
-### Binding
+## POSIX Socket Interface
+
+POSIX exposes socket-specific operations on top of the general file-descriptor model. Generic descriptor calls such as `read()`, `write()`, and `close()` can operate on sockets, while socket-specific calls expose operations and metadata that do not make sense for ordinary files.
+
+### Creating a Socket
+
+`socket()` asks the kernel to create a socket object and returns a descriptor referring to it. The call specifies an address family such as IPv4 or IPv6, a socket type such as `SOCK_STREAM` or `SOCK_DGRAM`, and optionally a protocol when the family/type pair does not already imply one.
+
+Creating the socket establishes the kernel object but does not by itself choose the local endpoint or establish a remote connection.
+
+### Binding and Local Endpoints
 
 `bind()` associates a socket with a local address. A server commonly binds explicitly because clients need a stable destination, while a client can often let the kernel choose an ephemeral local port automatically when communication begins.
 
-Binding to a specific local IP restricts the socket to traffic addressed to that interface or address. A wildcard address such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. Whether multiple sockets may bind overlapping addresses depends on the socket type, current state, operating system, and options such as `SO_REUSEADDR` or `SO_REUSEPORT`.
+Binding to a specific local IP restricts the socket to traffic addressed to that interface or address. A wildcard address such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. Whether multiple sockets may bind overlapping addresses depends on the socket type, current state, operating system, and socket options.
 
-## Creating and Binding Sockets
+### Establishing Outbound Connections
 
-The common starting point is `socket()`, which asks the kernel to create a socket object and return a descriptor referring to it. The call specifies an address family such as IPv4 or IPv6 and a socket type such as `SOCK_STREAM` or `SOCK_DGRAM`.
+`connect()` associates a socket with a remote endpoint, but its transport meaning depends on the socket type.
 
-A server then commonly calls `bind()` to choose its local endpoint. Datagram servers can generally begin receiving after binding. TCP servers need an additional listening state because incoming TCP connections must be established before the application can read their streams.
+For a TCP stream socket, `connect()` initiates connection establishment. On a blocking socket the call normally waits until the connection succeeds or fails; on a non-blocking socket, establishment can continue asynchronously and later become observable through readiness/error state. The kernel performs the TCP handshake rather than requiring user space to exchange the handshake packets manually.
 
-## Listening and Accepting TCP Connections
+For UDP, `connect()` does not perform a transport handshake. It records a default remote peer in the socket state and can restrict received datagrams to that peer, allowing calls such as `send()` and `recv()` to omit explicit peer addresses.
+
+### Listening and Accepting
 
 A TCP server commonly follows this lifecycle:
 
@@ -66,13 +78,13 @@ A TCP server commonly follows this lifecycle:
 
 The packet-level three-way handshake is covered in [How Connections are Established](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md). The important OS distinction is that normal server code does not manually receive the `SYN`, generate the `SYN-ACK`, and interpret the final `ACK`. The kernel's TCP implementation handles those protocol transitions and exposes the completed connection through `accept()`.
 
-### Listening Socket vs. Connected Socket
+#### Listening Socket vs. Connected Socket
 
 The listening socket is a persistent passive endpoint. Calling `accept()` does not transform it into a client connection. Instead, the kernel returns another descriptor referring to a connected socket dedicated to the established connection, while the original listener remains available for future arrivals.
 
 A server can therefore have one listening socket and thousands of connected sockets at the same time. Each connected socket has its own transport state and I/O queues even though the connections originally arrived through the same listener.
 
-### Pending and Established Connection Queues
+#### Pending and Established Connection Queues
 
 The kernel needs somewhere to keep connection state while handshakes and application acceptance proceed at different speeds. Conceptually, TCP servers therefore distinguish between incomplete connection-establishment state and fully established connections waiting for `accept()`.
 
@@ -80,12 +92,33 @@ On Linux this is commonly discussed as a SYN queue for incomplete handshakes and
 
 The backlog supplied to `listen()` influences how much completed connection work can wait for the application, but its exact interpretation and limiting behavior are OS-specific. When the application accepts connections too slowly, queues can saturate and the kernel eventually has to delay, drop, reset, or otherwise refuse additional connection work according to its implementation and configuration.
 
-### Blocking `accept()`
+#### Blocking `accept()`
 
 On a blocking listening socket, `accept()` waits when no completed connection is available. The kernel marks the calling thread as sleeping and can wake it when a connection becomes ready. On a non-blocking listener, `accept()` returns immediately when there is nothing to accept, typically with `EAGAIN` or `EWOULDBLOCK` on Unix-like systems.
 
 > [!example] Gunicorn and the Accept Queue
 > A pre-fork application server such as Gunicorn can create a listening socket and have multiple worker processes call `accept()` on inherited references to that listener. The kernel maintains the pending connection state; the workers consume completed connections when they are ready to run application code.
+
+### Data Transfer
+
+Sockets participate in the common descriptor interface, so `read()` and `write()` can operate on them. Socket-specific calls provide additional capabilities:
+
+- `send()` and `recv()` operate on an already-associated peer while accepting socket-specific flags.
+- `sendto()` and `recvfrom()` additionally carry peer addressing information, which is especially important for connectionless datagram sockets.
+
+The common FD interface therefore unifies how the process identifies the resource, while these socket-specific operations expose networking semantics that ordinary files do not have.
+
+### Socket Configuration
+
+`getsockopt()` and `setsockopt()` read and modify options associated with a socket or its protocol stack. Options can control concerns such as address reuse, buffer sizing, keepalive behavior, or protocol-specific algorithms.
+
+Examples include `SO_REUSEADDR`, `SO_REUSEPORT`, receive/send buffer options, and TCP-specific options such as `TCP_NODELAY`. The API for setting an option belongs to socket management; the transport consequence of an option such as `TCP_NODELAY` belongs to [TCP](../Networking/02%20Protocols/05%20TCP.md) and its related protocol notes.
+
+### Shutdown and Descriptor Closure
+
+`shutdown()` and `close()` operate at different abstraction layers. `shutdown()` changes a connected socket's communication state, allowing reads, writes, or both directions to be disabled while the descriptor remains open. `close()` releases that descriptor's reference according to the general [descriptor lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) rules.
+
+The final transport behavior depends on the protocol. For TCP, orderly or abortive closure can produce protocol-level transitions involving `FIN` or `RST`, but those wire-level details are separate from descriptor ownership.
 
 ## Listener, Acceptor, and Worker Roles
 
@@ -113,6 +146,8 @@ For TCP, an orderly shutdown by the peer eventually appears as end-of-stream: af
 
 A successful `send()` does **not** mean that the remote application has received or processed the bytes. It normally means that the local kernel accepted some amount of data from the application. Stream-socket writes can also be partial, so code must use the returned byte count rather than assuming the whole requested buffer was accepted.
 
+Some operating systems also provide specialized cross-resource operations such as Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations), which can move regular-file data toward a socket without first routing the payload through an application buffer. The socket remains the network destination; the avoided user-space copy and its performance consequences are discussed through [Kafka's zero-copy example](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy).
+
 For TCP, later protocol work includes segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as Nagle's algorithm. Those mechanisms belong to [TCP](../Networking/02%20Protocols/05%20TCP.md); the OS-facing boundary is that the application submits bytes to the socket while the kernel owns the transport machinery.
 
 ## Socket Buffers and Backpressure
@@ -138,9 +173,9 @@ Repeatedly retrying every socket in a busy loop would waste CPU, however. Effici
 
 The kernel already knows whether a socket currently has data to read, room to accept writes, a completed connection to accept, or an error condition. Readiness interfaces let user space wait for changes in that state across many descriptors instead of dedicating one blocked OS thread to each connection.
 
-Interfaces differ by operating system. `select()` and `poll()` provide portable-style readiness models, Linux provides `epoll`, and BSD-derived systems provide `kqueue`. The exact registration and wakeup semantics differ, but the common idea is the same: user space registers interest in descriptors, sleeps until relevant state changes, and then performs the actual I/O system calls on the descriptors reported as ready.
+POSIX provides interfaces such as `select()` and `poll()` for waiting on descriptor readiness. Operating systems also provide implementation-specific scalable facilities: Linux provides `epoll`, while BSD-derived systems provide `kqueue`. Their registration and wakeup semantics differ, but the common idea is the same: user space registers interest in descriptors, sleeps until relevant state changes, and then performs the actual I/O system calls on the descriptors reported as ready.
 
-Readiness does not transfer the application data by itself. For example, `epoll_wait()` can report that a socket is readable, but the application still calls `read()` or `recv()` to consume the bytes. Races and edge-triggered modes also mean a supposedly ready operation must still be written to handle cases where no progress is available by the time the application acts.
+Readiness does not transfer application data by itself. For example, `epoll_wait()` can report that a socket is readable, but the application still calls `read()` or `recv()` to consume the bytes. Races and edge-triggered modes also mean a supposedly ready operation must still be written to handle cases where no progress is available by the time the application acts.
 
 > [!example] Go's Netpoller
 > Go allows a goroutine to perform what looks like a blocking network operation without requiring one OS thread to remain blocked for every socket. The runtime can park the goroutine and use the operating system's readiness facilities to learn when the descriptor can make progress. On Linux, Go's netpoller uses mechanisms such as `epoll`; when readiness arrives, the runtime can make the corresponding goroutine runnable again. This is a runtime abstraction built on top of the OS socket and scheduler primitives, as discussed in [Go Internals](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29).
