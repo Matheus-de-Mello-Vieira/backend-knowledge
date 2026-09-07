@@ -38,10 +38,6 @@ Small local corrections may bypass workflow routing when the target and scope ar
 - **`markdown-link-normalizer`** — mechanically normalize and validate local links.
 - **`markdownlint-fix`** — repair Markdown lint findings.
 
-## Compatibility
-
-- **`note-content-boundary`** remains only as a compatibility wrapper for `$note-refactor`.
-
 ## Progressive disclosure
 
 A workflow must not load its entire possible dependency set up front. Use gates:
