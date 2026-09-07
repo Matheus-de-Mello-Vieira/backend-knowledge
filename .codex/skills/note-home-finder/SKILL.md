@@ -33,10 +33,20 @@ The caller may pass the accepted placement to `$note-boundary-analyzer`; this sk
 
 - the topic, draft, or substantial proposed addition;
 - an optional user-proposed target note;
-- confirmed candidate notes from `$note-topic-search`;
+- optional confirmed candidate notes from `$note-topic-search`;
 - repository taxonomy and nearby naming/sequence conventions.
 
 A user-proposed target is strong evidence, but it does not override a clear conceptual or abstraction-boundary mismatch.
+
+## Retrieval gate
+
+Before making a placement decision, ensure repository evidence is available.
+
+- If confirmed `$note-topic-search` results were supplied and still reflect the relevant repository state and proposed material, reuse them; do not repeat retrieval.
+- If confirmed candidates are absent, incomplete for a compound proposal, or stale relative to repository changes, invoke `$note-topic-search` and use its confirmed results.
+- Do not infer canonical ownership from filenames, user-proposed targets, or memory when repository retrieval is required.
+
+This gate operationalizes the dependency: `$note-home-finder` owns placement, while `$note-topic-search` owns the evidence-gathering mechanics used by that decision.
 
 ## Placement decision
 
