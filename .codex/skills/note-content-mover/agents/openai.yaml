@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Content Mover"
+  short_description: "Execute approved cross-note content moves"
+  default_prompt: "Use $note-content-mover to apply an approved move, merge, split, or duplicate-removal plan without reopening placement decisions."

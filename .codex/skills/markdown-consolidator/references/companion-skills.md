@@ -1,36 +1,67 @@
 # Companion skill interaction
 
-This skill supports repository integration through two independently installed companion skills. Use their current `SKILL.md` files as authoritative inputs; do not copy or reinterpret their internal search and link-style rules.
+Repository-integrated consolidation participates in the same skill hierarchy as ordinary note authoring. The consolidator owns multi-source evidence extraction, conflict resolution, review, and publication orchestration. It must delegate repository capabilities to their canonical lower-level skills instead of maintaining parallel implementations.
+
+## Capability hierarchy
+
+Repository mode uses:
+
+- `$note-home-finder` for canonical placement. That skill delegates repository retrieval to `$note-topic-search`.
+- `$note-boundary-analysis` for deciding what each destination should fully own versus keep only as local context, example, implementation detail, or application consequence.
+- `$note-writer` for repository-note prose and explanatory structure after placement and boundaries are accepted.
+- `$markdown-link-normalizer` for mechanical local-link normalization and validation.
+
+The consolidator must not restate qmd search procedures, note-boundary heuristics, repository writing style, or Markdown link mechanics when the lower-level skill already owns them.
 
 ## Discovery
 
-Run `scripts/locate_companion_skills.py` before repository-integrated work. It searches repository- and user-scoped `.agents/skills/` and `.codex/skills/` locations. Explicit paths may override discovery.
-
-Required companions:
+Run `scripts/locate_companion_skills.py` before repository-integrated work for companions that require runtime discovery. The current locator verifies:
 
 - `note-home-finder`
 - `markdown-link-normalizer`
 
-Stop repository-integrated execution when either companion is unavailable. Standalone consolidation does not require them.
+`note-boundary-analysis` and `note-writer` are repository-local semantic capabilities. Load their current `SKILL.md` files from `.codex/skills/` and inject them unchanged into the relevant repository-mode subagent tasks.
 
-## Note Home Finder handoff
+Standalone consolidation does not require repository note skills.
 
-Use the companion skill inside one spawned `note-home-finder-adapter` producer task. Give that subagent:
+## Placement handoff
 
-- the exact companion `SKILL.md`;
+Use `note-home-finder` inside the placement producer task. Give that subagent:
+
+- the exact `note-home-finder/SKILL.md`;
 - source inventory and representative source content;
 - repository root;
 - intended audience and purpose;
 - the Placement Plan contract;
 - read-only repository access.
 
-The adapter follows the companion workflow, including qmd discovery when available and its documented fallback search. It must not create, move, or edit notes. Its only semantic output is `placement-plan.json`.
+The adapter returns only the placement decision. Search mechanics remain delegated through the home-finder hierarchy.
 
-The placement attempt must pass an independent stage review and `validate_placement.py` before outline planning.
+The placement attempt must pass independent stage review and `validate_placement.py` before outline planning.
+
+## Boundary handoff
+
+Before repository integration planning, inject `note-boundary-analysis/SKILL.md` unchanged.
+
+The integration plan must assign each source unit to one primary destination and determine whether neighboring destinations need:
+
+- canonical coverage;
+- concise local context;
+- a bounded example;
+- an implementation/application handoff;
+- or no duplicated body.
+
+The planner must not invent a separate boundary policy.
+
+## Writing handoff
+
+For repository publication, inject `note-writer/SKILL.md` unchanged into the synthesizer/finalizer task and treat it as authoritative for repository prose and structure.
+
+The consolidator's own writing policy continues to govern standalone publications and evidence-preservation constraints. When repository-specific style rules overlap with `note-writer`, the lower-level repository writing skill owns the implementation.
 
 ## Markdown Link Normalizer handoff
 
-Use the companion scripts only after candidate paths, headings, and link plan are stable.
+Use the companion scripts only after candidate paths, headings, and link plans are stable.
 
 `run_link_pipeline.py`:
 

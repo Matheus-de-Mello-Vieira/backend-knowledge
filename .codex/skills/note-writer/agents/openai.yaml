@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Writer"
+  short_description: "Write scoped cohesive repository notes"
+  default_prompt: "Use $note-writer to write or amend a note after its destination and content boundary are already decided."

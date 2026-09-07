@@ -1,85 +1,58 @@
 ---
 name: note-content-boundary
-description: Refactor overlapping Markdown note content without leaving duplication behind. Use when Codex needs to move a concept or section from one note to another, keep only a short pointer or callout in the source note, rename or remove obsolete headings, and update local links or anchors after the content boundary changes.
+description: Refactor overlapping or misplaced Markdown knowledge across notes. This is a composite workflow: delegate placement to $note-home-finder, scope decisions to $note-boundary-analysis, structural mutation to $note-content-mover, prose repair to $note-writer, and broad link repair to $markdown-link-normalizer.
 ---
 
 # Note Content Boundary
 
-Use this skill when two notes currently share content but should not keep the same explanation in both places.
+Use this workflow when existing notes overlap, a concept is in the wrong home, implementation detail has leaked across an abstraction boundary, or a cleanup must move/merge/split content without leaving duplication behind.
+
+This skill **does not own** repository search, placement heuristics, boundary classification, prose style, or link-normalization mechanics. It orchestrates the lower-level skills that own those capabilities.
+
+## Delegated capabilities
+
+Required:
+
+1. `$note-home-finder` — identify canonical homes and split decisions.
+2. `$note-boundary-analysis` — determine what each note should fully own and what context should remain.
+3. `$note-content-mover` — execute approved moves, merges, splits, and duplicate removal.
+4. `$note-writer` — repair or integrate prose after structural changes.
+5. `$markdown-link-normalizer` — normalize and validate affected local links.
+
+Use `$markdownlint-fix` when the resulting Markdown introduces lint findings.
 
 ## Workflow
 
-1. Identify the boundary before editing:
+1. **Resolve ownership**
+   - Read the directly affected notes.
+   - Delegate canonical-home decisions to `$note-home-finder`.
+   - Do not reproduce repository-search logic locally.
 
-- Read the source and destination notes.
-- Determine whether the overlapping content is:
-  - the same concept in the same sense;
-  - the same word in a different sense;
-  - a short mention that should remain;
-  - or a full explanation that belongs in only one place.
-- Keep the more canonical or process-specific explanation in the stronger home.
+2. **Resolve boundaries**
+   - Delegate the overlapping material to `$note-boundary-analysis`.
+   - Require an explicit disposition for every substantial unit: canonical explanation, required local context, example, implementation detail, application consequence, duplicate, or separate subject.
 
-2. Choose the right outcome:
+3. **Apply structural changes**
+   - Pass the approved plan to `$note-content-mover`.
+   - Do not let the mover reinterpret the plan.
 
-- **Move** the substantive content when one note only needs a pointer.
-- **Leave both** when the term is shared but the operational meaning is different.
-- **Merge** when two sections are saying the same thing at the same level of abstraction.
-- **Split** when one note is mixing core subject matter with adjacent background that belongs elsewhere.
+4. **Repair exposition**
+   - Use `$note-writer` for substantive rewrites needed because context changed.
+   - Keep residual context sufficient but non-duplicative.
 
-3. Move the content cleanly:
+5. **Repair links**
+   - Use `$markdown-link-normalizer` for path/anchor normalization and validation when the change is broader than a trivial manual edit.
 
-- Copy the full explanation into the destination note and adapt it to the destination's framing.
-- Remove the duplicated body from the source note.
-- Keep only a short residual pointer in the source note when readers may still look there first.
-- Prefer a callout when the leftover text is guidance or redirection rather than core content.
-
-4. Clean up the source note structure:
-
-- Remove headings that no longer introduce real content.
-- If a heading remains useful for scanning, keep it and shorten the body beneath it.
-- If the residual text is only a pointer, consider deleting the heading entirely and leaving only the callout.
-
-5. Repair links and anchors:
-
-- Update links that should now point to the new canonical section.
-- If headings changed, check whether any local anchors need to move with them.
-- When link cleanup is broader than a couple of manual edits, use `$markdown-link-normalizer` at `.codex/skills/markdown-link-normalizer`.
-
-6. Verify the result:
-
-- Read the edited block in both notes.
-- Confirm the source note still reads naturally without the removed section.
-- Confirm the destination note now owns the topic at the right level of detail.
-- Confirm there is no accidental semantic drift during the move.
-
-## Residual Content Rules
-
-- Leave behind only enough text to explain why the topic is not fully covered there.
-- Avoid phrases like "this note" or "that note" when neutral wording reads better.
-- Use callouts for scoped asides, redirects, or "see also" guidance.
-- Do not leave a heading whose only content is a redundant sentence.
-- Prefer linking directly to the destination section, not just the file, when the target section is stable.
-
-See [Residue Patterns](references/residue-patterns.md) for compact examples.
-
-## Heuristics
-
-- Keep **LLM runtime mechanics** with LLM processing notes, not context-management notes.
-- Keep **context budgeting, memory, and prompt assembly** with context-engineering notes, not model internals notes.
-- Keep **lexical IR tokenization** separate from **LLM tokenization** when the underlying processing role is different.
-- Prefer one canonical explanation per concept per sense.
-- If a duplicated section exists only because readers may search both notes, replace one copy with a pointer instead of preserving both bodies.
-
-## Link Handling
-
-- Use repository-local Markdown paths.
-- Preserve existing naming conventions in the target folder.
-- Prefer exact heading-text anchors with URL encoding when linking to a specific section.
-- After renaming or deleting headings, search for inbound links before finishing.
+6. **Verify repository cohesion**
+   - Confirm each affected note has one center of gravity.
+   - Confirm the canonical explanation exists exactly where intended.
+   - Confirm examples and implementation details stay within their assigned boundaries.
+   - Confirm no accidental same-level duplication remains.
+   - Confirm the source and destination both read naturally.
 
 ## Constraints
 
-- Do not create a new note unless the user asks for one or the existing note boundary is clearly insufficient.
-- Do not leave duplicated explanatory paragraphs across notes unless the distinction in meaning is intentional.
-- Do not rewrite unrelated parts of either note while doing the boundary cleanup.
-- If the boundary is ambiguous, explain the tradeoff before making broader structural changes.
+- Do not create a new note unless `$note-home-finder` or the user's explicit instruction establishes it as the correct outcome.
+- Do not preserve duplicate full explanations merely because readers might search both locations.
+- Do not rewrite unrelated parts of the notes during a boundary cleanup.
+- Do not add navigation-only prose to compensate for weak placement.

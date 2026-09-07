@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Authoring"
+  short_description: "Author notes through reusable lower-level skills"
+  default_prompt: "Use $note-authoring for a substantial new note or section so placement, boundaries, writing, links, and lint are delegated to their canonical skills."
