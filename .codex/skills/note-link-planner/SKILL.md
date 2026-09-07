@@ -1,11 +1,13 @@
 ---
 name: note-link-planner
-description: Plan semantically useful internal Markdown links without changing prose. Use when a note should connect naturally to deeper, prerequisite, implementation, contrasting, or adjacent repository notes. This skill decides what should link where; mechanical path/anchor handling belongs to markdown-link-normalizer.
+description: Plan semantically useful internal Markdown links without changing prose. Use when a note should connect naturally to deeper, prerequisite, implementation, contrasting, or adjacent repository notes. This skill exclusively decides what should link where; applying approved markup belongs to note-writer and mechanical path/anchor handling belongs to markdown-link-normalizer.
 ---
 
 # Note Link Planner
 
-This skill owns **semantic link selection**.
+This skill exclusively owns **semantic link selection**.
+
+It decides whether an existing phrase should become a link and which repository concept it should target. Other skills may apply or mechanically normalize an approved link, but must not independently choose semantic destinations.
 
 ## Workflow
 
@@ -21,7 +23,7 @@ Useful relationships include prerequisite, deeper mechanism, implementation, app
 
 ## Output contract
 
-Return a link plan containing:
+Return an approved semantic link plan containing:
 
 - `source_phrase` exactly as it appears;
 - `target_path`;
@@ -29,10 +31,13 @@ Return a link plan containing:
 - `relationship`;
 - `reason`.
 
+The caller may pass this plan to `$note-writer` for application and then to `$markdown-link-normalizer` for mechanical normalization/validation.
+
 ## Exclusions
 
 Do not:
 
+- rewrite or otherwise mutate note prose;
 - add new navigation prose merely to create a link;
 - repeatedly link the same concept;
 - link generic terms just because a note exists;
