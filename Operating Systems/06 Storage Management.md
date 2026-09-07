@@ -757,7 +757,7 @@ mount --bind /srv/database /mnt/database
 >
 > - **Pathnames Name Resources**: The filesystem namespace gives processes pathnames through which many filesystem-backed and kernel-provided resources can be located.
 >
-> - **Descriptors Reference Open Resources**: A [**File Descriptor (FD)**](https://chatgpt.com/g/g-p-6a7a84d6766881919bab2085541ba9fd/c/02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) is instead a process-local handle referring to an already opened or created I/O resource.
+> - **Descriptors Reference Open Resources**: A [**File Descriptor (FD)**](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) is instead a process-local handle referring to an already opened or created I/O resource.
 >
 > - **Path to Descriptor**: For pathname-based resources, operations such as `open()` first resolve the pathname and then return a descriptor. The process normally performs later I/O through that descriptor rather than resolving the path again for every operation.
 >
@@ -789,14 +789,15 @@ mount --bind /srv/database /mnt/database
 > [!note] One Namespace, Different Kinds of Objects
 > The Linux filesystem namespace provides one path-based interface over resources with very different implementations.
 >
-> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
+> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60/proc%60%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
 >
 > They participate in the same pathname hierarchy even though their underlying semantics are very different.
 >
 ### Opening Files
 
-- **Initial Operation**: Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file.
-- **The `open()` Call**: Conceptually, the interface looks like:
+Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) regular-file interface. `open()` resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
+
+Conceptually, the interface looks like:
 
 ```c
 open(path, flags, mode)
@@ -810,11 +811,10 @@ open(path, flags, mode)
     - whether writes should append;
     - whether normal page-cache behavior should be used;
     - whether writes require synchronous durability semantics.
-- **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or `O_TMPFILE`. It specifies the initial permission bits, subject to mechanisms such as `umask`.
-- **Returned File Descriptor**: A successful call returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29). The broader descriptor abstraction belongs to process management because the same mechanism also represents sockets, pipes, device nodes, and other I/O resources.
+- **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or OS-specific creation mechanisms. It specifies the initial permission bits, subject to mechanisms such as `umask`.
 - **Subsequent Operations**: Calls such as `read()`, `write()`, and `fsync()` operate through the descriptor rather than resolving the pathname again on every operation.
-- **Associated State**: The open file also carries state such as the current file offset and status flags that influence later operations.
-- **Closing**: When the process no longer needs the reference, it releases the descriptor using `close()`.
+- **Associated State**: The open regular file carries resource-specific state such as the current file offset and file-status flags. The broader descriptor-table and lifetime rules remain defined in [The Anatomy of a Process](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime).
+- **Closing**: When the process no longer needs the reference, `close()` releases that descriptor according to the common descriptor-lifetime rules.
 
 #### Open Flags
 
@@ -885,7 +885,7 @@ means that the process wants read/write access and wants the file created if it 
 
 ##### Caching and Transfer Path
 
-- **`O_DIRECT`**: Requests [Direct I/O](#Direct%20I/O%20(`O_DIRECT`)), causing file data to generally bypass or minimize participation in the normal page-cache path.
+- **`O_DIRECT`**: On systems such as Linux, `O_DIRECT` is an OS-specific extension that requests [Direct I/O](#Direct%20I/O%20(`O_DIRECT`)), causing file data to generally bypass or minimize participation in the normal page-cache path. It is not part of the portable POSIX core.
 - **Independent Concern**: `O_DIRECT` primarily changes how data travels between application memory and storage. It does not by itself establish synchronous durability.
 
 ##### Synchronous Completion
@@ -925,6 +925,19 @@ open("data.db", O_RDWR | O_CREAT, 0600);
 ```
 
 expresses a different combination without requiring a different system call.
+
+### Reading and Writing Files
+
+Once a regular file is open, `read()` and `write()` operate on the descriptor using the file's current position. For an ordinary seekable regular file, the shared open file description stores this current offset. A successful sequential read or write advances the offset by the number of bytes transferred.
+
+This is a **regular-file semantic**, not a property of the descriptor integer itself. If `dup()` or `fork()` produces multiple descriptors referring to the same open file description, those descriptors also observe the same current offset because the shared state lives beneath the descriptor-table entries. Independent calls to `open()` instead create independent open file descriptions and therefore independent offsets, as described in [Descriptor Indirection](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Indirection).
+
+- **`read()`**: Reads bytes beginning at the current file offset and advances that offset by the number of bytes returned. Reaching the logical end of a regular file causes a later read to return zero bytes rather than waiting for future data as a socket or pipe might.
+- **`write()`**: Writes bytes according to the descriptor's access mode and current offset, then advances the offset. A successful write reports how many bytes the kernel accepted for the file operation; persistence to non-volatile media is a separate concern handled by the durability mechanisms described later in this note.
+- **`lseek()`**: Changes the current file offset without transferring data. It can position the next ordinary read or write relative to the beginning of the file, the current position, or the end. Non-seekable resources such as pipes and sockets reject seeking because they do not expose regular-file position semantics.
+- **`pread()` and `pwrite()`**: Perform positional I/O at an explicit byte offset without changing the shared current file offset. This avoids coordination through one mutable offset when several operations need independent positions. It does not make overlapping concurrent writes inherently safe; application-level synchronization may still be required when operations target the same data.
+
+These operations illustrate the distinction between the common [POSIX descriptor interface](02%20The%20Anatomy%20of%20a%20Process.md#The%20POSIX%20Descriptor%20Interface) and resource-specific semantics: the descriptor identifies the resource, while the regular-file API defines how positions, EOF, and persistence behave.
 
 ### Mapping Files to Logical Blocks
 
@@ -1132,7 +1145,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 > - **Sequential Workload**: Kafka's append-oriented log files and sequential consumer reads interact well with filesystem mechanisms such as delayed writeback and read-ahead.
 > - **Process Independence**: Cached file pages belong to the operating system rather than the Kafka process itself, so useful cached data can survive a Kafka process restart as long as the operating system remains running and retains those pages.
 > - **JVM Benefit**: Keeping the bulk of cached log data outside the JVM also avoids expanding the Java heap merely to duplicate file data already managed by the operating system.
-> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](02%20The%20Anatomy%20of%20a%20Process.md#Operations%20and%20Shared%20Open-File%20State) file-to-network techniques such as `sendfile()` when serving consumers.
+> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy) file-to-network techniques such as [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations) when serving consumers.
 > - **Architectural Lesson**: Cache ownership is a design choice. Some storage engines maintain specialized user-space buffer pools, while Kafka deliberately delegates much of this responsibility to the operating system.
 
 ### Journaling and Crash Consistency
@@ -1311,7 +1324,7 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
 
 ## I/O Pressure Stall Information (PSI)
 
-Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
+Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60/proc%60%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
 
 - **`some`**: Reports periods during which at least one non-idle task is stalled because of I/O pressure. Other runnable work may still be able to execute.
 - **`full`**: Reports periods during which all non-idle tasks are simultaneously stalled by I/O pressure, so no useful non-idle task can make progress during that interval.
