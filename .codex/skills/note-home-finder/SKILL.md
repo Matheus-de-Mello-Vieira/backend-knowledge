@@ -18,14 +18,16 @@ Owns:
 
 Delegates:
 
-- repository discovery and candidate retrieval to `$note-topic-search`;
-- content-depth and local-context decisions to `$note-boundary-analyzer` after placement.
+- repository discovery and candidate retrieval to `$note-topic-search`.
 
 Must not:
 
 - reproduce qmd query syntax or fallback-search procedures;
 - decide how much neighboring content should remain locally;
-- write, move, or normalize note content.
+- write, move, or normalize note content;
+- invoke higher-level authoring or refactoring workflows.
+
+The caller may pass the accepted placement to `$note-boundary-analyzer`; this skill does not invoke the analyzer itself.
 
 ## Inputs
 
@@ -86,4 +88,4 @@ Return:
 - `rationale` in 1–3 sentences;
 - `alternatives` only when genuinely ambiguous.
 
-Do not write or move content. Scope distribution belongs to `$note-boundary-analyzer`.
+Do not write or move content.

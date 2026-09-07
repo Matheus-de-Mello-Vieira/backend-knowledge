@@ -1,6 +1,6 @@
 ---
 name: note-writer
-description: Write or amend Markdown note prose after the destination, abstraction level, and content boundary are already decided. This is the canonical prose-and-structure primitive for repository notes. Do not perform placement, boundary analysis, or broad repository search here.
+description: Write or amend Markdown note prose after the destination, abstraction level, and content boundary are already decided. This is the canonical prose-and-structure mutation primitive for repository notes. Do not perform placement, boundary analysis, or broad repository search here.
 ---
 
 # Note Writer
@@ -20,19 +20,22 @@ Owns:
 - restructuring nearby prose when needed for coherence;
 - adding natural links from already meaningful text when the target is known.
 
-Delegates:
+Requires:
 
-- canonical placement to `$note-home-finder`;
-- scope and local-context decisions to `$note-boundary-analyzer`;
-- cross-note structural mutation to `$note-content-mover` or `$note-refactor`;
-- mechanical link normalization to `$markdown-link-normalizer`.
+- an approved destination and abstraction level;
+- an approved boundary plan when the addition is substantial or crosses nearby concepts;
+- relevant source material and local note context.
 
 Must not:
 
-- decide the canonical home of a topic;
+- search for canonical homes;
+- invoke `$note-home-finder` or `$note-boundary-analyzer`;
 - decide whether substantial material belongs in another note;
-- perform repository-wide discovery;
-- move content between notes without an approved plan.
+- invoke `$note-authoring` or `$note-refactor`;
+- move content between notes without an approved structural plan;
+- perform broad link normalization.
+
+Higher-level workflows are responsible for supplying semantic decisions and invoking mechanical validation afterward.
 
 ## Writing grammar
 
@@ -58,13 +61,15 @@ Do not mechanically apply all forms to every section.
 
 ## Link discipline
 
-When the boundary plan identifies a useful related note:
+When the approved plan identifies a useful related note:
 
 - prefer linking existing meaningful wording;
 - preserve visible text when possible;
 - link to the most specific stable section;
 - do not add navigation-only sentences;
 - do not repeatedly link the same concept.
+
+Mechanical link normalization belongs to the caller's `$markdown-link-normalizer` stage.
 
 ## Verification
 
@@ -76,4 +81,4 @@ Before returning the written candidate:
 - confirm terminology and qualifiers are preserved;
 - confirm headings and formatting match nearby note conventions.
 
-Return the completed Markdown edit or apply it directly when invoked by a higher-level workflow.
+Return the completed Markdown candidate or apply the scoped edit when invoked by a higher-level workflow.

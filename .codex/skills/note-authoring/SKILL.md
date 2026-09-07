@@ -12,18 +12,18 @@ Use this workflow for substantial additions, new sections, or new notes. Small l
 Owns:
 
 - sequencing substantial note creation or expansion;
-- carrying placement and boundary decisions into a validated repository edit.
+- carrying semantic decisions through writing and repository validation.
 
 Delegates:
 
 1. `$note-home-finder` — canonical destination or split plan.
 2. `$note-boundary-analyzer` — exact scope each destination owns.
-3. `$note-writer` — note prose and explanatory structure.
-4. `$markdown-link-normalizer` — mechanical local-link normalization and validation.
-5. `$markdownlint-fix` — introduced Markdown lint findings when applicable.
-6. `$note-refactor` — existing misplaced or duplicated content that must move across note boundaries before authoring can proceed cleanly.
+3. `$note-content-mover` — approved relocation of existing misplaced/duplicate material when needed before writing.
+4. `$note-writer` — note prose and explanatory structure.
+5. `$markdown-link-normalizer` — mechanical local-link normalization and validation.
+6. `$markdownlint-fix` — introduced Markdown lint findings when applicable.
 
-Must not reproduce the internal procedures of delegated skills.
+Must not reproduce the internal procedures of delegated skills or invoke another composite workflow to perform work already owned by these primitives.
 
 ## Workflow
 
@@ -32,15 +32,15 @@ Must not reproduce the internal procedures of delegated skills.
    - Treat a user-supplied target as strong evidence, not an exemption from architecture checks for substantial additions.
 
 2. **Bound**
-   - Send the placement result and proposed material to `$note-boundary-analyzer`.
+   - Send the accepted placement and proposed material to `$note-boundary-analyzer`.
    - Require explicit separation of canonical explanation, local context, examples, implementation detail, application consequences, and duplicates.
 
-3. **Refactor first when necessary**
-   - If existing notes already contain misplaced or duplicate material that blocks clean ownership, invoke `$note-refactor`.
+3. **Move existing misplaced content when necessary**
+   - If the boundary plan requires relocating existing durable material, pass only that approved structural plan to `$note-content-mover`.
 
 4. **Write**
    - Give `$note-writer` the approved destination, abstraction level, boundary plan, relevant source material, and nearby note context.
-   - The writer must not reopen placement decisions.
+   - The writer must not reopen semantic decisions.
 
 5. **Link and validate**
    - Normalize links with `$markdown-link-normalizer` when necessary.

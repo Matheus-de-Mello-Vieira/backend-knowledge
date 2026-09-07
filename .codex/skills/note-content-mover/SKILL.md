@@ -1,6 +1,6 @@
 ---
 name: note-content-mover
-description: Execute an already-approved cross-note move, merge, split, or duplicate-removal plan. This is a mutation primitive: preserve meaning, update note structure, and leave only the residual context specified by the plan. Do not decide placement or boundaries here.
+description: Execute an already-approved cross-note move, merge, split, or duplicate-removal plan. This is a structural mutation primitive: preserve meaning, update note structure, and leave only the residual context specified by the plan. Do not decide placement or boundaries here.
 ---
 
 # Note Content Mover
@@ -14,28 +14,25 @@ Owns:
 - executing approved moves, merges, splits, and duplicate removal;
 - removing obsolete headings and repairing local structure;
 - preserving the residual context specified by the semantic plan;
-- identifying changed paths or anchors for link validation.
+- identifying changed paths or anchors for later link validation.
 
-Delegates:
+Requires:
 
-- placement to `$note-home-finder`;
-- scope/disposition decisions to `$note-boundary-analyzer`;
-- substantive prose repair to `$note-writer`;
-- broad link repair to `$markdown-link-normalizer`.
-
-Must not reinterpret the semantic plan.
-
-## Required input
-
-An approved plan from `$note-boundary-analyzer` or a higher-level workflow specifying:
-
-- source and destination paths;
+- an approved boundary/mutation plan specifying source and destination paths;
 - content to move, merge, split, or remove;
 - residual local context that should remain;
 - headings to preserve, rename, or remove;
 - known link targets affected by the move.
 
-If those decisions are not known, delegate upward; do not improvise placement.
+Must not:
+
+- invoke `$note-home-finder` or `$note-boundary-analyzer`;
+- reinterpret placement or boundary decisions;
+- invoke `$note-authoring` or `$note-refactor`;
+- perform substantive prose redesign beyond minimal adaptation;
+- perform broad link normalization.
+
+If the required semantic plan is missing, return that prerequisite to the caller instead of improvising it.
 
 ## Mutation rules
 
@@ -61,3 +58,5 @@ Confirm:
 - no same-level duplicate body remains unintentionally;
 - no useful supported meaning was lost;
 - no orphan heading was introduced.
+
+Substantive prose repair and mechanical link validation are separate caller-managed stages.

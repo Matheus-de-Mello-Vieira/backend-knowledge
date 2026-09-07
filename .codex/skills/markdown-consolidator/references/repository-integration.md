@@ -2,7 +2,7 @@
 
 Apply this protocol only when `publication_mode` is `repository_integrated`.
 
-The consolidator owns evidence-to-publication orchestration. Repository placement, content boundaries, writing/mutation, and link mechanics are delegated to their canonical skills.
+The consolidator owns evidence-to-publication orchestration. Repository placement, content boundaries, structural mutation, writing, and link mechanics are delegated to their canonical primitives.
 
 ## File classes
 
@@ -22,7 +22,7 @@ Allowed outcomes are `reuse_existing_note`, `extend_existing_note`, `create_new_
 
 ## Boundary analysis
 
-After placement and before integration planning, apply `$note-boundary-analyzer`.
+After placement and before integration planning, apply `$note-boundary-analyzer` to the accepted placement.
 
 Every substantial source unit must be assigned as canonical explanation, required local context, bounded example, implementation/application detail assigned elsewhere, or intentional repetition with explicit justification. One source unit still has exactly one primary destination; repeated context is secondary and limited to what another note genuinely needs.
 
@@ -38,9 +38,7 @@ Do not invent a separate note-boundary policy inside the consolidator.
 
 ## Structural mutation
 
-When accepted integration requires moving existing durable repository material between notes, apply `$note-content-mover` to the approved move/split/merge plan. When the required operation is a broader cross-note cleanup, delegate that scope to `$note-refactor`.
-
-The consolidator must not silently reimplement cross-note mutation semantics inside the synthesizer.
+When accepted integration requires moving existing durable repository material between notes, apply `$note-content-mover` only to the approved move/split/merge plan. The mover does not reopen placement or boundary decisions.
 
 ## Repository writing
 

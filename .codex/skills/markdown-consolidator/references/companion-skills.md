@@ -1,17 +1,16 @@
 # Companion skill interaction
 
-Repository-integrated consolidation participates in the same capability hierarchy as ordinary note authoring and refactoring. The consolidator owns multi-source evidence extraction, conflict resolution, review, and publication orchestration. It delegates repository capabilities to their canonical lower-level skills instead of maintaining parallel implementations.
+Repository-integrated consolidation participates in the same capability hierarchy as ordinary note authoring and refactoring. The consolidator owns multi-source evidence extraction, conflict resolution, review, and publication orchestration. It composes repository primitives instead of maintaining parallel implementations.
 
 ## Capability hierarchy
 
 Repository mode uses:
 
-- `$note-home-finder` for canonical placement. That skill delegates repository retrieval to `$note-topic-search`.
-- `$note-boundary-analyzer` for deciding what each destination should fully own versus keep only as local context, example, implementation detail, or application consequence.
-- `$note-writer` for repository-note prose and explanatory structure after placement and boundaries are accepted.
-- `$note-content-mover` when an accepted integration plan requires structural movement of existing durable content between notes.
+- `$note-home-finder` for canonical placement; it delegates repository retrieval to `$note-topic-search`.
+- `$note-boundary-analyzer` for canonical coverage versus local context, examples, implementation detail, application consequences, and duplication.
+- `$note-content-mover` for approved structural movement of existing durable content when the integration plan requires it.
+- `$note-writer` for repository-note prose and explanatory structure after semantic decisions are accepted.
 - `$markdown-link-normalizer` for mechanical local-link normalization and validation.
-- `$note-refactor` when a repository integration requires a complete cross-note refactor rather than a simple evidence-to-destination synthesis.
 
 The consolidator must not restate qmd search procedures, note-boundary heuristics, repository writing style, content-movement rules, or Markdown link mechanics when a lower-level skill already owns them.
 
@@ -19,12 +18,11 @@ The consolidator must not restate qmd search procedures, note-boundary heuristic
 
 Run `scripts/locate_companion_skills.py` before repository-integrated work for runtime-discovered capabilities. The current locator verifies `note-home-finder` and `markdown-link-normalizer`.
 
-Load the current repository-local semantic/mutation skills directly from `.codex/skills/` when required:
+Load current repository-local skill files directly from `.codex/skills/` when required:
 
 - `note-boundary-analyzer/SKILL.md`
-- `note-writer/SKILL.md`
 - `note-content-mover/SKILL.md`
-- `note-refactor/SKILL.md`
+- `note-writer/SKILL.md`
 
 Standalone consolidation does not require repository note skills.
 
@@ -36,11 +34,11 @@ The adapter returns only the placement decision. Search mechanics remain delegat
 
 ## Boundary handoff
 
-Before repository integration planning, inject `note-boundary-analyzer/SKILL.md` unchanged. The integration plan must assign each source unit one primary destination and explicitly distinguish canonical coverage, concise local context, bounded examples, implementation/application handoffs, and non-duplicated bodies.
+Before repository integration planning, inject `note-boundary-analyzer/SKILL.md` unchanged. The integration plan must assign each source unit one primary destination and distinguish canonical coverage, concise local context, bounded examples, implementation/application handoffs, and non-duplicated bodies.
 
 ## Mutation handoff
 
-If the accepted integration plan requires moving existing durable repository content across notes, use `note-content-mover` for the approved structural operation. If the change is a broader cross-note cleanup with placement, boundary, movement, prose, and link repair, delegate that portion to `note-refactor` rather than recreating the workflow inside the consolidator.
+If the accepted integration plan requires moving existing durable repository content across notes, inject `note-content-mover/SKILL.md` unchanged into the repository publication/finalization task for those approved structural operations. Do not let the mutation step reopen placement or boundary decisions.
 
 ## Writing handoff
 

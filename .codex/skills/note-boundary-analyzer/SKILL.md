@@ -5,7 +5,7 @@ description: Determine exactly how much proposed or overlapping material each no
 
 # Note Boundary Analyzer
 
-This skill owns **content-scope distribution**. It answers **how much belongs in each note** after `$note-home-finder` has answered **where the concept belongs**.
+This skill owns **content-scope distribution**. It answers **how much belongs in each note** after placement has already answered **where the concept belongs**.
 
 ## Capability ownership
 
@@ -16,19 +16,21 @@ Owns:
 - detecting same-level duplication and abstraction leakage;
 - producing an explicit boundary/disposition plan.
 
-Delegates:
+Requires:
 
-- canonical placement to `$note-home-finder`;
-- repository retrieval indirectly to `$note-topic-search` through `$note-home-finder`;
-- prose writing to `$note-writer`;
-- cross-note mutation to `$note-content-mover` or `$note-refactor`.
+- an accepted placement or destination decision, normally produced by `$note-home-finder`;
+- the proposed or overlapping material;
+- the relevant target-note context needed to judge local sufficiency.
 
 Must not:
 
-- search the repository directly when placement is unresolved;
-- choose destinations independently of `$note-home-finder`;
+- search the repository directly;
+- choose canonical destinations when placement is unresolved;
 - edit files or write final prose;
+- invoke `$note-writer`, `$note-content-mover`, `$note-authoring`, or `$note-refactor`;
 - normalize links.
+
+Its output is consumed by higher-level workflows and mutation primitives.
 
 ## Boundary model
 
@@ -44,7 +46,7 @@ For each meaningful content unit, classify it as one of:
 
 ## Analysis procedure
 
-1. State the target note's center of gravity and abstraction level.
+1. State the target note's center of gravity and abstraction level from the accepted placement.
 2. Break the proposed or overlapping material into conceptual units.
 3. Classify each unit using the boundary model.
 4. For every non-canonical unit, choose a disposition:
@@ -53,7 +55,7 @@ For each meaningful content unit, classify it as one of:
    - move;
    - merge with an existing canonical section;
    - remove duplicate body while preserving a natural inline link when useful;
-   - split into another destination.
+   - split into another accepted destination.
 5. Check that the remaining target-note material forms a coherent explanation without duplicate prerequisite theory.
 
 ## Boundary tests
