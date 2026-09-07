@@ -64,3 +64,17 @@ This changes the write path. A transaction does not normally need to synchronous
 After a crash, the engine examines the durable log and replays whatever committed changes are necessary to reconstruct data pages that had not yet reached their final persistent form. Depending on the database design, the recovery process may also need to ignore, roll back, or otherwise account for changes belonging to transactions that did not commit.
 
 WAL therefore serves two related purposes: it provides a compact durability path for transactions and gives the database a history from which it can recover after interrupted writeback. It does not by itself imply one particular file-I/O strategy; a database can combine WAL with buffered I/O, Direct I/O, memory mapping, or other storage techniques according to its architecture.
+
+### WAL and Filesystem Journaling
+
+Database WAL and [filesystem journaling](06%20Storage%20Management.md#Journaling%20and%20Crash%20Consistency) use a similar idea—persist recovery information before allowing dependent state to become unrecoverable—but they protect consistency at different abstraction layers.
+
+A filesystem journal protects **filesystem invariants**. It understands structures such as inodes, directory entries, allocation metadata, and filesystem blocks. Its goal is to ensure that a crash does not leave the filesystem itself structurally inconsistent. Depending on the filesystem and journaling mode, ordinary file contents may not be included in the journal at all.
+
+A database WAL protects **database invariants**. The database understands transactions, database pages, tables, indexes, and relationships between changes that the filesystem sees only as writes to ordinary files. For example, if one database transaction modifies several pages, the filesystem cannot know that those page changes belong to one atomic database operation.
+
+Filesystem journaling therefore cannot replace WAL. It may guarantee that all database files remain valid filesystem objects after a crash while their contents still represent only part of a database transaction. The database needs its own recovery information to determine which changes were committed and reconstruct a consistent database state.
+
+WAL cannot generally replace filesystem journaling either. The database relies on the filesystem to maintain its own metadata and storage mappings correctly. Database recovery records cannot repair arbitrary corruption of filesystem structures such as allocation metadata or directory entries.
+
+Using both can cause some **write amplification**, particularly when the filesystem also journals file data, but the two logs are not logically redundant. They establish crash consistency for different layers of the storage stack.

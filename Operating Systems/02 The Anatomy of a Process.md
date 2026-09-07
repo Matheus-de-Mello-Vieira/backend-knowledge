@@ -64,11 +64,16 @@ int b = open("data.txt", O_RDONLY);
 Because the descriptor is only a handle, the same integer interface can represent several kinds of resources:
 
 - **Regular Files:** The open file description refers to a filesystem object, whose persistent identity and storage mapping are represented through structures such as an inode.
-- **Standard Streams (`0`, `1`, `2`):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
+- **Standard Streams (**`**0**`**,** `**1**`**,** `**2**`**):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
 - **Network Sockets:** A descriptor can refer to kernel networking state representing a socket. `read()` and `write()` then receive or send bytes through the networking stack rather than through a filesystem file.
 - **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
-- **Device Files (`/dev`):** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
-- **Event Facilities:** Interfaces such as Linux `epoll` can themselves return descriptors used to monitor other descriptors.
+- [**Device Files (`/dev`)**](06%20Storage%20Management.md#%60/dev%60%20%E2%80%94%20Device%20Nodes)**:** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
+- **Event Facilities:** Interfaces such as Linux `epoll` can themselves return descriptors used to monitor other descriptors. 
+
+> [!note] Inspecting File Descriptors Through `/proc`  
+> On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
+> 
+> This does not mean that the descriptors themselves are files stored under `/proc`. The descriptor table remains kernel-managed process state; `procfs` merely exposes a filesystem-based view through which that state can be inspected.
 
 ### The Universal Interface
 

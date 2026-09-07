@@ -417,7 +417,7 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > $$
 > \boxed{\Theta\left(P \left\lceil \frac{V-\log_2 P}{\log_2(P/E)} \right\rceil + ME\right)}
 > $$
-
+<!-- -->
 > [!note]- Demonstration: One 4 KiB Mapping  
 > In a four-level hierarchy, mapping one isolated 4 KiB page can require one page-table page at each level:
 > $$
@@ -425,7 +425,7 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > $$
 > of page-table metadata.
 > This is large compared with one 4 KiB data page, but nearby mappings can reuse almost all of this initial structure.
-
+<!-- -->
 > [!note]- Demonstration: Mapping 2 MiB with 4 KiB Pages  
 > A 2 MiB region contains:
 > $$
@@ -442,7 +442,7 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > $$
 > 5\times4\text{ KiB} = 20\text{ KiB}  
 > $$
-
+<!-- -->
 > [!note]- Demonstration: Mapping 1 GiB with 4 KiB Pages  
 > A 1 GiB region contains:
 > $$
@@ -472,7 +472,7 @@ This is the same prefix-sharing behavior that makes a sparse radix tree efficien
 > $$
 > 0.196\%
 > $$
-
+<!-- -->
 > [!note]- Complexity: Highly Scattered Mappings  
 > Let:
 > $$
@@ -879,7 +879,6 @@ This differs from PCID. Global mappings are reusable because the mapping itself 
 >
 > Consequently, the classic model—where every process permanently shares a complete view of the kernel in its upper memory—remains vital for understanding fundamental operating system design, but it no longer accurately describes how modern, secure systems actually operate in the wild.
 
-
 #### TLB Invalidation
 
 A cached TLB entry can outlive the page-table entry from which it was originally created.
@@ -903,7 +902,7 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
     - **Backend Architecture:** Modern infrastructure relies entirely on these OS tricks. Databases like PostgreSQL allocate massive shared memory buffers so all isolated worker processes can read the exact same database cache. Proxies like NGINX use `fork()` to spawn worker processes, relying entirely on Copy-on-Write to instantly boot new workers without duplicating the massive master configuration data in physical RAM.
 
 > [!tip] Inspecting the Map in Linux
-> You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at `/proc/[pid]/maps`. It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
+> You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at [`/proc/[pid]/maps`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information). It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
 > [!example] Python’s `None` and the Copy-on-Write Penalty
 > An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [[../Technologies/Python/Python Internals#The Fix: Immortal Objects|immortal objects]].
 > [!example] Architecture Story: Redis & The Persistence
@@ -958,7 +957,7 @@ To understand why this matters, think of the CPU and RAM as a frontend and backe
 
 - **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access the immediately adjacent memory addresses next.
 - **The Benefit:** Because CPUs fetch data in cache lines, sequential accesses can reuse a line that was fetched for a previous access. These cache hits have lower latency than fetching the same data from RAM.
-- **Where it Applies:** Arrays (on the [[02 The Anatomy of a Process#The Heap|Heap]] and [[02 The Anatomy of a Process#The Data Section|Data Section]]) and sequential local variables (packed tightly on the [[02 The Anatomy of a Process#The Stack|Stack]]) can be processed with fewer cache misses than scattered data.
+- **Where it Applies:** Arrays (on the [Heap](02%20The%20Anatomy%20of%20a%20Process.md#The%20Heap) and [Data Section](02%20The%20Anatomy%20of%20a%20Process.md#The%20Data%20Section)) and sequential local variables (packed tightly on the [Stack](02%20The%20Anatomy%20of%20a%20Process.md#The%20Stack)) can be processed with fewer cache misses than scattered data.
 
 > [!example] Sequential Reads
 >
@@ -1065,12 +1064,12 @@ While saving memory footprint is good, prioritizing CPU cache efficiency is ofte
 
 > **Optimization 1: Spatial Locality (Ignoring the Size Rule)**
 > If variables are frequently accessed together in the same loop (e.g., `x_velocity` and `y_velocity`), they should be placed next to each other in the struct—even if it means intentionally wasting a few bytes of padding. This guarantees one cache fetch brings all necessary data to the CPU, preventing expensive secondary memory reads.
-> **Optimization 2: Preventing [[04 Inside The CPU#The Developer Trap: False Sharing|False Sharing]] (Intentional Wasting)**
+> **Optimization 2: Preventing [False Sharing](04%20Inside%20The%20CPU.md#The%20Developer%20Trap:%20False%20Sharing) (Intentional Wasting)**
 > In multithreaded environments, if Thread A modifies `Var1` and Thread B modifies `Var2`, placing them on the _same_ 64-byte cache line will cause the CPU cores to constantly invalidate each other's caches, severely degrading performance. Engineers will intentionally insert large blocks of padding (e.g., `char padding[64];`) between these variables to force them onto separate cache lines. Se more at
 
 ### Direct Memory Access (DMA)
 
-As described in the physical [[#RAM|RAM]], memory access is highly complex. Normally, if the system needs to copy a large block of data from the hard drive into RAM (or send a file out to the Network Interface Card), the CPU has to act as the middleman. It reads the data from the disk into its own internal registers, and then writes it back out to the RAM.
+As described in the physical [RAM](03%20Memory%20Management.md#RAM), memory access is highly complex. Normally, if the system needs to copy a large block of data from the hard drive into RAM (or send a file out to the Network Interface Card), the CPU has to act as the middleman. It reads the data from the disk into its own internal registers, and then writes it back out to the RAM.
 
 For small transfers, CPU-mediated copying may be appropriate. For large transfers, using the CPU as an intermediary consumes cycles and memory bandwidth that could otherwise be used for computation.
 
@@ -1090,7 +1089,7 @@ To solve this, hardware engineers created the **DMA Controller**.
 >
 > With a conventional `read()` followed by `write()`, the payload can pass through four major data movements:
 >
-> 1. **Storage DMA:** the storage device transfers file data into the operating system's [[06 Storage Management#Caching|page cache]].
+> 1. **Storage DMA:** the storage device transfers file data into the operating system's [page cache](06%20Storage%20Management.md#Caching).
 > 2. **CPU copy to user space:** `read()` copies the requested bytes from the page cache into the application's buffer.
 > 3. **CPU copy back to kernel space:** `write()` copies those bytes from the application buffer into the networking path.
 > 4. **Network DMA:** the network interface reads the outgoing data from memory and transmits it.
@@ -1134,9 +1133,9 @@ To prevent someone from completely compromising a locked laptop just by plugging
 
 ## Memory Pressure Stall Information (PSI)
 
-Memory PSI (`/proc/pressure/memory`) measures the time threads spend stalled waiting for the OS to organize RAM—such as waiting for page faults, page reclaims, or swapping to disk. It goes beyond simply asking "How much RAM is free?" by measuring actual performance degradation.
+Memory PSI ([`/proc/pressure/memory`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information)) measures the time threads spend stalled waiting for the OS to organize RAM—such as waiting for page faults, page reclaims, or swapping to disk. It goes beyond simply asking "How much RAM is free?" by measuring actual performance degradation.
 
-Unlike the [[04 Inside The CPU#CPU Pressure Stall Information|CPU]], Memory PSI tracks two distinct metrics:
+Unlike the [CPU](04%20Inside%20The%20CPU.md#CPU%20Pressure%20Stall%20Information), Memory PSI tracks two distinct metrics:
 
 - **`some` (Partial Starvation):** At least one thread is stalled waiting for memory operations, but the CPU is still executing other threads. The system is "thrashing" slightly (swapping or clearing page cache), which hurts latency, but the app is surviving.
 - **`full` (Total Lockup):** **ALL** runnable threads are stalled waiting for memory. The CPU has absolutely no work to do and is sitting idle.

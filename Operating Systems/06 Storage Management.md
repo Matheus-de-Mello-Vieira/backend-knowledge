@@ -21,8 +21,8 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 #### Physical Geometry and CHS
 
 - **Platters and Heads**: An HDD contains one or more **platters** mounted on a spindle and rotating at a fixed speed.
-	- Each recording surface is accessed by a **read/write head** positioned extremely close to the platter.
-	- The heads are attached to the same actuator assembly, so moving the actuator changes the radial position of all heads together.
+    - Each recording surface is accessed by a **read/write head** positioned extremely close to the platter.
+    - The heads are attached to the same actuator assembly, so moving the actuator changes the radial position of all heads together.
 - **Tracks and Sectors**: Each platter surface is organized into concentric circles called **tracks**, and each track is divided into **sectors** containing chunks of data.
 - **Cylinders**: Tracks at the same radial position across the different platter surfaces form a **cylinder**.
 - **CHS Addressing**: Early systems exposed this geometry directly through **CHS (Cylinder, Head, Sector)** addressing. A location was identified using three values:
@@ -30,21 +30,21 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
     - **Head:** selects a particular recording surface.
     - **Sector:** selects a region of the track as the platter rotates.
 - **Geometric Evolution**: CHS reflected the physical organization of early disks relatively closely. However, as HDDs became more sophisticated, their internal geometry stopped mapping cleanly to a simple fixed number of tracks and sectors.
-	- **Variable Circumference**: For example, modern drives can place more sectors on outer tracks because those tracks have a greater circumference.
-	- **Shift to LBA**: This made exposing physical disk geometry to software increasingly inconvenient and eventually led to the adoption of Logical Block Addressing.
+    - **Variable Circumference**: For example, modern drives can place more sectors on outer tracks because those tracks have a greater circumference.
+    - **Shift to LBA**: This made exposing physical disk geometry to software increasingly inconvenient and eventually led to the adoption of Logical Block Addressing.
 
 #### Data Access
 
-* **Block Devices**: HDDs are **block devices**, software addresses storage in blocks rather than requesting arbitrary individual bytes directly from the device.
-* **Sector Sizes**: At the hardware level, HDDs traditionally used **512-byte sectors**, while modern drives commonly use **4 KiB physical sectors**, known as **Advanced Format**.
-	* **Logical Sectors**: Some drives expose those 4 KiB sectors directly, while others maintain compatibility by exposing 512-byte **logical sectors** even though the underlying physical sector is 4 KiB.
-* **Mechanical Delays**: The mechanical nature of HDDs has an even larger effect on performance. Accessing a block generally involves two important delays:
-	* **Seek time:** moving the actuator so that the head reaches the correct track.
-	* **Rotational latency:** waiting for the desired sector to rotate underneath the head.
-* **Access Patterns**: Once the head is correctly positioned, contiguous sectors can be transferred rapidly as they pass beneath it. Consequently, HDD performance depends strongly on the access pattern.
-	* **Sequential Access**: With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement.
-	* **Random Access**: With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
-* **Workload Distribution**: This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
+- **Block Devices**: HDDs are **block devices**, software addresses storage in blocks rather than requesting arbitrary individual bytes directly from the device.
+- **Sector Sizes**: At the hardware level, HDDs traditionally used **512-byte sectors**, while modern drives commonly use **4 KiB physical sectors**, known as **Advanced Format**.
+    - **Logical Sectors**: Some drives expose those 4 KiB sectors directly, while others maintain compatibility by exposing 512-byte **logical sectors** even though the underlying physical sector is 4 KiB.
+- **Mechanical Delays**: The mechanical nature of HDDs has an even larger effect on performance. Accessing a block generally involves two important delays:
+    - **Seek time:** moving the actuator so that the head reaches the correct track.
+    - **Rotational latency:** waiting for the desired sector to rotate underneath the head.
+- **Access Patterns**: Once the head is correctly positioned, contiguous sectors can be transferred rapidly as they pass beneath it. Consequently, HDD performance depends strongly on the access pattern.
+    - **Sequential Access**: With **sequential access**, nearby blocks can be read or written with relatively little additional mechanical movement.
+    - **Random Access**: With **random access**, the drive may repeatedly seek between distant tracks and wait for different sectors to rotate into position. Random I/O is therefore dramatically slower than sequential I/O on HDDs.
+- **Workload Distribution**: This distinction means that two workloads transferring the same number of bytes can have very different performance depending on how those bytes are distributed across the disk.
 
 #### Logical Block Addressing (LBA)
 
@@ -55,7 +55,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 - **Bad-Sector Remapping**: The same abstraction also makes **bad-sector remapping** possible. If a physical sector becomes unreliable, the drive can redirect its LBA to a spare physical sector while continuing to expose the same logical address to the operating system. From the software's perspective, the location of the block has not changed.
 
 > [!note] LBA Blocks and Virtual Memory Pages
-> - **Independent Abstractions**: **LBA logical blocks** and [virtual memory](03%20Memory%20Management.md#Virtual%20Memory) are independent abstractions, but having compatible sizes is convenient for operations such as [swapping](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk).
+> - **Independent Abstractions**: **LBA logical blocks** and [virtual memory](03%20Memory%20Management.md#Virtual%20Memory) are independent abstractions, but having compatible sizes is convenient for operations such as [swapping](03%20Memory%20Management.md#Swapping%20%26%20Extending%20RAM%20to%20Disk).
 > - **Swapping Units**: The kernel swaps memory in page-sized units. If the system uses 4 KiB virtual-memory pages and the storage device exposes 4 KiB logical blocks, one swapped page can conceptually fit into one LBA block. If the device instead exposes 512-byte logical blocks, the same 4 KiB page simply spans eight consecutive LBAs.
 > - **Page-Sized Slots**: The operating system therefore does not require `1 VM page = 1 LBA block`. It normally manages swapping in **page-sized swap slots**, while the block layer translates those slots into however many logical blocks the storage device requires.
 > - **Aligned Granularities**: Matching or well-aligned granularities are still useful because they can simplify I/O and avoid inefficient partial operations. This is one reason sizes such as **4 KiB** appear repeatedly across virtual memory, filesystems, and storage devices, even though each layer chooses its granularity independently.
@@ -70,7 +70,7 @@ Unlike RAM or SSDs, an HDD is partly mechanical. Reading data may require moving
 
 - **Contiguous Allocation**: Filesystems generally try to allocate the logical blocks belonging to a file close together. Over time, however, files are created, extended, modified, and deleted, leaving available regions of different sizes throughout the filesystem.
 - **File Fragmentation**: When there is not enough contiguous free space for a file, the filesystem may split it into multiple non-contiguous [**extents**](#Extents%20and%20Contiguous%20Ranges). This is known as **file fragmentation**.
-	- **Partially Random Operations**: A logically sequential operation can therefore become a sequence of smaller, partially random operations: `Extent A → seek → Extent B → seek → Extent C`.
+    - **Partially Random Operations**: A logically sequential operation can therefore become a sequence of smaller, partially random operations: `Extent A → seek → Extent B → seek → Extent C`.
 - **Mechanical Seeks**: Fragmentation is particularly expensive on an HDD because sequential file access can turn into multiple mechanical seeks. Suppose a large file consists of three extents located in distant regions of the disk. Reading each extent internally may be sequential, but when the read reaches the end of one extent, the actuator may need to move to another track and wait for the correct sector to rotate under the head before continuing.
 - **Performance Penalty**: The more fragmented the file is, the more often the HDD may pay **seek time** and **rotational latency** instead of continuously transferring data.
 - **Defragmentation**: **Defragmentation** attempts to reverse this process. The filesystem or defragmentation utility moves file extents so that the logical blocks belonging to the same files become more contiguous. It may also consolidate free space, making it easier for future files to receive contiguous allocations.
@@ -109,25 +109,25 @@ The SSD controller therefore sits between the host and the raw NAND chips, maint
 
 #### Flash Translation Layer
 
-* The **Flash Translation Layer (FTL)** acts as a bridge that abstracts the physical NAND flash, allowing the operating system to interact with a standard, linear Logical Block Addressing (LBA) interface rather than addressing the memory directly.
-* **Simplified Model**: A useful simplified model is to imagine that each logical block maps to one physical NAND page: `Logical block → Physical NAND page`.
-	* **Read Lookup**: For example, `LBA 100 → Page P40`: Under this model, when the host reads `LBA 100`, the FTL looks up its mapping and retrieves the data from physical page `P40`.
-* **Dynamic Mapping**: The important property of the mapping is that it is **dynamic rather than permanent**.
-	* **Mapping Changes**: Because NAND pages cannot normally be overwritten in place, updating a logical block may cause the SSD to write the new value into another free physical page and then change the mapping.
-	* **Transparent Updates**: For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
-	* **Enabling Mechanisms**: It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host.
-	* **Physical Adjacency**: As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
-	* **Mapping Metadata**: The FTL must maintain metadata describing these logical-to-physical mappings.
-	* **Persistence**: Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage.
-* **Metadata Caching**: SSDs commonly cache frequently accessed mapping information in **DRAM**, while smaller amounts of SRAM are used internally by the controller.
-	* **DRAM-less SSDs**: DRAM-less SSDs rely more heavily on NAND metadata or, in some designs, host memory.
+- The **Flash Translation Layer (FTL)** acts as a bridge that abstracts the physical NAND flash, allowing the operating system to interact with a standard, linear Logical Block Addressing (LBA) interface rather than addressing the memory directly.
+- **Simplified Model**: A useful simplified model is to imagine that each logical block maps to one physical NAND page: `Logical block → Physical NAND page`.
+    - **Read Lookup**: For example, `LBA 100 → Page P40`: Under this model, when the host reads `LBA 100`, the FTL looks up its mapping and retrieves the data from physical page `P40`.
+- **Dynamic Mapping**: The important property of the mapping is that it is **dynamic rather than permanent**.
+    - **Mapping Changes**: Because NAND pages cannot normally be overwritten in place, updating a logical block may cause the SSD to write the new value into another free physical page and then change the mapping.
+    - **Transparent Updates**: For example, `LBA 100 → P40` may later become `LBA 100 → P93`. The logical address visible to the operating system has not changed, but its physical location inside the NAND has.
+    - **Enabling Mechanisms**: It allows the controller to perform [out-of-place writes](#Out-of-Place%20Writes), relocate data during [garbage collection](#Garbage%20Collection), and distribute writes through [wear leveling](#Wear%20Leveling) without changing the LBA addresses exposed to the host.
+    - **Physical Adjacency**: As a consequence, consecutive logical blocks do not necessarily remain physically adjacent, and a logical block does not have a permanent physical NAND location.
+    - **Mapping Metadata**: The FTL must maintain metadata describing these logical-to-physical mappings.
+    - **Persistence**: Because the mappings are necessary to reconstruct the drive's state after power loss, authoritative metadata must ultimately be persisted in non-volatile storage.
+- **Metadata Caching**: SSDs commonly cache frequently accessed mapping information in **DRAM**, while smaller amounts of SRAM are used internally by the controller.
+    - **DRAM-less SSDs**: DRAM-less SSDs rely more heavily on NAND metadata or, in some designs, host memory.
 
 > [!note] The One-LBA-to-One-Page Model Is a Simplification
-> * **Convenient Model**: Treating the FTL as `1 logical block → 1 physical NAND page` is a convenient model for understanding SSD behavior, but it is not a requirement of the hardware.
-> * **Independent Sizes**: The **LBA logical block size** exposed to the host and the internal **NAND page size** are independent.
-> * **Shared Pages**: For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
-> * **Complex Schemes**: Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
-> * **Essential Abstraction**: The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
+> - **Convenient Model**: Treating the FTL as `1 logical block → 1 physical NAND page` is a convenient model for understanding SSD behavior, but it is not a requirement of the hardware.
+> - **Independent Sizes**: The **LBA logical block size** exposed to the host and the internal **NAND page size** are independent.
+> - **Shared Pages**: For example, an SSD may expose 4 KiB logical blocks while using 16 KiB NAND pages internally. Several logical blocks may therefore share one physical page, and controllers may buffer, combine, or reorganize writes before programming NAND.
+> - **Complex Schemes**: Real FTLs may also use more complex mapping schemes to reduce the amount of metadata they must maintain.
+> - **Essential Abstraction**: The essential abstraction remains the same: the FTL translates the **host-visible logical address space** into **physical locations within NAND**. The one-to-one model is useful for reasoning about this translation without implying that the underlying granularities must actually match.
 
 #### States of a Page
 
@@ -220,9 +220,9 @@ Garbage collection and other internal relocation operations mean that the amount
 - **Forms of Wear Leveling**: Wear leveling generally has two forms:
     - **Dynamic wear leveling**: when writing or relocating hot data, the controller prefers physical blocks with lower erase counts. This spreads future writes across blocks that have experienced less wear.
     - **Static wear leveling**: the controller may also relocate cold data. A physical block containing cold pages might otherwise remain occupied for years while hotter blocks are repeatedly erased. Moving that cold data into a more heavily worn block frees the less-worn block so it can participate in future writes.
-	    - **Counterintuitive Movement**: Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all.
-	    - **Preventing Reservation**: The purpose is not to improve that data's access performance, but to prevent cold data from permanently reserving the least-worn physical blocks.
-	    - **Lifespan Trade-off**: Wear leveling trades additional internal data movement for a more uniform distribution of wear across the NAND, increasing the usable lifetime of the drive.
+        - **Counterintuitive Movement**: Static wear leveling is therefore somewhat counterintuitive: the SSD may deliberately move data that has not changed at all.
+        - **Preventing Reservation**: The purpose is not to improve that data's access performance, but to prevent cold data from permanently reserving the least-worn physical blocks.
+        - **Lifespan Trade-off**: Wear leveling trades additional internal data movement for a more uniform distribution of wear across the NAND, increasing the usable lifetime of the drive.
 
 #### Over-Provisioning
 
@@ -291,7 +291,7 @@ These operations consume NAND endurance while providing little of the locality b
     - **Access Translation**: For example, a disk may contain a partition whose storage region begins at LBA `2048` and ends at LBA `1,000,447`. Reads and writes to that partition are ultimately translated into accesses within that range of the underlying disk.
 - **Partition-Table Format**: The exact representation depends on the **partition-table format**. GPT, for example, records the first and last LBA belonging to each partition, while older MBR partition entries describe a starting LBA and a number of sectors.
 - **Logical Segmentation**: Partitioning therefore provides **logical segmentation**, not another physical storage technology. The blocks still belong to the same underlying HDD, SSD, or other block device; the partition table simply describes which ranges are assigned to which logical regions.
-- **Usage Options**: A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain [swap space](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk), participate in a volume-management system, or be accessed as a raw block device.
+- **Usage Options**: A partition can then be used in different ways. A common use is to create a filesystem on it, but a partition can instead contain [swap space](03%20Memory%20Management.md#Swapping%20%26%20Extending%20RAM%20to%20Disk), participate in a volume-management system, or be accessed as a raw block device.
 - **Independent Filesystems**: When a filesystem is created on a partition, that filesystem manages only the block-address range exposed by that partition. Different partitions can therefore contain completely different filesystems.
     - **Filesystem Diversity**: For example, one disk could contain an ext4 partition and an NTFS partition. Each filesystem independently creates its own metadata structures and chooses its own supported filesystem block size.
 - **Distinct Block Size**: The filesystem block size is distinct from both the partition size and the underlying LBA logical-sector size.
@@ -301,7 +301,7 @@ These operations consume NAND endurance while providing little of the locality b
     - **Poor Alignment Consequences**: Poor alignment can cause one higher-level write to span multiple lower-level storage units and introduce unnecessary work.
 
 > [!note] The Storage Hierarchy
-> 
+>
 > The important hierarchy is therefore:
 > - the **storage device** exposes an LBA address space;
 > - the **partition table** assigns ranges of that LBA space to partitions;
@@ -329,12 +329,12 @@ gantt
     dateFormat m
     axisFormat %M KiB
     tickInterval 8minute
-    
+
     section Logical sectors
     LBA 0–7   :l0, 0, 8m
     LBA 8–15  :l1, 8, 8m
     LBA 16–23 :l2, 16, 8m
-    
+
     section Physical sectors
     Physical sector 0 :p0, 0, 8m
     Physical sector 1 :p1, 8, 8m
@@ -405,6 +405,7 @@ gantt
 > - **Offset Reasoning**: The filesystem places blocks relative to the **beginning of the partition**, while the storage device places physical sectors relative to the **beginning of the disk**.
 > - **Offset Calculation**: Thus `partition starting offset` + `filesystem-relative block offset` = `absolute filesystem-block offset`
 > - **Inherited Displacement**: If the partition begins at an unsuitable offset, every filesystem structure inside it can inherit that displacement.
+>
 > ```mermaid
 > ---
 > displayMode: compact
@@ -414,7 +415,7 @@ gantt
 >     dateFormat m
 >     axisFormat %M KiB
 >     tickInterval 8minute
-> 
+>
 >     section Physical sectors
 >     Physical sector 0 :p0, 0, 8m
 >     Physical sector 1 :p1, 8, 8m
@@ -423,12 +424,12 @@ gantt
 >     section Misaligned partition
 >     Filesystem block 0 :m0, 9, 8m
 >     Filesystem block 1 :m1, 17, 8m
-> 
+>
 >     section Aligned partition
 >     Filesystem block 0 :a0, 8, 8m
 >     Filesystem block 1 :a1, 16, 8m
 > ```
-> 
+>
 > - **Internal Regularity**: The filesystem is internally regular in both cases. The difference is the starting offset of the partition itself.
 
 ##### Why Modern Tools Use 1 MiB Alignment
@@ -460,7 +461,7 @@ gantt
 ##### Other Storage Granularities
 
 - **Other Granularities**: Alignment can matter beyond physical sectors. A storage stack may also contain granularities such as:
-    - [RAID](#RAID%20(Redundant%20Array%20of%20Independent%20Disks)) stripe or chunk sizes;
+    - [RAID](#RAID%20%28Redundant%20Array%20of%20Independent%20Disks%29) stripe or chunk sizes;
     - SSD internal allocation units;
     - erase-block boundaries;
     - filesystem allocation units.
@@ -469,6 +470,7 @@ gantt
 > [!note] Filesystem Blocks Do Not Need to Match Physical Sectors
 > - **Size vs. Boundary Alignment**: Partition alignment does **not** require the filesystem block size to equal the physical-sector size.
 > - **Clean Interaction**: For example, an 8 KiB filesystem block can be perfectly well aligned on a device with 4 KiB physical sectors.
+>
 > ```mermaid
 > ---
 > displayMode: compact
@@ -478,17 +480,18 @@ gantt
 >     dateFormat m
 >     axisFormat %M KiB
 >     tickInterval 8minute
-> 
+>
 >     section Physical sectors
 >     Physical sector 0 :p0, 0, 8m
 >     Physical sector 1 :p1, 8, 8m
-> 
+>
 >     section Filesystem
 >     8 KiB filesystem block :f0, 0, 16m
 > ```
-> 
+>
 > - **Natural Spanning**: The 8 KiB block naturally spans exactly two 4 KiB physical sectors.
 > - **Shifted Block**: If the same block is shifted by one logical sector, however, it spans three physical sectors:
+>
 > ```mermaid
 > ---
 > displayMode: compact
@@ -498,16 +501,16 @@ gantt
 >     dateFormat m
 >     axisFormat %M KiB
 >     tickInterval 8minute
-> 
+>
 >     section Physical sectors
 >     Physical sector 0 :p0, 0, 8m
 >     Physical sector 1 :p1, 8, 8m
 >     Physical sector 2 :p2, 16, 8m
-> 
+>
 >     section Filesystem
 >     8 KiB filesystem block :f0, 1, 16m
 > ```
-> 
+>
 > - **Granularity Independence**: The important requirement is therefore not that different layers use the same granularity, but that their boundaries interact cleanly enough that a higher-level operation does not unnecessarily span additional lower-level units.
 
 ## File Systems
@@ -528,6 +531,268 @@ A file therefore does not need to occupy one contiguous region of the device. Th
 - **File Extension:** A suffix such as `.txt`, `.jpg`, or `.exe` conventionally used to indicate a file's format or intended interpretation. The extension is normally just part of the filename; the filesystem itself does not necessarily use it to determine the actual type of the file.
 - **File Permissions:** Metadata controlling which users or processes may perform operations such as reading, writing, or executing a file. The exact permission model depends on the filesystem and operating system. Unix-like systems, for example, commonly distinguish permissions for an owner, a group, and other users. [security permissions](../Security/03%20Cryptography%20and%20Data%20Protection/File%20and%20Filesystem%20Security.md#File%20and%20Filesystem%20Security) build on this metadata to enforce access control.
 
+### Mounting and the Filesystem Namespace
+
+- **Filesystem Existence vs. Visibility**: Creating a filesystem on a storage device does not by itself determine where its files appear in the directory hierarchy.
+    - **Mounting**: A **mount** attaches a filesystem or another file hierarchy to a location in the operating system's filesystem tree.
+    - **Mount Point**: The directory where that hierarchy is attached is called the **mount point**.
+- **Single Directory Tree**: Unix-like systems organize mounted filesystems into a single hierarchy rooted at `/`.
+    - A filesystem stored on one partition might provide `/`.
+    - Another filesystem may be mounted at `/home`.
+    - Another storage device may be mounted at `/data`.
+    - Applications still navigate them through one continuous pathname hierarchy.
+- **Path Resolution Across Mounts**: When pathname resolution reaches a mount point, the kernel continues the lookup from the root of the filesystem mounted there.
+    - A path such as `/data/database.db` may therefore begin in the root filesystem and cross into another filesystem when resolution reaches `/data`.
+    - This transition is normally transparent to the application.
+- **Underlying Directory**: The mount point itself is an ordinary directory in the filesystem underneath the mount.
+    - While another filesystem is mounted there, the mounted hierarchy is what pathname resolution exposes.
+    - Existing contents of the underlying directory are therefore hidden rather than deleted.
+    - After the filesystem is unmounted, those original contents become visible again.
+- **Unmounting**: **Unmounting** removes the attachment between the mounted hierarchy and its mount point.
+    - It does not normally destroy the filesystem or its data.
+    - It removes that filesystem from that location in the filesystem tree.
+
+#### Mounts Are Not Necessarily Physical Disks
+
+- **Filesystem-Level Operation**: Mounting should not be understood simply as attaching a physical disk.
+- **Possible Mounted Sources**: A mounted hierarchy may come from:
+    - a filesystem stored on an HDD or SSD partition;
+    - a network filesystem such as NFS;
+    - an in-memory filesystem such as `tmpfs`;
+    - a kernel-provided virtual filesystem such as `procfs` or `sysfs`;
+    - another already-visible directory through a bind mount.
+- **Common Abstraction**: What matters is that the mounted source contributes a hierarchy of filesystem objects that becomes reachable through a particular path.
+
+#### Bind Mounts
+
+- **Existing Hierarchy**: A **bind mount** exposes an already-accessible directory hierarchy at an additional location.
+- **No Data Copy**: The files are not copied into the new path.
+    - Both paths provide access to the same underlying filesystem objects.
+- **Example**:
+
+```python
+mount --bind /srv/database /mnt/database
+```
+
+- **Result**: Files reachable through `/srv/database` also become reachable through `/mnt/database`.
+- **Different Path, Same Objects**: `/srv/database/users.db` and `/mnt/database/users.db` can therefore refer to the same underlying file.
+- **Distinction from Symbolic Links**:
+    - A symbolic link is a filesystem object containing another pathname.
+    - A bind mount instead adds another attachment of an existing filesystem hierarchy into the directory tree.
+
+#### Mount Namespaces
+
+- **Per-Process Mount View**: On Linux, **mount namespaces** allow different groups of processes to observe different mount configurations.
+    - A mount namespace determines which mounts and mount points are visible to processes belonging to that namespace.
+- **Mount vs. Mount Namespace**:
+    - A **mount** attaches a filesystem hierarchy at a particular location.
+    - A **mount namespace** determines which collection of those mount relationships a process observes.
+- **Different Filesystem Trees**: Two processes running on the same kernel can therefore see different filesystem hierarchies.
+    - A filesystem may appear mounted at a path in one namespace while not appearing there in another.
+    - The same underlying filesystem may also appear at different paths in different namespaces.
+- **Isolation Rather Than Duplication**: Creating a different mount namespace does not inherently copy the underlying files or storage.
+    - The namespace isolates the organization and visibility of mounts.
+    - Multiple namespaces may still reference the same underlying filesystem objects.
+- **Namespace Creation**: A newly created mount namespace initially derives its mount configuration from another namespace.
+    - Later mount and unmount operations can cause the namespaces to diverge.
+- **Mount Propagation**: Linux also defines **mount propagation** rules controlling whether certain mount changes are propagated between related mount namespaces.
+    - Mounts can, for example, be configured as shared, private, or with other propagation behaviors depending on how isolation should work.
+
+> [!note] Mounts and Storage Layers
+> Mounting occurs above the filesystem's internal mapping structures. The storage device exposes logical blocks, the filesystem organizes those blocks into files and directories, and mounting determines where that filesystem's directory hierarchy appears in the operating system's filesystem tree.
+>
+> A mount namespace adds another layer by determining which mount relationships a particular process observes. It changes the process-visible filesystem hierarchy without inherently changing where the underlying data is physically stored.
+<!-- -->
+> [!example] Docker and Mount Namespaces
+> A concrete use of [mount namespaces](06%20Storage%20Management.md#Mount%20Namespaces) can be seen when Docker exposes host storage inside a container.
+>
+> Suppose the host stores database files under `/srv/database`, while the application inside the container expects them at `/app/data`. Docker can create a bind mount inside the container's mount namespace so that the same underlying directory appears as `/app/data` to processes inside the container.
+>
+> The files are not copied into the container. The host may access a file as `/srv/database/users.db`, while the container accesses the same underlying file as `/app/data/users.db`.
+>
+> The important mechanism is therefore not specific to Docker: Linux provides the mount and mount-namespace primitives, while Docker configures them to construct the filesystem view required by the container.
+>
+### Linux Filesystem Hierarchy
+
+- **Root Directory**: Linux organizes the filesystem namespace as a single directory tree beginning at `/`.
+- **Multiple Filesystems**: Different parts of this hierarchy may come from different mounted filesystems even though they appear under the same tree.
+    - `/` may belong to the root filesystem.
+    - `/boot` may be a separate filesystem.
+    - [`/proc`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be backed by the kernel's `procfs`.
+    - `/sys` may be backed by `sysfs`.
+    - Another storage device may be mounted at `/data`.
+- **Filesystem Hierarchy Standard (FHS)**: Linux distributions generally follow conventions derived from the **Filesystem Hierarchy Standard (FHS)** for the purpose of major directories.
+    - These are conventions rather than a requirement that every Linux distribution use an identical layout.
+
+#### `/etc` — System Configuration
+
+- **Configuration**: `/etc` primarily stores system-wide and host-specific configuration.
+- **Examples**:
+    - `/etc/hosts`: static hostname mappings.
+    - `/etc/fstab`: filesystems and mounts that the system may configure.
+    - `/etc/ssh`: SSH configuration.
+    - `/etc/nginx`: Nginx configuration.
+- **Code vs. Configuration**: Executable program code normally lives elsewhere, while `/etc` describes how programs and the operating system should be configured on that machine.
+
+#### `/usr` — Installed Software and Shared Resources
+
+- **Installed Software**: `/usr` contains a large portion of the software and resources installed on the system.
+- **Common Directories**:
+    - `/usr/bin`: executable programs.
+    - `/usr/sbin`: system-administration executables.
+    - `/usr/lib`: libraries and program-support files.
+    - `/usr/share`: architecture-independent resources such as documentation and localization data.
+    - `/usr/include`: development headers.
+- `**/usr/local**`: Conventionally reserved for software installed locally by the administrator rather than managed as part of the operating-system distribution.
+    - `/usr/local/bin` may therefore contain locally installed executables.
+
+#### `/bin`, `/sbin`, and the `/usr` Merge
+
+- **Historical Separation**: Traditional Unix/Linux layouts kept essential programs needed during early boot under directories such as `/bin` and `/sbin`, while additional programs lived under `/usr`.
+- **Modern Systems**: Many modern Linux distributions use a **merged** `**/usr**` layout.
+    - `/bin` may be a symbolic link to `/usr/bin`.
+    - `/sbin` may similarly refer into `/usr`.
+- **Compatibility**: Historical paths remain available even though the underlying files may now be stored within `/usr`.
+
+#### `/var` — Persistent Variable State
+
+- **Mutable Persistent Data**: `/var` contains data that changes while the system operates but normally needs to survive reboot.
+- **Common Directories**:
+    - `/var/log`: system and application logs.
+    - `/var/lib`: persistent state maintained by services and applications.
+    - `/var/cache`: regeneratable persistent caches.
+    - `/var/spool`: queued work such as print or mail jobs.
+- **Configuration vs. State**:
+    - `/etc` generally describes configuration.
+    - `/var` generally stores changing persistent state.
+- **Backend Relevance**: Services such as databases commonly maintain persistent application data somewhere beneath `/var/lib`.
+
+#### `/run` — Current-Boot Runtime State
+
+- **Transient Runtime State**: `/run` contains information associated with the currently running system.
+- **Typical Contents**: PID files, sockets, locks, and other service runtime state may appear beneath `/run`.
+- **Boot Lifetime**: Its contents generally do not need to survive reboot.
+- **Memory Backing**: `/run` is commonly backed by a temporary memory-based filesystem such as `tmpfs`.
+- **Useful Distinction**:
+    - `/etc`: configuration.
+    - `/var`: persistent mutable state.
+    - `/run`: transient runtime state.
+
+#### `/tmp` — Temporary Files
+
+- **Temporary Data**: `/tmp` provides a conventional location for temporary application files.
+- **Persistence**: Applications should generally not assume that data placed in `/tmp` survives indefinitely or across reboot.
+- `**/var/tmp**`: Traditionally used for temporary files that should have a longer lifetime than files placed in `/tmp`.
+
+#### `/home` and `/root` — User Home Directories
+
+- **Normal Users**: User home directories commonly appear below `/home`, such as `/home/alice`.
+- **Root User**: The root user's home directory is conventionally `/root`.
+- **Different Meanings**:
+    - `/` is the root of the filesystem namespace.
+    - `/root` is an ordinary directory conventionally used as the home directory of the `root` user.
+
+#### `/dev` — Device Nodes
+
+- **Device Interface**: `/dev` exposes **device nodes**, which give filesystem names to devices and kernel-provided device abstractions.
+- **Examples**:
+    - `/dev/nvme0n1`: may represent an NVMe block device.
+    - `/dev/tty`: represents a terminal interface.
+    - `/dev/null`: discards data written to it.
+    - `/dev/zero`: provides zero-filled data when read.
+    - `/dev/random` and `/dev/urandom`: expose kernel random-number facilities.
+- **Not Ordinary Files**: A device node generally does not contain ordinary persisted file data.
+    - Instead, it acts as a filesystem entry through which the kernel can route operations to a device driver or another kernel implementation.
+- **Opening a Device**: A process can resolve a pathname such as `/dev/nvme0n1` and open the corresponding device node.
+    - A successful open produces a **[File Descriptor (FD)](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29)**.
+    - Subsequent operations such as `read()`, `write()`, or device-specific control operations act through that descriptor.
+- **Storage Connection**: Storage hardware can therefore participate in the filesystem namespace before any filesystem stored on that hardware is mounted.
+    - `/dev/nvme0n1p1` may represent a block-device partition.
+    - That partition may contain a filesystem.
+    - The filesystem can then be mounted somewhere such as `/data`.
+    - `/dev/nvme0n1p1` and `/data` consequently represent different layers: the former exposes the block device, while the latter exposes the mounted filesystem hierarchy stored on it.
+
+#### `/proc` — Process and Kernel Information
+
+- **Virtual Filesystem**: `/proc` is normally the mount point for **procfs**, a virtual filesystem provided by the kernel.
+- **Generated State**: Entries under `/proc` generally do not correspond to ordinary files persisted on storage.
+    - Reading them causes the kernel to expose current process or system state through filesystem operations.
+    - Some entries also allow controlled changes to kernel behavior when written to.
+- **`/proc/<pid>/` — Per-Process Information**: Each running process can be represented by a directory named after its **PID**. For example, `/proc/1234/*` exposes information about process `1234`.
+    - **`/proc/<pid>/status`**: Human-readable process status, including information such as process state, identifiers, memory usage, capabilities, and thread count.
+    - [**`/proc/<pid>/maps`**](03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency): Describes the process's virtual-memory mappings, including mapped files, shared libraries, heap regions, and other address ranges.
+    - **`/proc/<pid>/cmdline`**: Exposes the command-line arguments with which the process was started.
+    - **`/proc/<pid>/fd/` — Open File Descriptors**: Exposes entries corresponding to the process's **[File Descriptors (FDs)](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29)**.
+        - `/proc/1234/fd/0`, for example, represents file descriptor `0` of process `1234`.
+        - Entries normally appear as symbolic links describing the resources referenced by the descriptors.
+        - A descriptor for a regular file may point to a filesystem pathname, while sockets, pipes, and other kernel resources may use kernel-specific representations.
+- **`/proc/pressure/` — Pressure Stall Information (PSI)**: This directory exposes Linux **Pressure Stall Information**, which measures how much execution is delayed because processes are waiting for important resources.
+    - [**`/proc/pressure/cpu`**](04%20Inside%20The%20CPU.md#CPU%20Pressure%20Stall%20Information): Reports CPU pressure, indicating time during which runnable tasks could not obtain CPU execution time.
+    - [**`/proc/pressure/memory`**](03%20Memory%20Management.md#Memory%20Pressure%20Stall%20Information%20%28PSI%29): Reports memory pressure, indicating time lost because tasks are stalled by memory shortages and related reclaim activity.
+    - [**`/proc/pressure/io`**](#I/O%20Pressure%20Stall%20Information%20%28PSI%29): Reports I/O pressure, indicating time during which tasks are stalled waiting for I/O operations.
+- **System-Wide Files — Kernel and Machine State**: Some files directly below `/proc` expose information about the system as a whole rather than about one particular process.
+    - **`/proc/meminfo`**: Reports system-wide memory statistics such as total memory, available memory, cached memory, and swap usage.
+    - **`/proc/cpuinfo`**: Reports information about CPUs visible to the operating system.
+    - **`/proc/uptime`**: Reports how long the system has been running.
+    - **`/proc/loadavg`**: Reports system load averages and information about runnable tasks.
+
+> [!note] `/proc` Is a Filesystem Interface to Kernel State
+> Paths such as `/proc/1234/status`, `/proc/pressure/io`, and `/proc/meminfo` look like ordinary files, but their contents are generally generated from kernel state when they are accessed.
+>
+> `procfs` therefore allows processes to inspect operating-system state through the same pathname, `open()`, `read()`, and [File Descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) abstractions used for many other I/O resources.
+
+#### `/sys` — Kernel Objects and Devices
+
+- **sysfs**: `/sys` is normally the mount point for **sysfs**, a virtual filesystem exposing kernel objects and their relationships.
+- **Device Model**: It provides structured information about devices, drivers, buses, classes, and other kernel-managed objects.
+- **Examples**:
+    - `/sys/class/net`: network interfaces.
+    - `/sys/class/block`: block devices.
+    - `/sys/devices`: the kernel's device hierarchy.
+- **Relationship with** `**/dev**`:
+    - `/sys` primarily exposes information and attributes describing kernel devices.
+    - `/dev` provides device nodes through which applications can interact with many of those devices.
+
+> [!note] Filesystem Names and File Descriptors
+>
+> - **Pathnames Name Resources**: The filesystem namespace gives processes pathnames through which many filesystem-backed and kernel-provided resources can be located.
+>
+> - **Descriptors Reference Open Resources**: A [**File Descriptor (FD)**](https://chatgpt.com/g/g-p-6a7a84d6766881919bab2085541ba9fd/c/02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) is instead a process-local handle referring to an already opened or created I/O resource.
+>
+> - **Path to Descriptor**: For pathname-based resources, operations such as `open()` first resolve the pathname and then return a descriptor. The process normally performs later I/O through that descriptor rather than resolving the path again for every operation.
+>
+> - **Paths Are Not Required for Every FD**: Not every file descriptor originates from a filesystem pathname. Sockets, pipes, and facilities such as `epoll` can produce descriptors representing kernel objects that do not need an ordinary pathname.
+>
+> - **Paths Are Not Necessarily Persistent Files**: Conversely, a pathname does not imply that ordinary file data exists on persistent storage. `/dev` can name devices, while virtual filesystems such as `/proc` and `/sys` expose kernel state through filesystem operations.
+>
+>
+> The filesystem namespace and the file-descriptor table are therefore complementary abstractions: **paths provide names used to locate resources, while descriptors provide process-local handles used to operate on resources after they have been opened or created**.
+>
+#### `/boot` — Boot Files
+
+- **Boot Resources**: `/boot` contains files required during system startup.
+- **Typical Contents**: Kernel images, initial RAM filesystem images, and bootloader-related data may live there.
+- **Separate Filesystem**: `/boot` can itself be backed by a separately mounted filesystem.
+
+#### `/mnt` and `/media` — Conventional Mount Locations
+
+- `**/mnt**`: Conventionally used for temporary or administrator-controlled mounts.
+- `**/media**`: Commonly used for removable media such as USB drives.
+- **No Special Kernel Meaning**: These locations are primarily filesystem-layout conventions.
+    - A filesystem can technically be mounted at many other suitable directories.
+
+#### `/opt` and `/srv`
+
+- `**/opt**`: Conventionally used for optional or self-contained third-party software packages.
+- `**/srv**`: Intended for data served by services provided by the machine, such as files served through network services.
+
+> [!note] One Namespace, Different Kinds of Objects
+> The Linux filesystem namespace provides one path-based interface over resources with very different implementations.
+>
+> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
+>
+> They participate in the same pathname hierarchy even though their underlying semantics are very different.
+>
 ### Opening Files
 
 - **Initial Operation**: Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file.
@@ -546,7 +811,7 @@ open(path, flags, mode)
     - whether normal page-cache behavior should be used;
     - whether writes require synchronous durability semantics.
 - **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or `O_TMPFILE`. It specifies the initial permission bits, subject to mechanisms such as `umask`.
-- **Returned File Descriptor**: A successful call returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs)). The broader descriptor abstraction belongs to process management because the same mechanism also represents sockets, pipes, device nodes, and other I/O resources.
+- **Returned File Descriptor**: A successful call returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29). The broader descriptor abstraction belongs to process management because the same mechanism also represents sockets, pipes, device nodes, and other I/O resources.
 - **Subsequent Operations**: Calls such as `read()`, `write()`, and `fsync()` operate through the descriptor rather than resolving the pathname again on every operation.
 - **Associated State**: The open file also carries state such as the current file offset and status flags that influence later operations.
 - **Closing**: When the process no longer needs the reference, it releases the descriptor using `close()`.
@@ -593,7 +858,7 @@ means that the process wants read/write access and wants the file created if it 
 > - On the first launch, the application also needs the file to be created.
 >
 > SQLite exposes the same conceptual combination through `SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE`.
-
+<!-- -->
 > [!example] PostgreSQL — Exclusive File Creation
 > When PostgreSQL creates a new physical relation file, accepting an unrelated file that already occupies the intended pathname would be incorrect.
 >
@@ -677,8 +942,8 @@ These blocks are a **filesystem-level abstraction** and are distinct from the lo
 - **Physical Alignment**: The filesystem should also align its blocks with the device's **physical sector size** when possible. This is efficient because a filesystem block can be updated without unnecessarily touching multiple physical sectors. Block **boundaries** matter as well as block size.
 - **Slack Space**: In the conventional allocation model, a data block allocated to one file is not reused by another unrelated file. If the file does not completely fill its final block, the remaining bytes become **slack space**, a form of internal fragmentation.
 - **Sizing Trade-offs**:
-	- **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
-	- **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
+    - **Smaller filesystem blocks** reduce slack space for workloads containing many small files, but large files require more allocation units and potentially more mapping metadata.
+    - **Larger filesystem blocks** reduce the number of allocation units needed for large files and can simplify large sequential allocations, but may waste more space in partially filled final blocks.
 - **Common Granularity**: For general-purpose systems, **4 KiB is a common choice** because it aligns well with several common granularities, including 4 KiB physical sectors, 4Kn logical sectors, and 4 KiB virtual-memory pages.
 
 #### Extents and Contiguous Ranges
@@ -725,9 +990,9 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
 
 > [!EXAMPLE]
 > **ext4: Block Groups and Inode Tables**
-> 
+>
 > ext4 provides a concrete example of how inode records can be organized on disk.
-> 
+>
 > - The filesystem is divided into **block groups**, which partition data and filesystem metadata.
 > - Each block group contains structures such as:
 >     - an **inode bitmap**, which records which inode slots are allocated;
@@ -735,13 +1000,13 @@ An **extent** is therefore a mapping for a contiguous range of file data to a co
 >     - **block-allocation metadata**, which tracks available and allocated data blocks;
 >     - the **data blocks** used to store file and directory contents.
 > - When a new filesystem object is created, ext4 can find a free inode in the bitmap, mark it as allocated, and initialize the corresponding inode-table entry.
-> 
+>
 > Because ext4 knows how many inodes belong to each block group, it can use an inode number to determine which group contains the corresponding record.
-> 
+>
 > For inode number `i`, with `N` inodes per block group:
 > - `block group = (i - 1) / N`
 > - `index within group = (i - 1) % N`
-> 
+>
 > The filesystem can then use the block group's metadata to locate its inode table and calculate the position of the corresponding inode record.
 
 - **Filename Lookup vs. Inode Lookup**: Resolving a filename and locating an inode record are two separate operations.
@@ -801,34 +1066,34 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 #### Writes, Writeback, and Durability
 
-* **Buffered Writes**: Buffered writes also pass through the page cache.
-* **Dirty Pages**: When an application writes to a file, the kernel locates or creates the corresponding page-cache entry, modifies the data in RAM, and marks that cached page as **dirty**.
-* **Deferred Persistence**: A successful `write()` therefore does not normally mean that the corresponding bytes have already reached persistent storage.
-* **Conceptual Flow**: Conceptually: `Application → Dirty Page Cache → Storage`.
-* **Writeback Mechanism**: The dirty pages are later persisted by the kernel through **writeback**.
-* **Writeback Triggers**: Writeback can happen because pages have remained dirty for some time, because the amount of dirty memory has grown sufficiently large, because memory needs to be reclaimed, or because an application explicitly requests synchronization.
-* **Pattern Decoupling**: This delayed-write design decouples the application's write pattern from the storage device's write pattern.
-* **Accumulation**: An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
-* **Batching Example**: For example, instead of immediately performing `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`, multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
+- **Buffered Writes**: Buffered writes also pass through the page cache.
+- **Dirty Pages**: When an application writes to a file, the kernel locates or creates the corresponding page-cache entry, modifies the data in RAM, and marks that cached page as **dirty**.
+- **Deferred Persistence**: A successful `write()` therefore does not normally mean that the corresponding bytes have already reached persistent storage.
+- **Conceptual Flow**: Conceptually: `Application → Dirty Page Cache → Storage`.
+- **Writeback Mechanism**: The dirty pages are later persisted by the kernel through **writeback**.
+- **Writeback Triggers**: Writeback can happen because pages have remained dirty for some time, because the amount of dirty memory has grown sufficiently large, because memory needs to be reclaimed, or because an application explicitly requests synchronization.
+- **Pattern Decoupling**: This delayed-write design decouples the application's write pattern from the storage device's write pattern.
+- **Accumulation**: An application may perform several small writes because that is convenient for its logic, while the kernel can accumulate those changes in memory and later issue larger or fewer storage operations.
+- **Batching Example**: For example, instead of immediately performing `write 100 B → device`, `write 200 B → device`, and `write 300 B → device`, multiple modifications may first accumulate in cached pages and later participate in a larger writeback operation.
 
 > [!note] Design Intent of Delayed Writeback
 > This should not be understood simply as the operating system assuming that application developers will write inefficient code: the abstraction deliberately allows applications to express writes according to their own semantics while the kernel handles device-level batching, scheduling, and locality. Even well-designed applications often have legitimate reasons to issue many small logical updates.
 
 ##### Write Durability and Synchronization
 
-* **The Durability Gap**: Delayed writeback creates a critical distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty in RAM, those updates are lost.
-	* **The Complete Write Path**: Furthermore, the storage device itself usually contains a volatile, controller-managed **write-back cache**.
-	* **Hardware Acknowledgment**: This allows the drive to acknowledge a write before the data reaches physical flash or disk platters.
-	* **Four-Stage Journey**: The complete write path therefore looks approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
-* **Explicit Synchronization (`fsync()` and `fdatasync()`)**: Applications that require strict durability boundaries use explicit synchronization calls to force data along this path.
-	- **`fsync()` (File Integrity)**: Forces the file's dirty data and associated metadata required by the filesystem's synchronization semantics toward persistent storage and waits for the storage stack to report completion.
-	- **`fdatasync()` (Data Integrity)**: Provides a narrower synchronization guarantee centered on file data and metadata necessary to retrieve it, such as file-size changes.
-	- **Performance Cost**: Both calls deliberately establish a durability boundary and can reduce the amount of write batching available to the storage stack compared with ordinary buffered writes.
-* **Synchronized Open Flags**: Instead of ordinary buffered writes followed by explicit synchronization at selected boundaries, an application can request synchronized semantics for writes through flags such as `O_SYNC` or `O_DSYNC`.
-* **Page Cache Interaction**: These flags are distinct from `O_DIRECT`: synchronization controls when the required persistence work must complete, while Direct I/O primarily controls page-cache participation.
-* **Higher-Level Durability Protocols**: Storage synchronization primitives become building blocks for higher-level recovery systems. A database's [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20(WAL)), for example, requires selected log records to become durable before dependent database changes can be considered safely committed.
-* **Layer Boundary**: The storage layer defines mechanisms such as `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC`; the database layer decides where those durability boundaries belong in its own recovery protocol.
-* **Batching Trade-offs**: Forcing a durability wait on every small update prevents the storage stack from grouping changes as freely. Applications can often batch many ordinary writes behind one deliberately chosen synchronization point when their higher-level correctness protocol permits it.
+- **The Durability Gap**: Delayed writeback creates a critical distinction between **written** and **durable** data. If the operating system crashes or loses power while a page is still dirty in RAM, those updates are lost.
+    - **The Complete Write Path**: Furthermore, the storage device itself usually contains a volatile, controller-managed **write-back cache**.
+    - **Hardware Acknowledgment**: This allows the drive to acknowledge a write before the data reaches physical flash or disk platters.
+    - **Four-Stage Journey**: The complete write path therefore looks approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
+- **Explicit Synchronization (`fsync()` and `fdatasync()`)**: Applications that require strict durability boundaries use explicit synchronization calls to force data along this path.
+    - **`fsync()` (File Integrity)**: Forces the file's dirty data and associated metadata required by the filesystem's synchronization semantics toward persistent storage and waits for the storage stack to report completion.
+    - **`fdatasync()` (Data Integrity)**: Provides a narrower synchronization guarantee centered on file data and metadata necessary to retrieve it, such as file-size changes.
+    - **Performance Cost**: Both calls deliberately establish a durability boundary and can reduce the amount of write batching available to the storage stack compared with ordinary buffered writes.
+- **Synchronized Open Flags**: Instead of ordinary buffered writes followed by explicit synchronization at selected boundaries, an application can request synchronized semantics for writes through flags such as `O_SYNC` or `O_DSYNC`.
+- **Page Cache Interaction**: These flags are distinct from `O_DIRECT`: synchronization controls when the required persistence work must complete, while Direct I/O primarily controls page-cache participation.
+- **Higher-Level Durability Protocols**: Storage synchronization primitives become building blocks for higher-level recovery systems. A database's [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29), for example, requires selected log records to become durable before dependent database changes can be considered safely committed.
+- **Layer Boundary**: The storage layer defines mechanisms such as `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC`; the database layer decides where those durability boundaries belong in its own recovery protocol.
+- **Batching Trade-offs**: Forcing a durability wait on every small update prevents the storage stack from grouping changes as freely. Applications can often batch many ordinary writes behind one deliberately chosen synchronization point when their higher-level correctness protocol permits it.
 
 > [!note] Crash-Atomicity Limits
 > - **Indivisible Operations**: The storage stack does not generally guarantee that an arbitrarily large application-level update reaches persistent media as one indivisible operation.
@@ -836,7 +1101,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 > - **Database Example**: [Torn pages](../Databases/00%20Overview.md#Torn%20Pages) are a concrete database manifestation of this lower-level limit: one database page can be larger than the storage system's guaranteed crash-atomic write unit.
 > - **Independent from Page Cache**: Bypassing buffered I/O does not automatically make a larger logical update atomic.
 > - **Recovery Requirement**: Software that requires stronger crash consistency must build an appropriate recovery protocol on top of the ordering and persistence guarantees provided by the storage stack.
-
+<!-- -->
 > [!example] Firefox 3 and Excessive `fsync()`
 > - **Observed Problem**: During Firefox 3 development, developers investigated severe responsiveness problems associated with frequent filesystem synchronization.
 > - **SQLite Connection**: Firefox used [SQLite](../Databases/SQLite.md#Synchronization%20Policy)-backed local storage, and many small database transactions caused SQLite to establish durability boundaries repeatedly.
@@ -849,7 +1114,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 - **Page-Cache Bypass**: On systems such as Linux, `O_DIRECT` requests an I/O path in which file data generally bypasses or minimizes use of the normal filesystem page cache.
 - **Application Buffers**: Data can instead be transferred between storage and application-provided memory without first becoming an ordinary long-lived page-cache entry.
-- **DMA Interaction**: Storage hardware commonly performs bulk transfers using [Direct Memory Access (DMA)](03%20Memory%20Management.md#Direct%20Memory%20Access%20(DMA)), although the complete path still involves filesystem, block-layer, driver, and device logic.
+- **DMA Interaction**: Storage hardware commonly performs bulk transfers using [Direct Memory Access (DMA)](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29), although the complete path still involves filesystem, block-layer, driver, and device logic.
 - **Alignment Requirements**: Direct I/O commonly imposes alignment requirements on the memory address, file offset, and I/O size. The exact restrictions depend on the filesystem, kernel, device, and configuration.
 - **Misaligned Operations**: A request that does not satisfy those requirements may fail or may use different behavior depending on the operating system and filesystem. `EINVAL` is a common failure mode on Linux, but it should not be treated as a universal rule.
 - **Caching vs. Durability**: `O_DIRECT` controls page-cache participation, not whether the operation is durable. Device write caches and other volatile stages may still exist.
@@ -861,7 +1126,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 > - **Coherency Work**: Filesystems may need synchronization, dirty-page writeback, and page-cache invalidation to preserve coherent behavior between the two paths.
 > - **Performance Effect**: That coordination can eliminate much of the performance benefit that motivated Direct I/O in the first place.
 > - **Design Preference**: Applications that deliberately use Direct I/O commonly try to keep ownership of the affected data path consistent rather than repeatedly switching between buffered and direct access.
-
+<!-- -->
 > [!example] Apache Kafka — Using the OS Page Cache
 > - **Cache Strategy**: Kafka deliberately relies heavily on the operating system's **page cache** for log data rather than maintaining an equivalent large application-owned cache inside the JVM.
 > - **Sequential Workload**: Kafka's append-oriented log files and sequential consumer reads interact well with filesystem mechanisms such as delayed writeback and read-ahead.
@@ -878,7 +1143,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 - **Transaction Model**: Related filesystem changes can be grouped into a journal transaction. The filesystem records the recoverable transaction in the journal and commits it before the corresponding changes are considered safely represented for crash recovery.
 - **Checkpointing**: Once committed, the final filesystem structures can be updated in their ordinary locations. When this has happened, the journal space can eventually be reused.
 - **Crash Recovery**: After a crash, the filesystem examines the journal. Fully committed transactions can be replayed, while incomplete transactions are not treated as successfully committed filesystem updates.
-- **Primary Goal**: Journaling primarily protects **filesystem consistency**. It should not be interpreted as a universal guarantee that every recent application data write is durable.
+- **Primary Goal**: Journaling primarily protects **filesystem consistency**. It should not be interpreted as a universal guarantee that every recent application data write is durable or that multiple file writes form one application-level transaction. Systems such as databases therefore use higher-level recovery mechanisms such as [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29) to protect invariants that the filesystem cannot understand.
 
 #### Metadata and Data Journaling
 
@@ -984,7 +1249,7 @@ Clusters are FAT32's implementation of the more general **filesystem block/alloc
 - **Btrfs (B-Tree File System):** A modern Linux filesystem built around **copy-on-write (CoW)**. It supports snapshots, subvolumes, checksumming of data and metadata, compression, and integrated management of multiple storage devices. Checksums allow Btrfs to detect silent corruption, and when another valid copy of the data is available through redundancy, it may use that copy to repair the damaged data.
 - **FAT32:** An older and relatively simple filesystem whose broad support makes it useful for removable media and compatibility between devices. Its major limitations include a maximum individual file size of approximately **4 GiB** and fewer features for permissions, reliability, and large-volume management than modern filesystems.
 - **exFAT (Extended File Allocation Table):** A filesystem designed primarily for removable flash storage. It retains much of FAT's simplicity and broad cross-platform compatibility while supporting much larger files and volumes than FAT32, making it common on SD cards, USB drives, and external storage exchanged between different operating systems.
-- **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to [swap](03%20Memory%20Management.md#Swapping%20&%20Extending%20RAM%20to%20Disk) under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
+- **tmpfs (Temporary File System):** A memory-backed filesystem commonly found on Unix-like systems. File contents reside primarily in virtual memory and may be moved to [swap](03%20Memory%20Management.md#Swapping%20%26%20Extending%20RAM%20to%20Disk) under memory pressure, rather than being persistently stored on an HDD or SSD. This makes tmpfs useful for temporary data that benefits from normal filesystem semantics without requiring persistent storage. Its contents disappear when the filesystem is unmounted or the system shuts down or reboots.
 
 > [!example] Allegro — Migrating Kafka from ext4 to XFS
 >
@@ -1037,7 +1302,7 @@ NAS (`/næz/` or `/næs/`) is a dedicated, file-sharing storage device connected
 
 A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that connects servers to a consolidated pool of block-level storage.
 
-- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [LBA](#Logical%20Block%20Addressing%20(LBA)) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
+- **Block-Level Storage:** Unlike NAS, a SAN does not manage a file system. It exposes raw storage blocks (LUNs) directly to servers. To a connected server, a SAN volume looks and acts like a local internal hard drive (an array of raw [LBA](#Logical%20Block%20Addressing%20%28LBA%29) blocks). The server's own OS is responsible for formatting it with a file system (like NTFS or EXT4).
 - **Common Protocols:**
     - **Fibre Channel (FC):** Uses dedicated fiber-optic cables and switches for ultra-low latency and massive throughput.
     - **iSCSI:** Runs block-level SCSI commands over standard Ethernet cables, making it a cheaper alternative to Fibre Channel.
@@ -1046,7 +1311,7 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
 
 ## I/O Pressure Stall Information (PSI)
 
-Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. `/proc/pressure/io` reports pressure associated with tasks stalled by I/O.
+Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
 
 - **`some`**: Reports periods during which at least one non-idle task is stalled because of I/O pressure. Other runnable work may still be able to execute.
 - **`full`**: Reports periods during which all non-idle tasks are simultaneously stalled by I/O pressure, so no useful non-idle task can make progress during that interval.

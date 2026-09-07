@@ -43,12 +43,13 @@ class c1l1 cache
 ```
 
 - **Arithmetic Logic Unit (ALU):** The standard mathematical engine of the processor. It performs all integer arithmetic (addition, subtraction) and bitwise logic (AND, OR, XOR) on raw binary data. If the math involves integer numbers or simple memory offsets, it happens here.
-- **Floating-Point Unit (FPU):** The complex math engine. While the ALU is limited to integers, the FPU is specifically designed to calculate decimals, fractions, and scientific notation (using standards like IEEE 754). It handles the heavy mathematical workloads that the ALU cannot physically process, such as trigonometry, physics simulations, and large [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) vector calculations.
+- **Floating-Point Unit (FPU):** The complex math engine. While the ALU is limited to integers, the FPU is specifically designed to calculate decimals, fractions, and scientific notation (using standards like IEEE 754). It handles the heavy mathematical workloads that the ALU cannot physically process, such as trigonometry, physics simulations, and large [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20%28SIMD%29) vector calculations.
 - **Control Unit (CU):** The conductor of the silicon orchestra. It drives the **Fetch-Decode-Execute** cycle. It fetches the next instruction from memory, decodes its binary intent, and physically routes the correct electrical signals to the ALU, registers, or memory bus to execute the command.
 - **Registers:** The lowest-latency storage available to an execution core, built directly into the core. They have much lower latency than cache or RAM, but very limited capacity (typically 64 bits per register). They hold the values the ALU is currently mutating.
 - **Memory Management Unit (MMU):** The hardware translator. It intercepts the virtual addresses requested by the Control Unit and translates them into physical RAM locations using the OS-managed Page Tables. Largely talked about at [Memory Management](03%20Memory%20Management.md) notes.
 - **CPU Caches (L1 / L2 / L3):** A latency bridge between cores and RAM. Because RAM access has substantially higher latency than an ALU operation, the CPU includes layers of SRAM on the processor die. This hierarchy keeps recently or frequently used data and instructions closer to the core, reducing RAM accesses.
 - **The Bus (The Interconnect):** The microscopic communication highways that wire the entire assembly line together. Instead of chaotic point-to-point wiring, components share dedicated channels. Internally, high-speed interconnects (like a Ring or Mesh bus) synchronize the cores and the caches. Externally, the System Bus acts as the sole bridge to the motherboard and RAM, physically split into three distinct paths: the _Address Bus_ (transmitting memory locations), the _Data Bus_ (carrying the actual payloads), and the _Control Bus_ (delivering timing and command signals from the Control Unit).
+
 ## The Cache Hierarchy
 
 CPU cores can execute instructions much faster than data can be retrieved from system RAM. If every instruction depended on RAM, memory latency would frequently stall execution. This latency gap is known as the "Memory Wall."
@@ -123,18 +124,20 @@ class c1title,c2title title
 Because the L1 and L2 caches are strictly private to each individual core, they introduce a massive architectural hazard. If Core 1 and Core 2 both cache the same variable from RAM, and Core 1 modifies its private copy, Core 2's cache is instantly out of date.
 
 To prevent the CPU from executing calculations on stale, corrupted data, the hardware utilizes highly complex **cache coherency protocols**. To write highly optimized multithreaded software, developers must understand how this underlying hardware operates, or they risk triggering constant cache invalidations that cripple system performance.
+
 #### The MESI Protocol
 
 The CPU does not manage the cache byte-by-byte. It groups memory into chunks called **Cache Lines**. The CPU hardware tags every single cache line with one of four states
 
-| **State**         | **Meaning**                                                                | **Core Action**                                                                                                     |
-| ----------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Modified (M)**  | This core changed the data. The copy in RAM is now stale.                  | No other core has this line. If another core asks for it, this core must write it back to RAM/L3 first.             |
-| **Exclusive (E)** | This core is the _only_ one holding this data, and it matches RAM exactly. | The core can modify this data locally without first requesting ownership over the bus.                               |
-| **Shared (S)**    | Multiple cores hold this exact data. It matches RAM exactly.               | Cores can read freely. If a core wants to write, it must broadcast an "Invalidate" signal to all other cores first. |
-| **Invalid (I)**   | The data is stale because another core modified it.                        | The core cannot read this line. It suffers a "cache miss" and must fetch fresh data from L3/RAM.                    |
+| **State** | **Meaning** | **Core Action** |
+| --- | --- | --- |
+| **Modified (M)** | This core changed the data. The copy in RAM is now stale. | No other core has this line. If another core asks for it, this core must write it back to RAM/L3 first. |
+| **Exclusive (E)** | This core is the _only_ one holding this data, and it matches RAM exactly. | The core can modify this data locally without first requesting ownership over the bus. |
+| **Shared (S)** | Multiple cores hold this exact data. It matches RAM exactly. | Cores can read freely. If a core wants to write, it must broadcast an "Invalidate" signal to all other cores first. |
+| **Invalid (I)** | The data is stale because another core modified it. | The core cannot read this line. It suffers a "cache miss" and must fetch fresh data from L3/RAM. |
 
 When a core modifies a Shared cache line, it forces all other cores to mark their copies as **Invalid**. This hardware mechanism ensures data integrity, but it creates a massive trap for software engineers.
+
 #### The Developer Trap: False Sharing
 
 Because the MESI protocol operates on entire 64-byte Cache Lines rather than individual variables, it creates a phenomenon called **False Sharing**—one of the most notorious performance killers in multithreaded software.
@@ -165,6 +168,7 @@ To solve this, hardware engineers split the motherboard into distinct zones call
 - **The Physical Split:** Instead of one massive memory controller, the memory is physically divided. For example, Cores 1-16 are physically wired directly to DIMM 1 (Node A), and Cores 17-32 are physically wired directly to DIMM 2 (Node B).
     - _Note: On modern AMD Ryzen/EPYC processors, this split actually happens completely inside a single CPU chip using tiny sub-processors called "Chiplets"!_
 - **Local vs. Remote Memory:** If Core 1 needs data from DIMM 1, it uses its local memory controller. This access has lower latency and usually more available bandwidth than an access to DIMM 2, which must cross the NUMA boundary.
+
 #### Distributed Shared Memory (DSM)
 
 When a CPU core attempts to access memory located on a remote NUMA node, the request must cross a specialized CPU-to-CPU bridge (like Intel’s UPI or AMD’s Infinity Fabric). This physical traversal alone pushes the baseline memory latency from ~100 nanoseconds up to ~300 nanoseconds.
@@ -182,6 +186,7 @@ Here is the exact step-by-step negotiation that occurs when Core 1 (on Node A) n
 3. **Point-to-Point Invalidation:** The directory dispatches precise invalidation messages _only_ to the specific cores holding the data, completely avoiding unnecessary bus traffic.
 
 While this highly orchestrated lookup saves the interconnect bus from collapsing under broadcast spam, it comes at a cost. This multi-step hardware negotiation—querying the remote directory, dispatching targeted messages, and waiting for cross-node acknowledgments—is exactly what generates the punishing latency penalty of remote memory access.
+
 #### NUMA-Awareness
 
 Because of this physical hardware design, modern Operating Systems and databases (like PostgreSQL or Redis) are heavily **NUMA-Aware**. The OS scheduler will aggressively try to pin an application's threads and its memory allocations strictly to the exact same NUMA node, actively preventing the software from ever accidentally crossing the interconnect bridge.
@@ -212,19 +217,19 @@ graph LR
 
 ```
 
-* **High-Density Virtualization (Cloud & Hypervisors)**
-	* Hypervisors (like VMware ESXi, KVM, or Hyper-V) thrive on NUMA because virtual machines (VMs) are inherently isolated workloads.
-	* A 64-core, 256GB RAM server divided into two NUMA nodes can run twenty 3-core VMs.
-	* The hypervisor's scheduler dynamically pins each VM’s virtual CPUs and allocated RAM strictly to **Node A** or **Node B**.
-	* Because VM 1 never touches Node B's memory, it experiences **100% local RAM performance** (~60–100 ns) while sharing the same physical motherboard with dozens of other workloads.
-* **Process-Isolated Architecture (Microservices & Web Servers)**
-	* Applications that scale out via independent worker processes—such as NGINX, Node.js clusters, or Redis instances—naturally align with NUMA hardware.
-	* By running separate process instances pinned to separate NUMA nodes (using Linux commands like `numactl --cpunodebind=0 --membind=0`), each worker process gets its own dedicated CPU cores and local memory bus.
-	* This provides complete hardware-level throughput isolation without cross-talk or interconnect contention.
-* **Partitioned In-Memory Databases (Sharded Systems)**
-	* Enterprise databases like PostgreSQL, MySQL, or SAP HANA handle massive concurrency by partitioning data.
-	* When a database is NUMA-aware, it creates buffer pools per node. A thread processing a query for Partition A runs on Node A's CPU and fetches from Node A's RAM.
-	* Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
+- **High-Density Virtualization (Cloud & Hypervisors)**
+    - Hypervisors (like VMware ESXi, KVM, or Hyper-V) thrive on NUMA because virtual machines (VMs) are inherently isolated workloads.
+    - A 64-core, 256GB RAM server divided into two NUMA nodes can run twenty 3-core VMs.
+    - The hypervisor's scheduler dynamically pins each VM’s virtual CPUs and allocated RAM strictly to **Node A** or **Node B**.
+    - Because VM 1 never touches Node B's memory, it experiences **100% local RAM performance** (~60–100 ns) while sharing the same physical motherboard with dozens of other workloads.
+- **Process-Isolated Architecture (Microservices & Web Servers)**
+    - Applications that scale out via independent worker processes—such as NGINX, Node.js clusters, or Redis instances—naturally align with NUMA hardware.
+    - By running separate process instances pinned to separate NUMA nodes (using Linux commands like `numactl --cpunodebind=0 --membind=0`), each worker process gets its own dedicated CPU cores and local memory bus.
+    - This provides complete hardware-level throughput isolation without cross-talk or interconnect contention.
+- **Partitioned In-Memory Databases (Sharded Systems)**
+    - Enterprise databases like PostgreSQL, MySQL, or SAP HANA handle massive concurrency by partitioning data.
+    - When a database is NUMA-aware, it creates buffer pools per node. A thread processing a query for Partition A runs on Node A's CPU and fetches from Node A's RAM.
+    - Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
 
 > [!example] Python’s `None` and the Cache Invalidation Storm
 > An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. Python 3.12 fixed it with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
@@ -243,7 +248,7 @@ The absolute fastest storage in the machine, built directly into the execution c
 The registers listed above are the primary architectural registers a software engineer interacts with during debugging, reverse engineering, or standard systems programming. However, to understand how the hardware actually executes code and manages the system, we must look at the specialized and hidden registers:
 
 - **Status / Flags Register (`FLAGS` on x86, `CPSR` on ARM):** Holds 1-bit boolean switches (Zero, Carry, Overflow) that record the physical result of the ALU's last calculation. This register is the hardware mechanism that drives all conditional branching in your software, such as `if` statements and loops.
-- **Vector / SIMD Registers:** Massive registers (ranging from 128-bit to 512-bit, such as AVX-512 or ARM NEON) designed for [Single Instruction, Multiple Data (SIMD)](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) operations. They allow the CPU to execute math on large arrays of numbers simultaneously rather than one by one. 
+- **Vector / SIMD Registers:** Massive registers (ranging from 128-bit to 512-bit, such as AVX-512 or ARM NEON) designed for [Single Instruction, Multiple Data (SIMD)](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20%28SIMD%29) operations. They allow the CPU to execute math on large arrays of numbers simultaneously rather than one by one.
 - **System and Control Registers (e.g., `CR0`, `CR3`):** Privileged hardware levers accessible only by the OS kernel (Ring 0). They toggle fundamental CPU states, such as physically enabling the MMU or altering CPU cache behavior.
 - **Physical Register File (Shadow Registers):** Hidden hardware registers completely invisible to your software. Even if the architecture only exposes 16 general-purpose registers to the programmer, the physical core holds 100+ shadow registers used to dynamically rename variables and execute instructions out of order.
 
@@ -291,6 +296,7 @@ While this is easy for humans to read, it is horribly inefficient for modern har
 To fix this, kernel developers rewrote the function to process a full 64-bit "word" (8 bytes) per CPU cycle. This makes it 4x faster on long strings.
 
 To accomplish this without writing 8 separate `if` statements, they used a mathematical ALU trick known as **Zero-Byte Detection**:
+
 ```c
 void *memchr(const void *p, int c, unsigned long length)
 {
@@ -319,9 +325,9 @@ void *memchr(const void *p, int c, unsigned long length)
 1. **Broadcast the Target**: If the function is looking for the letter 'A' (`0x41` in hex), the code first creates a 64-bit mask where that byte is repeated 8 times: `mask = 0x4141414141414141`
 2. **The XOR Check**: The CPU fetches 8 bytes of memory at once and places them into a 64-bit register. It then applies a bitwise XOR (`^`) against the mask: `val = *(u64 *)p ^ mask;` Because XOR outputs `0` when two bits match, if the letter 'A' exists anywhere in those 8 bytes, that specific byte's position in `val` will become exactly `0x00`.
 3. **Alan Mycroft's Bithack:** To find out if _any_ of the 8 bytes in `val` are exactly `0x00` without using a slow loop, the kernel uses this single-cycle mathematical trap: `if ((val + 0xfefefefefefefeffu) & (~val & 0x8080808080808080u))`
-	- **The Subtraction (`val + 0xfefe...`):** This magic number mathematically subtracts `1` from all 8 bytes simultaneously without the carry-over ruining adjacent bytes. If a byte is exactly `0x00`, its underflows to `0xFF`, flipping its highest bit from `0` to `1`.
-	- **The False-Positive Filter (`~val`):** Large numbers (like `0x81`) will _also_ have a highest bit of `1` after subtraction. Inverting the original bits (`~val`) filters these out, guaranteeing we only keep bytes that originally started with a highest bit of `0`.
-	- **The Mask (`& 0x8080...`):** The final bitwise AND isolates just those highest bits. The ALU flags a match _only_ if a byte started with a `0` high-bit but ended with a `1` high-bit—a mathematical condition entirely unique to `0x00`.
+    - **The Subtraction (`val + 0xfefe...`):** This magic number mathematically subtracts `1` from all 8 bytes simultaneously without the carry-over ruining adjacent bytes. If a byte is exactly `0x00`, its underflows to `0xFF`, flipping its highest bit from `0` to `1`.
+    - **The False-Positive Filter (`~val`):** Large numbers (like `0x81`) will _also_ have a highest bit of `1` after subtraction. Inverting the original bits (`~val`) filters these out, guaranteeing we only keep bytes that originally started with a highest bit of `0`.
+    - **The Mask (`& 0x8080...`):** The final bitwise AND isolates just those highest bits. The ALU flags a match _only_ if a byte started with a `0` high-bit but ended with a `1` high-bit—a mathematical condition entirely unique to `0x00`.
 4. **The Cleanup Loop**: Because strings aren't always perfectly divisible by 8 bytes, the optimized code finishes with a standard byte-by-byte `for` loop to check the final 1 to 7 leftover bytes at the very end of the memory block.
 
 **The Result:** Instead of 8 memory fetches and 8 branch evaluations, the CPU fetches 8 bytes once, runs a single line of math through the ALU, and knows instantly if the target character is inside that block.
@@ -336,6 +342,7 @@ At the hardware level, there are two primary design philosophies for how a CPU u
 - **The Memory Model (Load/Store):** The ALU is physically barred from touching RAM. It can only perform math on data that is already sitting inside the CPU's internal registers. Memory access is strictly separated into dedicated `LOAD` and `STORE` commands.
 - **The Trade-off:** Less variety of instructions. Software binaries are larger and more verbose (more lines of assembly required), but the hardware decoder is incredibly small, fast, and power-efficient.
 - **Examples:** ARM (Apple Silicon, Mobile devices), RISC-V.
+
 ### CISC (Complex Instruction Set Computer)
 
 - **The Philosophy:** "Concise and complex." Do as much work as possible with as few lines of code as possible, saving memory and bandwidth.
@@ -380,14 +387,15 @@ However, measuring a CPU's actual performance requires understanding that **one 
 - **Varying Latency:** Depending on the complexity of the math, an instruction might take vastly different amounts of time. Adding two registers might take 1 cycle. Dividing two 64-bit numbers might take 15 cycles. Fetching from RAM takes ~400 cycles.
 - **RISC vs. CISC:** Historically, RISC architectures aimed for a strict 1-to-1 ratio (1 instruction = 1 cycle). CISC instructions inherently took multiple cycles because a single command included fetching, calculating, and storing.
 - **Superscalar Execution:** Modern processors (both RISC and CISC) are "superscalar." They have multiple ALUs inside a single core. If two instructions don't depend on each other, a modern core can actually execute 4 to 6 instructions simultaneously in a _single_ clock cycle (an IPC > 1).
-- **The SIMD Multiplier:** Features like [Single Instruction, Multiple Data (SIMD)](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) don't necessarily reduce the number of cycles an instruction takes, but they drastically increase the _amount of data_ processed per cycle (e.g., adding 16 pairs of numbers in the same 1-cycle heartbeat). 
+- **The SIMD Multiplier:** Features like [Single Instruction, Multiple Data (SIMD)](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20%28SIMD%29) don't necessarily reduce the number of cycles an instruction takes, but they drastically increase the _amount of data_ processed per cycle (e.g., adding 16 pairs of numbers in the same 1-cycle heartbeat).
 - **The Overhead Bottleneck:** Actually fetching the code from memory and decoding it into electrical signals takes several clock cycles on its own. If the execution core has to wait for the decoder, billions of cycles are wasted. This is solved by **Instruction Pipelining**.
+
 ## The Instruction Life Cycle & Pipelining
 
 The lifecycle of every instruction follows a strict sequence of hardware stages. To maximize IPC (Instructions Per Cycle), modern CPUs use **Pipelining**—an assembly-line technique where the CPU overlaps these stages. While Instruction 1 is being executed, Instruction 2 is being decoded, and Instruction 3 is being fetched.
 
 > [!info] Same word, different bottleneck
-> CPU pipelining and [HTTP/1.1 pipelining](../Networking/02%20Protocols/07%20HTTP1.1.md#HTTP%20Pipelining%20(The%20Failed%20Feature)) share the same core idea: start later work before earlier work has fully finished so an expensive path stays busy instead of idle. The important difference is what is being overlapped. In a CPU, the overlapped units are fixed hardware stages of different instructions. In HTTP/1.1, the overlapped units are multiple requests on one TCP connection. The analogy is useful because both try to increase throughput by filling idle gaps, but their failure modes differ: CPU pipelines mainly suffer from hazards such as branches and data dependencies, while HTTP/1.1 pipelining suffered from protocol-level head-of-line blocking and intermediates proxies.
+> CPU pipelining and [HTTP/1.1 pipelining](../Networking/02%20Protocols/07%20HTTP1.1.md#HTTP%20Pipelining%20%28The%20Failed%20Feature%29) share the same core idea: start later work before earlier work has fully finished so an expensive path stays busy instead of idle. The important difference is what is being overlapped. In a CPU, the overlapped units are fixed hardware stages of different instructions. In HTTP/1.1, the overlapped units are multiple requests on one TCP connection. The analogy is useful because both try to increase throughput by filling idle gaps, but their failure modes differ: CPU pipelines mainly suffer from hazards such as branches and data dependencies, while HTTP/1.1 pipelining suffered from protocol-level head-of-line blocking and intermediates proxies.
 
 The classic pipeline consists of five stages:
 
@@ -406,6 +414,7 @@ The classic pipeline consists of five stages:
     - If the instruction is a `LOAD` or `STORE`, the CPU interacts with the L1 Data Cache to read from or write to main system RAM.
 5. **Write-Back (WB):**
     - The final result—whether it is the mathematical answer from the ALU or the data retrieved from memory in the previous stage—is written back into the designated architectural destination register (e.g., updating `rax`).
+
 ### Branch Prediction & Speculative Execution
 
 Because modern CPUs use deep pipelines, they face a massive bottleneck when they encounter a conditional branch (like an `if/else` statement or a `while` loop).
@@ -413,20 +422,23 @@ Because modern CPUs use deep pipelines, they face a massive bottleneck when they
 When the CPU fetches the `if` instruction, it won't actually know the result of that condition until the instruction reaches the **Execute (EX)** stage a few clock cycles later. If the CPU simply paused and waited for the ALU to output the answer, the entire pipeline would sit idle. Over millions of branches, this would destroy performance.
 
 To solve this, modern CPUs use two interconnected technologies:
+
 #### 1. The Branch Predictor
 
 Instead of waiting, the CPU simply guesses which way the `if` statement will go. It uses complex historical tracking (the Branch Target Buffer) to remember how this specific `if` statement behaved the last few times it was run. (For example, if a `for` loop runs 100 times, it branches back to the top 99 times. The predictor learns to safely guess "go to the top").
+
 #### 2. Speculative Execution
 
 Once the CPU guesses the path, it doesn't just queue up the instructions—it actually starts **executing** them before the `if` statement has been officially solved.
 
-* **If the guess is right:** The pipeline stays completely full. The CPU effectively executed code in zero time.
-* **If the guess is wrong (Misprediction):** The CPU performs a **Pipeline Flush**. It instantly throws away all the speculative work, rolls back the registers to their previous state, and fetches the correct path. This wastes about 10–20 clock cycles, but because predictors are ~95% accurate, the math heavily favors guessing.
+- **If the guess is right:** The pipeline stays completely full. The CPU effectively executed code in zero time.
+- **If the guess is wrong (Misprediction):** The CPU performs a **Pipeline Flush**. It instantly throws away all the speculative work, rolls back the registers to their previous state, and fetches the correct path. This wastes about 10–20 clock cycles, but because predictors are ~95% accurate, the math heavily favors guessing.
+
 #### The Spectre Vulnerability (Hardware Hacking)
 
 In 2018, security researchers discovered a catastrophic flaw in this exact architecture, naming it **Spectre**.
 
-Spectre proved that while a CPU rolls back its *registers* when it makes a wrong guess, **it forgets to roll back the CPU Cache.**
+Spectre proved that while a CPU rolls back its _registers_ when it makes a wrong guess, **it forgets to roll back the CPU Cache.**
 
 Hackers realized they could weaponize this by doing the following:
 
@@ -460,15 +472,17 @@ While SMT generally yields a 20-30% overall performance boost in multitasking, i
 - **Resource Contention:** Because both logical cores share the exact same execution ports and caches, they can step on each other's toes. If both threads need to do heavy floating-point math at the exact same time, they will fight over the FPU (Floating-Point Unit), potentially running _slower_ than if they had just run sequentially.
 - **Cache Thrashing:** Two threads fighting for the same tiny L1 cache will overwrite each other's data, causing constant cache misses.
 - **The Fix:** For workloads that demand absolute predictability and zero latency variance (like high-frequency algorithmic trading, real-time audio processing, or high-end gaming), engineers will often physically disable SMT in the BIOS, ensuring one thread gets 100% undisputed access to the core's cache and ALUs.
+
 ## CPU Pressure Stall Information
 
 Traditional CPU usage (e.g., in `top`) is a **utilization metric**. It shows how busy the hardware is, but it cannot tell you if 4 threads are running perfectly or if 400 threads are violently fighting for execution time. Both look like "100% Usage."
 
-PSI (`/proc/pressure/cpu`) is a **queueing metric**. It measures the percentage of wall-clock time that software threads wasted waiting in line for a hardware core.
+PSI ([`/proc/pressure/cpu`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information)) is a **queueing metric**. It measures the percentage of wall-clock time that software threads wasted waiting in line for a hardware core.
 
-- **Reading CPU PSI:** `cat /proc/pressure/cpu`    
-- **The `some` metric:** Indicates the percentage of time (averaged over 10, 60, and 300 seconds) that _at least one_ runnable thread was stalled waiting for the CPU. 
-	- The CPU file does not use a `full` metric, because if all threads are waiting for the CPU, the CPU is idle, making a 100% CPU stall a logical paradox.
+- **Reading CPU PSI:** `cat /proc/pressure/cpu`
+    - [`/proc/pressure/cpu`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) belongs to the kernel-generated `procfs` interface rather than to ordinary persisted file data.
+- **The `some` metric:** Indicates the percentage of time (averaged over 10, 60, and 300 seconds) that _at least one_ runnable thread was stalled waiting for the CPU.
+    - The CPU file does not use a `full` metric, because if all threads are waiting for the CPU, the CPU is idle, making a 100% CPU stall a logical paradox.
 
 **The Threading Decision Matrix:**
 
