@@ -454,7 +454,7 @@ ssh root@your-server-ip
 
 > [!warning]
 > **Do not log out of your current session until you have verified you can log in with a standard user and successfully run `sudo`.** If you disable root login without a working alternative user, you may be permanently locked out of your remote server.
-
+<!-- -->
 > [!TIP] The Middle Ground
 > `prohibit-password` If you absolutely must log in as root for specific automated tasks (like off-site backups), use `PermitRootLogin prohibit-password`. This disables password-based logins for root but allows access via **SSH Keys**, which are significantly more secure.
 ### Network Security

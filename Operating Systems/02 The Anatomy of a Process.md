@@ -405,7 +405,7 @@ When the page is resident, the page table translates the virtual address to a ph
 > [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20(Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
 >
 > Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
-
+<!-- -->
 > [!example] llama.cpp — Mapping Read-Only Model Weights
 >
 > During [LLM inference](../AI%20Engineering/LLM/LLM%20Processing%20Pipeline.md#Inference%20vs.%20Training), billions of frozen model parameters are repeatedly read while tokens pass through the Transformer layers. `llama.cpp` can memory-map the model file so CPU inference can access resident weight pages without first copying the complete model into a second anonymous heap allocation.
@@ -413,7 +413,7 @@ When the page is resident, the page table translates the virtual address to a ph
 > These persistent model weights are different from the [KV Cache](../AI%20Engineering/LLM/LLM%20Processing%20Pipeline.md#6.%20Iterative%20Generation%20Loop), which is temporary runtime state produced from the current context.
 >
 > Mapping a model does not mean that arbitrarily large models can be executed efficiently with little RAM. Dense inference repeatedly needs most of the model weights. If the active weight working set exceeds available RAM and pages must constantly be reloaded from storage, inference can become dominated by page faults and storage latency. GPU offloading and VRAM placement remain separate memory-placement decisions.
-
+<!-- -->
 > [!example] SQLite — `mmap` as an Optional Optimization
 >
 > [SQLite](../Databases/SQLite.md#Storage%20Model) normally manages database pages using its own pager and page cache, but it can optionally memory-map portions of the database for reads. When a suitable page is mapped, SQLite can inspect the file-backed page directly rather than copying it into another SQLite-managed buffer.
