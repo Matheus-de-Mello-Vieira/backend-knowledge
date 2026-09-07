@@ -9,11 +9,17 @@ This workflow owns **known knowledge → durable explanatory prose**.
 
 ## Progressive gates
 
-### Target gate
+### Retrieval gate
 
-If the target note/section is explicit and the new material clearly belongs to its established subject, skip repository-wide placement.
+For every substantial addition, new section, or new note, invoke `$note-topic-search` before placement or writing, even when the user supplied an explicit target. Repository retrieval is a required invariant for substantial edits because it establishes existing coverage, semantic neighbors, and possible same-level duplication.
 
-If ownership is unclear, compound, or likely to create a new note, invoke `$note-home-finder` (which discloses `$note-topic-search` as needed).
+Only narrow local corrections whose target and scope are already obvious may skip repository retrieval.
+
+### Placement gate
+
+If the target note/section is explicit and the retrieval results confirm that the new material belongs to its established subject without conflicting canonical ownership, skip `$note-home-finder`.
+
+If ownership is unclear, contradicted by retrieval, compound, or likely to create/split notes, invoke `$note-home-finder` and pass the confirmed `$note-topic-search` results so it does not repeat retrieval unnecessarily.
 
 ### Boundary gate
 
@@ -25,13 +31,13 @@ Invoke `$note-content-mover` only when an accepted boundary plan says existing d
 
 ### Writing gate
 
-Invoke `$note-writer` for the substantive prose edit. Provide only accepted semantic inputs; the writer must not reopen placement decisions.
+Invoke `$note-writer` for the substantive prose edit. Provide only accepted semantic inputs; the writer must not reopen placement or link-selection decisions.
 
 ### Link gate
 
-Invoke `$note-link-planner` when a substantial edit introduces concepts that naturally benefit from existing repository context or when the user asks for links. Otherwise skip semantic link planning.
+Invoke `$note-link-planner` when a substantial edit introduces concepts that naturally benefit from existing repository context or when the user asks for links. The planner exclusively owns semantic link selection.
 
-Invoke `$markdown-link-normalizer` only when links or anchors changed.
+Pass any approved link plan to `$note-writer` only for application/preservation in the prose. Invoke `$markdown-link-normalizer` only when links or anchors changed.
 
 ### Review gate
 
@@ -45,4 +51,4 @@ When the user asks a conceptual question about an existing note and wants it fix
 
 ## Acceptance criteria
 
-The smallest sufficient capability set was used; the edited note remains centered, locally sufficient, non-duplicative, and at the intended abstraction level; examples remain subordinate; and any changed links/Markdown validate.
+Required repository retrieval was performed for substantial additions; only the semantic capabilities needed after that evidence was disclosed; the edited note remains centered, locally sufficient, non-duplicative, and at the intended abstraction level; examples remain subordinate; and any changed links/Markdown validate.
