@@ -1,6 +1,6 @@
 ---
 name: note-writer
-description: Write or amend Markdown note prose after the destination, abstraction level, and content boundary are already decided. This is the canonical prose-and-structure mutation primitive for repository notes. Do not perform placement, boundary analysis, or broad repository search here.
+description: Write or amend Markdown note prose after the destination, abstraction level, content boundary, and any semantic link decisions are already decided. This is the canonical prose-and-structure mutation primitive for repository notes. Do not perform placement, boundary analysis, semantic link selection, or broad repository search here.
 ---
 
 # Note Writer
@@ -18,20 +18,22 @@ Owns:
 - integrating required local context;
 - creating bounded examples or callouts;
 - restructuring nearby prose when needed for coherence;
-- adding natural links from already meaningful text when the target is known.
+- applying or preserving caller-provided approved link markup without changing its semantic destination.
 
 Requires:
 
 - an approved destination and abstraction level;
 - an approved boundary plan when the addition is substantial or crosses nearby concepts;
-- relevant source material and local note context.
+- relevant source material and local note context;
+- an approved link plan when semantic links are part of the edit.
 
 Must not:
 
 - search for canonical homes;
 - invoke `$note-home-finder` or `$note-boundary-analyzer`;
 - decide whether substantial material belongs in another note;
-- invoke `$note-authoring` or `$note-refactor`;
+- select semantic link targets or decide whether a relationship deserves a link;
+- invoke `$note-link-planner`, `$note-authoring`, or `$note-refactor`;
 - move content between notes without an approved structural plan;
 - perform broad link normalization.
 
@@ -59,17 +61,16 @@ Do not mechanically apply all forms to every section.
 - Stop implementation-specific explanation when the implementation becomes the subject.
 - Do not reproduce a complete same-level explanation that another canonical note already owns.
 
-## Link discipline
+## Link application discipline
 
-When the approved plan identifies a useful related note:
+When the caller supplies an approved link plan or approved link markup:
 
-- prefer linking existing meaningful wording;
-- preserve visible text when possible;
-- link to the most specific stable section;
-- do not add navigation-only sentences;
-- do not repeatedly link the same concept.
+- preserve the approved source phrase and semantic destination;
+- apply the link without introducing navigation-only prose;
+- preserve visible wording when required by the plan;
+- do not substitute a different related note or create additional semantic links independently.
 
-Mechanical link normalization belongs to the caller's `$markdown-link-normalizer` stage.
+Semantic link selection belongs exclusively to `$note-link-planner`. Mechanical link normalization belongs to the caller's `$markdown-link-normalizer` stage.
 
 ## Verification
 
@@ -79,6 +80,7 @@ Before returning the written candidate:
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm examples remain subordinate;
 - confirm terminology and qualifiers are preserved;
+- confirm approved link decisions were applied without semantic changes;
 - confirm headings and formatting match nearby note conventions.
 
 Return the completed Markdown candidate or apply the scoped edit when invoked by a higher-level workflow.
