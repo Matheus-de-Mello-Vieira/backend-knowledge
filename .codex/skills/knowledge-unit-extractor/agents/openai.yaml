@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Unit Extractor"
+  short_description: "Extract conceptual units from supplied material"
+  default_prompt: "Use $knowledge-unit-extractor to decompose supplied source material into explicit knowledge units before placement or writing."

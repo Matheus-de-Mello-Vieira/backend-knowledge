@@ -1,44 +1,66 @@
-# Codex Skill Hierarchy
+# Codex Note Skill System
 
-Skills are organized by **capability ownership**. Higher-level workflows compose lower-level capabilities instead of copying their procedures.
+The note system is organized from **user intent** down to reusable capabilities. A workflow should disclose only the next capability or reference required by the current decision gate.
 
-## Policy layer
+## User-facing workflows
 
-- `AGENTS.md` defines repository-wide knowledge architecture: note ownership, abstraction boundaries, acceptable duplication, examples, and semantic linking.
-- `.codex/model_instructions.md` defines default note-writing behavior.
+| User intent | Workflow |
+| --- | --- |
+| Route an ambiguous note request | `$note-workflow` |
+| Incorporate an article, transcript, scratch text, or other supplied content | `$note-ingestion` |
+| Create a learning structure for a topic not yet understood | `$note-scaffolding` |
+| Add already-understood knowledge or repair an explanation | `$note-authoring` |
+| Review a note without editing it | `$note-review` |
+| Split, move, merge, or deduplicate knowledge across notes | `$note-refactor` |
+| Enrich a note with natural semantic cross-links | `$note-link-enrichment` |
+| Consolidate multiple overlapping/conflicting sources with exhaustive evidence preservation | `$markdown-consolidator` |
 
-Skills reference these policies rather than maintaining competing copies.
+Small local corrections may bypass workflow routing when the target and scope are obvious.
 
-## Level 1 — Retrieval and mechanical primitives
+## Reusable capabilities
 
-- **`note-topic-search`** — repository topic retrieval.
-- **`markdown-link-normalizer`** — mechanical local-link normalization and validation.
-- **`markdownlint-fix`** — Markdown lint repair.
+### Retrieval and extraction
 
-## Level 2 — Semantic decision primitives
+- **`note-topic-search`** — find existing repository coverage.
+- **`knowledge-unit-extractor`** — turn supplied source material into explicit conceptual units. Supports normal and exhaustive modes.
 
-- **`note-home-finder`** — canonical placement: reuse, extend, create, or split. It invokes only `note-topic-search`.
-- **`note-boundary-analyzer`** — scope distribution after placement. It consumes an accepted placement but does not invoke placement, writing, or mutation skills.
+### Semantic decisions
 
-## Level 3 — Mutation primitives
+- **`note-home-finder`** — decide **where** knowledge belongs: reuse, extend, create, or split.
+- **`note-boundary-analyzer`** — decide **how much** each destination owns after placement is known.
+- **`note-link-planner`** — identify valuable semantic links and existing phrases that can carry them.
+- **`note-cohesion-reviewer`** — diagnose center-of-gravity, abstraction, duplication, example-boundary, explanation, and linking problems without editing.
 
-- **`note-writer`** — scoped note prose and explanatory structure from approved semantic inputs.
-- **`note-content-mover`** — approved cross-note structural mutation from an approved boundary/move plan.
+### Mutation and mechanical capabilities
 
-Mutation primitives do not invoke semantic-decision or workflow skills. Missing prerequisites are returned to the caller.
+- **`note-writer`** — write scoped explanatory prose from approved semantic inputs.
+- **`note-content-mover`** — execute an approved cross-note structural move/split/merge plan.
+- **`markdown-link-normalizer`** — mechanically normalize and validate local links.
+- **`markdownlint-fix`** — repair Markdown lint findings.
 
-## Level 4 — Note workflows
+## Compatibility
 
-- **`note-authoring`** — substantial note creation or expansion. Composes placement, boundary analysis, optional movement, writing, link validation, and lint repair.
-- **`note-refactor`** — cross-note cleanup. Composes placement, boundary analysis, content movement, prose repair, link validation, and lint repair.
-- **`note-content-boundary`** — compatibility wrapper that delegates to `note-refactor`.
+- **`note-content-boundary`** remains only as a compatibility wrapper for `$note-refactor`.
 
-## Level 5 — Repository workflows
+## Progressive disclosure
 
-- **`markdown-consolidator`** — multi-source evidence consolidation. Owns evidence extraction, comparison, conflict resolution, review, and publication lifecycle, then composes the same placement, boundary, mutation, writing, and link primitives used by note workflows.
+A workflow must not load its entire possible dependency set up front. Use gates:
+
+1. Determine whether the target and ownership are already known.
+2. Load retrieval/placement only if ownership is unresolved.
+3. Load boundary analysis only when the edit can cross subjects, abstraction levels, or duplicate existing explanations.
+4. Load content movement only when durable content must actually move.
+5. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit.
+6. Load mechanical link normalization only when links or anchors changed.
+7. Load lint repair only when the edit introduces or exposes lint findings.
+8. Load specialized reference files just before the branch or stage that requires them.
+
+The goal is the **minimum sufficient capability set**, not the maximum available pipeline.
 
 ## Dependency contract
 
-Every skill should make its boundary explicit with **Owns**, **Requires/Inputs**, **Delegates**, and **Must not** responsibilities when applicable.
+Each skill should state **Owns**, **Inputs/Requires**, **Delegates**, and **Must not** responsibilities when applicable.
 
-Invocation dependencies flow from more abstract workflows toward more concrete capabilities. A semantic or mutation primitive must not invoke a workflow that depends on it. Data may flow between primitives in sequence—for example, a boundary analyzer consumes an accepted placement—but the caller owns that sequencing.
+Invocation dependencies flow from workflows toward lower-level capabilities. Lower-level primitives never invoke workflows that depend on them. Data may flow from one primitive to another through the calling workflow, but the workflow owns that sequencing.
+
+Repository-wide knowledge architecture remains authoritative in `AGENTS.md`; default prose behavior remains authoritative in `.codex/model_instructions.md`.

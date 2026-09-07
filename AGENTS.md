@@ -159,74 +159,22 @@ For foundational notes such as `Operating Systems/`, prefer durable and implemen
 
 ## Skill architecture
 
-Codex skills in `.codex/skills/` form a capability hierarchy.
+Codex skills form a capability hierarchy, but repository policy should not preload the complete workflow graph.
 
-- **Lower-level skills own one reusable capability.** Examples include repository retrieval, note placement, boundary analysis, prose writing, content movement, link normalization, and lint repair.
-- **Higher-level skills orchestrate lower-level skills.** They define sequencing, handoffs, and acceptance criteria rather than restating delegated implementation procedures.
-- **One capability has one canonical owner.** If a lower-level skill owns a task, a higher-level skill must invoke or inject that skill rather than copying its detailed rules.
-- **Dependencies flow downward.** Lower-level skills must not invoke higher-level workflows that depend on them.
-- **Repository-wide invariants live here.** Skills may reference these rules but should not maintain competing copies of repository architecture policy.
-- **Default writing behavior lives in `.codex/model_instructions.md` and `$note-writer`.** Composite skills delegate writing instead of inventing their own style system.
-- Composite skills should make their boundaries explicit with **Owns**, **Delegates**, and **Must not** responsibilities when applicable.
+- Each reusable capability has one canonical owner.
+- User-facing workflows are selected by intent and then disclose lower-level capabilities only when a decision gate requires them.
+- Specialized reference files are loaded just before the branch or stage that needs them, not at workflow startup.
+- Lower-level primitives never invoke workflows that depend on them.
+- Composite workflows must not copy detailed procedures already owned by lower-level skills.
+- Small local corrections may bypass composite workflows when target and scope are obvious.
 
-The intended hierarchy is:
-
-```text
-Repository policy
-├── AGENTS.md
-└── .codex/model_instructions.md
-
-Level 1 — Mechanical and retrieval primitives
-├── note-topic-search
-├── markdown-link-normalizer
-└── markdownlint-fix
-
-Level 2 — Semantic decision primitives
-├── note-home-finder
-│   └── note-topic-search
-└── note-boundary-analyzer
-
-Level 3 — Mutation primitives
-├── note-writer
-└── note-content-mover
-
-Level 4 — Note workflows
-├── note-authoring
-│   ├── note-home-finder
-│   ├── note-boundary-analyzer
-│   ├── note-writer
-│   ├── markdown-link-normalizer
-│   └── markdownlint-fix
-├── note-refactor
-│   ├── note-home-finder
-│   ├── note-boundary-analyzer
-│   ├── note-content-mover
-│   ├── note-writer
-│   ├── markdown-link-normalizer
-│   └── markdownlint-fix
-└── note-content-boundary
-    └── compatibility wrapper for note-refactor
-
-Level 5 — Repository workflows
-└── markdown-consolidator
-    └── delegates repository placement, boundaries, writing/mutation, and link mechanics
-        to the same lower-level capabilities
-```
+The current workflow/capability map and progressive-disclosure rules live in `.codex/skills/README.md`.
 
 ## Editing workflow
 
 For small local corrections, avoid unnecessary orchestration. Inspect the target, make the conservative edit, and verify it.
 
-For substantial additions, new sections, note creation, or cross-note refactors:
-
-1. Search existing coverage using the repository search capability.
-2. Determine the canonical home and reading intent.
-3. Check abstraction and content boundaries.
-4. Write or move only the material owned by each destination.
-5. Add natural cross-links where another note provides useful deeper context.
-6. Validate links, code fences, heading hierarchy, Mermaid syntax, and verifiable commands or examples.
-7. Inspect the final diff and reread affected sections as a first-time reader.
-8. Run the repository's Markdown lint workflow when appropriate and resolve introduced findings.
+For substantial work, select the workflow that matches how knowledge enters or changes the repository: supplied-source ingestion, learning scaffolding, authoring known material, read-only review, cross-note refactoring, link enrichment, or exhaustive consolidation. Let that workflow decide which lower-level capabilities are actually needed.
 
 When a user asks a question about an existing note and requests a rewrite, treat the question as a documentation defect. Insert the missing definition, assumption, distinction, state transition, or causal link where the ambiguity first appears. Do not append a reactive FAQ or disconnected clarification.
 

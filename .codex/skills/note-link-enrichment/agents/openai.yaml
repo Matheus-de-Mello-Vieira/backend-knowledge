@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Link Enrichment"
+  short_description: "Add natural internal links without rewriting"
+  default_prompt: "Use $note-link-enrichment to plan and apply useful repository links while preserving the existing prose."

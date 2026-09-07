@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Review"
+  short_description: "Assess notes without applying changes"
+  default_prompt: "Use $note-review to identify note-cohesion and architecture opportunities without editing the repository."
