@@ -41,9 +41,20 @@ The important abstraction is that the process manipulates a small handle while t
 
 ### Descriptor Indirection
 
-Each process has a descriptor table. An FD selects one descriptor-table entry, and that entry refers to kernel-maintained state for an open resource. The final object depends on what was opened: a regular file eventually reaches filesystem state, a socket reaches networking state, a pipe reaches kernel pipe state, and a device reaches driver-specific state.
+An FD reaches the underlying resource through several layers of indirection:
 
-For regular files, POSIX describes a shared **open file description** that stores state such as the current file offset and file-status flags. Those properties are not universal properties of every descriptor-backed resource; sockets and pipes, for example, are non-seekable and have different resource-specific state.
+- **Descriptor Number:** The FD is a process-local non-negative integer. By itself, the number contains no resource data.
+- **Descriptor-Table Entry:** The number selects one entry in the process's descriptor table.
+  - Properties attached to this entry remain descriptor-specific.
+  - The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
+- **Shared Open Resource State:** The descriptor-table entry refers to kernel-maintained state for an already-open resource.
+  - For regular files, POSIX describes an **open file description** that stores shared state such as the current file offset and file-status flags.
+  - Those properties are not universal to every descriptor-backed resource; sockets and pipes, for example, are non-seekable and maintain different resource-specific state.
+- **Resource-Specific Kernel Object:** The final object depends on what was opened.
+  - A regular file eventually reaches filesystem state.
+  - A socket reaches networking state.
+  - A pipe reaches kernel pipe state.
+  - A device reaches driver-specific state.
 
 Opening the same regular file twice creates independent open file descriptions even though both ultimately refer to the same filesystem object. The descriptors can therefore maintain independent file positions:
 
@@ -59,9 +70,9 @@ int a = open("data.txt", O_RDONLY);
 int b = dup(a);
 ```
 
-The same sharing principle applies when `fork()` creates a child process whose inherited descriptors refer to the same underlying open resources as the parent. **Duplicating a descriptor duplicates the handle, not the underlying resource.** Consequently, shared resource state can remain alive until the final descriptor reference is released.
-
-Properties attached to the descriptor-table entry itself remain descriptor-specific. The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
+- **Descriptor Duplication:** `dup()` duplicates the handle rather than the underlying resource.
+- **`fork()` Inheritance:** The same sharing principle applies when `fork()` creates a child process whose inherited descriptors refer to the same underlying open resources as the parent.
+- **Lifetime Consequence:** Shared resource state can remain alive until the final descriptor reference is released.
 
 ### Resources Referenced by File Descriptors
 
@@ -94,26 +105,43 @@ void stream_data(int read_fd, int write_fd) {
 }
 ```
 
-The common interface does **not** imply common semantics. Reading a regular file consumes bytes according to regular-file position semantics; reading a TCP socket consumes bytes from a network stream; reading a pipe consumes bytes supplied through the pipe; and a device can define behavior through its driver. Resource-specific notes therefore define what those operations mean for each underlying object.
+- **Common Reference Model:** The same integer descriptor abstraction identifies many different kernel-managed resources.
+- **Common Operations:** Calls such as `read()`, `write()`, and `close()` can operate on multiple resource types when the underlying resource supports that operation.
+- **Resource-Specific Semantics:** A common interface does **not** mean the resources behave identically.
+  - **Regular File:** `read()` consumes bytes according to regular-file position semantics.
+  - **TCP Socket:** `read()` consumes bytes from a network byte stream.
+  - **Pipe:** `read()` consumes bytes supplied through the pipe.
+  - **Device:** The driver can define the operation's behavior.
+- **Specialization Boundary:** Resource-specific notes define what these common operations mean for each underlying object.
 
 ### Descriptor Operations and Lifetime
 
 Some operations act primarily on the descriptor relationship rather than on one particular resource type:
 
-- **`close()`:** Releases one descriptor's reference to its open resource. The underlying resource does not necessarily disappear immediately if another descriptor or kernel reference still keeps it alive.
-- **`dup()` and `dup2()`:** Allocate another descriptor referring to the same already-open resource state. Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
-- **`fork()` inheritance:** The child receives descriptor-table entries referring to the same underlying open resources as the parent. This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
-- **Close-on-exec:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
+- **`close()` — Release Reference:** Releases one descriptor's reference to its open resource. The underlying resource does not necessarily disappear immediately if another descriptor or kernel reference still keeps it alive.
+- **`dup()` / `dup2()` — Duplicate Handle:** Allocate another descriptor referring to the same already-open resource state.
+  - Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
+- **`fork()` — Inherit References:** The child receives descriptor-table entries referring to the same underlying open resources as the parent.
+  - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
+- **Close-on-Exec — Control `exec()` Lifetime:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
 
 ### Resource-Specific Operations
 
-Beyond the common descriptor interface, operations depend on the resource behind the FD. Regular-file operations such as [`lseek()`, `pread()`, and `pwrite()`](06%20Storage%20Management.md#Reading%20and%20Writing%20Files) use file-position semantics that do not apply to non-seekable resources. Socket operations such as [`bind()`, `listen()`, `accept()`, `connect()`, `send()`, and `recv()`](07%20Socket%20Management.md#POSIX%20Socket%20Interface) manipulate networking-specific state.
+Beyond the common descriptor interface, operations depend on the resource behind the FD.
 
-Operating systems can also expose specialized cross-resource operations. Linux `sendfile()`, for example, can transfer data from a regular-file descriptor toward a compatible output descriptor such as a socket without first routing the payload through an application buffer. The performance effect of avoiding those user-space copies is illustrated by [Kafka's zero-copy serving path](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy).
+- **Regular Files:** Operations such as [`lseek()`, `pread()`, and `pwrite()`](06%20Storage%20Management.md#Reading%20and%20Writing%20Files) use file-position semantics that do not apply to non-seekable resources.
+- **Sockets:** Operations such as [`bind()`, `listen()`, `accept()`, `connect()`, `send()`, and `recv()`](07%20Socket%20Management.md#POSIX%20Socket%20Interface) manipulate networking-specific state.
+
+> [!example] Composing Different FD-Backed Resources with `sendfile()`
+> Operating systems can expose specialized cross-resource operations. Linux `sendfile()`, for example, can transfer data from a regular-file descriptor toward a compatible output descriptor such as a socket without first routing the payload through an application buffer.
+>
+> The performance effect of avoiding those user-space copies is illustrated by [Kafka's zero-copy serving path](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy).
 
 > [!note] FD Exhaustion
->
-> Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`. If a program repeatedly opens files, [sockets](07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure), or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files"). System-wide limits can also exist independently of the per-process limit. Descriptor exhaustion is distinct from exhaustion of resource-specific kernel memory such as socket buffers.
+> - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
+> - **Failure:** If a program repeatedly opens files, [sockets](07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure), or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files").
+> - **System-Wide Limits:** System-wide limits can also exist independently of the per-process limit.
+> - **Different Resource Limits:** Descriptor exhaustion is distinct from exhaustion of resource-specific kernel memory such as socket buffers.
 
 ## Producing machine code
 
