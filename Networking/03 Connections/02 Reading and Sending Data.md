@@ -67,5 +67,10 @@ Nagle's algorithm reduces the number of very small TCP segments produced by appl
 - **What It Does Not Bypass:** Disabling Nagle does not remove TCP's other constraints.
   - Flow control, congestion control, socket-buffer capacity, and the network itself can still delay a write after the application submits its bytes.
 
-> [!example] cURL and TLS Handshakes
-> cURL enabled `TCP_NODELAY` by default in 2016 after small-write delays were found to hurt TLS handshake latency. This is a concrete example of an application changing a socket option because a transport optimization that is useful for bandwidth efficiency can conflict with a latency-sensitive request/response pattern.
+> [!example] TLS Handshakes and Delayed Acknowledgments
+> A TLS implementation can emit related handshake records through several small TCP writes. After the first sub-MSS segment is sent, Nagle's algorithm can buffer a following small write until the first segment is acknowledged. If the peer uses delayed acknowledgments while waiting for more data, the handshake can stall even though both endpoints are otherwise ready to continue.
+>
+> `TCP_NODELAY` allows the subsequent write to be transmitted without waiting for that acknowledgment, which can avoid this latency-sensitive interaction. It does not make TLS intrinsically faster and can increase the number of small segments.
+<!-- -->
+> [!example] cURL's Default
+> cURL enabled `TCP_NODELAY` by default in 2016. This choice favors prompt progress in interactive transfers while accepting that some workloads can produce more small TCP segments.
