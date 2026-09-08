@@ -203,8 +203,8 @@ Once incoming network data is associated with a socket, the kernel processes the
 - **Partial Writes:** Stream-socket writes can be partial, so code must use the returned byte count rather than assuming the whole requested buffer was accepted.
 - **Cross-Resource Transfer:** Some operating systems provide specialized operations such as Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations), which can move regular-file data toward a socket without first routing the payload through an application buffer.
   - The socket remains the network destination.
-  - The avoided user-space copy and its performance consequences are discussed through [Kafka's zero-copy example](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy).
-- **Transport Responsibility:** For TCP, later protocol work includes segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as Nagle's algorithm.
+  - The avoided user-space copy and its performance consequences are discussed through [Kafka's zero-copy example](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29).
+- **Transport Responsibility:** For TCP, later protocol work includes segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm).
   - Those mechanisms belong to [TCP](../Networking/02%20Protocols/05%20TCP.md); the OS-facing boundary is that the application submits bytes to the socket while the kernel owns the transport machinery.
 
 ## Socket Buffers and Backpressure
@@ -284,4 +284,4 @@ The socket abstraction allows several execution units to participate in connecti
 - **Application-Level Imbalance:** A connection that later carries many requests can therefore create more application work than another connection even if the kernel initially distributed the connections evenly.
 
 > [!example] NGINX Socket Sharding
-> NGINX can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. The NGINX-specific architecture builds on the generic OS primitive described here.
+> [NGINX](../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. The NGINX-specific architecture builds on the generic OS primitive described here.

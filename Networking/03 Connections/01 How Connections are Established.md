@@ -1,6 +1,6 @@
 # How Connections are Established
 
-A TCP connection is established cooperatively by the two transport endpoints before application data can flow. This note focuses on the network-visible TCP handshake and its consequences. The operating-system mechanisms that create listening sockets, maintain pending connections, and expose completed connections through `accept()` are covered in [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting%20TCP%20Connections).
+A TCP connection is established cooperatively by the two transport endpoints before application data can flow. This note focuses on the network-visible TCP handshake and its consequences. The operating-system mechanisms that create listening sockets, maintain pending connections, and expose completed connections through `accept()` are covered in [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting).
 
 ## TCP Three-Way Handshake
 
@@ -11,7 +11,7 @@ A new [TCP connection](../02%20Protocols/05%20TCP.md#Connection-oriented%20trans
 3. **Client → Server (`ACK`):** The client acknowledges the server's response. Both endpoints now have enough state to treat the connection as established.
 
 - **Kernel Responsibility:** The application normally does not construct or consume these packets itself. A kernel TCP implementation processes the handshake and maintains the corresponding transport state.
-- **Application Handoff:** On the server, a completed connection eventually becomes available to user space through the [listening and accepting](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting%20TCP%20Connections) socket lifecycle.
+- **Application Handoff:** On the server, a completed connection eventually becomes available to user space through the [listening and accepting](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting) socket lifecycle.
 
 ## Connection Identity
 

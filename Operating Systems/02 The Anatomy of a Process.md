@@ -135,7 +135,7 @@ Beyond the common descriptor interface, operations depend on the resource behind
 > [!example] Composing Different FD-Backed Resources with `sendfile()`
 > Operating systems can expose specialized cross-resource operations. Linux `sendfile()`, for example, can transfer data from a regular-file descriptor toward a compatible output descriptor such as a socket without first routing the payload through an application buffer.
 >
-> The performance effect of avoiding those user-space copies is illustrated by [Kafka's zero-copy serving path](03%20Memory%20Management.md#Architecture%20Story:%20Kafka,%20DMA,%20and%20Zero-Copy).
+> The performance effect of avoiding those user-space copies is illustrated by [Kafka's zero-copy serving path](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29).
 
 > [!note] FD Exhaustion
 > - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.

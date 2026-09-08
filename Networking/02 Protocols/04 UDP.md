@@ -21,7 +21,7 @@ UDP has a deliberately small transport contract:
 
 ## Ports and Demultiplexing
 
-IP routes packets between network endpoints, while UDP adds 16-bit source and destination ports.
+[IP](03%20Internet%20Protocol.md#Internet%20Protocol) routes packets between network endpoints, while UDP adds 16-bit source and destination ports.
 
 - **Port Width:** UDP source and destination ports are 16-bit values ranging from `0` to `65535`.
 - **Kernel Demultiplexing:** The receiving kernel uses the protocol and local addressing information to [demultiplex](../../Operating%20Systems/07%20Socket%20Management.md#Addressing,%20Ports,%20and%20Demultiplexing) an incoming datagram to an appropriate UDP socket.
@@ -68,7 +68,7 @@ UDP deliberately leaves several transport guarantees to higher layers.
 - **Application Responsibility:** An application that needs any of those properties must implement them itself or use a protocol built above UDP.
 - **Workload-Specific Guarantees:** This does not mean every UDP application should recreate TCP.
   - Real-time media may prefer to discard late data rather than retransmit it.
-  - QUIC builds reliable multiplexed streams, congestion control, and cryptographic connection state above UDP because it needs substantially stronger semantics.
+  - [QUIC](10%20HTTP3.md#HTTP%2F3) builds reliable multiplexed streams, congestion control, and cryptographic connection state above UDP because it needs substantially stronger semantics.
 
 ## Use Cases
 

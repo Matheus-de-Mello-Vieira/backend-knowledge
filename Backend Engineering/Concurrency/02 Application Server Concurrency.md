@@ -11,7 +11,7 @@ These dimensions are related but independent. A multi-process server, for exampl
 
 The execution model determines what processes and threads compose the application and how resources are shared between them.
 
-A **process** primarily acts as a resource and isolation boundary. It owns resources such as a virtual address space and file descriptor table. The actual schedulable execution units are its **threads**: the operating-system scheduler places runnable threads onto CPU cores.
+A **process** primarily acts as a resource and isolation boundary. It owns resources such as a [virtual address space](../../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory) and file descriptor table. The actual schedulable execution units are its **threads**: the operating-system scheduler places runnable threads onto CPU cores.
 
 ### Single-Threaded Process
 
@@ -47,7 +47,7 @@ A multi-threaded application uses one process containing several OS threads.
 
 - **Shared Process Resources:** Threads share process-level resources, including the same virtual address space and [file descriptors](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29), while each thread maintains its own execution state, including registers and stack.
 - **Cheap Communication:** Because threads share memory directly, one thread can write an object to the heap and another can access the same object without transferring it through an IPC mechanism.
-- **Synchronization Requirement:** Shared mutable state introduces race conditions when several threads access it concurrently.
+- **Synchronization Requirement:** Shared mutable state introduces [race conditions](01%20Concurrency%20Fundamentals.md#Race%20Conditions) when several threads access it concurrently.
   - Synchronization mechanisms can make the access correct, but contention around shared state can reduce throughput.
 - **CPU Parallelism:** Multiple runnable threads can execute simultaneously on different CPU cores when the workload can be divided into independent work.
 
@@ -127,11 +127,11 @@ With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Mult
 This limitation becomes more important when an application protocol can **multiplex multiple requests over one transport connection**.
 
 - **Distribution Unit:** `SO_REUSEPORT` distributes transport connections or traffic, not application-level requests or streams.
-- **HTTP/2 Consequence:** Many independent HTTP streams can exist inside a single TCP connection.
+- **[HTTP/2](../../Networking/02%20Protocols/09%20HTTP2.md#HTTP%2F2) Consequence:** Many independent HTTP streams can exist inside a single TCP connection.
   - `SO_REUSEPORT` distributes the TCP connection between workers, not the individual HTTP/2 streams.
   - Once one worker accepts that connection, all of its transport traffic arrives through the same connected socket.
   - The HTTP/2 implementation can still dispatch application work for individual streams to other threads or workers, but that happens above the socket-distribution layer and is a separate architectural decision.
-- **HTTP/3 / QUIC Consequence:** HTTP/3 runs over QUIC, which multiplexes streams over UDP.
+- **[HTTP/3](../../Networking/02%20Protocols/10%20HTTP3.md#HTTP%2F3) / QUIC Consequence:** HTTP/3 runs over QUIC, which multiplexes streams over UDP.
   - `SO_REUSEPORT` can distribute UDP traffic among multiple sockets, but it does not understand HTTP/3 requests or streams.
   - More sophisticated routing can use mechanisms such as BPF with `SO_REUSEPORT` to keep packets associated with a particular QUIC connection on an appropriate worker.
   - Even then, routing operates on transport-level information rather than individual HTTP requests.
