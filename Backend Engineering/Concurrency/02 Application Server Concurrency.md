@@ -19,8 +19,8 @@ A single-threaded application consists of one process with one primary applicati
 
 - **Execution Simplicity:** Only one sequence of application instructions executes at a time, so application code does not need to coordinate multiple threads concurrently modifying the same memory.
 - **I/O Concurrency:** Single-threaded does not mean that the server can handle only one connection at a time.
-  - A thread can multiplex many concurrent I/O operations using [non-blocking sockets](../../Operating%20Systems/07%20Socket%20Management.md#Blocking%20and%20Non-Blocking%20Sockets) and an event loop.
-  - While one network operation is waiting for the kernel or another machine, the thread can continue processing work associated with another connection.
+    - A thread can multiplex many concurrent I/O operations using [non-blocking sockets](../../Operating%20Systems/07%20Socket%20Management.md#Blocking%20and%20Non-Blocking%20Sockets) and an event loop.
+    - While one network operation is waiting for the kernel or another machine, the thread can continue processing work associated with another connection.
 - **CPU and Blocking Limit:** A long CPU-bound operation or a blocking system call prevents that thread from processing other application work until the operation completes.
 - **Common Examples:** Node.js and Redis are commonly associated with this event-loop-oriented application model, although supporting runtime or background work may involve additional threads or processes.
 
@@ -29,11 +29,11 @@ A single-threaded application consists of one process with one primary applicati
 A multi-process application runs several worker processes as part of the same application.
 
 - **Isolation:** Each process normally has its own virtual address space, page tables, and other process-level resources.
-  - One process cannot normally access another process's private memory directly.
+    - One process cannot normally access another process's private memory directly.
 - **CPU Parallelism:** Because each process contains at least one schedulable thread, workers from different processes can execute simultaneously on different CPU cores.
 - **Communication Cost:** Isolation makes communication less direct.
-  - Processes that need to exchange data must use Inter-Process Communication or explicitly mapped shared memory.
-  - If several processes modify the same shared state, that state still requires synchronization.
+    - Processes that need to exchange data must use Inter-Process Communication or explicitly mapped shared memory.
+    - If several processes modify the same shared state, that state still requires synchronization.
 - **Duplicated State:** Multiple processes duplicate some application and kernel state.
 - **Address-Space Switching:** Switching execution between threads belonging to different processes can additionally require changing the active address-space context.
 - **Common Examples:** NGINX and PostgreSQL make extensive use of multiple worker processes.
@@ -48,7 +48,7 @@ A multi-threaded application uses one process containing several OS threads.
 - **Shared Process Resources:** Threads share process-level resources, including the same virtual address space and [file descriptors](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29), while each thread maintains its own execution state, including registers and stack.
 - **Cheap Communication:** Because threads share memory directly, one thread can write an object to the heap and another can access the same object without transferring it through an IPC mechanism.
 - **Synchronization Requirement:** Shared mutable state introduces [race conditions](01%20Concurrency%20Fundamentals.md#Race%20Conditions) when several threads access it concurrently.
-  - Synchronization mechanisms can make the access correct, but contention around shared state can reduce throughput.
+    - Synchronization mechanisms can make the access correct, but contention around shared state can reduce throughput.
 - **CPU Parallelism:** Multiple runnable threads can execute simultaneously on different CPU cores when the workload can be divided into independent work.
 
 ## Connection Distribution Models
@@ -59,7 +59,7 @@ Application servers build connection-distribution architectures from listening s
 
 - **Primary Model:** These architectures primarily distribute TCP connections.
 - **UDP Difference:** [Datagram sockets](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets) do not use `accept()` to create a new socket for every peer.
-  - In protocols such as QUIC, workers receive UDP datagrams and the QUIC implementation associates those packets with logical QUIC connections.
+    - In protocols such as QUIC, workers receive UDP datagrams and the QUIC implementation associates those packets with logical QUIC connections.
 
 ### Single Listener, Single Worker
 
@@ -69,10 +69,10 @@ One execution thread owns the listening socket, accepts connections, and process
 - **Acceptance Path:** The same thread accepts incoming connections.
 - **Worker Assignment:** The accepting thread is also the only application worker.
 - **I/O Concurrency:** Maintaining high connection concurrency requires the worker to avoid spending long periods blocked on individual connections.
-  - Event-driven servers commonly combine this architecture with non-blocking I/O so one thread can maintain many active connections.
+    - Event-driven servers commonly combine this architecture with non-blocking I/O so one thread can maintain many active connections.
 - **Main Benefit:** The architecture is straightforward and avoids coordination among multiple application workers.
 - **Main Trade-off:** Only one application thread executes application work at a time.
-  - CPU-heavy request processing can therefore become a bottleneck regardless of how many connections are managed concurrently.
+    - CPU-heavy request processing can therefore become a bottleneck regardless of how many connections are managed concurrently.
 
 ### Single Acceptor, Multiple Workers
 
@@ -86,12 +86,14 @@ The flow is:
 4. The acceptor selects a worker.
 5. The worker handles the connection or request.
 
+Features:
+
 - **Listener Ownership:** One acceptor owns or controls the listening socket.
 - **Acceptance Path:** All accepted connections pass through that execution unit.
 - **Worker Assignment:** The acceptor explicitly selects one of several workers.
 - **Worker Type:** Workers may be threads or processes.
-  - Threads inside the same process already share the process's file descriptor table.
-  - Process-based architectures require an appropriate mechanism for sharing or transferring the accepted connection.
+    - Threads inside the same process already share the process's file descriptor table.
+    - Process-based architectures require an appropriate mechanism for sharing or transferring the accepted connection.
 - **Main Benefit:** Centralized connection distribution can simplify balancing because one component decides where each connection goes.
 - **Main Trade-off:** The acceptor can become a bottleneck if the connection arrival rate becomes high enough.
 
@@ -101,14 +103,14 @@ Instead of using one dedicated acceptor, several workers [share a listening sock
 
 - **Listener Ownership:** Several workers refer to the same underlying listening socket.
 - **Acceptance Path:** Each worker can call `accept()` directly.
-  - When a connection becomes available, one worker successfully accepts it and handles the resulting connected socket.
+    - When a connection becomes available, one worker successfully accepts it and handles the resulting connected socket.
 - **Worker Type:** The architecture does not determine whether workers are processes or threads.
-  - Multiple threads can share a socket through their common process resources.
-  - Related processes can share a listening socket through mechanisms such as descriptor inheritance.
+    - Multiple threads can share a socket through their common process resources.
+    - Related processes can share a listening socket through mechanisms such as descriptor inheritance.
 - **Main Benefit:** There is no dedicated central acceptor.
 - **Coordination Cost:** Workers coordinate around one shared listening resource.
 - **Historical Risk — Thundering Herd:** Several sleeping workers can be awakened even though only one can successfully accept the available connection.
-  - Unsuccessful workers wake, compete for the same work, and return to waiting, wasting CPU cycles.
+    - Unsuccessful workers wake, compete for the same work, and return to waiting, wasting CPU cycles.
 
 ### Multiple Listeners with `SO_REUSEPORT`
 
@@ -120,7 +122,7 @@ With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Mult
 - **Acceptance Path:** Each worker accepts and processes the connections assigned to its own listener without coordinating access to one shared accept path.
 - **Main Benefit:** This can reduce contention around connection acceptance and distribute networking work across multiple CPU cores.
 - **Main Trade-off:** Kernel-level distribution does not necessarily reflect application-level workload.
-  - Two connections may look equivalent to the kernel while requiring very different amounts of CPU time, memory, or response processing.
+    - Two connections may look equivalent to the kernel while requiring very different amounts of CPU time, memory, or response processing.
 
 #### Multiplexed Protocols
 
@@ -128,12 +130,12 @@ This limitation becomes more important when an application protocol can **multip
 
 - **Distribution Unit:** `SO_REUSEPORT` distributes transport connections or traffic, not application-level requests or streams.
 - **[HTTP/2](../../Networking/02%20Protocols/09%20HTTP2.md#HTTP%2F2) Consequence:** Many independent HTTP streams can exist inside a single TCP connection.
-  - `SO_REUSEPORT` distributes the TCP connection between workers, not the individual HTTP/2 streams.
-  - Once one worker accepts that connection, all of its transport traffic arrives through the same connected socket.
-  - The HTTP/2 implementation can still dispatch application work for individual streams to other threads or workers after the connection has been accepted, independently of which worker owns the transport I/O.
+    - `SO_REUSEPORT` distributes the TCP connection between workers, not the individual HTTP/2 streams.
+    - Once one worker accepts that connection, all of its transport traffic arrives through the same connected socket.
+    - The HTTP/2 implementation can still dispatch application work for individual streams to other threads or workers after the connection has been accepted, independently of which worker owns the transport I/O.
 - **[HTTP/3](../../Networking/02%20Protocols/10%20HTTP3.md#HTTP%2F3) / QUIC Consequence:** HTTP/3 runs over QUIC, which multiplexes streams over UDP.
-  - `SO_REUSEPORT` can distribute UDP traffic among multiple sockets, but it does not understand HTTP/3 requests or streams.
-  - More sophisticated routing can use mechanisms such as BPF with `SO_REUSEPORT` to keep packets associated with a particular QUIC connection on an appropriate worker.
-  - Even then, routing operates on transport-level information rather than individual HTTP requests.
+    - `SO_REUSEPORT` can distribute UDP traffic among multiple sockets, but it does not understand HTTP/3 requests or streams.
+    - More sophisticated routing can use mechanisms such as BPF with `SO_REUSEPORT` to keep packets associated with a particular QUIC connection on an appropriate worker.
+    - Even then, routing operates on transport-level information rather than individual HTTP requests.
 - **Load-Balancing Limitation:** Balanced transport connections do not necessarily produce balanced application work.
-  - A single long-lived HTTP/2 or HTTP/3 connection may carry many simultaneous requests while another connection carries almost none.
+    - A single long-lived HTTP/2 or HTTP/3 connection may carry many simultaneous requests while another connection carries almost none.

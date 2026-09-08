@@ -33,7 +33,7 @@ A DMZ (`/ˌdiː ɛm ˈziː/`) stands for Demilitarized Zone. In the physical wor
 
 **The DMZ Solution**: By placing public-facing servers outside the internal network and into a DMZ, they remain fully exposed and accessible to the internet without granting external users access to the internal network. If a hacker compromises your public web server in the DMZ, the internal firewall still blocks them from jumping deeper into your private Active Directory or customer databases.
 
-**Enterprise DMZ Architectures**
+#### Enterprise DMZ Architectures
 
 - **Single Firewall Setup:** Divides a network into two parts by taking specific devices from inside the trusted network and placing them on the outside of the firewall, directly facing the internet.
 - **Dual Firewall Setup (More Secure):** Typically structured using a "triple-homed firewall" or two separate firewalls (external and internal). The first (external) firewall filters initial traffic from the internet, ensuring only legitimate requests reach the public-facing servers sitting in the middle. The second (internal) firewall protects the private corporate network. Hackers would have to successfully bypass two separate firewalls to reach sensitive internal data.

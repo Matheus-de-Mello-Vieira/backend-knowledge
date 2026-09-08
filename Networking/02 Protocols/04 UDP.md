@@ -16,8 +16,8 @@ UDP has a deliberately small transport contract:
 - **No Built-In Congestion Control:** Applications or higher-level protocols must provide appropriate congestion behavior when necessary.
 - **Small Header:** The UDP header is 8 bytes.
 - **Transport State Meaning:** Calling UDP "stateless" refers to the absence of TCP-style per-connection transport state.
-  - The operating system still maintains a UDP socket object, queues received datagrams, and tracks binding information.
-  - Applications can also maintain arbitrary peer or session state above UDP.
+    - The operating system still maintains a UDP socket object, queues received datagrams, and tracks binding information.
+    - Applications can also maintain arbitrary peer or session state above UDP.
 
 ## Ports and Demultiplexing
 
@@ -26,10 +26,10 @@ UDP has a deliberately small transport contract:
 - **Port Width:** UDP source and destination ports are 16-bit values ranging from `0` to `65535`.
 - **Kernel Demultiplexing:** The receiving kernel uses the protocol and local addressing information to [demultiplex](../../Operating%20Systems/07%20Socket%20Management.md#Addressing,%20Ports,%20and%20Demultiplexing) an incoming datagram to an appropriate UDP socket.
 - **No Hard Peer Limit from Port Count:** The 65,536 possible port values are **not** a hard limit on the number of remote peers a UDP server can communicate with.
-  - One bound UDP socket can receive datagrams from many different source IP/port pairs because UDP does not create a new accepted socket for each peer.
+    - One bound UDP socket can receive datagrams from many different source IP/port pairs because UDP does not create a new accepted socket for each peer.
 - **Source Port:** The source port gives the receiver an address to which it can direct a response.
 - **Application Correlation:** Application protocols commonly add their own identifiers when they need to match requests with responses.
-  - DNS, for example, includes a transaction ID because multiple queries can be in flight independently.
+    - DNS, for example, includes a transaction ID because multiple queries can be in flight independently.
 
 > [!note] UDP `connect()` Does Not Create a Transport Connection
 > A UDP application can call [`connect()`](../../Operating%20Systems/07%20Socket%20Management.md#Establishing%20Outbound%20Connections) to record a default peer and restrict which peer is accepted by the socket API. No TCP-style handshake occurs, and UDP does not gain TCP-style per-connection transport state.
@@ -67,8 +67,8 @@ UDP deliberately leaves several transport guarantees to higher layers.
 - **Not Provided by UDP:** Packet-loss recovery, duplication handling, reordering, retransmission, session establishment, and congestion control are not built into the protocol.
 - **Application Responsibility:** An application that needs any of those properties must implement them itself or use a protocol built above UDP.
 - **Workload-Specific Guarantees:** This does not mean every UDP application should recreate TCP.
-  - Real-time media may prefer to discard late data rather than retransmit it.
-  - [QUIC](10%20HTTP3.md#HTTP%2F3) builds reliable multiplexed streams, congestion control, and cryptographic connection state above UDP because it needs substantially stronger semantics.
+    - Real-time media may prefer to discard late data rather than retransmit it.
+    - [QUIC](10%20HTTP3.md#HTTP%2F3) builds reliable multiplexed streams, congestion control, and cryptographic connection state above UDP because it needs substantially stronger semantics.
 
 ## Use Cases
 
@@ -233,19 +233,19 @@ nc -u 127.0.0.1 5501
 The program combines UDP's datagram semantics with the [POSIX socket lifecycle](../../Operating%20Systems/07%20Socket%20Management.md#POSIX%20Socket%20Interface):
 
 - **Socket Creation:** [`socket(AF_INET, SOCK_DGRAM, 0)`](../../Operating%20Systems/07%20Socket%20Management.md#Creating%20a%20Socket) creates an IPv4 datagram socket and returns its file descriptor.
-  - **`AF_INET`:** Selects the IPv4 address family. IPv6 uses `AF_INET6`.
-  - **`SOCK_DGRAM`:** Selects message-oriented datagram semantics. With the Internet address family and protocol `0`, the normal protocol selection is UDP.
-  - **Protocol `0`:** Requests the default protocol associated with the chosen family and socket type rather than naming UDP explicitly.
+    - **`AF_INET`:** Selects the IPv4 address family. IPv6 uses `AF_INET6`.
+    - **`SOCK_DGRAM`:** Selects message-oriented datagram semantics. With the Internet address family and protocol `0`, the normal protocol selection is UDP.
+    - **Protocol `0`:** Requests the default protocol associated with the chosen family and socket type rather than naming UDP explicitly.
 - **Local Address Structure:** `struct sockaddr_in` stores an IPv4 socket address: address family, port, and IPv4 address.
-  - Initializing it with `{0}` gives every field and padding byte a known zero value before the relevant fields are assigned.
+    - Initializing it with `{0}` gives every field and padding byte a known zero value before the relevant fields are assigned.
 - **Network Byte Order:** `htons(5501)` converts the 16-bit port from host byte order to network byte order; `ntohs()` performs the reverse conversion when printing the sender's port.
-  - Internet protocol fields use network byte order, which is big-endian, regardless of the host CPU's native byte order.
+    - Internet protocol fields use network byte order, which is big-endian, regardless of the host CPU's native byte order.
 - **IP Address Representation:** `inet_pton()` converts the presentation form `"127.0.0.1"` into the binary IPv4 representation stored in `sin_addr`. `inet_ntop()` performs the reverse conversion for display.
 - **Binding:** [`bind()`](../../Operating%20Systems/07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) associates the socket with `127.0.0.1:5501`, giving incoming datagrams a local endpoint to target.
 - **Generic Address Interface:** `bind()` and `recvfrom()` accept `struct sockaddr *` so the same API can work with different address families. The cast adapts the IPv4-specific `struct sockaddr_in *` to that generic pointer type; the address family tells the kernel how to interpret the structure.
 - **Datagram Receive:** `recvfrom()` consumes one received datagram and copies its payload into `buffer`.
-  - A later `recvfrom()` receives a later datagram rather than continuing the previous one as if UDP were a byte stream.
-  - If the supplied buffer is too small, the datagram is truncated rather than continued by the next receive operation.
+    - A later `recvfrom()` receives a later datagram rather than continuing the previous one as if UDP were a byte stream.
+    - If the supplied buffer is too small, the datagram is truncated rather than continued by the next receive operation.
 - **Sender Address:** `remote` is filled with the source endpoint associated with the received datagram. One bound UDP socket can therefore receive successive datagrams from different remote IP/port pairs without calling `accept()`.
 - **Address-Length Parameter:** `remote_size` initially tells the kernel how much address storage is available. After `recvfrom()`, it contains the size of the address actually written.
 - **Buffer Length:** `recvfrom()` returns the number of payload bytes copied. The code reserves one extra byte and appends `\0` only so the received bytes can safely be printed as a C string; UDP itself does not add a string terminator.

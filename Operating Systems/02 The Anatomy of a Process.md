@@ -45,16 +45,16 @@ An FD reaches the underlying resource through several layers of indirection:
 
 - **Descriptor Number:** The FD is a process-local non-negative integer. By itself, the number contains no resource data.
 - **Descriptor-Table Entry:** The number selects one entry in the process's descriptor table.
-  - Properties attached to this entry remain descriptor-specific.
-  - The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
+    - Properties attached to this entry remain descriptor-specific.
+    - The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
 - **Shared Open Resource State:** The descriptor-table entry refers to kernel-maintained state for an already-open resource.
-  - For regular files, POSIX describes an **open file description** that stores shared state such as the current file offset and file-status flags.
-  - Those properties are not universal to every descriptor-backed resource; sockets and pipes, for example, are non-seekable and maintain different resource-specific state.
+    - For regular files, POSIX describes an **open file description** that stores shared state such as the current file offset and file-status flags.
+    - Those properties are not universal to every descriptor-backed resource; sockets and pipes, for example, are non-seekable and maintain different resource-specific state.
 - **Resource-Specific Kernel Object:** The final object depends on what was opened.
-  - A regular file eventually reaches filesystem state.
-  - A socket reaches networking state.
-  - A pipe reaches kernel pipe state.
-  - A device reaches driver-specific state.
+    - A regular file eventually reaches filesystem state.
+    - A socket reaches networking state.
+    - A pipe reaches kernel pipe state.
+    - A device reaches driver-specific state.
 
 Opening the same regular file twice creates independent open file descriptions even though both ultimately refer to the same filesystem object. The descriptors can therefore maintain independent file positions:
 
@@ -87,7 +87,7 @@ Because the descriptor is only a handle, the same integer abstraction can refer 
 
 > [!note] Inspecting File Descriptors Through `/proc`  
 > On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
-> 
+>
 > This does not mean that the descriptors themselves are files stored under `/proc`. The descriptor table remains kernel-managed process state; `procfs` merely exposes a filesystem-based view through which that state can be inspected.
 
 ### The POSIX Descriptor Interface
@@ -108,10 +108,10 @@ void stream_data(int read_fd, int write_fd) {
 - **Common Reference Model:** The same integer descriptor abstraction identifies many different kernel-managed resources.
 - **Common Operations:** Calls such as `read()`, `write()`, and `close()` can operate on multiple resource types when the underlying resource supports that operation.
 - **Resource-Specific Semantics:** A common interface does **not** mean the resources behave identically.
-  - **Regular File:** `read()` consumes bytes according to regular-file position semantics.
-  - **TCP Socket:** `read()` consumes bytes from a network byte stream.
-  - **Pipe:** `read()` consumes bytes supplied through the pipe.
-  - **Device:** The driver can define the operation's behavior.
+    - **Regular File:** `read()` consumes bytes according to regular-file position semantics.
+    - **TCP Socket:** `read()` consumes bytes from a network byte stream.
+    - **Pipe:** `read()` consumes bytes supplied through the pipe.
+    - **Device:** The driver can define the operation's behavior.
 
 ### Descriptor Operations and Lifetime
 
@@ -119,9 +119,9 @@ Some operations act primarily on the descriptor relationship rather than on one 
 
 - **`close()` — Release Reference:** Releases one descriptor's reference to its open resource. The underlying resource does not necessarily disappear immediately if another descriptor or kernel reference still keeps it alive.
 - **`dup()` / `dup2()` — Duplicate Handle:** Allocate another descriptor referring to the same already-open resource state.
-  - Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
+    - Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
 - **`fork()` — Inherit References:** The child receives descriptor-table entries referring to the same underlying open resources as the parent.
-  - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
+    - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
 - **Close-on-Exec — Control `exec()` Lifetime:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
 
 > [!note] FD Exhaustion
@@ -157,8 +157,8 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
 - **Avoided Copies:** `sendfile()` avoids the two intermediate application-buffer copies. The file data can remain in the page cache while the networking stack refers to those pages for transmission, so the application does not copy the payload into user space and back into the kernel.
 - **Meaning of Zero-Copy:** In this context, **zero-copy** means zero unnecessary CPU-mediated payload copies through application memory. Bytes still move between storage, memory, and the network device, often via DMA.
 - **Unchanged-Body Requirement:** The output body must already exist in a form that can be forwarded unchanged.
-  - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.
-  - **Headers:** Adding HTTP headers does not alter the file body and therefore does not, by itself, prevent zero-copy.
+    - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.
+    - **Headers:** Adding HTTP headers does not alter the file body and therefore does not, by itself, prevent zero-copy.
 
 > [!example] Kafka and Bun — Zero-Copy Eligibility
 >
