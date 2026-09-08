@@ -51,6 +51,21 @@ Do not force every section into the same template. Use prose when causality or c
 
 A note should be complete with respect to **its own subject and abstraction level**, not independently exhaustive about all prerequisites.
 
+## Mechanism-first durable prose
+
+Repository planning may use concepts such as canonical ownership, placement, abstraction boundaries, destinations, local context, movement, and duplication. Treat that vocabulary as editing and review machinery, not as prose to reproduce automatically in durable notes.
+
+Describe the technical mechanism, composition, distinction, state transition, constraint, or consequence that justified the repository decision. Durable prose should normally explain how the systems relate rather than where the repository stores their explanations.
+
+- Do not make the main proposition of a sentence that a note or section owns, covers, defines, focuses on, or contains a concept when the underlying technical relationship can be stated directly.
+- A sentence containing an internal link should remain a useful technical statement if the Markdown link markup is removed.
+- Preserve real technical boundaries such as user space versus kernel space, descriptor state versus socket state, transport versus application responsibility, or persistence primitives versus recovery protocols. Avoid only document-boundary narration.
+- Prefer composition over jurisdiction: explain what one mechanism provides and how another component or layer consumes it.
+- Introduce examples through the mechanism they expose rather than explaining the pedagogical purpose of the example.
+- Let technical prose establish scope naturally when possible. Preserve explicit scope statements when they constrain where a technical claim is valid.
+- Prefer headings that name technical concepts, mechanisms, or real distinctions rather than repository ownership or document-placement decisions.
+- Repeated local coverage is useful when each occurrence contributes a local mechanism, consequence, constraint, or composition relationship. Remove repetition whose only function is identifying where the canonical explanation lives.
+
 ## Examples
 
 Examples are subordinate to the concept being explained.
@@ -120,6 +135,9 @@ Before finalizing, verify that:
 - prose and structured formatting match the logical shape of the knowledge;
 - examples clarify rather than dominate;
 - cross-links are natural and point to known targets;
+- every new inline-linked sentence remains useful if its link markup is removed;
+- headings name technical concepts or real distinctions rather than document ownership;
+- new prose does not narrate repository placement when the technical relationship can be stated directly;
 - links, code fences, commands, equations, tables, and Mermaid syntax are valid where applicable;
 - no unsupported information or unfinished placeholders remain.
 
