@@ -4,7 +4,7 @@ Socket management is how an operating system exposes network communication to us
 
 Socket management is fundamental to backend engineering because backend software exists behind an interface consumed by another component rather than being the user-facing interface itself. In distributed systems, those consumers are commonly remote clients, frontends, or other services, so communication crosses a network and reaches the application through the operating system's socket abstraction. Some backend components instead communicate through queues, files, pipes, shared memory, or standard input/output, but for networked backends socket behavior underlies concerns such as connection concurrency, buffering, backpressure, readiness, timeouts, and server scaling.
 
-This note focuses on the operating-system abstraction and the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) socket interface commonly used on Unix-like systems. Protocol-specific behavior such as TCP retransmission, congestion control, or UDP header structure belongs in the networking notes; application-server architectures belong in backend engineering.
+Unix-like systems commonly expose sockets through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface. Stream sockets commonly use [TCP](../Networking/02%20Protocols/05%20TCP.md) for ordered reliable transport, while datagram sockets commonly use [UDP](../Networking/02%20Protocols/04%20UDP.md) for message-oriented transport. Application servers compose listening sockets, connected sockets, descriptor sharing, and readiness mechanisms into [connection-distribution architectures](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
 
 ## Sockets as Kernel Objects
 
@@ -106,7 +106,7 @@ A TCP server commonly follows this lifecycle:
 5. Completed connections wait until the application is ready to claim them.
 6. `accept()` returns a descriptor referring to a new connected socket.
 
-The packet-level three-way handshake is covered in [How Connections are Established](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md). The important OS distinction is that normal server code does not manually receive the `SYN`, generate the `SYN-ACK`, and interpret the final `ACK`. The kernel's TCP implementation handles those protocol transitions and exposes the completed connection through `accept()`.
+During TCP's [three-way handshake](../Networking/03%20Connections/01%20How%20Connections%20are%20Established.md#TCP%20Three-Way%20Handshake), the kernel processes the `SYN`, generates the `SYN-ACK`, and interprets the final `ACK`. User space receives the completed connection through `accept()` rather than constructing or consuming those handshake packets itself.
 
 #### Listening Socket vs. Connected Socket
 
@@ -143,14 +143,14 @@ Sockets participate in the common descriptor interface, but socket-specific call
 - **Generic Descriptor I/O:** `read()` and `write()` can operate on sockets.
 - **`send()` / `recv()`:** Operate on an already-associated peer while accepting socket-specific flags.
 - **`sendto()` / `recvfrom()`:** Additionally carry peer addressing information, which is especially important for connectionless datagram sockets.
-- **Abstraction Boundary:** The common FD interface unifies how the process identifies the resource, while socket-specific operations expose networking semantics that ordinary files do not have.
+- **Descriptor vs. Socket Semantics:** Generic descriptor operations provide common I/O primitives, while socket-specific operations expose peer addressing and networking state that ordinary files do not have.
 
 ### Socket Configuration
 
 - **`getsockopt()` / `setsockopt()`:** Read and modify options associated with a socket or its protocol stack.
 - **Configurable Concerns:** Options can control address reuse, buffer sizing, keepalive behavior, or protocol-specific algorithms.
 - **Examples:** `SO_REUSEADDR`, `SO_REUSEPORT`, receive/send buffer options, and TCP-specific options such as `TCP_NODELAY`.
-- **Layer Boundary:** The API for setting an option belongs to socket management; the transport consequence of an option such as `TCP_NODELAY` belongs to [TCP](../Networking/02%20Protocols/05%20TCP.md) and its related protocol notes.
+- **Transport Effect:** `setsockopt()` can change protocol-stack behavior; for example, [`TCP_NODELAY`](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#%60TCP_NODELAY%60) disables Nagle's algorithm for a TCP socket.
 
 ### Shutdown and Descriptor Closure
 
@@ -158,9 +158,7 @@ Sockets participate in the common descriptor interface, but socket-specific call
 
 - **`shutdown()` — Communication State:** Changes a connected socket's communication state, allowing reads, writes, or both directions to be disabled while the descriptor remains open.
 - **`close()` — Descriptor Lifetime:** Releases that descriptor's reference according to the general [descriptor lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) rules.
-- **Transport Consequence:** The final network behavior depends on the protocol.
-  - For TCP, orderly or abortive closure can produce protocol-level transitions involving `FIN` or `RST`.
-  - Those wire-level details are separate from descriptor ownership.
+- **TCP Termination:** For TCP, orderly or abortive closure can produce transport-state transitions involving `FIN` or `RST`.
 
 ## Listener, Acceptor, and Worker Roles
 
@@ -170,7 +168,7 @@ Three roles are useful when describing how application servers interact with TCP
 - **Acceptor:** Calls `accept()` and obtains connected sockets from the kernel.
 - **Worker:** Reads requests, performs application work, and writes responses through connected sockets.
 
-These are conceptual roles, not requirements for separate threads or processes. A single execution unit can perform all three, one acceptor can distribute connections to many workers, or many workers can accept directly. Those compositions are application architecture and are covered in [Application Server Concurrency](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
+These are conceptual roles, not requirements for separate threads or processes. A single execution unit can perform all three, one acceptor can distribute connections to many workers, or many workers can accept directly. These roles can be combined in several [application-server concurrency models](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models), including a single acceptor feeding multiple workers or several workers accepting directly.
 
 ## Receiving Data
 
@@ -186,7 +184,7 @@ Once incoming network data is associated with a socket, the kernel processes the
 - **Non-Blocking Behavior:** On a non-blocking socket, the call returns immediately instead of sleeping for data.
 - **TCP End-of-Stream:** An orderly peer shutdown eventually appears as end-of-stream.
   - After already-buffered bytes have been consumed, a read returns zero bytes.
-  - Transport-level `FIN` / `RST` behavior belongs to TCP; the socket API turns that protocol state into application-visible I/O results.
+  - The socket API surfaces [TCP](../Networking/02%20Protocols/05%20TCP.md) closure transitions such as `FIN` and `RST` as application-visible end-of-stream or error conditions.
 
 ## Sending Data
 
@@ -197,9 +195,8 @@ Once incoming network data is associated with a socket, the kernel processes the
 - **Partial Writes:** Stream-socket writes can be partial, so code must use the returned byte count rather than assuming the whole requested buffer was accepted.
 - **Cross-Resource Transfer:** Some operating systems provide specialized operations such as Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations), which can move regular-file data toward a socket without first routing the payload through an application buffer.
   - The socket remains the network destination.
-  - The avoided user-space copy and its performance consequences are discussed through [Kafka's zero-copy example](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29).
-- **Transport Responsibility:** For TCP, later protocol work includes segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm).
-  - Those mechanisms belong to [TCP](../Networking/02%20Protocols/05%20TCP.md); the OS-facing boundary is that the application submits bytes to the socket while the kernel owns the transport machinery.
+  - The [avoided user-space copy](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29) reduces data movement through application memory.
+- **TCP Processing:** Once bytes enter a TCP socket, [TCP](../Networking/02%20Protocols/05%20TCP.md) handles segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm).
 
 ## Socket Buffers and Backpressure
 
@@ -216,7 +213,7 @@ Sockets separate application execution from network timing with finite kernel-ma
 - **Memory Consequence:** Every active socket consumes kernel state and potentially buffer memory, so very large connection counts are also a memory-management concern.
 
 > [!example] Inspecting Socket Queues with `ss`
-> On Linux, `ss` exposes parts of the kernel's socket state. For an established TCP socket, `Recv-Q` can show data waiting for the application to read, while `Send-Q` can show data that has not yet completed the relevant send/acknowledgment progress. For a listening socket, the same columns describe listening/backlog state instead. The operational interpretation is covered in [Troubleshooting Performance](../Backend%20Engineering/03%20Troubleshooting%20Performance.md).
+> On Linux, `ss` exposes parts of the kernel's socket state. Its [operational interpretation](../Backend%20Engineering/03%20Troubleshooting%20Performance.md) depends on socket state: for an established TCP socket, `Recv-Q` can show data waiting for the application to read, while `Send-Q` can show data that has not yet completed the relevant send/acknowledgment progress; for a listening socket, the same columns describe listening/backlog state instead.
 
 ## Blocking and Non-Blocking Sockets
 
@@ -241,7 +238,7 @@ The kernel already knows whether a socket currently has data to read, room to ac
 - **Readiness Can Become Stale:** Races and edge-triggered modes mean a supposedly ready operation must still handle cases where no progress is available by the time the application acts.
 
 > [!example] Go's Netpoller
-> Go allows a goroutine to perform what looks like a blocking network operation without requiring one OS thread to remain blocked for every socket. The runtime can park the goroutine and use the operating system's readiness facilities to learn when the descriptor can make progress. On Linux, Go's netpoller uses mechanisms such as `epoll`; when readiness arrives, the runtime can make the corresponding goroutine runnable again. This is a runtime abstraction built on top of the OS socket and scheduler primitives, as discussed in [Go Internals](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29).
+> Go allows a goroutine to perform what looks like a blocking network operation without requiring one OS thread to remain blocked for every socket. The runtime can park the goroutine and use the operating system's readiness facilities to learn when the descriptor can make progress. On Linux, Go's netpoller uses mechanisms such as `epoll`; when readiness arrives, the runtime can make the corresponding goroutine runnable again. This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) is built on top of the OS socket and scheduler primitives.
 
 ## Socket Lifetime and Closure
 
@@ -254,8 +251,7 @@ Descriptor lifetime and transport shutdown are related but not identical concept
 - **Half-Close:** A write-side shutdown can express that the application will send no more bytes while still allowing it to receive.
   - This exposes TCP's bidirectional connection as two independently closable byte directions.
 - **Transport Representation:** The transport protocol determines how closure intent appears on the network.
-  - TCP may use `FIN` for orderly half-close and `RST` for certain abortive cases.
-  - Those wire-level state transitions belong to the TCP lifecycle rather than the generic descriptor model.
+  - TCP may use `FIN` for orderly half-close and `RST` for certain abortive cases, while descriptor lifetime still follows reference ownership in the process.
 
 ## Sharing and Distributing Listening Sockets
 
@@ -278,4 +274,4 @@ The socket abstraction allows several execution units to participate in connecti
 - **Application-Level Imbalance:** A connection that later carries many requests can therefore create more application work than another connection even if the kernel initially distributed the connections evenly.
 
 > [!example] NGINX Socket Sharding
-> [NGINX](../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. The NGINX-specific architecture builds on the generic OS primitive described here.
+> [NGINX](../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
