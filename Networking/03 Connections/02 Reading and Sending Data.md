@@ -1,8 +1,6 @@
 # Reading and Sending Data
 
-After a TCP connection is established, the application exchanges a byte stream through a connected socket. The generic operating-system mechanics—kernel send and receive buffers, `read()`/`recv()`, `write()`/`send()`, blocking and non-blocking behavior, backpressure, and readiness polling—are covered in [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md#Receiving%20Data).
-
-This note focuses on behavior that comes specifically from TCP once application bytes have entered the socket abstraction.
+After a TCP connection is established, the application exchanges a byte stream through a [connected socket](../../Operating%20Systems/07%20Socket%20Management.md#Receiving%20Data). Kernel send and receive buffers, blocking and non-blocking I/O, backpressure, and readiness determine when application I/O can make progress, while TCP provides the ordered-stream, reliability, flow-control, retransmission, and congestion-control behavior applied to those bytes.
 
 ## Receiving Data over TCP
 
@@ -11,7 +9,7 @@ This note focuses on behavior that comes specifically from TCP once application 
   - The application may receive only part of one logical message or several logical messages in one `recv()`, depending on its framing protocol and the bytes currently available.
 - **Flow-Control Integration:** Receive-side buffering participates directly in TCP flow control.
   - As unread application data occupies receive-buffer capacity, the TCP implementation adjusts the receive window (`rwnd`) advertised to the peer.
-  - The sender must respect that advertised capacity, as described in [Flow Control](../02%20Protocols/05%20TCP.md#1.%20Flow%20Control%20%28Receiver-Driven%29).
+  - The sender must respect that [advertised capacity](../02%20Protocols/05%20TCP.md#1.%20Flow%20Control%20%28Receiver-Driven%29).
 - **Application-Speed Dependency:** Network progress depends partly on how quickly the receiving application consumes data.
   - If the application stops reading, kernel receive capacity becomes constrained.
   - TCP eventually slows or stops the peer rather than allowing receive memory to grow without bound.
@@ -22,7 +20,7 @@ This note focuses on behavior that comes specifically from TCP once application 
 - **Transport Processing:** TCP decides how accepted bytes are segmented and transmitted while respecting reliability, flow control, and congestion control.
 - **Retransmission State:** Sent bytes may need to remain represented in kernel state until TCP knows they no longer require retransmission.
 - **Drain Constraints:** A slow peer, packet loss, a small advertised receive window, or network congestion can prevent the sender from draining its local send-side state.
-- **Application Backpressure:** When that pressure reaches the application, socket writes can block or report that they would block, as described in [Socket Buffers and Backpressure](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Buffers%20and%20Backpressure).
+- **Application Backpressure:** When that pressure reaches the application, [socket writes can block or report that they would block](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Buffers%20and%20Backpressure).
 
 ## Slow or Stalled Receivers
 
