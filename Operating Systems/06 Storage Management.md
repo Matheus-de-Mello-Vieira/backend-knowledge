@@ -789,7 +789,7 @@ mount --bind /srv/database /mnt/database
 > [!note] One Namespace, Different Kinds of Objects
 > The Linux filesystem namespace provides one path-based interface over resources with very different implementations.
 >
-> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
+> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
 >
 > They participate in the same pathname hierarchy even though their underlying semantics are very different.
 >
@@ -1324,7 +1324,7 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
 
 ## I/O Pressure Stall Information (PSI)
 
-Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
+Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
 
 - **`some`**: Reports periods during which at least one non-idle task is stalled because of I/O pressure. Other runnable work may still be able to execute.
 - **`full`**: Reports periods during which all non-idle tasks are simultaneously stalled by I/O pressure, so no useful non-idle task can make progress during that interval.
