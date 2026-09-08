@@ -4,14 +4,23 @@ Produce durable Markdown study notes that participate in a connected technical k
 
 Apply the repository architecture and ownership rules from `AGENTS.md`. Do not create a second, competing theory of note placement or cross-note boundaries here.
 
+## Mutation authority
+
+Repository access does not imply permission to modify the repository. Questions, explanations, assessments, searches, and exploratory discussion are read-only unless the user explicitly requests a repository change.
+
+A question that reveals incomplete, ambiguous, or incorrect documentation is evidence of a possible documentation defect, not authorization to repair it. Prior mutation in the conversation does not make later conceptual questions implicit edit requests unless the user explicitly established that behavior.
+
+Determine mutation intent from the user's request, not from punctuation or a fixed keyword list. Requests such as fixing, adding, rewriting, applying findings, updating notes, or committing changes normally authorize mutation; requests that ask whether, why, how, where, who owns a mechanism, or whether the notes already explain something normally remain read-only unless they also request a change.
+
 ## Execution contract
 
-- Complete the requested edit in the current turn.
-- When a relevant file exists and write access is available, modify it directly.
-- Inspect the target, apply the change, and verify the resulting file or diff before responding.
-- If direct editing is impossible, return an exact replacement or applicable patch and state the limitation in one sentence.
-- Ask a question only when no reasonable conservative edit can be made from the available material.
-- For substantial additions, use the repository's note-placement and boundary capabilities before writing. For small local corrections, avoid unnecessary orchestration.
+- For read-only requests, answer, inspect, search, or review as needed and stop without modifying files.
+- For mutation requests, complete the requested edit in the current turn.
+- When mutation is authorized and a relevant file exists with write access available, modify it directly.
+- Inspect the target before mutation and verify the resulting file or diff afterward.
+- If an explicitly requested edit cannot be applied directly, return an exact replacement or applicable patch and state the limitation in one sentence.
+- Ask a question only when no reasonable conservative response or authorized edit can be made from the available material.
+- For substantial additions, use the repository's note-placement and boundary capabilities before writing. For small authorized local corrections, avoid unnecessary orchestration.
 
 ## Source discipline
 
@@ -109,9 +118,9 @@ Use repository-local Markdown links according to `AGENTS.md`.
 - Keep tables concise and causal explanation in prose.
 - Never use ASCII-art diagrams.
 
-## Question-driven amendments
+## Question-driven amendments after mutation intent
 
-When the user asks a question about an existing note and wants the note rewritten so the question would not arise, treat the question as a documentation defect.
+When the user asks a question about an existing note **and explicitly requests that the resulting documentation defect be fixed**, treat the question as an amendment specification. A conceptual question, repository inspection, or discovery of ambiguity does not itself authorize mutation.
 
 1. Find the earliest point where a careful reader would form the question.
 2. Identify the missing definition, distinction, state transition, assumption, causal link, or example.
@@ -124,7 +133,7 @@ Do not append a reactive FAQ unless explicitly requested.
 
 ## Final verification
 
-Before finalizing, verify that:
+Before finalizing an authorized edit, verify that:
 
 - the edited note still has one clear center of gravity;
 - the content remains at the correct abstraction level;
@@ -143,6 +152,8 @@ Before finalizing, verify that:
 
 ## Output contract
 
-When a target file exists and write access is available, modify it in place rather than pasting a proposed rewrite into chat. Complete and verify the work before producing a natural-language response.
+For read-only requests, return the requested answer, search result, assessment, or explanation without modifying repository files.
 
-Return a minimal completion record naming the edited files and the substantive architectural or content change. Preserve useful existing material and improve it in place rather than replacing it with a generic rewrite.
+For authorized mutation requests, modify an existing target in place when write access is available rather than pasting a proposed rewrite into chat. Complete and verify the work before producing a natural-language response. Return a minimal completion record naming the edited files and the substantive architectural or content change.
+
+Preserve useful existing material and improve it in place rather than replacing it with a generic rewrite when mutation is authorized.
