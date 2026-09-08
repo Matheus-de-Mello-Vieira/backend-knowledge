@@ -112,25 +112,141 @@ UDP's simplicity reduces transport overhead and avoids connection-establishment 
 - **Congestion Control:** No transport-level congestion control.
 - **Source Spoofing:** Source addresses are easier to spoof than in protocols that require a bidirectional handshake before meaningful state is established.
 
-## Datagram Receive Semantics
+## Demo
 
-`recvfrom()` exposes two important UDP properties at the application interface: preserved datagram boundaries and sender addressing. Given an already-bound [datagram socket](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets), a receive can look like:
+A local loopback exchange makes UDP's message-oriented behavior concrete: a process binds one datagram socket, another process sends a datagram to that endpoint, and the receiver obtains both the message and the sender's address.
 
-```c
-char buffer[1024];
-struct sockaddr_in remote = {0};
-socklen_t remote_size = sizeof(remote);
+### JavaScript
 
-ssize_t n = recvfrom(
-    sockfd,
-    buffer,
-    sizeof(buffer),
-    0,
-    (struct sockaddr *)&remote,
-    &remote_size
-);
+Node.js exposes UDP through its `dgram` module:
+
+```javascript
+import dgram from "dgram";
+
+const socket = dgram.createSocket("udp4");
+
+socket.on("message", (msg, info) => {
+    console.log(`got datagram "${msg}" from ${info.address}:${info.port}`);
+    socket.close();
+});
+
+socket.bind(5500, "127.0.0.1", () => {
+    console.log("listening on 127.0.0.1:5500");
+});
 ```
 
-- **One Call, One Datagram:** `recvfrom()` consumes one received datagram rather than exposing a continuous TCP-style byte stream.
-- **Sender Address:** The call can also return the source address associated with that datagram.
-- **Many Peers, One Socket:** This fits UDP's peer model: one bound datagram socket can receive messages from many remote endpoints without calling `accept()` for each peer.
+Run the program, then send a datagram from another terminal:
+
+```bash
+nc -u 127.0.0.1 5500
+```
+
+Text entered into `nc` is sent to the bound UDP endpoint. The `message` event receives one discrete datagram together with the source IP address and port selected for the sender.
+
+### C
+
+The same exchange can be expressed directly through the POSIX socket interface:
+
+```c
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int main(void) {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == -1) {
+        perror("socket");
+        return 1;
+    }
+
+    struct sockaddr_in local = {0};
+    local.sin_family = AF_INET;
+    local.sin_port = htons(5501);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &local.sin_addr) != 1) {
+        fprintf(stderr, "invalid local address\n");
+        close(sockfd);
+        return 1;
+    }
+
+    if (bind(sockfd, (struct sockaddr *)&local, sizeof(local)) == -1) {
+        perror("bind");
+        close(sockfd);
+        return 1;
+    }
+
+    char buffer[1024];
+    struct sockaddr_in remote = {0};
+    socklen_t remote_size = sizeof(remote);
+
+    ssize_t n = recvfrom(
+        sockfd,
+        buffer,
+        sizeof(buffer) - 1,
+        0,
+        (struct sockaddr *)&remote,
+        &remote_size
+    );
+
+    if (n == -1) {
+        perror("recvfrom");
+        close(sockfd);
+        return 1;
+    }
+
+    buffer[n] = '\0';
+
+    char remote_ip[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &remote.sin_addr, remote_ip, sizeof(remote_ip)) == NULL) {
+        perror("inet_ntop");
+        close(sockfd);
+        return 1;
+    }
+
+    printf(
+        "got %zd bytes from %s:%u: %s\n",
+        n,
+        remote_ip,
+        ntohs(remote.sin_port),
+        buffer
+    );
+
+    close(sockfd);
+    return 0;
+}
+```
+
+Compile and run it:
+
+```bash
+cc udp_server.c -o udp_server
+./udp_server
+```
+
+Then send a datagram from another terminal:
+
+```bash
+nc -u 127.0.0.1 5501
+```
+
+The program combines UDP's datagram semantics with the [POSIX socket lifecycle](../../Operating%20Systems/07%20Socket%20Management.md#POSIX%20Socket%20Interface):
+
+- **Socket Creation:** [`socket(AF_INET, SOCK_DGRAM, 0)`](../../Operating%20Systems/07%20Socket%20Management.md#Creating%20a%20Socket) creates an IPv4 datagram socket and returns its file descriptor.
+  - **`AF_INET`:** Selects the IPv4 address family. IPv6 uses `AF_INET6`.
+  - **`SOCK_DGRAM`:** Selects message-oriented datagram semantics. With the Internet address family and protocol `0`, the normal protocol selection is UDP.
+  - **Protocol `0`:** Requests the default protocol associated with the chosen family and socket type rather than naming UDP explicitly.
+- **Local Address Structure:** `struct sockaddr_in` stores an IPv4 socket address: address family, port, and IPv4 address.
+  - Initializing it with `{0}` gives every field and padding byte a known zero value before the relevant fields are assigned.
+- **Network Byte Order:** `htons(5501)` converts the 16-bit port from host byte order to network byte order; `ntohs()` performs the reverse conversion when printing the sender's port.
+  - Internet protocol fields use network byte order, which is big-endian, regardless of the host CPU's native byte order.
+- **IP Address Representation:** `inet_pton()` converts the presentation form `"127.0.0.1"` into the binary IPv4 representation stored in `sin_addr`. `inet_ntop()` performs the reverse conversion for display.
+- **Binding:** [`bind()`](../../Operating%20Systems/07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) associates the socket with `127.0.0.1:5501`, giving incoming datagrams a local endpoint to target.
+- **Generic Address Interface:** `bind()` and `recvfrom()` accept `struct sockaddr *` so the same API can work with different address families. The cast adapts the IPv4-specific `struct sockaddr_in *` to that generic pointer type; the address family tells the kernel how to interpret the structure.
+- **Datagram Receive:** `recvfrom()` consumes one received datagram and copies its payload into `buffer`.
+  - A later `recvfrom()` receives a later datagram rather than continuing the previous one as if UDP were a byte stream.
+  - If the supplied buffer is too small, the datagram is truncated rather than continued by the next receive operation.
+- **Sender Address:** `remote` is filled with the source endpoint associated with the received datagram. One bound UDP socket can therefore receive successive datagrams from different remote IP/port pairs without calling `accept()`.
+- **Address-Length Parameter:** `remote_size` initially tells the kernel how much address storage is available. After `recvfrom()`, it contains the size of the address actually written.
+- **Buffer Length:** `recvfrom()` returns the number of payload bytes copied. The code reserves one extra byte and appends `\0` only so the received bytes can safely be printed as a C string; UDP itself does not add a string terminator.
+- **Descriptor Lifetime:** [`close(sockfd)`](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure) releases the process's descriptor reference when the program finishes with the socket.
