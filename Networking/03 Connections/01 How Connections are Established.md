@@ -1,6 +1,6 @@
 # How Connections are Established
 
-A TCP connection is established cooperatively by the two transport endpoints before application data can flow. This note focuses on the network-visible TCP handshake and its consequences. The operating-system mechanisms that create listening sockets, maintain pending connections, and expose completed connections through `accept()` are covered in [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting).
+A TCP connection is established cooperatively by the two transport endpoints before application data can flow. During the network-visible three-way handshake, the server kernel maintains the corresponding [listening and pending socket state](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting) until a completed connection becomes available to the application.
 
 ## TCP Three-Way Handshake
 
