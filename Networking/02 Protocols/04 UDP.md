@@ -112,47 +112,26 @@ UDP's simplicity reduces transport overhead and avoids connection-establishment 
 - **Congestion Control:** No transport-level congestion control.
 - **Source Spoofing:** Source addresses are easier to spoof than in protocols that require a bidirectional handshake before meaningful state is established.
 
-## Socket API Example
+## Datagram Receive Semantics
 
-The protocol itself is independent of a particular programming API, but a Unix-like C program can expose the relationship between UDP and the OS socket abstraction:
+A small socket-API fragment can make two UDP properties concrete without turning this protocol note into a socket-lifecycle tutorial:
 
 ```c
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+char buffer[1024];
+struct sockaddr_in remote = {0};
+socklen_t remote_size = sizeof(remote);
 
-int main(void) {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    struct sockaddr_in local = {0};
-    local.sin_family = AF_INET;
-    local.sin_port = htons(5501);
-    local.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-    bind(sockfd, (struct sockaddr *)&local, sizeof(local));
-
-    char buffer[1024];
-    struct sockaddr_in remote = {0};
-    socklen_t remote_size = sizeof(remote);
-
-    ssize_t n = recvfrom(
-        sockfd,
-        buffer,
-        sizeof(buffer),
-        0,
-        (struct sockaddr *)&remote,
-        &remote_size
-    );
-
-    printf("received %zd bytes\n", n);
-    return 0;
-}
+ssize_t n = recvfrom(
+    sockfd,
+    buffer,
+    sizeof(buffer),
+    0,
+    (struct sockaddr *)&remote,
+    &remote_size
+);
 ```
 
-- **Socket Creation:** `socket(AF_INET, SOCK_DGRAM, 0)` asks the kernel for an IPv4 datagram socket and returns a descriptor.
-- **Local Binding:** `bind()` associates that socket with the local address `127.0.0.1:5501`.
-- **Datagram Receive:** `recvfrom()` consumes one received datagram and also returns the sender's address.
-  - This reflects the fact that one UDP socket can communicate with many peers without calling `accept()`.
-- **Layer Boundary:** The descriptor, binding, receive queue, blocking behavior, and lifetime are [socket-management](../../Operating%20Systems/07%20Socket%20Management.md) concerns; UDP defines what the transport datagram means on the network.
+- **One Call, One Datagram:** `recvfrom()` consumes one received datagram rather than exposing a continuous TCP-style byte stream.
+- **Sender Address:** The call can also return the source address associated with that datagram.
+- **Many Peers, One Socket:** This fits UDP's peer model: one bound datagram socket can receive messages from many remote endpoints without calling `accept()` for each peer.
+- **Layer Boundary:** Creating and binding `sockfd`, its receive queue, blocking behavior, descriptor lifetime, and closure are [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md) concerns. This example exists only to show how UDP's preserved datagram boundaries and peer addressing appear at the application interface.
