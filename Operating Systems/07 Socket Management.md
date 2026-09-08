@@ -79,7 +79,10 @@ POSIX exposes socket-specific operations on top of the general file-descriptor m
 - **Server Use:** A server commonly binds explicitly because clients need a stable destination.
 - **Client Use:** A client can often let the kernel choose an ephemeral local port automatically when communication begins.
 - **Specific Address:** Binding to a specific local IP restricts the socket to traffic addressed to that interface or address.
-- **Wildcard Address:** A wildcard such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces.
+- **Wildcard Address:** A wildcard such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. This expands the local addresses through which the process can receive traffic; it does not by itself make the service reachable from another network or from the Internet.
+    - Actual reachability also depends on address assignment and routing, network address translation or other ingress controls, and [firewall policy](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability).
+    - A wildcard listener can nevertheless expose a service through an interface that was not intended to serve it, such as an internal or management network. Binding to a specific address, including a loopback address when only local clients should connect, narrows that local acceptance scope as defense in depth.
+    - `0.0.0.0` is an IPv4 wildcard. IPv6 uses a separate wildcard address, `::`; whether an IPv6 listener also accepts IPv4 traffic is platform- and socket-option-dependent.
 - **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket type, current state, operating system, and socket options.
 
 ### Establishing Outbound Connections
