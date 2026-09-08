@@ -173,6 +173,10 @@ Three roles are useful when describing how application servers interact with TCP
 
 These are conceptual roles, not requirements for separate threads or processes. A single execution unit can perform all three, one acceptor can distribute connections to many workers, or many workers can accept directly. These roles can be combined in several [application-server concurrency models](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models), including a single acceptor feeding multiple workers or several workers accepting directly.
 
+## User–Kernel Data Transfer
+
+Socket I/O normally invokes the kernel through `read()`/`recv()` or `write()`/`send()`. The kernel copies payload bytes between application memory and kernel-managed socket buffers. Frequent small I/O operations add system-call overhead, while copying larger payloads also consumes CPU time and memory bandwidth. The direction of the copy depends on whether the application is receiving or sending.
+
 ## Receiving Data
 
 Once incoming network data is associated with a socket, the kernel processes the relevant transport protocol and makes application data available in the socket's receive state.
