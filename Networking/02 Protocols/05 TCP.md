@@ -241,3 +241,191 @@ Modern operating systems and kernel network stacks employ several defenses to de
 - **ACK Pacing and RTT Sanity Checks:** The kernel tracks the connection's historic Round Trip Time (RTT). If an `ACK` arrives within a timeframe that is physically impossible given baseline network constraints (e.g., faster than a packet could travel to the client and back), the stack flags the connection as anomalous.
 - **Sequential Byte Boundary Verification:** Advanced traffic shapers inside the network stack enforce strict pacing. If `ACK`s arrive perfectly aligned with sequence boundaries that have not yet cleared the local outbound network interface queue, the connection is throttled or dropped.
 - **TCP Nonces (Historical / RFC 3540):** The sender includes a random, short bit-string (a nonce) in the flags of each transmitted segment. The receiver must echo a cumulative sum of these nonces in its response. Because the receiver cannot guess the random nonces of packets still in transit, it cannot successfully forge an optimistic `ACK`.
+
+## Demo
+
+A local loopback exchange makes TCP's connection and byte-stream semantics concrete: one process listens for connections, another establishes a connection to it, and application bytes flow through the connected stream after the handshake completes.
+
+### JavaScript
+
+Node.js exposes TCP through its `net` module:
+
+```javascript
+import net from "net";
+
+const server = net.createServer((socket) => {
+    console.log(`connected: ${socket.remoteAddress}:${socket.remotePort}`);
+
+    socket.on("data", (chunk) => {
+        console.log(`received ${chunk.length} bytes: ${JSON.stringify(chunk.toString())}`);
+        socket.write("echo: ");
+        socket.write(chunk);
+    });
+
+    socket.on("end", () => {
+        console.log("client closed its write side");
+        server.close();
+    });
+});
+
+server.listen(5500, "127.0.0.1", () => {
+    console.log("listening on 127.0.0.1:5500");
+});
+```
+
+Run the program, then establish a TCP connection from another terminal:
+
+```bash
+nc 127.0.0.1 5500
+```
+
+Text entered into `nc` becomes bytes in the TCP stream. The server's `data` event reports whatever stream bytes are currently available; one event is not guaranteed to correspond to one client write, one line, or one TCP segment.
+
+### C
+
+The same exchange can be expressed directly through the POSIX socket interface:
+
+```c
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int main(void) {
+    int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_fd == -1) {
+        perror("socket");
+        return 1;
+    }
+
+    struct sockaddr_in local = {0};
+    local.sin_family = AF_INET;
+    local.sin_port = htons(5501);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &local.sin_addr) != 1) {
+        fprintf(stderr, "invalid local address\n");
+        close(listen_fd);
+        return 1;
+    }
+
+    if (bind(listen_fd, (struct sockaddr *)&local, sizeof(local)) == -1) {
+        perror("bind");
+        close(listen_fd);
+        return 1;
+    }
+
+    if (listen(listen_fd, 16) == -1) {
+        perror("listen");
+        close(listen_fd);
+        return 1;
+    }
+
+    struct sockaddr_in remote = {0};
+    socklen_t remote_size = sizeof(remote);
+
+    int client_fd = accept(
+        listen_fd,
+        (struct sockaddr *)&remote,
+        &remote_size
+    );
+
+    if (client_fd == -1) {
+        perror("accept");
+        close(listen_fd);
+        return 1;
+    }
+
+    char remote_ip[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &remote.sin_addr, remote_ip, sizeof(remote_ip)) == NULL) {
+        perror("inet_ntop");
+        close(client_fd);
+        close(listen_fd);
+        return 1;
+    }
+
+    printf("connected: %s:%u\n", remote_ip, ntohs(remote.sin_port));
+
+    char buffer[1024];
+    ssize_t n = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+    if (n == -1) {
+        perror("recv");
+        close(client_fd);
+        close(listen_fd);
+        return 1;
+    }
+
+    if (n == 0) {
+        printf("client closed the connection before sending data\n");
+        close(client_fd);
+        close(listen_fd);
+        return 0;
+    }
+
+    buffer[n] = '\0';
+    printf("received %zd bytes: %s\n", n, buffer);
+
+    const char reply[] = "hello from the TCP server\n";
+    size_t sent = 0;
+
+    while (sent < sizeof(reply) - 1) {
+        ssize_t m = send(
+            client_fd,
+            reply + sent,
+            sizeof(reply) - 1 - sent,
+            0
+        );
+
+        if (m == -1) {
+            perror("send");
+            close(client_fd);
+            close(listen_fd);
+            return 1;
+        }
+
+        sent += (size_t)m;
+    }
+
+    close(client_fd);
+    close(listen_fd);
+    return 0;
+}
+```
+
+Compile and run it:
+
+```bash
+cc tcp_server.c -o tcp_server
+./tcp_server
+```
+
+Then connect from another terminal:
+
+```bash
+nc 127.0.0.1 5501
+```
+
+The program combines TCP's connection-oriented stream semantics with the [POSIX socket lifecycle](../../Operating%20Systems/07%20Socket%20Management.md#POSIX%20Socket%20Interface):
+
+- **Socket Creation:** [`socket(AF_INET, SOCK_STREAM, 0)`](../../Operating%20Systems/07%20Socket%20Management.md#Creating%20a%20Socket) creates an IPv4 stream socket and returns its file descriptor.
+  - **`AF_INET`:** Selects the IPv4 address family. IPv6 uses `AF_INET6`.
+  - **`SOCK_STREAM`:** Selects ordered byte-stream semantics. With the Internet address family and protocol `0`, the normal protocol selection is TCP.
+  - **Protocol `0`:** Requests the default protocol associated with the chosen family and socket type rather than naming TCP explicitly.
+- **Local Endpoint:** `struct sockaddr_in`, `htons()`, and `inet_pton()` construct the IPv4 endpoint `127.0.0.1:5501` in the representation expected by the socket API.
+- **Binding:** [`bind()`](../../Operating%20Systems/07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) associates the socket with that local address and port.
+- **Listening:** [`listen()`](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20and%20Accepting) turns the socket into a passive listener for incoming TCP connections.
+  - The backlog value `16` gives the kernel a limit/hint for queued completed connection work; exact queue behavior is operating-system-specific.
+- **Connection Establishment:** The kernel performs the TCP [three-way handshake](../03%20Connections/01%20How%20Connections%20are%20Established.md#TCP%20Three-Way%20Handshake) before a completed connection becomes available through `accept()`.
+- **Listening vs. Connected Descriptor:** `accept()` returns a new `client_fd` for one established connection while `listen_fd` remains the listening socket.
+  - The two descriptors refer to different socket objects with different roles.
+  - A real server can keep `listen_fd` open and repeatedly call `accept()` to obtain many connected sockets.
+- **Peer Address:** `accept()` fills `remote` with the connected peer's endpoint; `inet_ntop()` and `ntohs()` convert its binary address and network-byte-order port into display form.
+- **Stream Receive:** `recv()` reads currently available bytes from the connected TCP stream.
+  - It may return fewer bytes than the sender supplied in one write, even when the connection remains open.
+  - Several sender writes can also become available in one receive.
+  - Applications therefore need their own [message framing](../03%20Connections/02%20Reading%20and%20Sending%20Data.md#Receiving%20Data%20over%20TCP) rather than treating `recv()` boundaries as message boundaries.
+- **End-of-Stream:** A return value of `0` from `recv()` means the peer has performed an orderly write-side shutdown and all previously received bytes have been consumed.
+- **Partial Sends:** `send()` can accept fewer bytes than requested, so the example loops until the complete reply has been accepted by the local kernel.
+  - Successful `send()` still does not mean the remote application has received or processed those bytes.
+- **Descriptor Lifetime:** The connected descriptor and listening descriptor are [closed independently](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure) because they refer to different socket resources.
