@@ -150,6 +150,8 @@ For foundational notes such as `Operating Systems/`, prefer durable and implemen
 
 ## Source and editing discipline
 
+Repository mutation requires explicit user intent. Conceptual questions, searches, assessments, and exploratory discussion are read-only even when they reveal a documentation defect. Prior edits in the conversation do not authorize a later conceptual question to modify files unless the user explicitly establishes that behavior.
+
 - Inspect the target file and directly relevant repository sources before editing.
 - Treat supplied and repository-local material as the primary source of truth.
 - Do not invent versions, figures, limits, commands, paths, quotations, or implementation details.
@@ -168,17 +170,19 @@ Codex skills form a capability hierarchy, but repository policy should not prelo
 - Specialized reference files are loaded just before the branch or stage that needs them, not at workflow startup.
 - Lower-level primitives never invoke workflows that depend on them.
 - Composite workflows must not copy detailed procedures already owned by lower-level skills.
-- Small local corrections may bypass composite workflows when target and scope are obvious.
+- Small local corrections may bypass composite workflows only when target and scope are obvious and mutation intent is explicit.
 
 The current workflow/capability map and progressive-disclosure rules live in `.codex/skills/README.md`.
 
 ## Editing workflow
 
-For small local corrections, avoid unnecessary orchestration. Inspect the target, make the conservative edit, and verify it.
+Conceptual exploration is read-only by default. When the user asks a technical question about existing notes without requesting a change, use the question workflow to answer the question and inspect whether the repository already answers it. A discovered ambiguity, omission, or error should be reported rather than repaired.
 
-For substantial work, select the workflow that matches how knowledge enters or changes the repository: supplied-source ingestion, learning scaffolding, authoring known material, read-only review, cross-note refactoring, link enrichment, or exhaustive consolidation. Let that workflow decide which lower-level capabilities are actually needed.
+For small local corrections with explicit mutation intent, avoid unnecessary orchestration. Inspect the target, make the conservative edit, and verify it.
 
-When a user asks a question about an existing note and requests a rewrite, treat the question as a documentation defect. Insert the missing definition, assumption, distinction, state transition, or causal link where the ambiguity first appears. Do not append a reactive FAQ or disconnected clarification.
+For substantial mutation, select the workflow that matches how knowledge enters or changes the repository: supplied-source ingestion, learning scaffolding, authoring known material, cross-note refactoring, link enrichment, or exhaustive consolidation. Use read-only review when the user asks for assessment without applying changes. Let the selected workflow decide which lower-level capabilities are actually needed.
+
+When a user asks a question about an existing note **and explicitly requests a rewrite or repair**, treat the question as a documentation defect. Insert the missing definition, assumption, distinction, state transition, or causal link where the ambiguity first appears. Do not append a reactive FAQ or disconnected clarification.
 
 ## Repository cohesion verification
 
