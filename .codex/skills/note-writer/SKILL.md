@@ -61,6 +61,21 @@ Do not mechanically apply all forms to every section.
 - Stop implementation-specific explanation when the implementation becomes the subject.
 - Do not reproduce a complete same-level explanation that another canonical note already owns.
 
+## Durable prose boundary
+
+Caller inputs may contain repository-planning vocabulary such as canonical owner, destination, abstraction boundary, local context, move, merge, split, or duplicate. Treat those terms as editing instructions, not as wording to reproduce automatically.
+
+Translate accepted repository decisions into direct technical explanation:
+
+- describe mechanisms, composition, state, constraints, consequences, and real system boundaries;
+- do not make the primary claim of a durable sentence that a note or section owns, covers, defines, focuses on, or contains a concept when the technical relationship can be stated directly;
+- do not explain why an example was included when the mechanism the example exposes can be stated directly;
+- let technical content establish scope when possible, while preserving explicit scope statements that constrain the validity of a technical claim;
+- prefer headings that name technical concepts or real distinctions rather than repository placement or ownership decisions;
+- preserve repeated coverage only when it contributes local mechanism, consequence, constraint, or composition meaning.
+
+Repository architecture remains explicit in planning and review artifacts; durable note prose should normally remain system-facing.
+
 ## Link application discipline
 
 When the caller supplies an approved link plan or approved link markup:
@@ -68,7 +83,8 @@ When the caller supplies an approved link plan or approved link markup:
 - preserve the approved source phrase and semantic destination;
 - apply the link without introducing navigation-only prose;
 - preserve visible wording when required by the plan;
-- do not substitute a different related note or create additional semantic links independently.
+- do not substitute a different related note or create additional semantic links independently;
+- confirm the linked sentence remains a useful technical statement if the Markdown link markup is removed.
 
 Semantic link selection belongs exclusively to `$note-link-planner`. Mechanical link normalization belongs to the caller's `$markdown-link-normalizer` stage.
 
@@ -80,7 +96,8 @@ Before returning the written candidate:
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm examples remain subordinate;
 - confirm terminology and qualifiers are preserved;
-- confirm approved link decisions were applied without semantic changes;
+- confirm repository-planning language did not leak into durable prose when a technical relationship could be stated directly;
+- confirm approved link decisions were applied without semantic changes and linked sentences remain independently meaningful;
 - confirm headings and formatting match nearby note conventions.
 
 Return the completed Markdown candidate or apply the scoped edit when invoked by a higher-level workflow.
