@@ -1,6 +1,6 @@
 ---
 name: note-cohesion-reviewer
-description: Review one or more durable notes for repository cohesion without editing them. Diagnose center-of-gravity drift, abstraction leakage, same-level duplication, weak local context, oversized examples, explanation/format mismatches, and cross-note relationship problems.
+description: Review one or more durable notes for repository cohesion without editing them. Diagnose center-of-gravity drift, abstraction leakage, same-level duplication, weak local context, oversized examples, explanation/format mismatches, document narration, and cross-note relationship problems.
 ---
 
 # Note Cohesion Reviewer
@@ -24,6 +24,7 @@ This is the canonical **read-only semantic review** capability for repository no
 - **Explanation:** Are causal relationships and important state changes explicit rather than merely listed?
 - **Structure:** Does prose/bullets/steps/tables/callouts match the logical shape of the knowledge?
 - **Links:** Are conceptual relationships natural, useful, and non-decorative?
+- **Document narration:** Does durable prose describe note ownership, repository placement, section purpose, or example pedagogy where it could instead describe the technical mechanism, composition, distinction, constraint, or consequence? Preserve real architectural boundary language; flag only document-boundary narration.
 
 ## Output contract
 
@@ -36,8 +37,10 @@ Return prioritized findings. Each finding should include:
 - `recommended_action`;
 - `related_note` when repository context matters.
 
+For document-narration findings, identify the technical relationship that the prose should express instead of merely recommending removal.
+
 Separate confirmed findings from hypotheses that require broader repository search.
 
 ## Constraints
 
-Do not edit files. Do not invent missing technical content. Do not recommend broad rewrites when a smaller structural correction would resolve the problem.
+Do not edit files. Do not invent missing technical content. Do not recommend broad rewrites when a smaller structural correction would resolve the problem. Ownership and boundary vocabulary is valid in the review artifact itself; the document-narration rule applies to durable note prose and headings.
