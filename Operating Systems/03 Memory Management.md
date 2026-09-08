@@ -1081,29 +1081,6 @@ To solve this, hardware engineers created the **DMA Controller**.
 - **The Modern Fix (IOMMU):** In modern hardware, managing contiguous physical addresses for massive peripherals (like a heavy GPU or high-speed Network Card) is incredibly difficult due to physical fragmentation. To fix this, modern motherboards include an **IOMMU (Input/Output Memory Management Unit)**.
     - Just like the CPU's MMU translates virtual memory for software, the IOMMU translates memory for hardware peripherals. It allows devices to safely use virtual addresses for DMA transfers, providing them with the exact same isolation, security, and fragmentation-solving benefits that standard programs enjoy!
 
-> [!example] Architecture Story: Kafka, DMA, and Zero-Copy
->
-> Kafka often serves records that already exist in log files and does not need to modify their payload before sending them over the network. This makes it a useful example of how avoiding CPU-mediated copies can complement DMA.
->
-> **Traditional File-to-Network Path**
->
-> With a conventional `read()` followed by `write()`, the payload can pass through four major data movements:
->
-> 1. **Storage DMA:** the storage device transfers file data into the operating system's [page cache](06%20Storage%20Management.md#Caching).
-> 2. **CPU copy to user space:** `read()` copies the requested bytes from the page cache into the application's buffer.
-> 3. **CPU copy back to kernel space:** `write()` copies those bytes from the application buffer into the networking path.
-> 4. **Network DMA:** the network interface reads the outgoing data from memory and transmits it.
->
-> The first and last movements can be performed by devices using DMA, but the two middle copies consume CPU cycles and memory bandwidth merely to move an unchanged payload through the application.
->
-> **Zero-Copy with `sendfile()`**
->
-> Kafka can instead use a zero-copy file-to-socket mechanism such as `sendfile()`. The kernel can move the file data from the file/page-cache side of the kernel toward the socket without first copying the payload into Kafka's user-space buffer and then copying it back into kernel space.
->
-> The storage device may still use DMA to place uncached file data into RAM, and the network interface may still use DMA when transmitting it. What disappears from the payload path are the intermediate application-level CPU copies.
->
-> The term **zero-copy** is therefore relative: the bytes still physically move between storage, RAM, and the network device, but they do not need to be copied through Kafka's user-space heap. This reduces CPU work and memory-bandwidth consumption while leaving the actual device transfers to the I/O hardware.
-
 #### Pros and Cons
 
 **The Advantages:**

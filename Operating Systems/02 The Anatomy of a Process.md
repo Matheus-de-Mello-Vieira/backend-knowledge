@@ -124,6 +124,12 @@ Some operations act primarily on the descriptor relationship rather than on one 
   - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
 - **Close-on-Exec — Control `exec()` Lifetime:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
 
+> [!note] FD Exhaustion
+> - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
+> - **Failure:** If a program repeatedly opens files, [sockets](07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure), or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files").
+> - **System-Wide Limits:** System-wide limits can also exist independently of the per-process limit.
+> - **Different Resource Limits:** Descriptor exhaustion is distinct from exhaustion of resource-specific kernel memory such as socket buffers.
+
 ### Resource-Specific Operations
 
 Beyond the common descriptor interface, operations depend on the resource behind the FD.
@@ -131,16 +137,33 @@ Beyond the common descriptor interface, operations depend on the resource behind
 - **Regular Files:** Operations such as [`lseek()`, `pread()`, and `pwrite()`](06%20Storage%20Management.md#Reading%20and%20Writing%20Files) use file-position semantics that do not apply to non-seekable resources.
 - **Sockets:** Operations such as [`bind()`, `listen()`, `accept()`, `connect()`, `send()`, and `recv()`](07%20Socket%20Management.md#POSIX%20Socket%20Interface) manipulate networking-specific state.
 
-> [!example] Composing Different FD-Backed Resources with `sendfile()`
-> Operating systems can expose specialized cross-resource operations. Linux `sendfile()`, for example, can transfer data from a regular-file descriptor toward a compatible output descriptor such as a socket without first routing the payload through an application buffer.
->
-> Kafka's [zero-copy serving path](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29) uses the same idea to reduce user-space copies when serving file-backed data over the network.
+#### File-to-Socket Transfers and Zero-Copy
 
-> [!note] FD Exhaustion
-> - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
-> - **Failure:** If a program repeatedly opens files, [sockets](07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure), or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files").
-> - **System-Wide Limits:** System-wide limits can also exist independently of the per-process limit.
-> - **Different Resource Limits:** Descriptor exhaustion is distinct from exhaustion of resource-specific kernel memory such as socket buffers.
+Operating systems can expose specialized operations for moving data directly between different kinds of file-descriptor-backed resources. On Linux, `sendfile()` can transfer data from a regular file to a compatible output descriptor, such as a socket, without copying the payload through an application buffer.
+
+##### Conventional File-to-Socket Path
+
+With a conventional `read()` followed by `write()`, data typically moves through these stages:
+
+1. **Storage to Page Cache:** The storage device transfers data into the page cache, usually using DMA.
+2. **Page Cache to User Buffer:** `read()` copies the data into an application buffer.
+3. **User Buffer to Kernel Networking Path:** `write()` copies the data back into the kernel's networking path.
+4. **Kernel Memory to NIC:** The network interface reads the data from memory for transmission, usually using DMA.
+
+The two middle copies consume CPU time and memory bandwidth even when the application only forwards unchanged bytes.
+
+##### Zero-Copy with `sendfile()`
+
+- **Avoided Copies:** `sendfile()` avoids the two intermediate application-buffer copies. The file data can remain in the page cache while the networking stack refers to those pages for transmission, so the application does not copy the payload into user space and back into the kernel.
+- **Meaning of Zero-Copy:** In this context, **zero-copy** means zero unnecessary CPU-mediated payload copies through application memory. Bytes still move between storage, memory, and the network device, often via DMA.
+- **Unchanged-Body Requirement:** The output body must already exist in a form that can be forwarded unchanged.
+  - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.
+  - **Headers:** Adding HTTP headers does not alter the file body and therefore does not, by itself, prevent zero-copy.
+
+> [!example] Kafka and Bun — Zero-Copy Eligibility
+>
+> - **Kafka:** A broker can serve the same persisted log batches to many consumers. Its shared record format, including compressed batches that remain stored in that form, favors `sendfile()` when the stored batch can be forwarded unchanged, so one page-cache copy can support repeated network transfers.
+> - **Bun:** A static-file response can use `sendfile()` when its file body is forwarded unchanged. Dynamic response bodies are less likely to qualify because the runtime must first produce their output bytes.
 
 ## Producing machine code
 
