@@ -44,6 +44,8 @@ For each meaningful content unit, classify it as one of:
 - **Duplicate same-level explanation:** content already canonically explained elsewhere in the same sense and abstraction level.
 - **Separate subject:** material independently valuable under another reading intent.
 
+These classifications are repository-planning vocabulary. They describe disposition and must not be treated as recommended visible wording for durable notes; downstream writing should express the underlying technical relationships directly.
+
 ## Analysis procedure
 
 1. State the target note's center of gravity and abstraction level from the accepted placement.
