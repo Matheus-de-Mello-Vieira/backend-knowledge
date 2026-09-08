@@ -1,4 +1,4 @@
 interface:
   display_name: "Note Workflow Router"
-  short_description: "Route note work by user intent"
-  default_prompt: "Use $note-workflow to select the smallest note workflow that matches the user's intent before loading deeper capabilities."
+  short_description: "Route note work by user intent and mutation authority"
+  default_prompt: "Use $note-workflow to select the smallest workflow that matches the user's intent. Keep conceptual questions read-only unless the user explicitly requests a repository change, and do not load mutation workflows merely because a documentation gap is discovered."
