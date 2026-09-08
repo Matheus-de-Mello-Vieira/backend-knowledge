@@ -2,7 +2,7 @@
 
 UDP (User Datagram Protocol) is a Layer 4 transport protocol that sends discrete messages called **datagrams**. Unlike [TCP](05%20TCP.md), UDP does not establish a transport connection before application data is sent and does not provide reliability, ordering, flow control, or congestion control by itself.
 
-The operating system normally exposes UDP through a [datagram socket](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets). This note focuses on the protocol behavior; socket creation, binding, port demultiplexing, kernel buffers, and blocking/non-blocking I/O belong to the OS abstraction.
+The operating system normally exposes UDP through a [datagram socket](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets). Socket creation and binding establish the local endpoint, the kernel demultiplexes incoming datagrams to that socket, and kernel buffers plus blocking or non-blocking I/O determine when the application can send or receive them.
 
 ## Core Properties
 
@@ -60,7 +60,7 @@ title UDP Datagram (32-bit width)
 > - **IPv6 Fragmentation:** IPv6 relies on endpoint fragmentation rather than router fragmentation.
 > - **Operational Consequence:** Applications generally avoid depending on fragmentation because losing one fragment prevents reconstruction of the complete datagram.
 
-## Reliability Belongs Above UDP
+## Reliability Above UDP
 
 UDP deliberately leaves several transport guarantees to higher layers.
 
@@ -114,7 +114,7 @@ UDP's simplicity reduces transport overhead and avoids connection-establishment 
 
 ## Datagram Receive Semantics
 
-A small socket-API fragment can make two UDP properties concrete without turning this protocol note into a socket-lifecycle tutorial:
+`recvfrom()` exposes two important UDP properties at the application interface: preserved datagram boundaries and sender addressing. Given an already-bound [datagram socket](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets), a receive can look like:
 
 ```c
 char buffer[1024];
@@ -134,4 +134,3 @@ ssize_t n = recvfrom(
 - **One Call, One Datagram:** `recvfrom()` consumes one received datagram rather than exposing a continuous TCP-style byte stream.
 - **Sender Address:** The call can also return the source address associated with that datagram.
 - **Many Peers, One Socket:** This fits UDP's peer model: one bound datagram socket can receive messages from many remote endpoints without calling `accept()` for each peer.
-- **Layer Boundary:** Creating and binding `sockfd`, its receive queue, blocking behavior, descriptor lifetime, and closure are [Socket Management](../../Operating%20Systems/07%20Socket%20Management.md) concerns. This example exists only to show how UDP's preserved datagram boundaries and peer addressing appear at the application interface.
