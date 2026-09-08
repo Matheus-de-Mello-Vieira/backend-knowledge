@@ -13,9 +13,10 @@ It decides whether an existing phrase should become a link and which repository 
 
 1. Read the target prose and identify only concepts whose deeper repository context would materially help the reader.
 2. Prefer phrases that already exist in the prose; preserve their visible text exactly when practical.
-3. Invoke `$note-topic-search` only for concepts whose destination is not already known.
-4. Confirm the destination actually provides useful deeper or adjacent context.
-5. Prefer the first meaningful occurrence and the most specific stable section anchor.
+3. Apply the **link-removal test**: if the Markdown link markup were removed, the sentence must still make the same useful technical claim. Reject sentences whose main purpose is identifying where information is documented.
+4. Invoke `$note-topic-search` only for concepts whose destination is not already known.
+5. Confirm the destination actually provides useful deeper or adjacent context.
+6. Prefer the first meaningful occurrence and the most specific stable section anchor.
 
 ## Link relationships
 
@@ -39,6 +40,7 @@ Do not:
 
 - rewrite or otherwise mutate note prose;
 - add new navigation prose merely to create a link;
+- approve a link whose surrounding sentence is only a statement about where a concept is covered, defined, described, or explained;
 - repeatedly link the same concept;
 - link generic terms just because a note exists;
 - use links to compensate for content that is actually misplaced;
