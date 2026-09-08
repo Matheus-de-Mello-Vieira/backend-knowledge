@@ -49,7 +49,7 @@ To understand how physical hardware transitions into a usable software environme
 	- **The System Call Table:** Executing this instruction triggers a secure trapdoor. The CPU instantly elevates its hardware state from User Mode to Kernel Mode, catches the request, and looks up the ID in a secure kernel directory called the **System Call Table**.
 	- **Execution & Return:** The kernel uses its privileged access to safely execute the requested code, places the result back into a CPU register (usually `r0` or `rax`), lowers the CPU privilege back to User Mode, and hands control back to the application.
 	- **The Cost:** While faster than a full process context switch, this mode switch is still computationally expensive due to the required security checks, CPU register swapping, and physical boundary crossings.
-- **Bypassing the Boundary (`io_uring`):** To avoid the high overhead of constant mode switching during heavy I/O workloads, modern Linux introduced `io_uring`. It establishes a shared memory ring buffer that is mapped and visible to _both_ User Space and Kernel Space. This allows the application and the kernel to pass data back and forth asynchronously without requiring expensive system calls or redundant data copying.
+- **Shared Ring Queues (`io_uring`):** Linux `io_uring` uses shared submission and completion rings between user space and kernel space. Applications can submit I/O operations and later obtain their results with less per-operation transition overhead in some workloads; its [completion-based socket-I/O model](07%20Socket%20Management.md#Completion-Based%20I/O) uses the same submission-and-result pattern.
 
 ## Device Drivers
 

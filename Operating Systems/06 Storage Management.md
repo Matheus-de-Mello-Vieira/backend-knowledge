@@ -939,6 +939,17 @@ This is a **regular-file semantic**, not a property of the descriptor integer it
 
 These operations illustrate the distinction between the common [POSIX descriptor interface](02%20The%20Anatomy%20of%20a%20Process.md#The%20POSIX%20Descriptor%20Interface) and resource-specific semantics: the descriptor identifies the resource, while the regular-file API defines how positions, EOF, and persistence behave.
 
+### Readiness and Completion for Regular Files
+
+- **Readiness Scope:** Readiness is useful when data or capacity may appear later, as with sockets and pipes. A regular file instead has a fixed logical length and reaches end-of-file rather than waiting for a future writer.
+    - On POSIX systems, `poll()` reports an ordinary regular file as readable and writable. This does not mean that the underlying storage operation has finished or that reading its pages cannot incur storage latency.
+    - Other readiness interfaces vary by platform and resource type, so they are not a portable way to wait for disk I/O.
+- **Completion Scope:** Completion-based I/O can operate on storage files. Windows I/O Completion Ports can report completion for asynchronous operations on file handles, and Linux `io_uring` can submit file reads, writes, and synchronization operations and later return their results.
+    - The available operations and their behavior depend on the operating system, filesystem, and device driver.
+- **Readiness Does Not Report Durability:** A regular file being ready for a write says nothing about whether data has reached non-volatile storage.
+- **Completion Does Not Necessarily Report Durability:** Completion of a buffered write normally means that the kernel has completed that write operation, not that device caches have made the data durable. Applications that need a durability boundary use synchronization operations such as `fsync()` or `fdatasync()`.
+- **Positional Operations:** Several asynchronous file operations can be outstanding concurrently. `pread()` and `pwrite()`-style explicit offsets avoid coordination through the shared current file position, but overlapping writes still require application-defined ordering.
+
 ### Mapping Files to Logical Blocks
 
 - **Bridging the Views**: Applications work with files as logical sequences of bytes, while the storage device exposes a flat **LBA address space**. The filesystem bridges these views by dividing file data into allocation units and maintaining metadata that records where those units are stored.

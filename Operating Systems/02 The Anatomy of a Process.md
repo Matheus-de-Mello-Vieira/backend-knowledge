@@ -83,7 +83,7 @@ Because the descriptor is only a handle, the same integer abstraction can refer 
 - **Network Sockets:** A descriptor can refer to [kernel networking state representing a socket](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects).
 - **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
 - [**Device Files (`/dev`)**](06%20Storage%20Management.md#%60/dev%60%20%E2%80%94%20Device%20Nodes)**:** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
-- **Event Facilities:** Interfaces such as Linux [`epoll`](07%20Socket%20Management.md#Readiness%20Notification) can themselves return descriptors used to monitor other descriptors.
+- **Event Facilities:** Interfaces such as Linux [`epoll`](07%20Socket%20Management.md#Readiness-Based%20I/O) can themselves return descriptors used to monitor other descriptors.
 
 > [!note] Inspecting File Descriptors Through `/proc`  
 > On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.

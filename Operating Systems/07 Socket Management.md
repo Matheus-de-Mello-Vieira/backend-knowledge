@@ -4,7 +4,7 @@ Socket management is how an operating system exposes network communication to us
 
 Socket management is fundamental to backend engineering because backend software exists behind an interface consumed by another component rather than being the user-facing interface itself. In distributed systems, those consumers are commonly remote clients, frontends, or other services, so communication crosses a network and reaches the application through the operating system's socket abstraction. Some backend components instead communicate through queues, files, pipes, shared memory, or standard input/output, but for networked backends socket behavior underlies concerns such as connection concurrency, buffering, backpressure, readiness, timeouts, and server scaling.
 
-Unix-like systems commonly expose sockets through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface. Stream sockets commonly use [TCP](../Networking/02%20Protocols/05%20TCP.md) for ordered reliable transport, while datagram sockets commonly use [UDP](../Networking/02%20Protocols/04%20UDP.md) for message-oriented transport. Application servers compose listening sockets, connected sockets, descriptor sharing, and readiness mechanisms into [connection-distribution architectures](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
+Unix-like systems commonly expose sockets through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface. Stream sockets commonly use [TCP](../Networking/02%20Protocols/05%20TCP.md) for ordered reliable transport, while datagram sockets commonly use [UDP](../Networking/02%20Protocols/04%20UDP.md) for message-orieblnted transport. Application servers compose listening sockets, connected sockets, descriptor sharing, and readiness mechanisms into [connection-distribution architectures](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
 
 ## Sockets as Kernel Objects
 
@@ -136,9 +136,6 @@ The kernel needs somewhere to keep connection state while handshakes and applica
 - **Blocking Listener:** If no completed connection is available, `accept()` waits. The kernel marks the calling thread as sleeping and can wake it when a connection becomes ready.
 - **Non-Blocking Listener:** `accept()` returns immediately when there is nothing to accept, typically with `EAGAIN` or `EWOULDBLOCK` on Unix-like systems.
 
-> [!example] Gunicorn and the Accept Queue
-> A pre-fork application server such as Gunicorn can create a listening socket and have multiple worker processes call `accept()` on inherited references to that listener. The kernel maintains the pending connection state; the workers consume completed connections when they are ready to run application code.
-
 ### Data Transfer
 
 Sockets participate in the common descriptor interface, but socket-specific calls expose networking-specific behavior.
@@ -229,13 +226,17 @@ Sockets separate application execution from network timing with finite kernel-ma
 - **Non-Blocking Mode:** The system call returns immediately when progress is unavailable, commonly through `EAGAIN` or `EWOULDBLOCK`.
     - The application can do other work and retry later.
 - **Busy-Retry Cost:** Repeatedly retrying every socket in a busy loop wastes CPU.
-- **Readiness Integration:** Efficient high-concurrency applications therefore combine non-blocking sockets with readiness notification so they retry only descriptors that are likely to make progress.
+- **Coordination Choice:** High-concurrency applications avoid busy retry by coordinating outstanding socket work through either readiness notification or completion notification.
 
-## Readiness Notification
+## Asynchronous Socket I/O
+
+Asynchronous socket I/O keeps application threads available while network operations wait for progress. It does not eliminate socket buffers, partial transfers, or backpressure; it changes how user space learns that an operation can proceed or has finished. The two main coordination models are readiness-based I/O and completion-based I/O.
+
+### Readiness-Based I/O
 
 The kernel already knows whether a socket currently has data to read, room to accept writes, a completed connection to accept, or an error condition. Readiness interfaces expose changes in that state across many descriptors without requiring one blocked OS thread per connection.
 
-- **Purpose:** User space registers interest in descriptors, sleeps until relevant state changes, and then performs the actual I/O system calls on descriptors reported as ready.
+- **Purpose:** User space registers interest in many descriptors and waits for readiness. The wait can block the event-loop thread while none of those descriptors can make progress, but it is one shared wait rather than one blocked thread per socket. When the kernel reports one or more ready descriptors, the thread performs the actual I/O system calls on them.
 - **POSIX Interfaces:** `select()` and `poll()` provide descriptor-readiness waiting through portable POSIX interfaces.
 - **OS-Specific Scalable Interfaces:** Operating systems also provide implementation-specific facilities with different registration and wakeup semantics.
     - **Linux:** `epoll`.
@@ -246,6 +247,91 @@ The kernel already knows whether a socket currently has data to read, room to ac
 
 > [!example] Go's Netpoller
 > Go allows a goroutine to perform what looks like a blocking network operation without requiring one OS thread to remain blocked for every socket. The runtime can park the goroutine and use the operating system's readiness facilities to learn when the descriptor can make progress. On Linux, Go's netpoller uses mechanisms such as `epoll`; when readiness arrives, the runtime can make the corresponding goroutine runnable again. This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) is built on top of the OS socket and scheduler primitives.
+
+#### `select()` Readiness Cycle
+
+`select()` accepts up to three `fd_set` collections:
+
+- **`readfds`:** Descriptors to watch for readable state.
+- **`writefds`:** Descriptors to watch for writable state.
+- **`exceptfds`:** Descriptors to watch for exceptional conditions.
+
+Each collection can contain many file descriptors, and a caller can omit categories it does not need. The call is a blocking readiness wait when given a positive timeout or no timeout; a zero timeout makes it return immediately and is therefore a polling use of the interface.
+
+- **Build Sets:** The process builds each needed `fd_set` collection with the descriptors it wants the kernel to monitor.
+- **Wait:** It calls `select()` with those sets and a timeout. The call returns when one or more descriptors become ready, the timeout expires, or the wait is interrupted.
+- **Inspect Results:** `select()` modifies each supplied set so it retains only the ready descriptors. `FD_ISSET(fd, &set)` tests whether one specific descriptor remains in a returned set, and therefore whether it is ready for that set's operation category. The test does not transfer data or report a byte count.
+- **Perform I/O:** The process calls `read()`, `write()`, `accept()`, or another appropriate I/O operation on each ready descriptor.
+
+##### Example: One Listener and One Client
+
+The following C-like pseudocode uses one listener and one connected client socket:
+
+- **Descriptors:** The example watches two descriptors for read readiness.
+    - **`listener_fd`:** An already-listening socket that becomes readable when a connection can be accepted.
+    - **`client_fd`:** One already-connected client socket that becomes readable when application bytes or end-of-stream are available.
+    - **`buffer`:** Application memory that receives bytes from `read()`.
+- **Rebuilding Sets:** `select()` overwrites its input sets, so the loop rebuilds `readfds` before every call.
+    - **`FD_ZERO()`:** Clears `readfds`, leaving an empty `fd_set`.
+    - **`FD_SET()`:** Adds a descriptor to `readfds`; the example adds both the listener and client so `select()` watches them for read readiness.
+- **Waiting for Readiness:** `max_fd` identifies the highest descriptor in `readfds`. `select()` receives `max_fd + 1` as its `nfds` parameter, which is the exclusive upper bound of descriptor numbers to inspect: it checks descriptors from `0` through `nfds - 1`. Passing a `NULL` timeout makes `select()` wait until one of the watched descriptors is ready or the wait fails.
+- **Handling Results:** `watched_client_fd` preserves the client monitored in the current iteration before a later `accept()` can replace `client_fd`.
+    - If `watched_client_fd` remains in `readfds`, `read()` consumes bytes and `handle_client_bytes()` processes them.
+    - If `listener_fd` remains in `readfds`, `accept()` creates a descriptor for a newly connected client.
+- **Omitted Production Concerns:** The helper functions stand in for application-specific error and request handling. A real server tracks all active connections and handles closure and non-blocking retry conditions.
+
+```c
+for (;;) {
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(listener_fd, &readfds);
+    FD_SET(client_fd, &readfds);
+
+    int watched_client_fd = client_fd;
+    int max_fd = listener_fd > watched_client_fd ? listener_fd : watched_client_fd;
+    int ready = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+
+    if (ready < 0) {
+        handle_select_error();
+        continue;
+    }
+
+    if (FD_ISSET(watched_client_fd, &readfds)) {
+        ssize_t bytes = read(watched_client_fd, buffer, sizeof(buffer));
+        handle_client_bytes(bytes, buffer);
+    }
+
+    if (FD_ISSET(listener_fd, &readfds)) {
+        client_fd = accept(listener_fd, NULL, NULL);
+    }
+}
+```
+
+##### Benefits and Limits of `select()`
+
+- **Avoiding Unproductive I/O:** `select()` lets the process wait until an operation is likely to make progress instead of repeatedly trying reads, writes, or accepts on unready descriptors.
+- **I/O Concurrency:** One thread can coordinate readiness for many descriptors. The thread may block inside `select()` while nothing is ready, but it does not need one blocked thread per descriptor.
+- **Linear Scanning:** After `select()` returns, the process typically tests descriptors with `FD_ISSET()` across the range from `0` through `nfds - 1`. This work grows linearly with that range, including unused descriptor numbers below the highest watched descriptor.
+    - **Application-Side Optimization:** The process can maintain a collection of the descriptors it actually registered and call `FD_ISSET()` only for those after `select()` returns. This avoids user-space checks for unused numeric gaps, but it does not reduce `select()`'s own worst-case O(`nfds`) range-dependent work.
+- **Set Transfer and Rebuilding:** Each call passes descriptor sets to the kernel and receives modified sets back. The process must also rebuild those sets before the next call, adding overhead as the watched range grows.
+- **Descriptor-Set Capacity:** An `fd_set` has an implementation-defined capacity, commonly exposed as `FD_SETSIZE`. A process cannot use `select()` with descriptors outside that set's supported range.
+
+### Completion-Based I/O
+
+- **Submission:** User space submits a concrete operation, such as accepting a connection or receiving into a supplied buffer, for the kernel to perform.
+- **Completion:** The kernel later reports the operation's result. A completion identifies the submitted operation and records its outcome, such as the byte count, accepted connection, or error.
+- **Result Handling:** The application processes completed operations rather than receiving permission to attempt a separate `accept()`, `recv()`, or `send()` call.
+- **Concurrent Operations:** Several operations can be in flight at once and can complete in a different order from submission. Applications must correlate every completion with its request and preserve the request state and any buffers used by an in-flight operation for as long as the interface requires.
+- **Stream Semantics:** Stream protocols still require application-level ordering and framing; a completion reports one operation's result, not a complete application message.
+- **Windows I/O Completion Ports (IOCP):** Windows can queue completions for overlapped I/O operations to a completion port, allowing workers to retrieve completed work without waiting on each socket individually.
+- **Linux `io_uring`:** Linux provides shared submission and completion rings. User space places requests in the submission ring, and the kernel later records their results in the completion ring. It supports socket operations such as accepting connections and reading or writing data, but it can also express polling-related operations; it is not merely another name for readiness notification.
+
+### Readiness and Completion Compared
+
+| Model | Kernel reports | Application action after notification |
+| --- | --- | --- |
+| Readiness-based I/O | An operation may be able to make progress. | Call `accept()`, `recv()`, or `send()` and still handle partial progress or `EAGAIN`. |
+| Completion-based I/O | A submitted operation has finished with a result. | Match the completion to its request and process its byte count, resource, or error. |
 
 ## Socket Lifetime and Closure
 
@@ -282,6 +368,3 @@ The socket abstraction allows several execution units to participate in connecti
 - **Kernel Distribution:** The kernel distributes incoming traffic among the sockets in the group.
 - **Distribution Policy:** The policy is an OS implementation detail and is based on transport/network information rather than application-level workload.
 - **Application-Level Imbalance:** A connection that later carries many requests can therefore create more application work than another connection even if the kernel initially distributed the connections evenly.
-
-> [!example] NGINX Socket Sharding
-> [NGINX](../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.

@@ -74,6 +74,9 @@ One execution thread owns the listening socket, accepts connections, and process
 - **Main Trade-off:** Only one application thread executes application work at a time.
     - CPU-heavy request processing can therefore become a bottleneck regardless of how many connections are managed concurrently.
 
+> [!example] Node.js Event Loop
+> A single [Node.js process](../../Technologies/NodeJS/01%20Basics/04%20Internals.md#Event%20loop) combines the listener, acceptor, and worker roles in its event loop. Network I/O waits through [operating-system readiness mechanisms](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O), allowing the event loop to process callbacks for other connections. A long CPU-bound JavaScript callback nevertheless prevents that application thread from accepting or processing more work until it completes.
+
 ### Single Acceptor, Multiple Workers
 
 One execution unit owns the listening socket and accepts incoming connections. After accepting a connection, it hands the resulting connected socket or associated work to one of several workers.
@@ -97,6 +100,9 @@ Features:
 - **Main Benefit:** Centralized connection distribution can simplify balancing because one component decides where each connection goes.
 - **Main Trade-off:** The acceptor can become a bottleneck if the connection arrival rate becomes high enough.
 
+> [!example] Go `net/http` Goroutines
+> A Go [`net/http` server](../../Technologies/Golang/99%20Misc/Go%20Internals.md#The%20Goroutine-Per-Connection%20Model%20%28Single%20Listener,%20Multiple%20Workers%29) accepts connections in one goroutine and starts a separate goroutine to handle each accepted connection. The acceptor remains available for later arrivals while the Go runtime schedules the connection-handling goroutines as application workers.
+
 ### Multiple Workers, Single Shared Listening Socket
 
 Instead of using one dedicated acceptor, several workers [share a listening socket](../../Operating%20Systems/07%20Socket%20Management.md#Shared%20Listening%20Socket) and call `accept()` themselves.
@@ -112,6 +118,9 @@ Instead of using one dedicated acceptor, several workers [share a listening sock
 - **Historical Risk — Thundering Herd:** Several sleeping workers can be awakened even though only one can successfully accept the available connection.
     - Unsuccessful workers wake, compete for the same work, and return to waiting, wasting CPU cycles.
 
+> [!example] Gunicorn Pre-Fork Workers
+> In a pre-fork Gunicorn deployment, the listening socket is created before workers are forked, so multiple worker processes inherit references to that listener and call `accept()`. The kernel maintains the pending connection state; the workers consume completed connections when they are ready to run application code.
+
 ### Multiple Listeners with `SO_REUSEPORT`
 
 With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Multiple%20Listeners%20with%20SO_REUSEPORT), multiple workers can each own an independent listening socket while binding to the same local address and port.
@@ -123,6 +132,9 @@ With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Mult
 - **Main Benefit:** This can reduce contention around connection acceptance and distribute networking work across multiple CPU cores.
 - **Main Trade-off:** Kernel-level distribution does not necessarily reflect application-level workload.
     - Two connections may look equivalent to the kernel while requiring very different amounts of CPU time, memory, or response processing.
+
+> [!example] NGINX Socket Sharding
+> [NGINX](../../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
 
 #### Multiplexed Protocols
 
