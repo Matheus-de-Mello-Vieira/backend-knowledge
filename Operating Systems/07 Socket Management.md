@@ -271,6 +271,9 @@ The socket abstraction allows several execution units to participate in connecti
 ### Multiple Listeners with `SO_REUSEPORT`
 
 - **Independent Listeners:** Some operating systems provide `SO_REUSEPORT`, allowing multiple independent sockets to bind compatible copies of the same local address and port.
+- **Linux Binding Rule:** On Linux, every socket must enable `SO_REUSEPORT` before `bind()`, and processes binding the same address must have the same effective UID.
+  - This prevents a process running as a different user from joining the listener group and receiving a share of new traffic.
+  - It does not protect against a malicious or compromised process running with the same effective UID; that process can join the group. Other operating systems may impose different rules.
 - **Independent Queue State:** Instead of several workers contending on one socket object, each worker can own its own listener and associated queue state.
 - **Kernel Distribution:** The kernel distributes incoming traffic among the sockets in the group.
 - **Distribution Policy:** The policy is an OS implementation detail and is based on transport/network information rather than application-level workload.
