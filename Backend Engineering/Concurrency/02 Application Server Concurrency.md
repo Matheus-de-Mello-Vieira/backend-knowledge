@@ -55,9 +55,9 @@ A multi-threaded application uses one process containing several OS threads.
 
 The application execution model determines **what workers exist**. A separate decision determines **how incoming network connections reach those workers**.
 
-The operating-system primitives underneath these architectures—listening sockets, `accept()`, connected sockets, descriptor sharing, and the [listener, acceptor, and worker roles](../../Operating%20Systems/07%20Socket%20Management.md#Listener,%20Acceptor,%20and%20Worker%20Roles)—are defined in Socket Management. This section focuses on how an application server composes those primitives into different concurrency architectures.
+Application servers build connection-distribution architectures from listening sockets, `accept()`, connected sockets, descriptor sharing, and the [listener, acceptor, and worker roles](../../Operating%20Systems/07%20Socket%20Management.md#Listener,%20Acceptor,%20and%20Worker%20Roles).
 
-- **Primary Model:** The architectures below are primarily TCP connection-distribution models.
+- **Primary Model:** These architectures primarily distribute TCP connections.
 - **UDP Difference:** [Datagram sockets](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets) do not use `accept()` to create a new socket for every peer.
   - In protocols such as QUIC, workers receive UDP datagrams and the QUIC implementation associates those packets with logical QUIC connections.
 
@@ -130,7 +130,7 @@ This limitation becomes more important when an application protocol can **multip
 - **[HTTP/2](../../Networking/02%20Protocols/09%20HTTP2.md#HTTP%2F2) Consequence:** Many independent HTTP streams can exist inside a single TCP connection.
   - `SO_REUSEPORT` distributes the TCP connection between workers, not the individual HTTP/2 streams.
   - Once one worker accepts that connection, all of its transport traffic arrives through the same connected socket.
-  - The HTTP/2 implementation can still dispatch application work for individual streams to other threads or workers, but that happens above the socket-distribution layer and is a separate architectural decision.
+  - The HTTP/2 implementation can still dispatch application work for individual streams to other threads or workers after the connection has been accepted, independently of which worker owns the transport I/O.
 - **[HTTP/3](../../Networking/02%20Protocols/10%20HTTP3.md#HTTP%2F3) / QUIC Consequence:** HTTP/3 runs over QUIC, which multiplexes streams over UDP.
   - `SO_REUSEPORT` can distribute UDP traffic among multiple sockets, but it does not understand HTTP/3 requests or streams.
   - More sophisticated routing can use mechanisms such as BPF with `SO_REUSEPORT` to keep packets associated with a particular QUIC connection on an appropriate worker.
