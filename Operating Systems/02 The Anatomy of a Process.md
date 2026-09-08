@@ -78,7 +78,7 @@ int b = dup(a);
 
 Because the descriptor is only a handle, the same integer abstraction can refer to several kinds of resources:
 
-- **Regular Files:** A descriptor can refer to an open regular file and its filesystem-backed state. File-specific operations and persistence semantics are covered in [Storage Management](06%20Storage%20Management.md#Opening%20Files).
+- **Regular Files:** A descriptor can refer to an [open regular file and its filesystem-backed state](06%20Storage%20Management.md#Opening%20Files), including file-position behavior, file-specific operations, and persistence semantics.
 - **Standard Streams (`0`, `1`, `2`):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
 - **Network Sockets:** A descriptor can refer to [kernel networking state representing a socket](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects).
 - **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
@@ -112,7 +112,6 @@ void stream_data(int read_fd, int write_fd) {
   - **TCP Socket:** `read()` consumes bytes from a network byte stream.
   - **Pipe:** `read()` consumes bytes supplied through the pipe.
   - **Device:** The driver can define the operation's behavior.
-- **Specialization Boundary:** Resource-specific notes define what these common operations mean for each underlying object.
 
 ### Descriptor Operations and Lifetime
 
@@ -135,7 +134,7 @@ Beyond the common descriptor interface, operations depend on the resource behind
 > [!example] Composing Different FD-Backed Resources with `sendfile()`
 > Operating systems can expose specialized cross-resource operations. Linux `sendfile()`, for example, can transfer data from a regular-file descriptor toward a compatible output descriptor such as a socket without first routing the payload through an application buffer.
 >
-> The performance effect of avoiding those user-space copies is illustrated by [Kafka's zero-copy serving path](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29).
+> Kafka's [zero-copy serving path](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29) uses the same idea to reduce user-space copies when serving file-backed data over the network.
 
 > [!note] FD Exhaustion
 > - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
