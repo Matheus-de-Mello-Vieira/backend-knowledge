@@ -789,7 +789,7 @@ mount --bind /srv/database /mnt/database
 > [!note] One Namespace, Different Kinds of Objects
 > The Linux filesystem namespace provides one path-based interface over resources with very different implementations.
 >
-> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
+> `/etc/nginx/nginx.conf` may represent persistent file data stored on an SSD, [`/proc/1234/status`](#%60proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) may be generated dynamically by the kernel, `/dev/nvme0n1` may represent a block-device interface, and `/run/docker.sock` may represent a Unix domain socket.
 >
 > They participate in the same pathname hierarchy even though their underlying semantics are very different.
 >
@@ -813,7 +813,7 @@ open(path, flags, mode)
     - whether writes require synchronous durability semantics.
 - **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or OS-specific creation mechanisms. It specifies the initial permission bits, subject to mechanisms such as `umask`.
 - **Subsequent Operations**: Calls such as `read()`, `write()`, and `fsync()` operate through the descriptor rather than resolving the pathname again on every operation.
-- **Associated State**: The open regular file carries resource-specific state such as the current file offset and file-status flags. The broader descriptor-table and lifetime rules remain defined in [The Anatomy of a Process](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime).
+- **Associated State**: The open regular file carries resource-specific state such as the current file offset and file-status flags, while the [descriptor-table and lifetime rules](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) determine how process-local handles refer to and release that state.
 - **Closing**: When the process no longer needs the reference, `close()` releases that descriptor according to the common descriptor-lifetime rules.
 
 #### Open Flags
@@ -930,10 +930,10 @@ expresses a different combination without requiring a different system call.
 
 Once a regular file is open, `read()` and `write()` operate on the descriptor using the file's current position. For an ordinary seekable regular file, the shared open file description stores this current offset. A successful sequential read or write advances the offset by the number of bytes transferred.
 
-This is a **regular-file semantic**, not a property of the descriptor integer itself. If `dup()` or `fork()` produces multiple descriptors referring to the same open file description, those descriptors also observe the same current offset because the shared state lives beneath the descriptor-table entries. Independent calls to `open()` instead create independent open file descriptions and therefore independent offsets, as described in [Descriptor Indirection](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Indirection).
+This is a **regular-file semantic**, not a property of the descriptor integer itself. If `dup()` or `fork()` produces multiple descriptors referring to the same open file description, those descriptors also observe the same current offset because the shared state lives beneath the descriptor-table entries. Independent calls to `open()` instead create [independent open file descriptions](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Indirection) and therefore independent offsets.
 
 - **`read()`**: Reads bytes beginning at the current file offset and advances that offset by the number of bytes returned. Reaching the logical end of a regular file causes a later read to return zero bytes rather than waiting for future data as a socket or pipe might.
-- **`write()`**: Writes bytes according to the descriptor's access mode and current offset, then advances the offset. A successful write reports how many bytes the kernel accepted for the file operation; persistence to non-volatile media is a separate concern handled by the durability mechanisms described later in this note.
+- **`write()`**: Writes bytes according to the descriptor's access mode and current offset, then advances the offset. A successful write reports how many bytes the kernel accepted for the file operation; persistence to non-volatile media depends on explicit [write durability and synchronization](#Write%20Durability%20and%20Synchronization).
 - **`lseek()`**: Changes the current file offset without transferring data. It can position the next ordinary read or write relative to the beginning of the file, the current position, or the end. Non-seekable resources such as pipes and sockets reject seeking because they do not expose regular-file position semantics.
 - **`pread()` and `pwrite()`**: Perform positional I/O at an explicit byte offset without changing the shared current file offset. This avoids coordination through one mutable offset when several operations need independent positions. It does not make overlapping concurrent writes inherently safe; application-level synchronization may still be required when operations target the same data.
 
@@ -1105,7 +1105,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 - **Synchronized Open Flags**: Instead of ordinary buffered writes followed by explicit synchronization at selected boundaries, an application can request synchronized semantics for writes through flags such as `O_SYNC` or `O_DSYNC`.
 - **Page Cache Interaction**: These flags are distinct from `O_DIRECT`: synchronization controls when the required persistence work must complete, while Direct I/O primarily controls page-cache participation.
 - **Higher-Level Durability Protocols**: Storage synchronization primitives become building blocks for higher-level recovery systems. A database's [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29), for example, requires selected log records to become durable before dependent database changes can be considered safely committed.
-- **Layer Boundary**: The storage layer defines mechanisms such as `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC`; the database layer decides where those durability boundaries belong in its own recovery protocol.
+- **Durability Composition**: `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC` provide mechanisms for establishing persistence points; a database recovery protocol invokes those mechanisms where its ordering and recovery guarantees require data to be durable.
 - **Batching Trade-offs**: Forcing a durability wait on every small update prevents the storage stack from grouping changes as freely. Applications can often batch many ordinary writes behind one deliberately chosen synchronization point when their higher-level correctness protocol permits it.
 
 > [!note] Crash-Atomicity Limits
@@ -1324,7 +1324,7 @@ A SAN `/sæn/` is a highly specialized, high-speed, dedicated subnetwork that co
 
 ## I/O Pressure Stall Information (PSI)
 
-Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
+Linux **Pressure Stall Information (PSI)** measures how resource pressure delays useful execution. [`/proc/pressure/io`](#%60proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information) reports pressure associated with tasks stalled by I/O.
 
 - **`some`**: Reports periods during which at least one non-idle task is stalled because of I/O pressure. Other runnable work may still be able to execute.
 - **`full`**: Reports periods during which all non-idle tasks are simultaneously stalled by I/O pressure, so no useful non-idle task can make progress during that interval.
