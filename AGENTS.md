@@ -94,6 +94,8 @@ Cross-links represent conceptual relationships, not navigation decoration.
 - Do not add phrases such as “see more,” “read more,” “for more information,” “this is explained in,” or similar navigation language merely to create a link.
 - A link supplements local sufficiency; it does not replace facts that the current note genuinely owns.
 
+Ownership, placement, and boundary vocabulary describes repository architecture and is appropriate in planning, review, and orchestration artifacts. Durable note prose should normally express the technical relationship that justified those decisions instead of narrating where the repository stores an explanation. Preserve real system boundaries; avoid only document-boundary narration.
+
 ## Target document style
 
 Write primarily as concise technical study notes: coherent explanation first, structured decomposition where the knowledge is genuinely parallel or procedural.
