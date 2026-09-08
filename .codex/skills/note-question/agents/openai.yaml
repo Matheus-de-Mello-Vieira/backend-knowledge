@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Question"
+  short_description: "Answer questions and inspect note coverage without editing"
+  default_prompt: "Use $note-question to answer the conceptual question, inspect whether the notes already answer it, and remain read-only unless the user explicitly requests a repository change."
