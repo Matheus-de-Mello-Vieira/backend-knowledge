@@ -65,10 +65,11 @@ Use these gates:
 4. Load boundary analysis only when the edit can cross subjects, abstraction levels, or duplicate existing explanations.
 5. Load content movement only when durable content must actually move.
 6. When durable prose will be substantively created or changed, load `$note-writer`; the calling workflow supplies accepted semantic decisions but does not perform the writing itself.
-7. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
-8. Load mechanical link normalization only when links or anchors changed.
-9. Load lint repair only when the edit introduces or exposes lint findings.
-10. Load specialized reference files just before the branch or stage that requires them.
+7. When `$note-writer` encounters code whose primary purpose is to expose a multi-stage technical mechanism and a monolithic presentation would require substantial retrospective explanation, load `references/mechanism-code-walkthrough.md`. Do not load it based on code length alone.
+8. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
+9. Load mechanical link normalization only when links or anchors changed.
+10. Load lint repair only when the edit introduces or exposes lint findings.
+11. Load other specialized reference files just before the branch or stage that requires them.
 
 The goal is the **minimum sufficient capability set after required invariants are satisfied**, not the maximum available pipeline and not the minimum number of checks.
 
