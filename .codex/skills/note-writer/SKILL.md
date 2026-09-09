@@ -75,6 +75,21 @@ When rewriting existing prose for clarity, explanation quality, or repository st
 - improve causal progression, local coherence, and structure without introducing new technical claims merely to make the text feel more complete;
 - keep changes within the approved destination and content boundary.
 
+### Modal precision
+
+Preserve necessary uncertainty, but do not weaken direct technical semantics with generic hedging.
+
+For every modal or frequency qualifier introduced or retained, identify the concrete technical condition that makes the proposition non-universal at the current abstraction level. If no such condition exists, state the relationship directly.
+
+When only a consequence or result is contingent, keep the invariant relationship in direct present tense and move the qualification to the narrowest outcome that actually varies. Distinguish among:
+
+- direct semantic relationships and state transitions, which should normally be stated directly;
+- supported capabilities, where `can` or equivalent wording carries real meaning;
+- possible or non-guaranteed outcomes, where `may`, `can`, or an explicit condition can preserve necessary uncertainty;
+- implementation, configuration, platform, resource, filter, or runtime variance, which should be qualified explicitly.
+
+Do not mechanically replace one modal verb with another. Determine first whether modality is necessary and, if so, what proposition it should qualify.
+
 ## Scope discipline
 
 - Explain the destination note's own subject completely at its assigned abstraction level.
@@ -117,6 +132,7 @@ Before returning the written candidate:
 - reread the affected section as a first-time reader;
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm rewrites preserve the intended technical meaning, scope, qualifiers, and terminology;
+- confirm modal verbs and frequency qualifiers represent real technical contingency rather than generic caution, and that each qualification is attached to the narrowest claim that requires it;
 - confirm examples remain subordinate;
 - when the mechanism-code walkthrough pattern was used, confirm each split corresponds to a meaningful technical transition rather than arbitrary code length;
 - confirm repository-planning language did not leak into durable prose when a technical relationship could be stated directly;
