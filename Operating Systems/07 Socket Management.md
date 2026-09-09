@@ -263,49 +263,81 @@ Each collection can contain many file descriptors, and a caller can omit categor
 - **Inspect Results:** `select()` modifies each supplied set so it retains only the ready descriptors. `FD_ISSET(fd, &set)` tests whether one specific descriptor remains in a returned set, and therefore whether it is ready for that set's operation category. The test does not transfer data or report a byte count.
 - **Perform I/O:** The process calls `read()`, `write()`, `accept()`, or another appropriate I/O operation on each ready descriptor.
 
-##### Example: One Listener and One Client
+##### Example: `select()` with One Listener and One Client
 
-The following C-like pseudocode uses one listener and one connected client socket:
+The following C-like pseudocode uses one listening socket and one already-connected client socket.
 
-- **Descriptors:** The example watches two descriptors for read readiness.
-    - **`listener_fd`:** An already-listening socket that becomes readable when a connection can be accepted.
-    - **`client_fd`:** One already-connected client socket that becomes readable when application bytes or end-of-stream are available.
-    - **`buffer`:** Application memory that receives bytes from `read()`.
-- **Rebuilding Sets:** `select()` overwrites its input sets, so the loop rebuilds `readfds` before every call.
-    - **`FD_ZERO()`:** Clears `readfds`, leaving an empty `fd_set`.
-    - **`FD_SET()`:** Adds a descriptor to `readfds`; the example adds both the listener and client so `select()` watches them for read readiness.
-- **Waiting for Readiness:** `max_fd` identifies the highest descriptor in `readfds`. `select()` receives `max_fd + 1` as its `nfds` parameter, which is the exclusive upper bound of descriptor numbers to inspect: it checks descriptors from `0` through `nfds - 1`. Passing a `NULL` timeout makes `select()` wait until one of the watched descriptors is ready or the wait fails.
-- **Handling Results:** `watched_client_fd` preserves the client monitored in the current iteration before a later `accept()` can replace `client_fd`.
-    - If `watched_client_fd` remains in `readfds`, `read()` consumes bytes and `handle_client_bytes()` processes them.
-    - If `listener_fd` remains in `readfds`, `accept()` creates a descriptor for a newly connected client.
-- **Omitted Production Concerns:** The helper functions stand in for application-specific error and request handling. A real server tracks all active connections and handles closure and non-blocking retry conditions.
+- **Resources and State:**
+    - `listener_fd`: File descriptor for an already-created, bound, and listening socket.
+    - `client_fd`: File descriptor for one already-connected client socket.
+    - `readfds`: `fd_set` containing the descriptors that the current `select()` call should monitor for read readiness.
+    - `watched_client_fd`: Copy of the client descriptor included in the current `readfds` set.
+    - `max_fd`: Highest-numbered descriptor currently being watched.
+    - `buffer`: User-space memory where bytes read from the client socket are stored.
+
+**Build the Interest Set:** Each loop iteration creates a fresh `readfds` set. `FD_ZERO()` clears the set, and `FD_SET()` adds the listener and client descriptors.
+- Unlike `epoll`, `select()` does not preserve this interest state across waits. Because `select()` modifies the supplied sets to contain only ready descriptors, the process must rebuild the complete interest set before every call.
+- `watched_client_fd` preserves the client descriptor included in this particular wait. This matters because accepting another connection later in the iteration can replace `client_fd`.
+- `max_fd` records the highest descriptor being monitored because `select()` uses `nfds` as an exclusive upper bound over the descriptor-number range it must inspect.
 
 ```c
 for (;;) {
     fd_set readfds;
     FD_ZERO(&readfds);
+
     FD_SET(listener_fd, &readfds);
     FD_SET(client_fd, &readfds);
 
     int watched_client_fd = client_fd;
-    int max_fd = listener_fd > watched_client_fd ? listener_fd : watched_client_fd;
-    int ready = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+    int max_fd =
+        listener_fd > watched_client_fd
+            ? listener_fd
+            : watched_client_fd;
+```
+
+**Wait for Readiness:** The process calls `select()` with `readfds`.
+- The first argument is `max_fd + 1`, so the kernel considers descriptor numbers from `0` through `max_fd`. The `NULL` write and exception sets mean that this example monitors only read readiness, while the `NULL` timeout makes the call wait indefinitely until a descriptor becomes ready or the wait is interrupted.
+- When `select()` returns successfully, `ready` reports how many readiness conditions were found. More importantly, `readfds` has been modified so that only descriptors currently reported as readable remain in the set.
+
+```c
+    int ready = select(
+        max_fd + 1,
+        &readfds,
+        NULL,
+        NULL,
+        NULL
+    );
 
     if (ready < 0) {
         handle_select_error();
         continue;
     }
+```
 
+**Inspect and Act on Client Readiness:** `FD_ISSET()` checks whether `watched_client_fd` remains in the returned `readfds` set.
+- If it does, the client socket was reported as read-ready. The readiness notification itself did not transfer any bytes, so the process then calls `read()` to perform the actual I/O and copy available bytes into `buffer`.
+
+```c
     if (FD_ISSET(watched_client_fd, &readfds)) {
-        ssize_t bytes = read(watched_client_fd, buffer, sizeof(buffer));
+        ssize_t bytes =
+            read(watched_client_fd, buffer, sizeof(buffer));
+
         handle_client_bytes(bytes, buffer);
     }
+```
 
+**Inspect and Act on Listener Readiness:** The process separately checks whether `listener_fd` remains in `readfds`.
+- If it does, the listening socket has read-related readiness, normally meaning that a completed connection can be accepted. `accept()` performs the actual operation and returns a descriptor for the newly connected socket.
+- The example stores that descriptor in `client_fd`, so the next loop iteration rebuilds `readfds` using the newly accepted client.
+
+```c
     if (FD_ISSET(listener_fd, &readfds)) {
         client_fd = accept(listener_fd, NULL, NULL);
     }
 }
 ```
+
+**Omitted Production State Transitions:** The example deliberately tracks only one connected client at a time. A real `select()`-based server would normally maintain a collection of active client descriptors, add newly accepted clients to that collection, remove closed connections, calculate the current highest descriptor, inspect all relevant returned descriptors, use non-blocking sockets where appropriate, handle `EAGAIN` or `EWOULDBLOCK`, process partial reads and writes, and preserve per-connection application state across iterations.
 
 ##### Benefits and Limits of `select()`
 
@@ -315,6 +347,146 @@ for (;;) {
     - **Application-Side Optimization:** The process can maintain a collection of the descriptors it actually registered and call `FD_ISSET()` only for those after `select()` returns. This avoids user-space checks for unused numeric gaps, but it does not reduce `select()`'s own worst-case O(`nfds`) range-dependent work.
 - **Set Transfer and Rebuilding:** Each call passes descriptor sets to the kernel and receives modified sets back. The process must also rebuild those sets before the next call, adding overhead as the watched range grows.
 - **Descriptor-Set Capacity:** An `fd_set` has an implementation-defined capacity, commonly exposed as `FD_SETSIZE`. A process cannot use `select()` with descriptors outside that set's supported range.
+
+#### `epoll` Readiness Cycle
+
+Linux `epoll` implements the same readiness-based I/O model as `select()`, but changes how the set of watched descriptors is maintained and how ready descriptors are returned. Instead of supplying the complete descriptor set on every wait, the process creates an **epoll instance**, registers descriptors with it, and then repeatedly asks the kernel for events from descriptors that have become ready.
+
+Conceptually, an epoll instance maintains two kinds of state:
+
+- **Interest List:** The descriptors and event types that the application has registered for monitoring.
+- **Ready List:** References to registered descriptors for which the kernel has detected relevant readiness events.
+
+The process interacts with this state through three main operations:
+
+- **Create:** `epoll_create1()` creates an epoll instance and returns a file descriptor referring to it.
+- **Register or Modify Interest:** `epoll_ctl()` adds, modifies, or removes descriptors from the interest list.
+    - `EPOLL_CTL_ADD` registers a descriptor.
+    - `EPOLL_CTL_MOD` changes its registered events.
+    - `EPOLL_CTL_DEL` removes it.
+    - Events such as `EPOLLIN` and `EPOLLOUT` express interest in read and write readiness.
+- **Wait:** `epoll_wait()` waits until registered descriptors have readiness events, a timeout expires, or the wait is interrupted.
+    - Instead of modifying the application's complete interest set, it writes ready events into an output array supplied by the application.
+    - The return value tells the application how many entries in that array contain events.
+- **Perform I/O:** The process inspects those returned events and calls `read()`, `write()`, `accept()`, or another appropriate operation on the corresponding descriptors.
+
+Unlike `select()`, descriptors normally remain registered across calls to `epoll_wait()`. The application therefore does not need to rebuild and transfer its complete watched set before every wait.
+
+##### Example: `epoll` with One Listener and One Client
+
+The following C-like pseudocode uses one listening socket and one already-connected client socket.
+
+- **Resources and State:**
+    - `listener_fd`: File descriptor for an already-created, bound, and listening socket.
+    - `client_fd`: File descriptor for one already-connected client socket.
+    - `epoll_fd`: File descriptor referring to the epoll instance that stores the application's registered interests.
+    - `event`: Temporary `epoll_event` structure used when registering one descriptor.
+    - `events`: Array where `epoll_wait()` writes readiness events returned by the kernel.
+    - `MAX_EVENTS`: Maximum number of events returned into `events` by one wait.
+    - `buffer`: User-space memory where bytes read from the client socket are stored.
+
+**Build Persistent Interest State:** The process first creates an epoll instance. It then registers both the listener and the connected client for `EPOLLIN`.
+- Registering `listener_fd` asks the kernel to report read-related readiness on the listening socket, normally meaning that a connection can be accepted.
+- Registering `client_fd` asks the kernel to report read-related readiness on the connected socket, such as available bytes or end-of-stream.
+- These registrations persist in the epoll instance, so the process does not rebuild the complete interest set before every wait.
+
+```c
+int epoll_fd = epoll_create1(0);
+
+struct epoll_event event;
+
+event.events = EPOLLIN;
+event.data.fd = listener_fd;
+epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listener_fd, &event);
+
+event.events = EPOLLIN;
+event.data.fd = client_fd;
+epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event);
+```
+
+**Wait for Readiness:** Each loop iteration allocates an output array and calls `epoll_wait()`.
+- `events` is where the kernel writes the ready events
+- `MAX_EVENTS` limits how many can be returned in one call.
+- A timeout of `-1` means that the call waits indefinitely until an event becomes available or the wait fails.
+- The return value `ready` is the number of valid entries written into `events`.
+
+```c
+for (;;) {
+    struct epoll_event events[MAX_EVENTS];
+
+    int ready = epoll_wait(
+        epoll_fd,
+        events,
+        MAX_EVENTS,
+        -1
+    );
+
+    if (ready < 0) {
+        handle_epoll_error();
+        continue;
+    }
+```
+
+**Inspect the Result:** After a successful wait, the process iterates only over the entries that the kernel returned.
+- `events[i].data.fd` recovers the descriptor associated with each readiness event.
+- Unlike `select()`, the process does not need to inspect the whole registered descriptor set or scan up to the highest descriptor number.
+
+```c
+    for (int i = 0; i < ready; i++) {
+        int fd = events[i].data.fd;
+```
+
+**Act on Client Readiness:** If the ready descriptor is `client_fd`, the process calls `read()`.
+- The readiness notification itself did not transfer any bytes. `read()` performs the actual I/O, copying available data into `buffer`, and `handle_client_bytes()` processes the result.
+
+```c
+        if (fd == client_fd) {
+            ssize_t bytes = read(fd, buffer, sizeof(buffer));
+            handle_client_bytes(bytes, buffer);
+        }
+```
+
+**Act on Listener Readiness:** If the ready descriptor is `listener_fd`, the process calls `accept()`.
+- The listener readiness indicates that connection state is available to accept.
+- `accept()` performs the actual operation and returns `new_client_fd`, a descriptor referring to the newly connected socket.
+    - That new descriptor is not automatically registered with this epoll instance; production code would normally register it separately before expecting `epoll_wait()` to report its readiness.
+
+```c
+        if (fd == listener_fd) {
+            int new_client_fd = accept(listener_fd, NULL, NULL);
+            handle_new_client(new_client_fd);
+        }
+    }
+}
+```
+
+**Omitted Production State Transitions:** The example focuses only on the readiness cycle. A real server would normally make sockets non-blocking, register each accepted client with `epoll_ctl()`, remove closed descriptors, inspect individual event flags, handle `EAGAIN` or `EWOULDBLOCK`, process partial reads and writes, and preserve per-connection application state across event-loop iterations.
+
+##### Level-Triggered and Edge-Triggered Readiness
+
+`epoll` can report readiness using two different notification policies. Both remain readiness-based: the notification says that an I/O operation may make progress rather than performing the operation itself.
+
+**Level-triggered** mode is the default. As long as a descriptor remains in a state that satisfies the registered condition, subsequent calls to `epoll_wait()` can continue reporting it as ready. For example, if unread bytes remain in a socket's receive buffer, the socket can continue appearing as readable.
+
+**Edge-triggered** mode, enabled with `EPOLLET`, instead emphasizes transitions in readiness state. If data arrives and makes a socket readable, the application receives a notification for that change, but it should not assume that another notification will arrive merely because some of the data remains unread.
+
+For this reason, edge-triggered applications normally use non-blocking descriptors and continue performing the relevant operation until it returns `EAGAIN` or `EWOULDBLOCK`. At that point the application knows that it has drained the currently available work and can safely return to `epoll_wait()`.
+
+This makes edge-triggered handling potentially more efficient by reducing repeated notifications for the same continuing readiness state, but it also makes the application state machine more demanding: failing to completely drain available work can leave data waiting while the event loop waits for a transition that has already occurred.
+
+##### Benefits and Limits of `epoll`
+
+- **Persistent Registration:** The watched descriptor set is maintained by the kernel across waits. Unlike `select()`, the process does not rebuild and pass its complete interest set on every iteration.
+- **Ready-Event Delivery:** `epoll_wait()` returns an array containing ready events rather than requiring the application to inspect every descriptor below some numeric upper bound.
+    - Application-side event processing therefore tends to grow with the number of returned events rather than with the highest descriptor number.
+- **Large Descriptor Sets:** `epoll` avoids the `fd_set` capacity restriction associated with `select()` and is designed to scale to large numbers of watched descriptors.
+- **Separate Registration Cost:** Persistent registration does not make descriptor management free. Adding, changing, and removing interests requires `epoll_ctl()` operations and kernel-maintained state.
+- **Kernel Memory:** Registered descriptors consume kernel resources, so very large interest sets still have memory costs and system-configured limits.
+- **Readiness Is Still Not I/O:** An `EPOLLIN` or `EPOLLOUT` event does not mean that the requested application operation has already been completed.
+    - The application still calls `accept()`, `read()`, `write()`, or another I/O operation.
+    - It must still handle partial progress, closure, errors, and cases where an operation cannot make progress by the time it is attempted.
+- **Edge-Triggered Complexity:** `EPOLLET` can reduce repeated readiness notifications, but applications must carefully drain non-blocking I/O until `EAGAIN` or `EWOULDBLOCK` and preserve enough state to resume processing later.
+- **Linux-Specific Interface:** `epoll` is a Linux API rather than a portable POSIX readiness interface. Other operating systems provide mechanisms with similar goals, such as `kqueue` on BSD-derived systems.
 
 ### Completion-Based I/O
 
