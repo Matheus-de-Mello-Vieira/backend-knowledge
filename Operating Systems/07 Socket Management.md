@@ -364,7 +364,8 @@ The process interacts with this state through three main operations:
     - `EPOLL_CTL_ADD` registers a descriptor.
     - `EPOLL_CTL_MOD` changes its registered events.
     - `EPOLL_CTL_DEL` removes it.
-    - Events such as `EPOLLIN` and `EPOLLOUT` express interest in read and write readiness.
+    - `EPOLLIN` expresses interest in read-related readiness. For a connected socket, this can mean that `read()` or `recv()` may return bytes; for a listening socket, it normally means that `accept()` can claim a completed connection. It can also accompany end-of-stream, so the application must inspect the I/O result.
+    - `EPOLLOUT` expresses interest in write-related readiness. For a connected socket, this usually means that `write()` or `send()` may accept at least some bytes because send-buffer capacity is available; it does not guarantee that one call can write a complete application message.
 - **Wait:** `epoll_wait()` waits until registered descriptors have readiness events, a timeout expires, or the wait is interrupted.
     - Instead of modifying the application's complete interest set, it writes ready events into an output array supplied by the application.
     - The return value tells the application how many entries in that array contain events.
@@ -464,29 +465,28 @@ for (;;) {
 
 ##### Level-Triggered and Edge-Triggered Readiness
 
-`epoll` can report readiness using two different notification policies. Both remain readiness-based: the notification says that an I/O operation may make progress rather than performing the operation itself.
+`epoll` supports two notification policies for readiness. In both modes, an event means that an operation may make progress; the application still calls `read()`, `write()`, `accept()`, or another I/O operation to perform the work.
 
-**Level-triggered** mode is the default. As long as a descriptor remains in a state that satisfies the registered condition, subsequent calls to `epoll_wait()` can continue reporting it as ready. For example, if unread bytes remain in a socket's receive buffer, the socket can continue appearing as readable.
-
-**Edge-triggered** mode, enabled with `EPOLLET`, instead emphasizes transitions in readiness state. If data arrives and makes a socket readable, the application receives a notification for that change, but it should not assume that another notification will arrive merely because some of the data remains unread.
-
-For this reason, edge-triggered applications normally use non-blocking descriptors and continue performing the relevant operation until it returns `EAGAIN` or `EWOULDBLOCK`. At that point the application knows that it has drained the currently available work and can safely return to `epoll_wait()`.
-
-This makes edge-triggered handling potentially more efficient by reducing repeated notifications for the same continuing readiness state, but it also makes the application state machine more demanding: failing to completely drain available work can leave data waiting while the event loop waits for a transition that has already occurred.
+- **Level-Triggered Mode:** This is the default. `epoll_wait()` can continue reporting a descriptor while it satisfies a registered condition.
+    - A socket with unread bytes in its receive buffer can therefore remain readable across several waits.
+- **Edge-Triggered Mode (`EPOLLET`):** The kernel reports a transition into readiness rather than repeatedly reporting the same ready state.
+    - If arriving data makes a socket readable, the application receives an event. Unread data does not by itself guarantee another event on a later wait.
+    - The application normally uses non-blocking descriptors and continues the relevant operation until it returns `EAGAIN` or `EWOULDBLOCK`. This indicates that the operation cannot currently make progress, so the application can return to `epoll_wait()` and wait for a new transition.
+    - This can reduce repeated notifications, but the application must drain available work and preserve enough connection state to resume later. Stopping too early can leave data waiting indefinitely when no further readiness transition occurs.
 
 ##### Benefits and Limits of `epoll`
 
-- **Persistent Registration:** The watched descriptor set is maintained by the kernel across waits. Unlike `select()`, the process does not rebuild and pass its complete interest set on every iteration.
-- **Ready-Event Delivery:** `epoll_wait()` returns an array containing ready events rather than requiring the application to inspect every descriptor below some numeric upper bound.
-    - Application-side event processing therefore tends to grow with the number of returned events rather than with the highest descriptor number.
-- **Large Descriptor Sets:** `epoll` avoids the `fd_set` capacity restriction associated with `select()` and is designed to scale to large numbers of watched descriptors.
-- **Separate Registration Cost:** Persistent registration does not make descriptor management free. Adding, changing, and removing interests requires `epoll_ctl()` operations and kernel-maintained state.
-- **Kernel Memory:** Registered descriptors consume kernel resources, so very large interest sets still have memory costs and system-configured limits.
-- **Readiness Is Still Not I/O:** An `EPOLLIN` or `EPOLLOUT` event does not mean that the requested application operation has already been completed.
-    - The application still calls `accept()`, `read()`, `write()`, or another I/O operation.
-    - It must still handle partial progress, closure, errors, and cases where an operation cannot make progress by the time it is attempted.
-- **Edge-Triggered Complexity:** `EPOLLET` can reduce repeated readiness notifications, but applications must carefully drain non-blocking I/O until `EAGAIN` or `EWOULDBLOCK` and preserve enough state to resume processing later.
-- **Linux-Specific Interface:** `epoll` is a Linux API rather than a portable POSIX readiness interface. Other operating systems provide mechanisms with similar goals, such as `kqueue` on BSD-derived systems.
+- **Persistent Registration:** The kernel retains the watched descriptors and their event interests across calls to `epoll_wait()`. The application does not rebuild and transfer its complete interest set on every iteration as it does with `select()`.
+- **Ready-Event Delivery:** `epoll_wait()` returns only the events that are ready rather than requiring the application to inspect every descriptor below a numeric upper bound.
+    - Application-side event processing therefore tends to grow with the number of returned events, not with the highest registered descriptor number.
+- **Large Descriptor Sets:** `epoll` avoids the `fd_set` capacity restriction associated with `select()` and is intended for large sets of watched descriptors.
+- **Registration and Memory Costs:** Persistent registration still requires kernel-maintained state. Adding, changing, and removing interests uses `epoll_ctl()`, and every registered descriptor consumes kernel resources.
+    - Very large interest sets can therefore encounter memory costs and system-configured limits.
+- **Readiness Is Not I/O:** `EPOLLIN` and `EPOLLOUT` indicate that an operation may make progress; they do not mean the operation has already completed.
+    - The application still calls `accept()`, `read()`, `write()`, or another appropriate operation.
+    - It must handle partial progress, closure, errors, and cases where the operation no longer makes progress by the time it runs.
+- **Edge-Triggered Complexity:** `EPOLLET` can reduce repeated reports for continuing readiness, but it requires the application to drain non-blocking I/O until `EAGAIN` or `EWOULDBLOCK` and retain enough state to resume later.
+- **Linux-Specific Interface:** `epoll` is a Linux API, not a portable POSIX readiness interface. Other operating systems provide mechanisms with similar goals, including `kqueue` on BSD-derived systems.
 
 ### Completion-Based I/O
 
