@@ -1,11 +1,11 @@
 ---
 name: note-writer
-description: Write or amend Markdown note prose after the destination, abstraction level, content boundary, and any semantic link decisions are already decided. This is the canonical prose-and-structure mutation primitive for repository notes. Do not perform placement, boundary analysis, semantic link selection, or broad repository search here.
+description: Create or substantively amend Markdown note prose after the destination, abstraction level, content boundary, and any semantic link decisions are already decided. This is the canonical prose-and-structure mutation primitive for repository notes, including explanation repairs and style-focused rewrites that preserve technical meaning. Do not perform placement, boundary analysis, semantic link selection, or broad repository search here.
 ---
 
 # Note Writer
 
-This skill owns **note prose and explanatory structure**.
+This skill owns **all substantive durable-note prose and explanatory-structure mutation** after semantic decisions are settled.
 
 Repository architecture comes from `AGENTS.md`; default writing behavior comes from `.codex/model_instructions.md`.
 
@@ -13,18 +13,23 @@ Repository architecture comes from `AGENTS.md`; default writing behavior comes f
 
 Owns:
 
-- writing new sections;
-- amending existing sections;
+- writing new sections or explanatory prose;
+- amending and rewriting existing sections;
+- repairing confusing, incomplete, or weak explanations;
+- adapting existing prose to repository writing style while preserving its technical meaning, scope, qualifiers, and terminology;
 - integrating required local context;
 - creating bounded examples or callouts;
-- restructuring nearby prose when needed for coherence;
+- restructuring paragraphs, bullets, or nearby prose when needed for coherence;
 - applying or preserving caller-provided approved link markup without changing its semantic destination.
+
+Higher-level workflows that delegate prose mutation to this skill may prepare inputs and validate the result, but must not reimplement substantive writing themselves.
 
 Requires:
 
 - an approved destination and abstraction level;
-- an approved boundary plan when the addition is substantial or crosses nearby concepts;
+- an approved boundary plan when the addition or rewrite is substantial or crosses nearby concepts;
 - relevant source material and local note context;
+- the technical meaning and constraints that must be preserved during a rewrite;
 - an approved link plan when semantic links are part of the edit.
 
 Must not:
@@ -52,6 +57,15 @@ Choose structure from the logic of the knowledge:
 - **Callouts:** secondary examples, warnings, terminology clarifications, implementation observations, practical inspection, or architectural stories.
 
 Do not mechanically apply all forms to every section.
+
+## Rewrite discipline
+
+When rewriting existing prose for clarity, explanation quality, or repository style:
+
+- preserve the supported technical meaning, scope, qualifiers, distinctions, caveats, and established terminology unless an accepted semantic decision explicitly changes them;
+- use surrounding note context and repository writing policy to infer style rather than mechanically copying another section's formatting;
+- improve causal progression, local coherence, and structure without introducing new technical claims merely to make the text feel more complete;
+- keep changes within the approved destination and content boundary.
 
 ## Scope discipline
 
@@ -94,8 +108,8 @@ Before returning the written candidate:
 
 - reread the affected section as a first-time reader;
 - confirm the assigned concept is understandable without duplicated neighboring theory;
+- confirm rewrites preserve the intended technical meaning, scope, qualifiers, and terminology;
 - confirm examples remain subordinate;
-- confirm terminology and qualifiers are preserved;
 - confirm repository-planning language did not leak into durable prose when a technical relationship could be stated directly;
 - confirm approved link decisions were applied without semantic changes and linked sentences remain independently meaningful;
 - confirm headings and formatting match nearby note conventions.
