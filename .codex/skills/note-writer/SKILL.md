@@ -58,6 +58,14 @@ Choose structure from the logic of the knowledge:
 
 Do not mechanically apply all forms to every section.
 
+## Code demonstration gate
+
+When code primarily serves to expose a technical mechanism, decide whether the mechanism remains clear when the code is presented as one block.
+
+Load `references/mechanism-code-walkthrough.md` when understanding requires tracking several meaningful state transitions, external or system-managed state, or API operations whose conceptual meaning would otherwise need to be reconstructed after the code block.
+
+Do not trigger the pattern from code length. Keep a complete block when the code itself is the artifact being studied, a final assembled reference, or already exposes its important structure clearly enough that splitting would make the implementation harder to inspect.
+
 ## Rewrite discipline
 
 When rewriting existing prose for clarity, explanation quality, or repository style:
@@ -110,6 +118,7 @@ Before returning the written candidate:
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm rewrites preserve the intended technical meaning, scope, qualifiers, and terminology;
 - confirm examples remain subordinate;
+- when the mechanism-code walkthrough pattern was used, confirm each split corresponds to a meaningful technical transition rather than arbitrary code length;
 - confirm repository-planning language did not leak into durable prose when a technical relationship could be stated directly;
 - confirm approved link decisions were applied without semantic changes and linked sentences remain independently meaningful;
 - confirm headings and formatting match nearby note conventions.
