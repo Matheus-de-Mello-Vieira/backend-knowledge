@@ -10,7 +10,7 @@ The note system is organized from **user intent** down to reusable capabilities.
 | Ask a conceptual question and inspect whether the notes already explain it | `$note-question` |
 | Incorporate an article, transcript, scratch text, or other supplied content | `$note-ingestion` |
 | Create a learning structure for a topic not yet understood | `$note-scaffolding` |
-| Explicitly add already-understood knowledge or repair an explanation | `$note-authoring` |
+| Explicitly add already-understood knowledge, rewrite existing prose, or repair an explanation | `$note-authoring` |
 | Review note quality or architecture without editing it | `$note-review` |
 | Split, move, merge, or deduplicate knowledge across notes | `$note-refactor` |
 | Enrich a note with natural semantic cross-links | `$note-link-enrichment` |
@@ -42,7 +42,7 @@ A read-only workflow does not become a mutation workflow merely because it disco
 
 ### Mutation and mechanical capabilities
 
-- **`note-writer`** — write scoped explanatory prose from approved semantic inputs and apply approved link markup without selecting semantic link targets.
+- **`note-writer`** — exclusively own substantive durable-prose mutation after semantic decisions are settled, including new prose, explanation repairs, local restructuring, and style-focused rewrites that preserve technical meaning.
 - **`note-content-mover`** — execute an approved cross-note structural move/split/merge plan.
 - **`markdown-link-normalizer`** — mechanically normalize and validate local links.
 - **`markdownlint-fix`** — repair Markdown lint findings.
@@ -64,10 +64,11 @@ Use these gates:
 3. Invoke `$note-home-finder` only when canonical placement is unresolved, contradicted by retrieval, compound, or likely to create/split notes. Reuse supplied fresh search results rather than repeating retrieval.
 4. Load boundary analysis only when the edit can cross subjects, abstraction levels, or duplicate existing explanations.
 5. Load content movement only when durable content must actually move.
-6. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
-7. Load mechanical link normalization only when links or anchors changed.
-8. Load lint repair only when the edit introduces or exposes lint findings.
-9. Load specialized reference files just before the branch or stage that requires them.
+6. When durable prose will be substantively created or changed, load `$note-writer`; the calling workflow supplies accepted semantic decisions but does not perform the writing itself.
+7. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
+8. Load mechanical link normalization only when links or anchors changed.
+9. Load lint repair only when the edit introduces or exposes lint findings.
+10. Load specialized reference files just before the branch or stage that requires them.
 
 The goal is the **minimum sufficient capability set after required invariants are satisfied**, not the maximum available pipeline and not the minimum number of checks.
 
@@ -76,6 +77,8 @@ The goal is the **minimum sufficient capability set after required invariants ar
 Each skill should state **Owns**, **Inputs/Requires**, **Delegates**, and **Must not** responsibilities when applicable.
 
 Invocation dependencies flow from workflows toward lower-level capabilities. Lower-level primitives never invoke workflows that depend on them. A semantic skill may invoke a lower-level prerequisite it explicitly owns as a dependency—for example, `$note-home-finder` may invoke `$note-topic-search` when fresh search results were not supplied. Data may also flow between primitives through the calling workflow.
+
+**Delegated capability ownership is exclusive.** Once a workflow delegates a capability to a lower-level skill, the workflow may prepare inputs, sequence dependencies, and validate outputs, but it must not reimplement that capability itself. For example, `$note-authoring` does not write substantive prose instead of `$note-writer`, `$note-refactor` does not perform structural movement instead of `$note-content-mover`, and `$note-link-enrichment` does not select semantic destinations instead of `$note-link-planner`.
 
 Read-only workflows do not invoke mutation workflows or capabilities. A later user request to apply a read-only finding is routed independently according to its new mutation intent.
 
