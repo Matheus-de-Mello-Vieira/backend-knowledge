@@ -60,6 +60,16 @@ Do not force every section into the same template. Use prose when causality or c
 
 A note should be complete with respect to **its own subject and abstraction level**, not independently exhaustive about all prerequisites.
 
+## Modal precision
+
+State direct semantics, definitions, state transitions, and invariant relationships directly. Use modal or frequency qualification only when the proposition genuinely depends on capability, configuration, implementation, platform, resource or filter type, runtime state, application choice, or another identifiable contingency.
+
+- Do not use `can`, `may`, `might`, `could`, `usually`, `often`, or similar qualification merely to make a technical claim sound cautious.
+- For each qualifier, identify what concrete condition makes the proposition non-universal at the current abstraction level.
+- When only part of a statement is contingent, state the invariant relationship directly and attach the qualification to the narrowest clause whose outcome actually varies.
+- Preserve modality when it carries technical meaning, such as supported API capability, optional or filter-specific state, non-guaranteed progress, implementation variance, or runtime-dependent behavior.
+- Do not mechanically replace `can` with `may` or another hedge; first determine whether modality is necessary at all.
+
 ## Mechanism-first durable prose
 
 Repository planning may use concepts such as canonical ownership, placement, abstraction boundaries, destinations, local context, movement, and duplication. Treat that vocabulary as editing and review machinery, not as prose to reproduce automatically in durable notes.
@@ -141,6 +151,7 @@ Before finalizing an authorized edit, verify that:
 - adjacent implementation or application detail has not taken over the subject;
 - duplicated same-level explanations were not introduced;
 - terminology, scope, qualifiers, and exceptions remain faithful to the sources;
+- modal verbs and frequency qualifiers encode real technical contingency, with qualification attached to the narrowest claim that requires it;
 - prose and structured formatting match the logical shape of the knowledge;
 - examples clarify rather than dominate;
 - cross-links are natural and point to known targets;
