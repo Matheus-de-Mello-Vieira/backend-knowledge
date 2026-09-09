@@ -488,6 +488,195 @@ for (;;) {
 - **Edge-Triggered Complexity:** `EPOLLET` can reduce repeated reports for continuing readiness, but it requires the application to drain non-blocking I/O until `EAGAIN` or `EWOULDBLOCK` and retain enough state to resume later.
 - **Linux-Specific Interface:** `epoll` is a Linux API, not a portable POSIX readiness interface. Other operating systems provide mechanisms with similar goals, including `kqueue` on BSD-derived systems.
 
+#### `kqueue` Readiness Cycle
+
+BSD-derived systems provide `kqueue` as a scalable kernel event-notification mechanism. Like `epoll`, it allows applications to register interests persistently and later wait for events without resubmitting the complete watched descriptor set on every iteration. However, `kqueue` uses a more general **filter-based event model**: socket readability and writability are only two kinds of events that a kqueue can monitor.
+
+Conceptually, a kqueue maintains registered **kevents**. Each kevent identifies a resource through `ident` and describes the kind of condition to monitor through a `filter`.
+
+For socket I/O, two important filters are:
+
+- **`EVFILT_READ`:** Reports read-related readiness.
+    - For a listening socket, it can indicate that a connection is pending and can be accepted.
+    - For a connected socket, it can indicate that data is available to read.
+    - The returned `data` field can provide additional filter-specific information, such as the amount of readable socket data.
+
+- **`EVFILT_WRITE`:** Reports write-related readiness.
+    - For a connected socket, it indicates that writing can currently make progress.
+    - The returned `data` field can describe available write-buffer space.
+
+- **Event Flags:** Returned events can carry additional state such as `EV_EOF`, allowing the application to observe conditions such as socket shutdown while still inspecting any remaining readable data.
+
+The process mainly interacts with this state through two system calls:
+
+- **Create:** `kqueue()` creates a kernel event queue and returns a file descriptor referring to it.
+- **Register, Modify, or Remove Events:** `kevent()` can receive a **changelist** describing changes to the registered event set.
+    - `EV_ADD` adds an event or modifies an existing matching event.
+    - `EV_DELETE` removes a registered event.
+    - `EV_ENABLE` and `EV_DISABLE` can enable or disable registered events.
+    - `EV_SET()` is commonly used to populate a `struct kevent` describing the resource, filter, flags, and application-associated state.
+
+- **Wait:** The same `kevent()` interface can wait for triggered events.
+    - The application supplies an output **eventlist** where the kernel records triggered events.
+    - `kevent()` returns the number of valid events placed into that array.
+
+- **Perform I/O:** The application inspects the returned events and then calls `read()`, `write()`, `accept()`, or another appropriate operation.
+
+A single `kevent()` call can both submit changes and retrieve events, although event loops commonly separate registration changes from their repeated waits. Registrations normally remain associated with the kqueue until they are removed or their configured lifetime semantics cause them to disappear.
+
+##### Example: `kqueue` with One Listener and One Client
+
+The following C-like pseudocode uses one listening socket and one already-connected client socket.
+
+- **Resources and State:**
+    - `listener_fd`: File descriptor for an already-created, bound, and listening socket.
+    - `client_fd`: File descriptor for one already-connected client socket.
+    - `kqueue_fd`: File descriptor referring to the kernel kqueue.
+    - `changes`: Array of `kevent` structures describing events to register.
+    - `events`: Array where `kevent()` writes triggered events returned by the kernel.
+    - `MAX_EVENTS`: Maximum number of events returned into `events` by one wait.
+    - `buffer`: User-space memory where bytes read from the client socket are stored.
+
+**Build Persistent Interest State:** The process creates a kqueue and prepares two `EVFILT_READ` registrations with `EV_SET()`.
+
+- The first event uses `listener_fd` as its `ident`, asking the kernel to report read-related readiness on the listening socket.
+- The second uses `client_fd`, asking the kernel to report read-related readiness on the connected socket.
+- `EV_ADD` registers each event with the kqueue.
+- `kevent()` receives `changes` as its changelist and applies both registrations. No output event list is supplied because this call is being used only to update the persistent interest state.
+
+```c
+int kqueue_fd = kqueue();
+
+struct kevent changes[2];
+
+EV_SET(
+    &changes[0],
+    listener_fd,
+    EVFILT_READ,
+    EV_ADD,
+    0,
+    0,
+    NULL
+);
+
+EV_SET(
+    &changes[1],
+    client_fd,
+    EVFILT_READ,
+    EV_ADD,
+    0,
+    0,
+    NULL
+);
+
+kevent(
+    kqueue_fd,
+    changes,
+    2,
+    NULL,
+    0,
+    NULL
+);
+```
+
+**Wait for Events:** Each loop iteration allocates an output event array and calls `kevent()` without supplying a changelist.
+
+- Passing `NULL` and `0` for the changelist means that this call does not modify the registered interests.
+- `events` is where the kernel writes triggered events.
+- `MAX_EVENTS` limits how many events can be returned in one call.
+- A `NULL` timeout makes the call wait indefinitely until an event becomes available or the wait fails.
+- The return value `ready` is the number of valid entries written into `events`.
+
+```c
+for (;;) {
+    struct kevent events[MAX_EVENTS];
+
+    int ready = kevent(
+        kqueue_fd,
+        NULL,
+        0,
+        events,
+        MAX_EVENTS,
+        NULL
+    );
+
+    if (ready < 0) {
+        handle_kqueue_error();
+        continue;
+    }
+```
+
+**Inspect the Result:** After a successful wait, the process iterates only over the events returned by the kernel.
+
+- `events[i].ident` identifies the resource associated with the event. For these socket registrations, it contains the socket descriptor.
+- `events[i].filter` identifies which registered filter triggered.
+- Other fields such as `flags`, `fflags`, and `data` can carry additional filter-specific state.
+- Because both registrations in this example use `EVFILT_READ`, the descriptor is enough to distinguish the listener from the connected client.
+
+```c
+    for (int i = 0; i < ready; i++) {
+        int fd = events[i].ident;
+```
+
+**Act on Client Readiness:** If the returned identifier is `client_fd`, the process calls `read()`.
+
+- `EVFILT_READ` indicates that the read side has relevant state, but the notification itself does not transfer application bytes.
+- `read()` performs the actual I/O and copies available bytes into `buffer`.
+- Production code would also inspect fields such as `flags` because an `EV_EOF` condition can accompany remaining readable data.
+
+```c
+        if (fd == client_fd) {
+            ssize_t bytes = read(fd, buffer, sizeof(buffer));
+            handle_client_bytes(bytes, buffer);
+        }
+```
+
+**Act on Listener Readiness:** If the returned identifier is `listener_fd`, the process calls `accept()`.
+
+- `EVFILT_READ` on a listening socket indicates that connection state is available to accept.
+- `accept()` performs the actual operation and returns `new_client_fd`, a descriptor referring to the newly connected socket.
+- Like with `epoll`, that new descriptor is not automatically registered with the kqueue. Production code must create and submit another kevent for it before expecting its readiness to appear in later waits.
+
+```c
+        if (fd == listener_fd) {
+            int new_client_fd = accept(listener_fd, NULL, NULL);
+            handle_new_client(new_client_fd);
+        }
+    }
+}
+```
+
+**Omitted Production State Transitions:** The example focuses only on the readiness cycle. A real server would normally make sockets non-blocking, register each accepted client with `kevent()`, delete interests for closed descriptors, inspect `filter`, `flags`, `fflags`, and `data`, handle end-of-stream and errors, process partial reads and writes, and preserve per-connection application state across event-loop iterations.
+
+##### Persistent and Transition-Oriented Events
+
+A registered kevent normally remains associated with its kqueue across waits. How often it is reported depends on the filter and configured flags.
+
+- **Condition-Based Reporting:** Read and write filters normally continue to represent the underlying condition. If a socket remains readable, for example, the read filter can continue producing events while that condition holds.
+- **`EV_CLEAR`:** After an event is delivered, `EV_CLEAR` resets its recorded state. This is useful for filters where the application wants notification of subsequent changes rather than repeated reports of the same already-observed state.
+    - For socket I/O, applications using this style generally use non-blocking descriptors and drain available work before returning to the wait.
+
+- **`EV_ONESHOT`:** Causes the registration to be removed after its first triggered event is delivered.
+- **`EV_DISPATCH`:** Can disable an event after delivery while retaining its registration so that it can later be explicitly re-enabled.
+
+These controls give `kqueue` notification semantics that can resemble both level-oriented and transition-oriented event handling, although they are expressed through kqueue's filter and flag model rather than through `epoll`'s exact level-triggered / `EPOLLET` interface.
+
+##### Benefits and Limits of `kqueue`
+
+- **Persistent Registration:** Registered events remain in the kernel across waits, so the application does not rebuild and transfer its complete interest set on every iteration as it does with `select()`.
+- **Triggered-Event Delivery:** `kevent()` returns triggered events rather than requiring the application to inspect the complete registered descriptor collection after every wait.
+    - Application-side processing therefore tends to follow the number of returned events rather than the numeric range of watched descriptors.
+
+- **General Event Model:** `kqueue` is broader than socket readiness. Its filter abstraction can represent several types of kernel events in the same event queue, allowing an event loop to coordinate more than network descriptors through one mechanism.
+- **Rich Event Information:** Returned `kevent` structures can include filter-specific state in fields such as `flags`, `fflags`, and `data`, rather than merely identifying a descriptor as readable or writable.
+- **Registration and Memory Costs:** Persistent registrations require kernel-maintained state. Adding, modifying, and removing events still involves kernel work, and large event sets consume system resources.
+- **Readiness Is Not I/O:** `EVFILT_READ` and `EVFILT_WRITE` report conditions under which socket operations may make progress; they do not perform the application I/O.
+    - The application still calls `accept()`, `read()`, `write()`, or another appropriate operation.
+    - It must still handle partial progress, closure, errors, and conditions that change before the operation executes.
+
+- **Transition-Oriented Complexity:** Flags such as `EV_CLEAR` can reduce repeated delivery of continuing conditions, but applications must correctly drain non-blocking I/O and retain enough state to resume later.
+- **Platform-Specific Interface:** `kqueue` is associated with BSD-derived operating systems rather than portable POSIX. Linux provides `epoll` for a similar scalable readiness role, but the APIs and event models are not identical.
+
 ### Completion-Based I/O
 
 - **Submission:** User space submits a concrete operation, such as accepting a connection or receiving into a supplied buffer, for the kernel to perform.
