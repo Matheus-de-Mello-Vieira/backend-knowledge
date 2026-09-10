@@ -246,10 +246,6 @@ The kernel already knows whether a socket currently has data to read, room to ac
 - **Readiness Is Not Transfer:** A readiness notification does not move application data by itself.
     - For example, `epoll_wait()` can report that a socket is readable, but the application still calls `read()` or `recv()` to consume the bytes.
 - **Readiness Can Become Stale:** Races and edge-triggered modes mean a supposedly ready operation must still handle cases where no progress is available by the time the application acts.
-
-> [!example] Go's Netpoller
-> Go allows a goroutine to perform what looks like a blocking network operation without requiring one OS thread to remain blocked for every socket. The runtime can park the goroutine and use the operating system's readiness facilities to learn when the descriptor can make progress. On Linux, Go's netpoller uses mechanisms such as `epoll`; when readiness arrives, the runtime can make the corresponding goroutine runnable again. This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) is built on top of the OS socket and scheduler primitives.
-
 #### `select()` Readiness Cycle
 
 An event loop can use `select()`, which accepts up to three `fd_set` collections:
@@ -709,33 +705,46 @@ Windows Winsock provides `WSAPoll()`, a socket-readiness interface resembling PO
 
 Like `poll()`, `WSAPoll()` coordinates non-blocking sockets without persistent registrations. Windows also provides completion-based facilities, especially overlapped I/O and I/O Completion Ports.
 
-#### Redis: Readiness Behind an Event-Loop Abstraction
+#### Reactor Pattern
 
-Redis illustrates how an event loop separates connection-handling code from a particular readiness API. Its **`ae`** event library exposes readable and writable file events; backend implementations map them to Linux `epoll`, BSD-derived `kqueue`, Solaris event ports, or `select()` as a fallback.
+The **Reactor pattern** organizes event-driven I/O around readiness notifications. Instead of blocking one execution unit on each connection, the application registers I/O interests, waits for the operating system to report which resources may make progress, and dispatches the corresponding application handlers.
 
-- **Redis Logic:** Registers work to perform when a descriptor becomes readable or writable.
-- **`ae` Event Loop:** Stores the descriptor, requested event mask, callback, and application state.
-- **OS-Specific Backend:** Translates those interests into the selected readiness interface.
-- **Kernel:** Detects readiness and reports it through that interface.
-- **Event Dispatch:** Converts returned events back to Redis's representation and invokes the registered callback.
+A Reactor combines the following responsibilities:
 
-Redis represents socket interests with masks such as `AE_READABLE` and `AE_WRITABLE`. Its Linux backend maps them to `EPOLLIN` and `EPOLLOUT`, then maps events returned by `epoll_wait()` back to Redis's generic representation before dispatch.
+- **Event Sources:** Listening and connected sockets whose readiness state changes as I/O progresses.
+- **Readiness Interests:** Conditions the application wants to observe, such as whether a socket is readable or writable.
+- **Event Demultiplexer:** An operating-system readiness interface such as `select()`, `epoll`, or `kqueue`, which waits across many registered interests and returns ready events.
+- **Dispatcher:** Associates returned events with application handlers and invokes the appropriate handler.
+- **Event Handlers:** Perform the actual operation, such as `accept()`, `read()`, or `write()`, and update application state.
 
-##### Accepting and Reading Client Connections
+The readiness interface supplies only the event demultiplexer. `epoll_wait()` or `kevent()` reports that a socket may make progress, but does not decide what that socket represents or which application operation follows. The Reactor adds that application-level association and dispatch.
 
-The connection lifecycle combines readiness notification with socket operations:
+A Reactor iteration follows the readiness cycle:
 
-1. **Register the listener:** Redis registers the listening descriptor as `AE_READABLE` with an accept callback. This does not mean application bytes can be read from the listener: it means `accept()` may claim a completed connection.
-2. **Wait for a file event:** The backend waits through `epoll_wait()` on Linux, `kevent()` where `kqueue` is available, or event ports or `select()` on other supported systems. The Redis connection-handling code remains unchanged.
-3. **Accept the connection:** The backend reports `AE_READABLE`, and the event loop invokes the listener's callback. That callback performs `accept()`; readiness does not create the connected socket.
-4. **Register and read the client:** Redis registers the new client descriptor as `AE_READABLE` with its input callback. When the client sends data, the same cycle invokes that callback, which reads and processes the request.
+1. The application registers a descriptor and its readiness interests.
+2. The event loop waits through the readiness interface.
+3. The kernel reports one or more ready resources.
+4. The dispatcher identifies the handler associated with each resource.
+5. Each handler performs non-blocking I/O and updates connection or application state.
+6. The event loop waits again after it has processed the currently available work.
 
-##### Why the Abstraction Matters
+Readiness-delivery semantics affect handler behavior without changing the Reactor architecture. With level-triggered readiness, a resource is reported again while its condition remains true. With transition-oriented mechanisms such as `EPOLLET`, a handler normally consumes available work until the operation would block before returning control to the Reactor.
 
-Redis depends on the **readiness model**, not on any single readiness interface: register interest, wait efficiently, and dispatch work when the kernel reports that a descriptor may make progress. The backend absorbs platform-specific APIs so networking and application code operate in terms of readable and writable connections.
+One event-loop thread can coordinate many connections, but the Reactor pattern does not require all application work to execute on that thread. A Reactor can dispatch CPU-intensive or blocking work to worker threads or processes while retaining readiness-driven coordination for sockets.
 
-An **event loop** is therefore more than a readiness interface. `epoll`, `kqueue`, and `select()` report resources that may make progress. The `ae` event loop retains callbacks and application state, waits through the selected backend, dispatches fired events, and coordinates timer events.
-
+> [!example] Redis `ae` Event Loop
+> Redis's **`ae`** event library is an example of the Reactor pattern. Redis registers callbacks for generic events such as `AE_READABLE` and `AE_WRITABLE`; the event loop waits for readiness and dispatches the callback associated with each fired descriptor.
+>
+> The OS-specific readiness backend supplies the Reactor's event demultiplexer. In GoF terms, it acts as a **Strategy** because Redis can use implementations backed by Linux `epoll`, BSD-derived `kqueue`, Solaris event ports, or `select()` while the higher-level event loop retains the same role. Each backend also acts as an **Adapter**, translating Redis's generic event representation to and from the corresponding operating-system API.
+>
+> For example, the Linux backend translates `AE_READABLE` and `AE_WRITABLE` into `EPOLLIN` and `EPOLLOUT`, waits through `epoll_wait()`, then translates returned events back into Redis's representation. The Reactor can therefore dispatch Redis callbacks without coupling higher-level connection-handling code to `epoll`.
+<!-- -->
+> [!example] Go's Netpoller Compared with Redis  
+> Go's Netpoller follows the same broad Reactor structure as Redis: an OS-specific backend waits for I/O events and a platform-independent layer reacts to them.
+> 
+> The main difference is the **dispatch target**. Redis dispatches a ready descriptor to an application callback. Go instead associates readiness with a goroutine that was parked because its network operation could not progress; when the descriptor becomes ready, the runtime marks that goroutine runnable and lets the scheduler resume it on an available OS thread.
+> 
+> This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
 ### Completion-Based I/O
 
 - **Submission:** User space submits a concrete operation, such as accepting a connection or receiving into a supplied buffer, for the kernel to perform.
@@ -745,13 +754,6 @@ An **event loop** is therefore more than a readiness interface. `epoll`, `kqueue
 - **Stream Semantics:** Stream protocols still require application-level ordering and framing; a completion reports one operation's result, not a complete application message.
 - **Windows I/O Completion Ports (IOCP):** Windows can queue completions for overlapped I/O operations to a completion port, allowing workers to retrieve completed work without waiting on each socket individually.
 - **Linux `io_uring`:** Linux provides shared submission and completion rings. User space places requests in the submission ring, and the kernel later records their results in the completion ring. It supports socket operations such as accepting connections and reading or writing data, but it can also express polling-related operations; it is not merely another name for readiness notification.
-
-### Readiness and Completion Compared
-
-| Model | Kernel reports | Application action after notification |
-| --- | --- | --- |
-| Readiness-based I/O | An operation may be able to make progress. | Call `accept()`, `recv()`, or `send()` and still handle partial progress or `EAGAIN`. |
-| Completion-based I/O | A submitted operation has finished with a result. | Match the completion to its request and process its byte count, resource, or error. |
 
 ## Socket Lifetime and Closure
 
