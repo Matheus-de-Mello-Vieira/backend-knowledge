@@ -49,12 +49,14 @@ Higher-level workflows are responsible for supplying semantic decisions and invo
 Choose structure from the logic of the knowledge:
 
 - **Prose:** causality, motivation, relationships, and conceptual development.
-- **Descriptive bullets:** parallel properties, components, mechanisms, states, responsibilities, or alternatives.
+- **Labeled descriptive bullets:** parallel named properties, components, mechanisms, states, responsibilities, alternatives, or comparison dimensions when each item has its own explanation. Use the form `- **Label:** Explanation.` so the label names the concept and the following text explains its meaning, mechanism, consequence, constraint, or distinction.
 - **Nested bullets:** consequences, qualifications, submechanisms, or details owned by a parent item.
 - **Numbered lists:** ordered procedures, protocols, algorithms, lifecycles, or state transitions.
 - **Tables:** repeated comparison dimensions across several entities.
 - **Mermaid:** branches, loops, topology, dependencies, or state transitions that prose cannot express as clearly.
 - **Callouts:** secondary examples, warnings, terminology clarifications, implementation observations, practical inspection, or architectural stories.
+
+Prefer labeled descriptive bullets when several sibling statements answer the same implicit question or occupy the same conceptual dimension and each has a concise stable name. Prefer prose when the statements depend on one another to form a causal argument, progression, or continuous explanation.
 
 Do not mechanically apply all forms to every section.
 
@@ -73,7 +75,17 @@ When rewriting existing prose for clarity, explanation quality, or repository st
 - preserve the supported technical meaning, scope, qualifiers, distinctions, caveats, and established terminology unless an accepted semantic decision explicitly changes them;
 - use surrounding note context and repository writing policy to infer style rather than mechanically copying another section's formatting;
 - improve causal progression, local coherence, and structure without introducing new technical claims merely to make the text feel more complete;
+- reassess the representation form rather than mechanically preserving the source format: use labeled descriptive bullets for parallel named concepts with independent explanations, prose for causal or dependent reasoning, numbered lists for ordered processes, and nested bullets for subordinate consequences or qualifications;
+- do not treat a style-focused rewrite as vocabulary, tone, or sentence-level editing only;
 - keep changes within the approved destination and content boundary.
+
+### Rewrite preservation
+
+Before restructuring existing prose, identify the distinct supported information carried by the source passage: technical claims, relationships, qualifiers, exceptions, caveats, constraints, examples, terminology, and meaningful scope.
+
+Rewrite and reorganize those units according to the repository's explanatory grammar, then compare the result with the original. Every unique supported unit must remain represented unless its removal was explicitly authorized as duplication, correction, irrelevance, or scope cleanup.
+
+A style-focused rewrite may change wording, ordering, paragraph/list structure, and local transitions, but it must not silently remove technical information or change the semantic strength of supported claims. Structural compression is valid only when it preserves semantic coverage.
 
 ### Modal precision
 
@@ -132,6 +144,8 @@ Before returning the written candidate:
 - reread the affected section as a first-time reader;
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm rewrites preserve the intended technical meaning, scope, qualifiers, and terminology;
+- confirm structural compression or reformatting did not discard unique technical claims, relationships, qualifiers, caveats, constraints, examples, or exceptions from the original material;
+- confirm semantically parallel named concepts use labeled descriptive bullets when that structure is clearer, and that prose was not retained merely because the source was originally written as paragraphs;
 - confirm modal verbs and frequency qualifiers represent real technical contingency rather than generic caution, and that each qualification is attached to the narrowest claim that requires it;
 - confirm examples remain subordinate;
 - when the mechanism-code walkthrough pattern was used, confirm each split corresponds to a meaningful technical transition rather than arbitrary code length;
