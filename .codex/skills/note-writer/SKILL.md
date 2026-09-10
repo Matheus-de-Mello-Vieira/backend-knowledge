@@ -42,7 +42,7 @@ Must not:
 - move content between notes without an approved structural plan;
 - perform broad link normalization.
 
-Higher-level workflows are responsible for supplying semantic decisions and invoking mechanical validation afterward.
+Higher-level workflows are responsible for supplying semantic decisions and for other downstream mechanical stages when applicable, such as link normalization after link changes. When this skill mutates a Markdown file, Markdown lint cleanup and verification is a required downstream dependency of the writer itself.
 
 ## Writing grammar
 
@@ -137,6 +137,19 @@ When the caller supplies an approved link plan or approved link markup:
 
 Semantic link selection belongs exclusively to `$note-link-planner`. Mechanical link normalization belongs to the caller's `$markdown-link-normalizer` stage.
 
+## Post-write Markdown validation
+
+When this skill applies a substantive mutation to one or more Markdown files, `$markdownlint-fix` is mandatory before the writer returns control to its caller.
+
+1. Complete the approved prose or explanatory-structure mutation.
+2. Perform the writer's semantic verification on the changed material.
+3. Invoke `$markdownlint-fix` on every Markdown file changed by the writer, using only those changed files as lint targets.
+4. Let `$markdownlint-fix` own routine auto-fixes, remaining lint repair, and the clean rerun according to its own contract; do not reproduce that mechanical procedure here.
+5. If lint cleanup changes the edited area, reread it and confirm the changes remained mechanical and did not alter the approved technical meaning.
+6. Return control only after the writer-produced Markdown has completed the lint stage successfully.
+
+If this skill only returns a candidate Markdown fragment or proposed replacement without mutating a repository file, do not invoke file-based lint cleanup. A later workflow stage that mutates Markdown after the writer returns remains responsible for the validation required by that stage; the writer's lint pass guarantees only that the Markdown state it produced was lint-clean when it returned.
+
 ## Verification
 
 Before returning the written candidate:
@@ -151,6 +164,7 @@ Before returning the written candidate:
 - when the mechanism-code walkthrough pattern was used, confirm each split corresponds to a meaningful technical transition rather than arbitrary code length;
 - confirm repository-planning language did not leak into durable prose when a technical relationship could be stated directly;
 - confirm approved link decisions were applied without semantic changes and linked sentences remain independently meaningful;
-- confirm headings and formatting match nearby note conventions.
+- confirm headings and formatting match nearby note conventions;
+- if repository Markdown files were mutated, confirm `$markdownlint-fix` was invoked on every Markdown file changed by the writer before returning.
 
 Return the completed Markdown candidate or apply the scoped edit when invoked by a higher-level workflow.
