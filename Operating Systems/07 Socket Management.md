@@ -232,6 +232,8 @@ Sockets separate application execution from network timing with finite kernel-ma
 
 Asynchronous socket I/O keeps application threads available while network operations wait for progress. It does not eliminate socket buffers, partial transfers, or backpressure; it changes how user space learns that an operation can proceed or has finished. The two main coordination models are readiness-based I/O and completion-based I/O.
 
+> [!note] Event Loop
+> An **event loop** is a programming design pattern and control-flow algorithm that repeatedly waits for events, dispatches the work associated with each event, and then waits again. It appears in many forms, including socket-I/O servers that dispatch readiness or completion events and Node.js, which dispatches callbacks scheduled from I/O, timers, and other event sources.
 ### Readiness-Based I/O
 
 The kernel already knows whether a socket currently has data to read, room to accept writes, a completed connection to accept, or an error condition. Readiness interfaces expose changes in that state across many descriptors without requiring one blocked OS thread per connection.
@@ -250,7 +252,7 @@ The kernel already knows whether a socket currently has data to read, room to ac
 
 #### `select()` Readiness Cycle
 
-`select()` accepts up to three `fd_set` collections:
+An event loop can use `select()`, which accepts up to three `fd_set` collections:
 
 - **`readfds`:** Descriptors to watch for readable state.
 - **`writefds`:** Descriptors to watch for writable state.
@@ -258,10 +260,10 @@ The kernel already knows whether a socket currently has data to read, room to ac
 
 Each collection can contain many file descriptors, and a caller can omit categories it does not need. The call is a blocking readiness wait when given a positive timeout or no timeout; a zero timeout makes it return immediately and is therefore a polling use of the interface.
 
-- **Build Sets:** The process builds each needed `fd_set` collection with the descriptors it wants the kernel to monitor.
+- **Build Sets:** The event loop builds each needed `fd_set` collection with the descriptors it wants the kernel to monitor.
 - **Wait:** It calls `select()` with those sets and a timeout. The call returns when one or more descriptors become ready, the timeout expires, or the wait is interrupted.
 - **Inspect Results:** `select()` modifies each supplied set so it retains only the ready descriptors. `FD_ISSET(fd, &set)` tests whether one specific descriptor remains in a returned set, and therefore whether it is ready for that set's operation category. The test does not transfer data or report a byte count.
-- **Perform I/O:** The process calls `read()`, `write()`, `accept()`, or another appropriate I/O operation on each ready descriptor.
+- **Perform I/O:** The event loop calls `read()`, `write()`, `accept()`, or another appropriate I/O operation on each ready descriptor.
 
 ##### Example: `select()` with One Listener and One Client
 
@@ -275,7 +277,7 @@ The following C-like pseudocode uses one listening socket and one already-connec
     - `max_fd`: Highest-numbered descriptor currently being watched.
     - `buffer`: User-space memory where bytes read from the client socket are stored.
 
-**Build the Interest Set:** Each loop iteration creates a fresh `readfds` set. `FD_ZERO()` clears the set, and `FD_SET()` adds the listener and client descriptors.
+**Build the Interest Set:** Each event-loop iteration creates a fresh `readfds` set. `FD_ZERO()` clears the set, and `FD_SET()` adds the listener and client descriptors.
 - Unlike `epoll`, `select()` does not preserve this interest state across waits. Because `select()` modifies the supplied sets to contain only ready descriptors, the process must rebuild the complete interest set before every call.
 - `watched_client_fd` preserves the client descriptor included in this particular wait. This matters because accepting another connection later in the iteration can replace `client_fd`.
 - `max_fd` records the highest descriptor being monitored because `select()` uses `nfds` as an exclusive upper bound over the descriptor-number range it must inspect.
@@ -342,7 +344,7 @@ for (;;) {
 ##### Benefits and Limits of `select()`
 
 - **Avoiding Unproductive I/O:** `select()` lets the process wait until an operation is likely to make progress instead of repeatedly trying reads, writes, or accepts on unready descriptors.
-- **I/O Concurrency:** One thread can coordinate readiness for many descriptors. The thread may block inside `select()` while nothing is ready, but it does not need one blocked thread per descriptor.
+- **I/O Concurrency:** One event-loop thread can coordinate readiness for many descriptors. The thread may block inside `select()` while nothing is ready, but it does not need one blocked thread per descriptor.
 - **Linear Scanning:** After `select()` returns, the process typically tests descriptors with `FD_ISSET()` across the range from `0` through `nfds - 1`. This work grows linearly with that range, including unused descriptor numbers below the highest watched descriptor.
     - **Application-Side Optimization:** The process can maintain a collection of the descriptors it actually registered and call `FD_ISSET()` only for those after `select()` returns. This avoids user-space checks for unused numeric gaps, but it does not reduce `select()`'s own worst-case O(`nfds`) range-dependent work.
 - **Set Transfer and Rebuilding:** Each call passes descriptor sets to the kernel and receives modified sets back. The process must also rebuild those sets before the next call, adding overhead as the watched range grows.
@@ -350,14 +352,14 @@ for (;;) {
 
 #### `epoll` Readiness Cycle
 
-Linux `epoll` implements the same readiness-based I/O model as `select()`, but changes how the set of watched descriptors is maintained and how ready descriptors are returned. Instead of supplying the complete descriptor set on every wait, the process creates an **epoll instance**, registers descriptors with it, and then repeatedly asks the kernel for events from descriptors that have become ready.
+Linux `epoll` implements the same readiness-based I/O model as `select()`, but changes how the set of watched descriptors is maintained and how ready descriptors are returned. Instead of supplying the complete descriptor set on every wait, an event loop creates an **epoll instance**, registers descriptors with it, and then repeatedly asks the kernel for events from descriptors that have become ready.
 
 Conceptually, an epoll instance maintains two kinds of state:
 
 - **Interest List:** The descriptors and event types that the application has registered for monitoring.
 - **Ready List:** References to registered descriptors for which the kernel has detected relevant readiness events.
 
-The process interacts with this state through three main operations:
+The event loop interacts with this state through three main operations:
 
 - **Create:** `epoll_create1()` creates an epoll instance and returns a file descriptor referring to it.
 - **Register or Modify Interest:** `epoll_ctl()` adds, modifies, or removes descriptors from the interest list.
@@ -507,6 +509,7 @@ Socket I/O commonly uses the following filters:
 - **Event State:** Returned events can carry additional state. For example, `EV_EOF` can report that a socket has shut down, while any already-buffered bytes may still need to be read.
 
 The event loop interacts with `kqueue` through `kqueue()` and `kevent()`:
+
 - **Create:** `kqueue()` creates a kernel event queue and returns a file descriptor referring to it.
 - **Describe an Event:** A `struct kevent` identifies the resource through `ident`, selects a `filter`, and carries `flags` and application-associated state.
     - `EV_SET()` is commonly used to populate the structure.
@@ -639,8 +642,7 @@ for (;;) {
 }
 ```
 
-> [!note] Production Event-Loop State
-> A real server normally uses non-blocking sockets, registers every accepted client, deletes interests for closed descriptors, handles end-of-stream and errors, processes partial reads and writes, and retains application state for each connection between iterations.
+**Omitted Production State Transitions:** The example focuses only on the readiness cycle. A real `kqueue`-based server would normally make sockets non-blocking, register each accepted client with `EV_ADD`, delete registrations for closed descriptors with `EV_DELETE`, inspect individual event flags, handle `EAGAIN` or `EWOULDBLOCK`, process partial reads and writes, and preserve per-connection application state across event-loop iterations.
 
 ##### Persistent and Transition-Oriented Delivery
 
@@ -669,109 +671,70 @@ These controls can support both condition-oriented and transition-oriented handl
 
 #### Other Readiness Interfaces
 
-`select()`, `epoll`, and `kqueue` illustrate the main design differences in readiness-based I/O, but operating systems expose several other interfaces. Some are portable alternatives with similar scaling characteristics to `select()`, while others are platform-specific mechanisms that address similar problems.
+`select()`, `epoll`, and `kqueue` are not the only readiness interfaces. Some systems provide alternatives that retain the repeated interest-set model; others retain registrations in kernel state and return only events that occurred.
 
 ##### `poll()`
 
-POSIX `poll()` performs essentially the same coordination role as `select()`: the application supplies a collection of descriptors and waits until one or more of them become ready. The main difference is how that collection is represented.
-
-Instead of separate `fd_set` values, `poll()` receives an array of `struct pollfd` entries:
+POSIX `poll()` serves the same coordination role as `select()`, but represents the watched descriptors as an array of `struct pollfd` entries rather than separate `fd_set` values.
 
 - **`fd`:** Descriptor to monitor.
 - **`events`:** Readiness conditions requested by the application, such as `POLLIN` or `POLLOUT`.
 - **`revents`:** Conditions observed by the kernel and written back when `poll()` returns.
 
-The application passes the number of entries explicitly, so `poll()` does not depend on the highest descriptor number or the fixed-size `fd_set` representation used by `select()`.
+The caller supplies the number of entries, so `poll()` does not depend on the highest descriptor number or on `fd_set` capacity. It still has no persistent registration: every wait receives the descriptor array again, and the application examines entries with nonzero `revents` after the call returns.
 
-However, `poll()` does not introduce persistent registration. The application still supplies its descriptor array on every wait, and after the call returns it normally examines those entries to determine which descriptors have nonzero `revents`.
+- **`select()`:** Repeatedly transfers descriptor sets represented by `fd_set`.
+- **`poll()`:** Repeatedly transfers an explicit descriptor array, avoiding the `fd_set` capacity model.
+- **`epoll` and `kqueue`:** Retain the interest set in kernel-managed registrations.
 
-This places `poll()` conceptually between `select()` and mechanisms such as `epoll` and `kqueue`:
-
-- `select()` repeatedly transfers descriptor sets and represents them through `fd_set`.
-- `poll()` repeatedly transfers an explicit descriptor array, avoiding the `fd_set` capacity model.
-- `epoll` and `kqueue` move the interest set into persistent kernel-maintained registrations.
-
-`poll()` therefore improves the interface and descriptor representation without fundamentally changing the repeated-interest-set cost that scalable event mechanisms were designed to avoid.
+`poll()` improves descriptor representation without removing the repeated-interest-set cost that scalable event mechanisms avoid.
 
 ##### `pselect()` and `ppoll()`
 
-`pselect()` and `ppoll()` are variants of `select()` and `poll()` rather than different readiness architectures.
-
-Their important addition is the ability to temporarily install a signal mask as part of the readiness wait. This lets an application atomically change which signals may interrupt it while entering the wait, avoiding races between separately changing the signal mask and blocking for I/O. `pselect()` otherwise follows the `select()` descriptor-set model, while `ppoll()` follows the `poll()` array model.
-
-They therefore matter when readiness waiting must be coordinated with POSIX signals, but they do not solve the large-interest-set scaling problems addressed by `epoll` or `kqueue`.
+`pselect()` and `ppoll()` retain the readiness architecture of `select()` and `poll()`, respectively. Their additional signal mask is installed atomically with the readiness wait, avoiding a race between changing which signals can interrupt the thread and blocking for I/O. They coordinate readiness with POSIX signals; they do not address the large-interest-set scaling problems addressed by `epoll` and `kqueue`.
 
 ##### Solaris Event Ports
 
-Solaris provides **event ports**, another kernel event-queue mechanism. `port_create()` creates a port, while resources such as file descriptors can be associated with it through `port_associate()`. Events are later retrieved through operations such as `port_get()` or `port_getn()`.
+Solaris **event ports** provide another kernel event queue. `port_create()` creates a port; `port_associate()` associates resources with it; and `port_get()` or `port_getn()` retrieves events. Socket readiness uses a `PORT_SOURCE_FD` association with `poll()`-style conditions.
 
-For socket readiness, a file descriptor is associated as a `PORT_SOURCE_FD` together with `poll()`-style readiness conditions. When the relevant condition occurs, the kernel places an event on the port.
-
-A notable difference from `epoll` and normal `kqueue` registrations is that retrieving a file-descriptor event removes that association. After processing the descriptor, the application normally associates it with the port again if it wants future notifications.
-
-Like `kqueue`, event ports are broader than sockets: the same port abstraction can multiplex several categories of system events, including descriptors, timers, message queues, asynchronous I/O completions, and user-generated events.
+Retrieving a file-descriptor event removes its association. An application that needs future notifications must associate the descriptor again after processing the event, unlike `epoll` and ordinary `kqueue` registrations. Event ports also multiplex timers, message queues, asynchronous I/O completions, user-generated events, and other system events through the same abstraction.
 
 ##### Solaris `/dev/poll`
 
-Solaris also introduced `/dev/poll` as a scalable extension of the traditional `poll()` model. Instead of passing the entire descriptor collection to `poll()` repeatedly, the application writes descriptor interests into a `/dev/poll` device and later asks it for ready descriptors.
-
-Architecturally, this anticipates the persistent-interest idea later seen in interfaces such as `epoll`. It is mainly of historical interest today; modern Solaris applications generally use event ports for the same architectural role.
+Solaris also introduced `/dev/poll` as a scalable extension of `poll()`. The application writes descriptor interests into the `/dev/poll` device instead of passing the complete collection on every wait, then asks the device for ready descriptors. This anticipates the persistent-interest model of interfaces such as `epoll`; modern Solaris applications generally use event ports for that role.
 
 ##### Windows `WSAPoll()`
 
-Windows Winsock provides `WSAPoll()`, which exposes a socket-readiness interface closely resembling POSIX `poll()`.
+Windows Winsock provides `WSAPoll()`, a socket-readiness interface resembling POSIX `poll()`. The caller passes an array of `WSAPOLLFD` structures containing a socket, requested events, and a `revents` field populated by Winsock. The timeout controls whether the call polls, waits for a bounded interval, or waits indefinitely.
 
-The application supplies an array of `WSAPOLLFD` structures containing a socket, requested events, and a `revents` field where Winsock records the resulting readiness state. A timeout controls whether the call returns immediately, waits for a bounded interval, or waits indefinitely.
-
-Like POSIX `poll()`, `WSAPoll()` is useful for coordinating non-blocking sockets but does not provide the persistent-registration architecture of `epoll` or `kqueue`. Windows instead has important completion-based facilities, especially overlapped I/O and I/O Completion Ports, which belong to the completion-based model discussed next.
+Like `poll()`, `WSAPoll()` coordinates non-blocking sockets without persistent registrations. Windows also provides completion-based facilities, especially overlapped I/O and I/O Completion Ports.
 
 #### Redis: Readiness Behind an Event-Loop Abstraction
 
-Redis is a useful example of why applications commonly depend on an **event-loop abstraction** rather than directly coupling their networking logic to one operating-system readiness interface.
-
-Redis implements its own event library, called **`ae`**. The application-facing layer works with Redis-defined concepts such as readable and writable file events, while backend-specific implementations translate those concepts into the readiness mechanism supported by the operating system. Redis provides backends for mechanisms including Linux `epoll`, BSD-derived `kqueue`, Solaris event ports, and `select()` as a fallback.
-
-The important architectural separation is therefore:
+Redis illustrates how an event loop separates connection-handling code from a particular readiness API. Its **`ae`** event library exposes readable and writable file events; backend implementations map them to Linux `epoll`, BSD-derived `kqueue`, Solaris event ports, or `select()` as a fallback.
 
 - **Redis Logic:** Registers work to perform when a descriptor becomes readable or writable.
-- **`ae` Event Loop:** Stores the descriptor, requested event mask, callback, and application state without requiring the higher-level Redis code to know the underlying readiness API.
-- **OS-Specific Backend:** Translates Redis's generic readiness interests into `epoll`, `kqueue`, event-port, or `select()` operations.
-- **Kernel:** Detects readiness and reports it through the selected operating-system interface.
-- **Event Dispatch:** `ae` converts the returned OS-specific events back into Redis's generic event representation and invokes the registered callbacks.
+- **`ae` Event Loop:** Stores the descriptor, requested event mask, callback, and application state.
+- **OS-Specific Backend:** Translates those interests into the selected readiness interface.
+- **Kernel:** Detects readiness and reports it through that interface.
+- **Event Dispatch:** Converts returned events back to Redis's representation and invokes the registered callback.
 
-Redis represents socket interests with masks such as `AE_READABLE` and `AE_WRITABLE`. For example, the Linux backend translates `AE_READABLE` into `EPOLLIN` and `AE_WRITABLE` into `EPOLLOUT`. When `epoll_wait()` returns events, the backend performs the inverse translation and records generic readable or writable events for the core event loop to dispatch.
+Redis represents socket interests with masks such as `AE_READABLE` and `AE_WRITABLE`. Its Linux backend maps them to `EPOLLIN` and `EPOLLOUT`, then maps events returned by `epoll_wait()` back to Redis's generic representation before dispatch.
 
 ##### Accepting and Reading Client Connections
 
-A simplified connection lifecycle shows how the abstraction composes the socket API with readiness notification.
+The connection lifecycle combines readiness notification with socket operations:
 
-**Register the Listening Socket:** Redis creates a listening socket and registers its descriptor with the event loop as `AE_READABLE`, together with an accept callback.
-
-The meaning is not that Redis wants to read application bytes from the listener. Read readiness on a listening socket indicates that `accept()` may be able to claim a completed connection.
-
-**Wait Through the Selected Backend:** The event loop eventually waits for file events. The backend determines which system call performs this wait.
-
-- On Linux, the backend uses `epoll_wait()`.
-- On systems with `kqueue`, the corresponding backend uses `kevent()`.
-- Other supported systems can use event ports or the `select()` fallback.
-
-The higher-level Redis event-processing code does not need separate connection-handling logic for each of these mechanisms.
-
-**Dispatch the Accept Callback:** When the listening descriptor becomes readable, the backend reports a generic `AE_READABLE` event. The core event loop finds the callback associated with that descriptor and invokes it.
-
-The callback then performs the actual `accept()`. The readiness mechanism only indicated that accepting could make progress; it did not create the connected socket itself.
-
-**Register the Connected Socket:** After accepting the connection, Redis registers the new client descriptor for `AE_READABLE` events and associates it with the callback responsible for processing client input.
-
-Later, when the client sends data, the same event-loop cycle reports that descriptor as readable. Redis then invokes the registered client callback, which performs the actual socket read and processes the received request.
+1. **Register the listener:** Redis registers the listening descriptor as `AE_READABLE` with an accept callback. This does not mean application bytes can be read from the listener: it means `accept()` may claim a completed connection.
+2. **Wait for a file event:** The backend waits through `epoll_wait()` on Linux, `kevent()` where `kqueue` is available, or event ports or `select()` on other supported systems. The Redis connection-handling code remains unchanged.
+3. **Accept the connection:** The backend reports `AE_READABLE`, and the event loop invokes the listener's callback. That callback performs `accept()`; readiness does not create the connected socket.
+4. **Register and read the client:** Redis registers the new client descriptor as `AE_READABLE` with its input callback. When the client sends data, the same cycle invokes that callback, which reads and processes the request.
 
 ##### Why the Abstraction Matters
 
-Redis therefore does not fundamentally depend on `epoll`, `kqueue`, or `select()` individually. It depends on the more general **readiness model**: register interest in future I/O progress, wait efficiently, and dispatch work when the kernel reports that a descriptor is ready.
+Redis depends on the **readiness model**, not on any single readiness interface: register interest, wait efficiently, and dispatch work when the kernel reports that a descriptor may make progress. The backend absorbs platform-specific APIs so networking and application code operate in terms of readable and writable connections.
 
-This separation lets the networking and application layers reason in terms of readable and writable connections while a narrow platform-specific layer handles the operating-system API. The same higher-level event-loop structure can therefore run on operating systems with different readiness mechanisms without duplicating the Redis connection-processing logic.
-
-It also demonstrates the distinction between an **event loop** and a **readiness interface**. `epoll`, `kqueue`, and `select()` tell the program which resources may make progress. The Redis `ae` event loop builds a larger execution model around that capability: it stores callbacks and application state, waits through the selected backend, dispatches fired events, and also coordinates timer events.
+An **event loop** is therefore more than a readiness interface. `epoll`, `kqueue`, and `select()` report resources that may make progress. The `ae` event loop retains callbacks and application state, waits through the selected backend, dispatches fired events, and coordinates timer events.
 
 ### Completion-Based I/O
 
