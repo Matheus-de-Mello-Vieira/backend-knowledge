@@ -38,12 +38,14 @@ Write primarily in coherent explanatory paragraphs. A paragraph should normally 
 
 Use structured formatting when the knowledge itself is structured:
 
-- use descriptive bullets for parallel properties, components, alternatives, responsibilities, states, or mechanisms;
+- use labeled descriptive bullets for parallel named properties, components, alternatives, responsibilities, states, mechanisms, or comparison dimensions when each item has its own explanation, using the form `- **Label:** Explanation.`;
 - use nested bullets for consequences, qualifications, submechanisms, or details owned by the parent item;
 - use numbered lists for procedures, protocols, algorithms, lifecycles, and state transitions where order matters;
 - use tables only when several entities must be compared across the same dimensions;
 - use Mermaid only when branches, loops, topology, dependencies, or state transitions are materially clearer visually;
 - use callouts for secondary examples, warnings, caveats, terminology clarifications, implementation variance, practical inspection, or architectural stories.
+
+Prefer labeled descriptive bullets when several sibling statements answer the same implicit question or occupy the same conceptual dimension and each has a concise stable name. The bold label names the concept; the following text explains its meaning, mechanism, consequence, constraint, or distinction. Prefer prose when the statements depend on one another to form a causal argument, progression, or continuous explanation.
 
 Do not force every section into the same template. Use prose when causality or conceptual development matters more than decomposition.
 
@@ -59,6 +61,14 @@ Do not force every section into the same template. Use prose when causality or c
 - Preserve necessary nuance while compressing repetition.
 
 A note should be complete with respect to **its own subject and abstraction level**, not independently exhaustive about all prerequisites.
+
+## Rewrite preservation
+
+When restructuring existing material, change the representation without silently changing or losing the supported knowledge.
+
+Before a substantive rewrite, identify the distinct technical claims, relationships, qualifiers, exceptions, caveats, constraints, examples, terminology, and meaningful scope carried by the source passage. Reorganize those units according to the repository's explanatory grammar, then compare the result with the original and confirm that every unique supported unit remains represented unless its removal was explicitly authorized as duplication, correction, irrelevance, or scope cleanup.
+
+A style-focused rewrite may change wording, ordering, paragraph/list structure, and local transitions, but it must not silently change the set or semantic strength of supported technical claims. Reformatting prose into bullets, steps, tables, or other structures must preserve semantic coverage rather than compressing away unique information.
 
 ## Modal precision
 
@@ -151,6 +161,8 @@ Before finalizing an authorized edit, verify that:
 - adjacent implementation or application detail has not taken over the subject;
 - duplicated same-level explanations were not introduced;
 - terminology, scope, qualifiers, and exceptions remain faithful to the sources;
+- structural rewrites preserve every unique supported technical claim, relationship, qualifier, caveat, constraint, example, and exception unless removal was explicitly authorized;
+- semantically parallel named concepts use labeled descriptive bullets when that structure is clearer, while causal or dependent reasoning remains prose;
 - modal verbs and frequency qualifiers encode real technical contingency, with qualification attached to the narrowest claim that requires it;
 - prose and structured formatting match the logical shape of the knowledge;
 - examples clarify rather than dominate;
