@@ -234,6 +234,7 @@ Asynchronous socket I/O keeps application threads available while network operat
 
 > [!note] Event Loop
 > An **event loop** is a programming design pattern and control-flow algorithm that repeatedly waits for events, dispatches the work associated with each event, and then waits again. It appears in many forms, including socket-I/O servers that dispatch readiness or completion events and Node.js, which dispatches callbacks scheduled from I/O, timers, and other event sources.
+>
 ### Readiness-Based I/O
 
 The kernel already knows whether a socket currently has data to read, room to accept writes, a completed connection to accept, or an error condition. Readiness interfaces expose changes in that state across many descriptors without requiring one blocked OS thread per connection.
@@ -246,6 +247,7 @@ The kernel already knows whether a socket currently has data to read, room to ac
 - **Readiness Is Not Transfer:** A readiness notification does not move application data by itself.
     - For example, `epoll_wait()` can report that a socket is readable, but the application still calls `read()` or `recv()` to consume the bytes.
 - **Readiness Can Become Stale:** Races and edge-triggered modes mean a supposedly ready operation must still handle cases where no progress is available by the time the application acts.
+
 #### `select()` Readiness Cycle
 
 An event loop can use `select()`, which accepts up to three `fd_set` collections:
@@ -741,19 +743,588 @@ One event-loop thread can coordinate many connections, but the Reactor pattern d
 <!-- -->
 > [!example] Go's Netpoller Compared with Redis  
 > Go's Netpoller follows the same broad Reactor structure as Redis: an OS-specific backend waits for I/O events and a platform-independent layer reacts to them.
-> 
+>
 > The main difference is the **dispatch target**. Redis dispatches a ready descriptor to an application callback. Go instead associates readiness with a goroutine that was parked because its network operation could not progress; when the descriptor becomes ready, the runtime marks that goroutine runnable and lets the scheduler resume it on an available OS thread.
-> 
+>
 > This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
+>
 ### Completion-Based I/O
 
-- **Submission:** User space submits a concrete operation, such as accepting a connection or receiving into a supplied buffer, for the kernel to perform.
-- **Completion:** The kernel later reports the operation's result. A completion identifies the submitted operation and records its outcome, such as the byte count, accepted connection, or error.
-- **Result Handling:** The application processes completed operations rather than receiving permission to attempt a separate `accept()`, `recv()`, or `send()` call.
-- **Concurrent Operations:** Several operations can be in flight at once and can complete in a different order from submission. Applications must correlate every completion with its request and preserve the request state and any buffers used by an in-flight operation for as long as the interface requires.
-- **Stream Semantics:** Stream protocols still require application-level ordering and framing; a completion reports one operation's result, not a complete application message.
-- **Windows I/O Completion Ports (IOCP):** Windows can queue completions for overlapped I/O operations to a completion port, allowing workers to retrieve completed work without waiting on each socket individually.
-- **Linux `io_uring`:** Linux provides shared submission and completion rings. User space places requests in the submission ring, and the kernel later records their results in the completion ring. It supports socket operations such as accepting connections and reading or writing data, but it can also express polling-related operations; it is not merely another name for readiness notification.
+Completion-based I/O changes the interaction between user space and the operating system. Instead of waiting for a resource to become ready and then issuing the corresponding I/O call, the application submits the operation itself and later receives its result.
+
+The important distinction is therefore **readiness versus completion**: readiness reports that an operation may now make progress, while completion reports that an already-submitted operation has reached a result. This requires the application to track outstanding operations and preserve any state they depend on until their completions are processed.
+
+#### The Completion Cycle
+
+Completion-based I/O begins by submitting a **specific operation** rather than registering interest in a future condition. The operation can remain outstanding while the application continues doing other work, and the system later reports the result of that submitted operation.
+
+1. **Submit the Operation**
+    - The application describes the concrete work it wants performed, such as accepting a connection, receiving bytes into a buffer, or sending bytes from a buffer.
+    - The request therefore usually identifies the socket, the operation, its arguments, and some application-defined context that can later be used to recognize the request.
+    - This differs from readiness-based I/O, where the application first registers an interest such as "readable" and only performs `recv()` after the readiness notification arrives.
+2. **Keep the Operation In Flight**
+    - If the operation cannot finish immediately, it remains outstanding.
+    - The application can continue doing other work while it waits.
+    - Any state still referenced by the operation must remain valid, such as a receive buffer or request metadata.
+    - Several operations can be in flight concurrently, possibly across many sockets.
+3. **Receive the Completion**
+    - When the operation reaches a terminal result, the system produces a completion associated with that submitted request.
+    - The completion can report information such as the transferred byte count, an accepted connection, an error, or cancellation.
+    - Unlike readiness, this reports the result of work that was already requested rather than merely saying that the operation may now make progress.
+4. **Process the Result**
+    - The application matches the completion to the original request and processes its result.
+    - For example, a completed receive may report that 731 bytes were written into the submitted buffer.
+    - The application can then parse those bytes, update connection state, and submit another operation if more work is required.
+
+The cycle then repeats as new operations are submitted from the results of completed ones.
+
+#### In-Flight State and Buffer Lifetime
+
+- **Lifetime Requirement:** A submitted operation can outlive the function or event-loop iteration that created it. While the operation is **in flight**, every piece of state that the operating system or runtime may still access remains valid until the operation reaches a terminal result.
+- **Receive State:** A receive operation commonly retains a destination buffer and metadata that identifies the request. Reusing or freeing that memory too early can cause the outstanding operation to write into unrelated data or invalid memory.
+- **Ownership Contrast:** With readiness-based I/O, the application usually allocates or selects a buffer when it actually calls `recv()`. With completion-based I/O, the buffer is often attached to the operation at submission time and remains unavailable for unrelated use until completion, making ownership more explicit.
+- **Per-Operation State:** Applications therefore commonly retain state for each submitted operation, including:
+    - **Associated Socket or Connection:** The endpoint on which the operation runs.
+    - **Operation Type:** The requested action, such as accept, receive, or send.
+    - **Referenced Buffers:** The memory that the operation reads from or writes to.
+    - **Application Context:** Information needed when the completion arrives.
+- **Completion Boundary:** Once the completion has been processed, that state can be reused, released, or used to construct subsequent operations.
+
+#### Concurrent Operations and Ordering
+
+- **Concurrent In-Flight Work:** Completion-based interfaces allow several operations to remain **in flight** at the same time, across one or many sockets. This improves concurrency because the application does not need to wait for one operation to finish before submitting unrelated work.
+- Multiple outstanding operations also create ordering concerns:
+    - **Submission Order:** Operations are created in an application-defined sequence.
+    - **Completion Order:** Independent operations can finish in a different order from which they were submitted. The application must therefore identify each completion rather than assume that the next completion belongs to the oldest request.
+    - **Transport Order:** TCP still preserves its ordered byte-stream semantics. Completion order does not redefine the protocol's ordering guarantees.
+    - **Application Coordination:** The application may still need additional coordination when multiple outstanding operations affect shared connection state or when later processing logically depends on earlier work.
+- **Partial Transfers and Framing:** A completion describes only the result of one submitted operation. Many underlying I/O operations, such as `send()` and `recv()`, permit **partial transfers**, so a successful completion may report fewer bytes than the application originally requested.
+- **Operation vs. Logical Task Completion:** Completing one I/O operation therefore does not necessarily complete the application's larger task. Sending an entire response may require several completed send operations, while receiving one application message may require several completed receive operations and application-level framing.
+
+#### Cancellation, Timeouts, and Errors
+
+- **Non-Success Outcomes:** An in-flight operation does not necessarily finish successfully. It can complete with an error, be cancelled, or remain pending long enough that the application decides it should no longer continue.
+- **Cancellation Race:** By the time the application requests cancellation, the operation may already have completed or may complete concurrently with the cancellation request. Requesting cancellation therefore does not mean that the operation can immediately be forgotten.
+- **Terminal Result:** The application must still observe the operation's terminal result before releasing state associated with it. Depending on the interface, that result may indicate:
+    - **Successful Completion:** The operation completed normally.
+    - **I/O Error:** The operation reached an error result.
+    - **Cancellation:** The terminal result reports cancellation.
+    - **Completion Despite Cancellation:** The terminal result reports successful completion despite a concurrent cancellation attempt.
+- **Timeout Handling:** Timeouts are commonly implemented by combining this mechanism with application-level timing. When a deadline expires, the application requests cancellation of the outstanding operation and then handles whichever terminal result ultimately wins the race.
+- **State Lifetime:** This preserves the same lifetime rule as normal completion: buffers, request metadata, and other referenced state remain valid until the application knows that the operation can no longer access them.
+
+#### `io_uring` Completion Cycle
+
+- **Completion-Based Interface:** Linux `io_uring` is an asynchronous I/O interface built around submitting operations and later retrieving their results. An application can prepare operations such as accepting connections, receiving data, or sending data, allow several of them to remain in flight concurrently, and process their completions as they become available.
+- **Shared Queue Pair:** Conceptually, an `io_uring` instance maintains two shared queues between user space and the kernel:
+    - **Submission Queue (SQ):** Contains references to operations that user space wants the kernel to process. Each operation is described by a **Submission Queue Entry (SQE)**.
+    - **Completion Queue (CQ):** Contains results for operations that have finished. Each result is represented by a **Completion Queue Entry (CQE)**.
+        - **`res`:** Stores the operation-specific result.
+        - **`user_data`:** Carries the value associated with the corresponding SQE, allowing the application to identify the completed request.
+- **Completion Cycle:** The application interacts with this state through several main operations:
+    - **Create:** `io_uring_setup()` creates an `io_uring` instance and returns a file descriptor referring to it. User space maps the queue state shared with the kernel; libraries such as `liburing` normally wrap these setup details.
+    - **Prepare an Operation:** The application obtains an SQE and describes a concrete operation in it.
+        - **Socket Operations:** Include accepting a connection, receiving bytes, and sending bytes.
+        - **Operation Arguments:** The SQE contains arguments such as the socket descriptor, buffer, and requested byte count.
+        - **Request Correlation:** `user_data` can associate application-defined state with the operation so its eventual completion can be correlated with the original request.
+    - **Submit:** The application makes one or more prepared SQEs available to the kernel.
+        - **Concurrent Submission:** Multiple operations can be submitted together and remain in flight concurrently.
+    - **Wait for Completions:** The application can continue executing other work or wait until one or more completions become available.
+    - **Process Results:** When an operation finishes, the kernel places a CQE in the completion queue.
+        - **Request Identification:** `user_data` identifies the corresponding submitted request.
+        - **Operation Result:** `res` contains the operation-specific result. For operations such as receive or send, a non-negative value commonly represents the transferred byte count, while a negative value represents an error.
+        - **Single-Shot Lifecycle:** A single-shot operation is no longer in flight after its completion. If the application wants the same kind of work to continue, it prepares and submits another operation.
+
+##### Example: `io_uring` with One Listener and One Client
+
+- **Example Scope:** The following C-like pseudocode uses `liburing` with one listening socket and one already-connected client socket.
+- **Resources and State:**
+    - **`listener_fd`:** File descriptor for an already-created, bound, and listening socket.
+    - **`client_fd`:** File descriptor for one already-connected client socket.
+    - **`ring`:** `io_uring` instance containing the submission and completion queues.
+    - **`accept_request`:** Application state identifying the currently outstanding accept operation.
+    - **`recv_request`:** Application state identifying the currently outstanding receive operation.
+    - **`buffer`:** User-space memory supplied to the receive operation.
+    - **`sqe`:** Pointer to an SQE being prepared.
+    - **`cqe`:** Pointer to a CQE returned after an operation completes.
+
+- **Create the Ring:** The process initializes an `io_uring` instance. `liburing` performs the underlying ring creation and memory mapping.
+
+```c
+struct io_uring ring;
+io_uring_queue_init(QUEUE_DEPTH, &ring, 0);
+```
+
+- **Prepare the Initial Operations:** The process obtains two SQEs. One describes an accept operation on the listener, while the other describes a receive operation on the connected client.
+    - **One Operation per SQE:** Each SQE represents one operation.
+    - **Request Correlation:** Application request state is stored in `user_data`, allowing the corresponding CQE to identify which operation completed.
+
+```c
+struct request accept_request = {
+    .type = ACCEPT,
+    .fd = listener_fd
+};
+
+struct request recv_request = {
+    .type = RECV,
+    .fd = client_fd
+};
+
+struct io_uring_sqe *sqe;
+
+sqe = io_uring_get_sqe(&ring);
+io_uring_prep_accept(
+    sqe,
+    listener_fd,
+    NULL,
+    NULL,
+    0
+);
+io_uring_sqe_set_data(sqe, &accept_request);
+
+sqe = io_uring_get_sqe(&ring);
+io_uring_prep_recv(
+    sqe,
+    client_fd,
+    buffer,
+    sizeof(buffer),
+    0
+);
+io_uring_sqe_set_data(sqe, &recv_request);
+```
+
+- **Submit the Initial Operations:** `io_uring_submit()` makes both prepared SQEs available for processing.
+    - **Independent In-Flight Operations:** The accept and receive operations are now independently in flight.
+    - **Independent Completion:** Whichever finishes first produces a completion while the other can remain outstanding.
+
+```c
+io_uring_submit(&ring);
+```
+
+- **Wait for a Completion:** Each iteration waits for one of the outstanding operations to produce a CQE.
+
+```c
+for (;;) {
+    struct io_uring_cqe *cqe;
+
+    int result = io_uring_wait_cqe(&ring, &cqe);
+
+    if (result < 0) {
+        handle_wait_error(result);
+        continue;
+    }
+
+    struct request *request =
+        io_uring_cqe_get_data(cqe);
+```
+
+- **Handle and Replace a Receive:** If the receive operation completes, the process first handles its result.
+    - **Positive Result:** A positive `cqe->res` is the number of bytes placed in `buffer`.
+    - **Zero Result:** TCP end-of-stream.
+    - **Negative Result:** An error.
+    - **Replacement Requirement:** Once this CQE is produced, that particular receive operation is finished. Receiving more data therefore requires another receive operation.
+    - **Buffer Reuse:** For a successful receive, the process consumes the current contents of `buffer` before giving the same buffer to a new asynchronous operation. It then prepares a replacement receive.
+
+```c
+    if (request->type == RECV) {
+        if (cqe->res > 0) {
+            handle_client_bytes(cqe->res, buffer);
+
+            sqe = io_uring_get_sqe(&ring);
+            io_uring_prep_recv(
+                sqe,
+                client_fd,
+                buffer,
+                sizeof(buffer),
+                0
+            );
+            io_uring_sqe_set_data(sqe, &recv_request);
+        } else if (cqe->res == 0) {
+            handle_client_close(client_fd);
+        } else {
+            handle_recv_error(cqe->res);
+        }
+    }
+```
+
+- **Rearming Scope:** A closed or failed connection is not rearmed in this simplified example. A successful receive is rearmed because the server wants to continue receiving from that client.
+- **Handle and Replace an Accept:** An accept CQE likewise finishes one accept operation.
+    - **Accepted Descriptor:** On success, `cqe->res` contains the descriptor of the newly accepted connection.
+    - **No Automatic Replacement:** Accepting that connection does not automatically create another pending accept operation.
+    - **Continued Acceptance:** The process therefore prepares another accept so the listener can continue accepting future connections.
+
+```c
+    if (request->type == ACCEPT) {
+        if (cqe->res >= 0) {
+            int new_client_fd = cqe->res;
+            handle_new_client(new_client_fd);
+        } else {
+            handle_accept_error(cqe->res);
+        }
+
+        sqe = io_uring_get_sqe(&ring);
+        io_uring_prep_accept(
+            sqe,
+            listener_fd,
+            NULL,
+            NULL,
+            0
+        );
+        io_uring_sqe_set_data(sqe, &accept_request);
+    }
+```
+
+- **Consume the Completion and Submit Replacement Work:** After the process has extracted everything it needs from the CQE, it marks that CQE as consumed. Any replacement SQE prepared while handling the result is then submitted.
+
+```c
+    io_uring_cqe_seen(&ring, cqe);
+
+    io_uring_submit(&ring);
+}
+```
+
+- **Replacement Lifecycle:** The lifecycle therefore continues by replacing completed work:
+    - **Accept:** An outstanding accept completes → process it → submit another accept.
+    - **Receive with Data:** An outstanding receive completes with data → process the buffer → submit another receive.
+    - **Terminal Receive:** An operation that should no longer continue, such as a receive that reaches end-of-stream, is not replaced.
+- **Omitted Production State Transitions:** The example deliberately keeps one accept and one receive workflow simple. A real server would normally create per-connection request state and buffers, submit receive operations for newly accepted connections, remove state after closure, handle submission failures and SQ exhaustion, manage many concurrent operations, and potentially use multishot operations or batching to avoid repeatedly submitting equivalent single-shot requests.
+
+##### Benefits and Limits of `io_uring`
+
+- **Submission and Completion Batching:** Multiple operations can be submitted together and multiple CQEs can be processed together, allowing coordination overhead to be amortized across several operations.
+- **Shared Queue State:** Submission and completion state is exchanged through memory shared between user space and the kernel.
+- **Many In-Flight Operations:** One ring can coordinate outstanding operations across many descriptors without requiring one application thread to block for each operation.
+- **Request Correlation:** Operations can complete independently, so `user_data` allows each CQE to be associated with its original request and application state.
+- **In-Flight Resource Lifetime:** Buffers and other state referenced by an outstanding operation must remain valid for as long as the operation may still access them.
+- **Underlying I/O Semantics:** `io_uring` changes how operations are submitted and how their results are delivered, but the semantics of the underlying operation still apply. Socket receives and sends can therefore produce partial transfers.
+- **Broader I/O Interface:** `io_uring` is not limited to networking. It also supports operations for files, polling, timers, synchronization, and other kernel facilities.
+- **Linux-Specific Interface:** `io_uring` is a Linux API rather than a portable POSIX interface.
+
+#### Windows Overlapped I/O and IOCP
+
+- **Overlapped I/O and IOCP:** Windows supports asynchronous socket operations through **overlapped I/O**. An application submits operations such as accept, receive, or send together with an `OVERLAPPED` structure that identifies the outstanding request. **I/O Completion Ports (IOCP)** provide a shared queue through which the application can retrieve the results of those operations.
+- **Completion Port:** A kernel-managed queue that receives completion packets from associated handles.
+- **Handle Association:** Sockets are associated with a completion port using `CreateIoCompletionPort()`. Each association can carry a **completion key**, commonly used to identify connection-level state.
+- **Overlapped Request:** Each asynchronous operation carries its own `OVERLAPPED` structure. When the operation completes, the same pointer is returned with its completion, allowing the application to identify the specific request.
+- **Completion Cycle:** The application interacts with this state through several main operations:
+    - **Create:** `CreateIoCompletionPort()` creates a completion port.
+    - **Associate Sockets:** Sockets that will produce completions are associated with the port.
+    - **Submit an Operation:** An overlapped-capable operation such as `AcceptEx()`, `WSARecv()`, or `WSASend()` is called with an `OVERLAPPED` structure.
+        - **Operation State:** The operation can complete immediately or remain pending.
+        - **Pending Result:** `WSA_IO_PENDING` means the operation was successfully initiated and will report its result asynchronously.
+        - **In-Flight Lifetime:** The `OVERLAPPED` structure and any referenced buffers must remain valid while the operation is outstanding.
+    - **Wait for Completions:** Worker threads call `GetQueuedCompletionStatus()` or `GetQueuedCompletionStatusEx()` to dequeue completion packets.
+    - **Process Results:** A completion reports the number of bytes transferred, the completion key associated with the socket, and the `OVERLAPPED` pointer associated with the completed operation.
+        - **Single-Shot Lifecycle:** After processing a one-shot operation, the application submits another one when it wants that work to continue.
+
+##### Example: IOCP with One Listener and One Client
+
+- **Example Scope:** The following C-like pseudocode uses one listening socket and one already-connected client socket. The listener has one outstanding `AcceptEx()` operation, while the client has one outstanding `WSARecv()` operation.
+- **Resources and State:**
+    - **`listener`:** Already-created, bound, and listening socket.
+    - **`client`:** One already-connected socket.
+    - **`completion_port`:** IOCP used to collect completed operations.
+    - **`accept_request`:** State for the outstanding `AcceptEx()` operation.
+    - **`recv_request`:** State for the outstanding `WSARecv()` operation.
+    - **`OVERLAPPED`:** Windows structure embedded in each request and used to identify its completion.
+    - **`accept_socket`:** Socket created before `AcceptEx()` and filled in when a connection is accepted.
+    - **`buffer`:** User-space storage supplied to the receive operation.
+- **Request Structure:** A request can embed `OVERLAPPED` together with the application state required to process its result:
+
+```c
+struct request {
+    OVERLAPPED overlapped;
+    enum operation_type type;
+
+    SOCKET socket;
+    WSABUF buffer;
+};
+```
+
+- **Create the Completion Port and Associate Sockets:** The process creates an IOCP and associates both the listener and the existing client with it.
+    - **Completion Key:** Can identify state shared by operations on that socket.
+    - **Operation Identity:** The `OVERLAPPED` pointer returned later identifies the individual operation.
+
+```c
+HANDLE completion_port =
+    CreateIoCompletionPort(
+        INVALID_HANDLE_VALUE,
+        NULL,
+        0,
+        0
+    );
+
+CreateIoCompletionPort(
+    (HANDLE) listener,
+    completion_port,
+    (ULONG_PTR) listener_state,
+    0
+);
+
+CreateIoCompletionPort(
+    (HANDLE) client,
+    completion_port,
+    (ULONG_PTR) client_state,
+    0
+);
+```
+
+- **Prepare and Submit the Initial Receive:** The application initializes a request and passes its embedded `OVERLAPPED` structure to `WSARecv()`.
+
+```c
+struct request recv_request = {0};
+
+recv_request.type = RECV;
+recv_request.socket = client;
+recv_request.buffer.buf = buffer;
+recv_request.buffer.len = sizeof(buffer);
+
+DWORD flags = 0;
+
+int result = WSARecv(
+    client,
+    &recv_request.buffer,
+    1,
+    NULL,
+    &flags,
+    &recv_request.overlapped,
+    NULL
+);
+
+if (
+    result == SOCKET_ERROR &&
+    WSAGetLastError() != WSA_IO_PENDING
+) {
+    handle_recv_submission_error();
+}
+```
+
+- **Submission Result:** A return of `WSA_IO_PENDING` is not an operation failure. It means the receive remains in flight and its result will be reported later. An immediate successful return also represents a successfully initiated overlapped operation; when used normally with IOCP, its completion is still delivered through the completion mechanism.
+- **Prepare and Submit the Initial Accept:** `AcceptEx()` requires the application to create the socket that will represent the accepted connection before submitting the operation.
+
+```c
+struct request accept_request = {0};
+
+accept_request.type = ACCEPT;
+accept_request.socket =
+    WSASocket(
+        AF_INET,
+        SOCK_STREAM,
+        IPPROTO_TCP,
+        NULL,
+        0,
+        WSA_FLAG_OVERLAPPED
+    );
+
+AcceptEx(
+    listener,
+    accept_request.socket,
+    accept_buffer,
+    0,
+    ADDRESS_SPACE,
+    ADDRESS_SPACE,
+    NULL,
+    &accept_request.overlapped
+);
+```
+
+- **Accept State and Completion:** The accept socket and the `OVERLAPPED` request remain associated with this particular outstanding accept. With a receive-data length of zero, this `AcceptEx()` can complete when the connection has been accepted rather than waiting for application data from the peer.
+- **Wait for a Completion:** The process waits for one completion packet from the port.
+
+```c
+for (;;) {
+    DWORD transferred;
+    ULONG_PTR completion_key;
+    OVERLAPPED *overlapped;
+
+    BOOL success =
+        GetQueuedCompletionStatus(
+            completion_port,
+            &transferred,
+            &completion_key,
+            &overlapped,
+            INFINITE
+        );
+```
+
+- **Completion Contents:** A dequeued completion contains information from two different scopes:
+    - **`completion_key`:** Identifies the handle association and can recover connection-level state.
+    - **`overlapped`:** Identifies the particular operation that completed.
+    - **`transferred`:** Reports the byte count associated with that operation.
+- **Failed Completion:** `GetQueuedCompletionStatus()` can also return a completion for a failed operation; in that case `overlapped` is still non-`NULL`, while the return value indicates failure.
+- **Recover the Request:** Because `OVERLAPPED` is embedded in the request structure, the application can recover the request that owns it.
+
+```c
+    struct request *request =
+        CONTAINING_RECORD(
+            overlapped,
+            struct request,
+            overlapped
+        );
+```
+
+- **Handle and Replace a Receive:** A receive completion finishes that particular `WSARecv()` request.
+    - **Positive Byte Count:** Data was received.
+    - **Zero Byte Count:** A successful TCP receive indicates orderly connection closure.
+    - **Continued Reception:** If the server wants to continue receiving after processing the bytes, it submits another `WSARecv()` operation.
+
+```c
+    if (request->type == RECV) {
+        if (!success) {
+            handle_recv_error(GetLastError());
+            continue;
+        }
+
+        if (transferred == 0) {
+            handle_client_close(request->socket);
+            continue;
+        }
+
+        handle_client_bytes(
+            transferred,
+            request->buffer.buf
+        );
+
+        ZeroMemory(
+            &request->overlapped,
+            sizeof(request->overlapped)
+        );
+
+        DWORD flags = 0;
+
+        int result = WSARecv(
+            request->socket,
+            &request->buffer,
+            1,
+            NULL,
+            &flags,
+            &request->overlapped,
+            NULL
+        );
+
+        if (
+            result == SOCKET_ERROR &&
+            WSAGetLastError() != WSA_IO_PENDING
+        ) {
+            handle_recv_submission_error();
+        }
+    }
+```
+
+- **Request and Buffer Reuse:** The same request storage and buffer can be reused here because the previous receive has already reached its completion and the application has finished processing that result before submitting the next receive.
+- **Handle and Replace an Accept:** A successful `AcceptEx()` completion finishes one accept request and leaves `accept_request.socket` referring to the newly connected socket.
+- **Accepted-Socket Setup:** The application first updates the accepted socket's context and associates it with the completion port so subsequent overlapped operations on that connection can deliver their completions there.
+
+```c
+    if (request->type == ACCEPT) {
+        if (!success) {
+            handle_accept_error(GetLastError());
+        } else {
+            SOCKET accepted = request->socket;
+
+            setsockopt(
+                accepted,
+                SOL_SOCKET,
+                SO_UPDATE_ACCEPT_CONTEXT,
+                (char *) &listener,
+                sizeof(listener)
+            );
+
+            CreateIoCompletionPort(
+                (HANDLE) accepted,
+                completion_port,
+                (ULONG_PTR) new_client_state,
+                0
+            );
+
+            handle_new_client(accepted);
+        }
+```
+
+- **Accept Replacement:** The completed `AcceptEx()` operation is no longer outstanding. To continue accepting connections, the application creates another accept socket, resets the request state, and submits another `AcceptEx()`.
+
+```c
+        ZeroMemory(
+            &request->overlapped,
+            sizeof(request->overlapped)
+        );
+
+        request->socket =
+            WSASocket(
+                AF_INET,
+                SOCK_STREAM,
+                IPPROTO_TCP,
+                NULL,
+                0,
+                WSA_FLAG_OVERLAPPED
+            );
+
+        AcceptEx(
+            listener,
+            request->socket,
+            accept_buffer,
+            0,
+            ADDRESS_SPACE,
+            ADDRESS_SPACE,
+            NULL,
+            &request->overlapped
+        );
+    }
+}
+```
+
+- **Replacement Lifecycle:** The operation lifecycle therefore follows the same general rule for both kinds of work:
+    - **Accept:** An overlapped accept completes → process the accepted socket → submit another accept.
+    - **Receive with Data:** An overlapped receive completes with data → process those bytes → submit another receive.
+    - **Terminal Receive:** An operation that should no longer continue, such as a receive reaching end-of-stream, is not replaced.
+- **Omitted Production State Transitions:** A real IOCP server would normally maintain per-connection and per-operation state separately, post several accepts in advance, initiate receives for newly accepted clients, handle synchronous submission failures, manage request allocation and destruction carefully, process partial sends, handle cancellation and shutdown, and use multiple worker threads retrieving completions from the same port.
+
+##### Benefits and Limits of IOCP
+
+- **Many Outstanding Operations:** A completion port can coordinate asynchronous operations across many associated sockets without requiring one blocked application thread per socket.
+- **Central Completion Queue:** Completions from many handles can be collected through one port and processed by a worker pool.
+- **Connection and Operation Correlation:** Completion keys provide handle-level context, while the returned `OVERLAPPED` pointer identifies the individual completed operation.
+- **Worker Concurrency Control:** A completion port has a concurrency value that helps Windows control how many associated worker threads actively process completions at once.
+- **In-Flight Resource Lifetime:** `OVERLAPPED` structures and buffers referenced by pending operations must remain valid until those operations have completed.
+- **Underlying I/O Semantics:** Overlapped execution changes how an operation waits and reports its result; socket stream semantics such as partial transfers and end-of-stream still apply.
+- **Windows-Specific Interface:** Overlapped I/O, IOCP, and extensions such as `AcceptEx()` are Windows mechanisms rather than portable POSIX interfaces.
+
+#### Proactor Pattern
+
+- **Completion-Centered Model:** The **Proactor pattern** organizes asynchronous I/O around the completion of operations that were submitted in advance. Instead of waiting for a resource to become ready and then deciding which I/O call to perform, the application initiates the operation itself and later dispatches logic when that operation completes.
+- **Proactor Responsibilities:** A Proactor typically combines the following responsibilities:
+    - **Asynchronous Operations:** Concrete I/O requests such as accept, receive, or send operations.
+    - **Operation State:** Application state associated with each outstanding request, including buffers and context needed when its result arrives.
+    - **Completion Mechanism:** The operating-system facility that reports finished operations, such as `io_uring` completion entries or IOCP completion packets.
+    - **Completion Dispatcher:** Associates each completion with the operation and application state that produced it.
+    - **Completion Handlers:** Process the completed result and decide what work should be submitted next.
+- **Proactor Cycle:**
+    1. The application prepares and submits one or more asynchronous operations.
+    2. Those operations remain in flight while the application continues other work.
+    3. The completion mechanism reports operations that have reached a result.
+    4. The dispatcher correlates each completion with its original request.
+    5. The completion handler processes the result and updates application state.
+    6. The handler submits subsequent operations when more work is required.
+- **Result-Centered Dispatch:** The application reacts to **results**, not to permission to attempt the I/O. The operating-system interface performs or coordinates the submitted operation, while application code becomes active again when there is a completion to process.
+- **Interface Realizations:** `io_uring` and Windows overlapped I/O with IOCP can both support this architecture. Their APIs differ substantially, but both allow application logic to be structured around outstanding operations and the completions those operations later produce.
+
+### Readiness and Completion Compared
+
+Readiness-based and completion-based I/O both allow one execution context to coordinate many sockets without dedicating a blocked thread to each connection. The difference is where the I/O operation sits in the interaction between user space and the operating system.
+
+|Model|Application submits|Kernel reports|Application action after notification|
+|---|---|---|---|
+|**Readiness-Based I/O**|Interest in a condition such as readable or writable state.|That an operation may be able to make progress.|Call `accept()`, `recv()`, `send()`, or another appropriate operation and handle its result.|
+|**Completion-Based I/O**|The concrete operation itself, such as accept, receive, or send.|The result of that submitted operation.|Correlate the completion with its request, process the result, and submit subsequent work if necessary.|
+
+- **Readiness Interaction:** With readiness-based I/O, the application owns both stages of the interaction. It first waits for the operating system to indicate that a resource may make progress, then performs the actual I/O operation. A readable event, for example, does not contain the received bytes; it tells the application that calling `recv()` is likely to make progress.
+- **Completion Interaction:** With completion-based I/O, those stages are combined into one outstanding request. The application submits the receive operation before the data is necessarily available, allows the operation to remain in flight, and later receives its result. The completion therefore refers to a particular operation rather than only to the state of the socket.
+- **Preserved Application State:** A readiness-driven event loop primarily tracks **resources and interests**, such as which sockets should be monitored for reads or writes. A completion-driven design primarily tracks **outstanding operations**, including their buffers, request metadata, and the application state needed when each operation finishes.
+- **Unchanged Transport Semantics:** The two models do not change the semantics of the underlying transport or I/O operation. TCP remains an ordered byte stream in either model, and operations such as `send()` and `recv()` can still produce partial transfers. The models differ in how the application coordinates those operations, not in what TCP means.
+- **Event-Driven Patterns:** At the architectural level, these approaches commonly correspond to two event-driven patterns:
+    - **Reactor:** Dispatch application code when a resource becomes ready, after which the handler performs the I/O operation.
+    - **Proactor:** Submit the I/O operation first and dispatch application code when that operation completes.
+- **Mechanism and Architecture:** The operating-system mechanism and the application architecture should still be distinguished. A library can expose a Proactor-style completion API while internally using a readiness mechanism, and a readiness interface does not by itself determine how an application structures its handlers or concurrency.
 
 ## Socket Lifetime and Closure
 
