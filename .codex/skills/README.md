@@ -42,10 +42,10 @@ A read-only workflow does not become a mutation workflow merely because it disco
 
 ### Mutation and mechanical capabilities
 
-- **`note-writer`** — exclusively own substantive durable-prose mutation after semantic decisions are settled, including new prose, explanation repairs, local restructuring, and style-focused rewrites that preserve technical meaning.
+- **`note-writer`** — exclusively own substantive durable-prose mutation after semantic decisions are settled, including new prose, explanation repairs, local restructuring, and style-focused rewrites that preserve technical meaning. When it mutates Markdown files, it must invoke `$markdownlint-fix` on every file it changed before returning.
 - **`note-content-mover`** — execute an approved cross-note structural move/split/merge plan.
 - **`markdown-link-normalizer`** — mechanically normalize and validate local links.
-- **`markdownlint-fix`** — repair Markdown lint findings.
+- **`markdownlint-fix`** — repair Markdown lint findings and verify the selected targets lint cleanly.
 
 ## Mutation authority
 
@@ -68,8 +68,9 @@ Use these gates:
 7. When `$note-writer` encounters code whose primary purpose is to expose a multi-stage technical mechanism and a monolithic presentation would require substantial retrospective explanation, load `references/mechanism-code-walkthrough.md`. Do not load it based on code length alone.
 8. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
 9. Load mechanical link normalization only when links or anchors changed.
-10. Load lint repair only when the edit introduces or exposes lint findings.
-11. Load other specialized reference files just before the branch or stage that requires them.
+10. After `$note-writer` mutates one or more Markdown files, `$markdownlint-fix` is a required downstream stage on every Markdown file changed by the writer before it returns control.
+11. For Markdown mutations performed after the writer returns or by other capabilities, load `$markdownlint-fix` when that capability's contract requires lint validation or when the mutation introduces or exposes lint findings. A writer lint pass does not validate later mutations automatically.
+12. Load other specialized reference files just before the branch or stage that requires them.
 
 The goal is the **minimum sufficient capability set after required invariants are satisfied**, not the maximum available pipeline and not the minimum number of checks.
 
@@ -79,7 +80,7 @@ Each skill should state **Owns**, **Inputs/Requires**, **Delegates**, and **Must
 
 Invocation dependencies flow from workflows toward lower-level capabilities. Lower-level primitives never invoke workflows that depend on them. A semantic skill may invoke a lower-level prerequisite it explicitly owns as a dependency—for example, `$note-home-finder` may invoke `$note-topic-search` when fresh search results were not supplied. Data may also flow between primitives through the calling workflow.
 
-**Delegated capability ownership is exclusive.** Once a workflow delegates a capability to a lower-level skill, the workflow may prepare inputs, sequence dependencies, and validate outputs, but it must not reimplement that capability itself. For example, `$note-authoring` does not write substantive prose instead of `$note-writer`, `$note-refactor` does not perform structural movement instead of `$note-content-mover`, and `$note-link-enrichment` does not select semantic destinations instead of `$note-link-planner`.
+**Delegated capability ownership is exclusive.** Once a workflow delegates a capability to a lower-level skill, the workflow may prepare inputs, sequence dependencies, and validate outputs, but it must not reimplement that capability itself. For example, `$note-authoring` does not write substantive prose instead of `$note-writer`, `$note-refactor` does not perform structural movement instead of `$note-content-mover`, and `$note-link-enrichment` does not select semantic destinations instead of `$note-link-planner`. `$note-writer` likewise delegates Markdown lint cleanup and verification to `$markdownlint-fix` instead of reproducing lint mechanics itself.
 
 Read-only workflows do not invoke mutation workflows or capabilities. A later user request to apply a read-only finding is routed independently according to its new mutation intent.
 
