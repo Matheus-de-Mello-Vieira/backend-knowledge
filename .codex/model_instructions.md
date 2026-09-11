@@ -34,20 +34,26 @@ Determine mutation intent from the user's request, not from punctuation or a fix
 
 ## Writing behavior
 
-Write primarily in coherent explanatory paragraphs. A paragraph should normally introduce an idea, develop its mechanism or reasoning, explain important relationships or consequences, and lead naturally into the next idea.
+Write as coherent, scannable explanatory notes. Choose local representation from the conceptual dependency structure rather than treating prose or bullets as a section-wide default.
 
-Use structured formatting when the knowledge itself is structured:
+Treat nearby ideas as a **conceptual partial order**. If one idea must be understood before another, make that dependency explicit. If several sibling ideas share a parent but do not depend on one another, they are independent branches and should normally be exposed in a scannable form.
 
-- use labeled descriptive bullets for parallel named properties, components, alternatives, responsibilities, states, mechanisms, or comparison dimensions when each item has its own explanation, using the form `- **Label:** Explanation.`;
-- use nested bullets for consequences, qualifications, submechanisms, or details owned by the parent item;
-- use numbered lists for procedures, protocols, algorithms, lifecycles, and state transitions where order matters;
+Use structured formatting according to that relationship:
+
+- use **prose** to express dependency edges, motivation, transitions, contrast, qualification, and conceptual progression;
+- use **labeled bullets** for sibling named properties, components, alternatives, responsibilities, states, mechanisms, or comparison dimensions when each item has a concise stable name that improves retrieval, using the form `- **Label:** Explanation.`;
+- use **unlabeled bullets** for sibling consequences, observations, conditions, implications, or other independently understandable points when inventing labels would add ceremony rather than meaning;
+- use **nested bullets** for consequences, qualifications, submechanisms, or details owned by the parent item;
+- use **numbered lists** for procedures, protocols, algorithms, lifecycles, state transitions, or other relationships where sequence itself is part of the meaning;
 - use tables only when several entities must be compared across the same dimensions;
 - use Mermaid only when branches, loops, topology, dependencies, or state transitions are materially clearer visually;
 - use callouts for secondary examples, warnings, caveats, terminology clarifications, implementation variance, practical inspection, or architectural stories.
 
-Prefer labeled descriptive bullets when several sibling statements answer the same implicit question or occupy the same conceptual dimension and each has a concise stable name. The bold label names the concept; the following text explains its meaning, mechanism, consequence, constraint, or distinction. Prefer prose when the statements depend on one another to form a causal argument, progression, or continuous explanation.
+A causal subject does not require one continuous paragraph. Use prose to establish why one concept follows from another, then expose independent consequences or branches as bullets when that improves scanning, and resume prose when another dependency or convergence must be explained.
 
-Do not force every section into the same template. Use prose when causality or conceptual development matters more than decomposition.
+Prefer labeled bullets when sibling items have stable names worth retrieving later. Prefer unlabeled bullets when the sibling structure is real but labels would be artificial. Do not use bullets solely because the sentences are short or because a list looks easier to scan; the items must first be locally independent under the current parent concept.
+
+Do not force every section into the same template. A single section may legitimately alternate among prose, bullet groups, and numbered sequences as its conceptual structure branches, orders, and converges.
 
 ## Explanatory depth
 
@@ -118,6 +124,8 @@ Use repository-local Markdown links according to `AGENTS.md`.
 
 - Long introductions that delay the concept.
 - A bullet for every sentence or a heading for every idea.
+- Using bullet formatting to hide a dependency chain that should be explicit.
+- Dense prose that hides genuinely independent sibling ideas that would scan more clearly as bullets.
 - Extended narrative where direct causal explanation would be clearer.
 - Repetitive explanations, weak transitions, filler, praise, and generic conclusions.
 - Important rules or conclusions buried after lengthy setup.
@@ -162,7 +170,7 @@ Before finalizing an authorized edit, verify that:
 - duplicated same-level explanations were not introduced;
 - terminology, scope, qualifiers, and exceptions remain faithful to the sources;
 - structural rewrites preserve every unique supported technical claim, relationship, qualifier, caveat, constraint, example, and exception unless removal was explicitly authorized;
-- semantically parallel named concepts use labeled descriptive bullets when that structure is clearer, while causal or dependent reasoning remains prose;
+- the local representation matches the conceptual partial order: dependencies and transitions are explicit, sibling ideas are exposed as bullets when that improves scanning, stable named siblings use labels when useful, and ordered relationships use numbering when sequence is part of the meaning;
 - modal verbs and frequency qualifiers encode real technical contingency, with qualification attached to the narrowest claim that requires it;
 - prose and structured formatting match the logical shape of the knowledge;
 - examples clarify rather than dominate;
