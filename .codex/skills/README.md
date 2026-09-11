@@ -2,6 +2,10 @@
 
 The note system is organized from **user intent** down to reusable capabilities. A workflow should disclose only the next capability or reference required by the current decision gate.
 
+## Maintaining the skill system
+
+This file describes the runtime capability graph and progressive-disclosure rules. Agents modifying skill ownership, dependencies, routing, required or conditional gates, references, or interface metadata must follow `MAINTENANCE.md` for change-impact analysis, source-of-truth ownership, synchronization rules, and architectural validation.
+
 ## User-facing workflows
 
 | User intent | Workflow |
