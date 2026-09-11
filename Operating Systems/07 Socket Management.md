@@ -1330,6 +1330,13 @@ Readiness-based and completion-based I/O both allow one execution context to coo
     - **Proactor:** Submit the I/O operation first and dispatch application code when that operation completes.
 - **Mechanism and Architecture:** The operating-system mechanism and the application architecture should still be distinguished. A library can expose a Proactor-style completion API while internally using a readiness mechanism, and a readiness interface does not by itself determine how an application structures its handlers or concurrency.
 
+> [!example] libuv Across Readiness and Completion
+> - **Portable Abstraction:** [libuv](../Technologies/NodeJS/01%20Basics/04%20Internals.md#libuv) associates handles and requests with an event loop while hiding platform-specific polling APIs from higher-level runtime code.
+> - **Readiness Backends:** On supported Unix-like systems, libuv coordinates non-blocking sockets through readiness facilities such as Linux `epoll`, BSD-derived `kqueue`, or Solaris event ports. The loop reacts to readiness by performing or continuing the relevant I/O operation.
+> - **Completion Backend:** On Windows, libuv submits overlapped socket operations and receives their results through IOCP.
+> - **Stable Execution Model:** Both paths feed a consistent callback-oriented loop. The public API can therefore report completed reads or writes even when the underlying Unix implementation first waited for readiness.
+> - **Worker-Pool Boundary:** Network I/O remains associated with each loop's thread, while operations such as regular-file I/O normally run through libuv's worker pool.
+
 #### Linux `epoll` and `io_uring`
 
 Linux `epoll` and `io_uring` both coordinate large amounts of concurrent I/O, but they favor different workload shapes. The choice depends less on connection count alone than on what operations the application performs, how frequently it performs them, how much work can be batched, and which kernel features the deployment can rely on.
