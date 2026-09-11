@@ -41,7 +41,7 @@ Invoke `$note-writer` with only the units assigned to each destination, any acce
 
 If the new prose introduces concepts with useful existing deeper context, invoke `$note-link-planner`. It exclusively decides which existing phrase should link to which repository destination.
 
-Apply only approved link markup without adding navigation prose. Invoke `$markdown-link-normalizer` only when links or anchors changed. Invoke `$markdownlint-fix` only when lint findings are introduced or exposed.
+Apply only approved link markup without adding navigation prose. Invoke `$markdown-link-normalizer` only when links or anchors changed. `$note-writer` owns lint validation for Markdown it mutates; if a later integration or normalization stage mutates Markdown after the writer returns, apply the validation required by that later capability's contract or invoke `$markdownlint-fix` when those later changes introduce or expose lint findings.
 
 ## Acceptance criteria
 
