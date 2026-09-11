@@ -139,9 +139,9 @@ Semantic link selection belongs exclusively to `$note-link-planner`. Mechanical 
 
 ## Post-write Markdown validation
 
-When this skill applies a substantive mutation to one or more Markdown files, `$markdownlint-fix` is mandatory before the writer returns control to its caller.
+Whenever this skill mutates one or more repository Markdown files, `$markdownlint-fix` is mandatory on every Markdown file changed by the writer before it returns control to its caller.
 
-1. Complete the approved prose or explanatory-structure mutation.
+1. Complete the approved prose, explanatory-structure, or approved-link-markup mutation.
 2. Perform the writer's semantic verification on the changed material.
 3. Invoke `$markdownlint-fix` on every Markdown file changed by the writer, using only those changed files as lint targets.
 4. Let `$markdownlint-fix` own routine auto-fixes, remaining lint repair, and the clean rerun according to its own contract; do not reproduce that mechanical procedure here.
