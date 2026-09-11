@@ -20,7 +20,7 @@ Both architectures use parallelism and concurrency to keep execution resources b
 
 A CPU core contains sophisticated machinery intended to keep a small number of instruction streams moving as quickly as possible. Replicating that entire structure thousands of times would consume enormous amounts of silicon with control logic rather than computation. GPU architecture instead simplifies much of the per-thread control machinery and uses the reclaimed chip area for a much larger number of mathematical execution units.
 
-These units are organized into **Streaming Multiprocessors (SMs)**. Rather than treating every software thread as an independently scheduled hardware execution engine, each SM manages many threads collectively. It combines replicated execution units with Warp Schedulers, a large banked physical register file, Shared Memory / L1 Cache, and the control logic needed to coordinate them. ALUs and FPUs perform computation; the register file holds the private logical register state of many resident threads and supplies operands when Warp instructions execute.
+On NVIDIA GPUs, these units are organized into **Streaming Multiprocessors (SMs)**. Rather than treating every software thread as an independently scheduled hardware execution engine, each SM manages many threads collectively. It combines replicated execution units with Warp Schedulers, a large banked physical register file, Shared Memory / L1 Cache, and the control logic needed to coordinate them. ALUs and FPUs perform computation; the register file holds the private logical register state of many resident threads and supplies operands when Warp instructions execute.
 
 ```mermaid
 flowchart TD
@@ -47,7 +47,7 @@ flowchart TD
     end
 ```
 
-- **Streaming Multiprocessor (SM):** The GPU's main computational building block. An SM contains Warp Schedulers, many mathematical execution units, a large banked physical register file, Shared Memory / L1 Cache, and the control logic needed to keep many Warps resident and coordinate their execution. A complete GPU contains many SMs operating in parallel.
+- **Streaming Multiprocessor (SM):** NVIDIA's main computational building block. An SM contains Warp Schedulers, many mathematical execution units, a large banked physical register file, Shared Memory / L1 Cache, and the control logic needed to keep many Warps resident and coordinate their execution. A complete GPU contains many SMs operating in parallel.
 - **Warp Scheduler:** Selects which Warp should execute. GPU threads are grouped into fixed-size Warps, so the scheduler issues instructions for groups rather than scheduling each thread as an independent hardware instruction stream.
 - **Arithmetic Logic Units (ALUs):** Perform integer arithmetic and bitwise operations using the same basic principles as [CPU execution units](04%20Inside%20The%20CPU.md). GPUs contain large numbers of these units so similar calculations can occur across many elements simultaneously.
 - **Floating-Point Units (FPUs):** Perform floating-point arithmetic. Graphics, scientific simulation, and machine learning rely heavily on this kind of math, so GPUs dedicate significant computational capacity to floating-point operations.
@@ -279,7 +279,7 @@ Thread 3 -> array[700000]
 
 The program remains correct in both cases, but the second pattern makes much poorer use of the available memory bandwidth. Coalescing is closely related to [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality): both reward software for organizing related accesses close together, although the GPU applies the principle across the simultaneous memory requests of a Warp.
 
-## Host Memory and the PCIe Bottleneck
+## Host–Device Data Transfer
 
 A discrete GPU and the CPU normally operate from different physical memory pools. The CPU primarily accesses system RAM, while the GPU primarily accesses its own VRAM. The devices communicate through an interconnect such as PCIe, so data stored in system RAM may need to cross that interconnect before a GPU kernel can operate on it.
 
@@ -425,16 +425,7 @@ Terms such as **CUDA**, **Vulkan**, and **Metal** name software interfaces rathe
 
 **CUDA** is NVIDIA's GPU computing platform and programming model. It is designed primarily for general-purpose computation on NVIDIA GPUs and exposes kernels, Grids, Thread Blocks, threads, Warps, streams, Shared Memory, and explicit device-memory management.
 
-CUDA extends languages such as C and C++ with GPU-specific syntax:
-
-```cpp
-__global__ void double_values(float *values) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    values[i] *= 2;
-}
-
-double_values<<<blocks, threads>>>(values);
-```
+CUDA extends languages such as C and C++ with GPU-specific syntax, including `__global__` kernel declarations and `<<<...>>>` launch configuration.
 
 The CUDA runtime translates these high-level operations into commands understood by the NVIDIA driver, which then submits them to the GPU.
 
@@ -477,23 +468,7 @@ This specialization lets a TPU dedicate a much larger fraction of its hardware t
 
 ### Matrix Multiplication Units
 
-Matrix multiplication has the following core computation:
-
-```c
-for (int row = 0; row < M; row++) {
-    for (int col = 0; col < N; col++) {
-        float sum = 0;
-
-        for (int k = 0; k < K; k++) {
-            sum += A[row][k] * B[k][col];
-        }
-
-        C[row][col] = sum;
-    }
-}
-```
-
-Its innermost operation is:
+Each output value in matrix multiplication accumulates products of corresponding input values. Its innermost operation is:
 
 ```c
 sum += a * b;
