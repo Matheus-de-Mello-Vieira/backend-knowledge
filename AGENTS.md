@@ -98,17 +98,21 @@ Ownership, placement, and boundary vocabulary describes repository architecture 
 
 ## Target document style
 
-Write primarily as concise technical study notes: coherent explanation first, structured decomposition where the knowledge is genuinely parallel or procedural.
+Write primarily as concise technical study notes: make conceptual dependencies explicit while using structured decomposition aggressively enough to keep the material scannable.
+
+Treat the local dependency structure as a **conceptual partial order**. If understanding one idea depends on another, make that relationship explicit. When several sibling ideas share a parent but do not depend on one another, treat them as independently scannable branches and expose that structure with bullets.
 
 ### Encourage
 
 - Lead with the definition, mechanism, distinction, or question the section exists to explain.
+- Identify the local dependency structure before choosing formatting: which ideas depend on earlier ideas, which are sibling branches, which are subordinate details, and which are genuinely ordered steps.
 - Explain causally: problem → mechanism → consequence → trade-off.
-- Connect facts instead of merely listing them.
-- Keep paragraphs focused, but allow several related sentences when they form one causal explanation.
-- Use descriptive bullets for parallel properties, components, alternatives, responsibilities, states, or mechanisms.
+- Use prose to express dependency edges, transitions, contrasts, and conceptual progression. Prose may introduce a group of sibling ideas and resume afterward to connect that group to the next concept.
+- Use **labeled bullets** for sibling properties, components, alternatives, responsibilities, states, mechanisms, or other concepts whose concise stable names improve retrieval and comparison.
+- Use **unlabeled bullets** for sibling consequences, observations, conditions, implications, or other independently understandable points when inventing labels would add ceremony rather than meaning.
 - Use nested bullets for consequences, qualifications, submechanisms, or details owned by the parent item.
 - Use numbered lists when sequence itself matters.
+- Alternate between prose, bullets, and numbered lists within one section when the conceptual structure branches, orders, and converges.
 - Compare related concepts across shared dimensions when comparison clarifies the distinction.
 - Progress from the smallest useful model to the depth naturally owned by the current note.
 - Preserve important terminology, qualifications, uncertainty, limitations, and implementation-specific variation.
@@ -117,6 +121,8 @@ Write primarily as concise technical study notes: coherent explanation first, st
 ### Discourage
 
 - Turning every sentence into a bullet or every idea into a heading.
+- Using bullets merely because statements are short or because a list looks more scannable; conceptual independence must justify the sibling structure first.
+- Inventing bold labels for points that do not have useful stable names.
 - Long introductions that delay the concept.
 - Dense paragraphs that combine unrelated topics.
 - Repetitive transitions, filler, ceremonial conclusions, and generic “Key Takeaways” sections.
@@ -131,8 +137,9 @@ Write primarily as concise technical study notes: coherent explanation first, st
 - Use exactly one `#` heading for the note title.
 - Use `##` for major conceptual units and deeper headings only when the content justifies them.
 - Do not number headings unless the material has an inherent order, lifecycle, or dependency.
-- Use paragraphs for causal explanation and bullets for genuinely parallel or independently scannable ideas.
-- Use numbered lists for chronological procedures, algorithms, protocols, lifecycles, and state transitions.
+- Use paragraphs to express conceptual dependencies and transitions.
+- Use bullets for sibling ideas that can be understood in any order under the current parent concept. Use labels when the siblings have stable names that aid retrieval; leave them unlabeled when labels would be artificial.
+- Use numbered lists for chronological procedures, algorithms, protocols, lifecycles, state transitions, or other cases where the order is part of the meaning.
 - Use fenced code blocks with the correct language identifier. Keep examples minimal, valid, and relevant.
 - Define every symbol in an equation and explain its operational meaning.
 - Use tables only for concise comparison across repeated dimensions, then explain the consequential pattern in prose.
