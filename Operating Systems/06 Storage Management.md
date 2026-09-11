@@ -941,14 +941,19 @@ These operations illustrate the distinction between the common [POSIX descriptor
 
 ### Readiness and Completion for Regular Files
 
-- **Readiness Scope:** Readiness is useful when data or capacity may appear later, as with sockets and pipes. A regular file instead has a fixed logical length and reaches end-of-file rather than waiting for a future writer.
-    - On POSIX systems, `poll()` reports an ordinary regular file as readable and writable. This does not mean that the underlying storage operation has finished or that reading its pages cannot incur storage latency.
-    - Other readiness interfaces vary by platform and resource type, so they are not a portable way to wait for disk I/O.
-- **Completion Scope:** Completion-based I/O can operate on storage files. Windows I/O Completion Ports can report completion for asynchronous operations on file handles, and Linux `io_uring` can submit file reads, writes, and synchronization operations and later return their results.
-    - The available operations and their behavior depend on the operating system, filesystem, and device driver.
-- **Readiness Does Not Report Durability:** A regular file being ready for a write says nothing about whether data has reached non-volatile storage.
-- **Completion Does Not Necessarily Report Durability:** Completion of a buffered write normally means that the kernel has completed that write operation, not that device caches have made the data durable. Applications that need a durability boundary use synchronization operations such as `fsync()` or `fdatasync()`.
-- **Positional Operations:** Several asynchronous file operations can be outstanding concurrently. `pread()` and `pwrite()`-style explicit offsets avoid coordination through the shared current file position, but overlapping writes still require application-defined ordering.
+The distinction between [readiness and completion](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) applies to regular files, but their readiness state does not reveal storage latency as socket readiness reveals changing data availability or send capacity.
+
+- **Regular-file readiness:** POSIX `poll()` reports an ordinary regular file as readable and writable, even at EOF or when the next read must fetch uncached data from storage. It therefore cannot determine whether a file operation will wait for storage I/O or notify an application when a file grows. 
+	- On Linux, `O_NONBLOCK` does not change this behavior, and `epoll` rejects ordinary regular files (`epoll_ctl()` returns `EPERM`).
+- **Submitted operations:** Asynchronous file I/O submits a specific read, write, or synchronization operation and later reports its result.
+	- Requests commonly use explicit offsets, so they do not depend on the shared current file position.
+	- The application keeps request state and buffers valid until completion, handles short transfers and errors, and does not assume independently submitted operations complete in submission order.
+- **Execution models:** A native completion interface, such as Linux `io_uring` or Windows overlapped I/O with I/O completion ports, can report file-operation completions directly. -
+	- Worker-thread offload instead prevents the event-loop thread from blocking while another thread performs a blocking file operation.
+	- Both approaches wait for an operation's completion rather than treating readiness as an indication of storage latency.
+- **Completion and durability:** Completion of a buffered write means the kernel accepted the operation, not that the data has reached non-volatile storage. 
+	- A completed synchronization operation or synchronized-write mode establishes the relevant [durability boundary](#Write%20Durability%20and%20Synchronization).
+	- Writes that must be covered by a synchronization operation must complete before it runs; submission order alone does not establish that dependency when operations can execute independently.
 
 ### Mapping Files to Logical Blocks
 
