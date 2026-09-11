@@ -65,7 +65,7 @@ Pass any approved link plan to `$note-writer` only for application/preservation 
 
 For edits that change note scope, headings, multiple conceptual units, or abstraction boundaries, invoke `$note-cohesion-reviewer` before finalizing. For a narrow local clarification or style-focused rewrite, the writer's own verification is sufficient unless the rewrite changes semantic structure.
 
-Invoke `$markdownlint-fix` only when lint findings are introduced or exposed.
+`$note-writer` owns lint validation for Markdown it mutates. Invoke `$markdownlint-fix` independently only for later Markdown mutations performed outside the writer when the mutating capability's contract requires lint validation or when those later changes introduce or expose lint findings.
 
 ## Question-driven amendment after mutation intent
 
