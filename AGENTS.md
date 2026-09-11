@@ -172,7 +172,7 @@ Codex skills form a capability hierarchy, but repository policy should not prelo
 - Composite workflows must not copy detailed procedures already owned by lower-level skills.
 - Small local corrections may bypass composite workflows only when target and scope are obvious and mutation intent is explicit.
 
-The current workflow/capability map and progressive-disclosure rules live in `.codex/skills/README.md`.
+The current workflow/capability map and progressive-disclosure rules live in `.codex/skills/README.md`. Agents modifying the skill system itself should follow `.codex/skills/MAINTENANCE.md` for capability ownership, dependency-impact analysis, synchronization rules, and validation.
 
 ## Editing workflow
 
