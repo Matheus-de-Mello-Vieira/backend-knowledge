@@ -998,6 +998,10 @@ for (;;) {
 - **In-Flight Resource Lifetime:** Buffers and other state referenced by an outstanding operation must remain valid for as long as the operation may still access them.
 - **Underlying I/O Semantics:** `io_uring` changes how operations are submitted and how their results are delivered, but the semantics of the underlying operation still apply. Socket receives and sends can therefore produce partial transfers.
 - **Broader I/O Interface:** `io_uring` is not limited to networking. It also supports operations for files, polling, timers, synchronization, and other kernel facilities.
+- **Security Surface:** `io_uring` exposes a broad asynchronous interface to kernel operations, so enabling it also exposes additional kernel code paths to user space. This does not make `io_uring` inherently insecure, but it increases the security-sensitive surface that must be trusted and maintained.
+    - Linux provides `kernel.io_uring_disabled` specifically to restrict or disable creation of new `io_uring` instances; disabling it can reduce the kernel attack surface.
+    - Individual rings can also be created with restrictions that allow only selected operations or flags, which can be useful in sandboxed environments.
+    - **Deployment Consequence:** Security-sensitive or heavily sandboxed environments may restrict `io_uring`, so applications that depend on it should treat availability as a deployment constraint rather than assuming that kernel support alone guarantees access.
 - **Linux-Specific Interface:** `io_uring` is a Linux API rather than a portable POSIX interface.
 
 #### Windows Overlapped I/O and IOCP
