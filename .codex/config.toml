@@ -5,7 +5,7 @@ personality = "none"
 
 [mcp_servers.qmd]
 command = "npx"
-required = true
+required = false
 args = ["-y", "@tobilu/qmd", "mcp"]
 
 [[hooks.PreToolUse]]

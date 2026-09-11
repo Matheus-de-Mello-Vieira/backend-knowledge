@@ -757,7 +757,7 @@ mount --bind /srv/database /mnt/database
 >
 > - **Pathnames Name Resources**: The filesystem namespace gives processes pathnames through which many filesystem-backed and kernel-provided resources can be located.
 >
-> - **Descriptors Reference Open Resources**: A [**File Descriptor (FD)**](https://chatgpt.com/g/g-p-6a7a84d6766881919bab2085541ba9fd/c/02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) is instead a process-local handle referring to an already opened or created I/O resource.
+> - **Descriptors Reference Open Resources**: A [**File Descriptor (FD)**](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) is instead a process-local handle referring to an already opened or created I/O resource.
 >
 > - **Path to Descriptor**: For pathname-based resources, operations such as `open()` first resolve the pathname and then return a descriptor. The process normally performs later I/O through that descriptor rather than resolving the path again for every operation.
 >
@@ -795,8 +795,9 @@ mount --bind /srv/database /mnt/database
 >
 ### Opening Files
 
-- **Initial Operation**: Ordinary file-content I/O on Unix-like systems generally begins by **opening** a file.
-- **The `open()` Call**: Conceptually, the interface looks like:
+Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) regular-file interface. `open()` resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
+
+Conceptually, the interface looks like:
 
 ```c
 open(path, flags, mode)
@@ -810,11 +811,10 @@ open(path, flags, mode)
     - whether writes should append;
     - whether normal page-cache behavior should be used;
     - whether writes require synchronous durability semantics.
-- **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or `O_TMPFILE`. It specifies the initial permission bits, subject to mechanisms such as `umask`.
-- **Returned File Descriptor**: A successful call returns a [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29). The broader descriptor abstraction belongs to process management because the same mechanism also represents sockets, pipes, device nodes, and other I/O resources.
+- **Creation Permissions**: `mode` is relevant when the call actually creates a filesystem object through flags such as `O_CREAT` or OS-specific creation mechanisms. It specifies the initial permission bits, subject to mechanisms such as `umask`.
 - **Subsequent Operations**: Calls such as `read()`, `write()`, and `fsync()` operate through the descriptor rather than resolving the pathname again on every operation.
-- **Associated State**: The open file also carries state such as the current file offset and status flags that influence later operations.
-- **Closing**: When the process no longer needs the reference, it releases the descriptor using `close()`.
+- **Associated State**: The open regular file carries resource-specific state such as the current file offset and file-status flags, while the [descriptor-table and lifetime rules](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) determine how process-local handles refer to and release that state.
+- **Closing**: When the process no longer needs the reference, `close()` releases that descriptor according to the common descriptor-lifetime rules.
 
 #### Open Flags
 
@@ -885,7 +885,7 @@ means that the process wants read/write access and wants the file created if it 
 
 ##### Caching and Transfer Path
 
-- **`O_DIRECT`**: Requests [Direct I/O](#Direct%20I/O%20(`O_DIRECT`)), causing file data to generally bypass or minimize participation in the normal page-cache path.
+- **`O_DIRECT`**: On systems such as Linux, `O_DIRECT` is an OS-specific extension that requests [Direct I/O](#Direct%20I/O%20(`O_DIRECT`)), causing file data to generally bypass or minimize participation in the normal page-cache path. It is not part of the portable POSIX core.
 - **Independent Concern**: `O_DIRECT` primarily changes how data travels between application memory and storage. It does not by itself establish synchronous durability.
 
 ##### Synchronous Completion
@@ -925,6 +925,35 @@ open("data.db", O_RDWR | O_CREAT, 0600);
 ```
 
 expresses a different combination without requiring a different system call.
+
+### Reading and Writing Files
+
+Once a regular file is open, `read()` and `write()` operate on the descriptor using the file's current position. For an ordinary seekable regular file, the shared open file description stores this current offset. A successful sequential read or write advances the offset by the number of bytes transferred.
+
+This is a **regular-file semantic**, not a property of the descriptor integer itself. If `dup()` or `fork()` produces multiple descriptors referring to the same open file description, those descriptors also observe the same current offset because the shared state lives beneath the descriptor-table entries. Independent calls to `open()` instead create [independent open file descriptions](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Indirection) and therefore independent offsets.
+
+- **`read()`**: Reads bytes beginning at the current file offset and advances that offset by the number of bytes returned. Reaching the logical end of a regular file causes a later read to return zero bytes rather than waiting for future data as a socket or pipe might.
+- **`write()`**: Writes bytes according to the descriptor's access mode and current offset, then advances the offset. A successful write reports how many bytes the kernel accepted for the file operation; persistence to non-volatile media depends on explicit [write durability and synchronization](#Write%20Durability%20and%20Synchronization).
+- **`lseek()`**: Changes the current file offset without transferring data. It can position the next ordinary read or write relative to the beginning of the file, the current position, or the end. Non-seekable resources such as pipes and sockets reject seeking because they do not expose regular-file position semantics.
+- **`pread()` and `pwrite()`**: Perform positional I/O at an explicit byte offset without changing the shared current file offset. This avoids coordination through one mutable offset when several operations need independent positions. It does not make overlapping concurrent writes inherently safe; application-level synchronization may still be required when operations target the same data.
+
+These operations illustrate the distinction between the common [POSIX descriptor interface](02%20The%20Anatomy%20of%20a%20Process.md#The%20POSIX%20Descriptor%20Interface) and resource-specific semantics: the descriptor identifies the resource, while the regular-file API defines how positions, EOF, and persistence behave.
+
+### Readiness and Completion for Regular Files
+
+The distinction between [readiness and completion](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) applies to regular files, but their readiness state does not reveal storage latency as socket readiness reveals changing data availability or send capacity.
+
+- **Regular-file readiness:** POSIX `poll()` reports an ordinary regular file as readable and writable, even at EOF or when the next read must fetch uncached data from storage. It therefore cannot determine whether a file operation will wait for storage I/O or notify an application when a file grows. 
+	- On Linux, `O_NONBLOCK` does not change this behavior, and `epoll` rejects ordinary regular files (`epoll_ctl()` returns `EPERM`).
+- **Submitted operations:** Asynchronous file I/O submits a specific read, write, or synchronization operation and later reports its result.
+	- Requests commonly use explicit offsets, so they do not depend on the shared current file position.
+	- The application keeps request state and buffers valid until completion, handles short transfers and errors, and does not assume independently submitted operations complete in submission order.
+- **Execution models:** A native completion interface, such as Linux `io_uring` or Windows overlapped I/O with I/O completion ports, can report file-operation completions directly. -
+	- Worker-thread offload instead prevents the event-loop thread from blocking while another thread performs a blocking file operation.
+	- Both approaches wait for an operation's completion rather than treating readiness as an indication of storage latency.
+- **Completion and durability:** Completion of a buffered write means the kernel accepted the operation, not that the data has reached non-volatile storage. 
+	- A completed synchronization operation or synchronized-write mode establishes the relevant [durability boundary](#Write%20Durability%20and%20Synchronization).
+	- Writes that must be covered by a synchronization operation must complete before it runs; submission order alone does not establish that dependency when operations can execute independently.
 
 ### Mapping Files to Logical Blocks
 
@@ -1092,7 +1121,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 - **Synchronized Open Flags**: Instead of ordinary buffered writes followed by explicit synchronization at selected boundaries, an application can request synchronized semantics for writes through flags such as `O_SYNC` or `O_DSYNC`.
 - **Page Cache Interaction**: These flags are distinct from `O_DIRECT`: synchronization controls when the required persistence work must complete, while Direct I/O primarily controls page-cache participation.
 - **Higher-Level Durability Protocols**: Storage synchronization primitives become building blocks for higher-level recovery systems. A database's [Write-Ahead Logging (WAL)](../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29), for example, requires selected log records to become durable before dependent database changes can be considered safely committed.
-- **Layer Boundary**: The storage layer defines mechanisms such as `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC`; the database layer decides where those durability boundaries belong in its own recovery protocol.
+- **Durability Composition**: `fsync()`, `fdatasync()`, `O_SYNC`, and `O_DSYNC` provide mechanisms for establishing persistence points; a database recovery protocol invokes those mechanisms where its ordering and recovery guarantees require data to be durable.
 - **Batching Trade-offs**: Forcing a durability wait on every small update prevents the storage stack from grouping changes as freely. Applications can often batch many ordinary writes behind one deliberately chosen synchronization point when their higher-level correctness protocol permits it.
 
 > [!note] Crash-Atomicity Limits
@@ -1132,7 +1161,7 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 > - **Sequential Workload**: Kafka's append-oriented log files and sequential consumer reads interact well with filesystem mechanisms such as delayed writeback and read-ahead.
 > - **Process Independence**: Cached file pages belong to the operating system rather than the Kafka process itself, so useful cached data can survive a Kafka process restart as long as the operating system remains running and retains those pages.
 > - **JVM Benefit**: Keeping the bulk of cached log data outside the JVM also avoids expanding the Java heap merely to duplicate file data already managed by the operating system.
-> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy](02%20The%20Anatomy%20of%20a%20Process.md#Operations%20and%20Shared%20Open-File%20State) file-to-network techniques such as `sendfile()` when serving consumers.
+> - **Zero-Copy Serving**: Kafka can combine this page-cache-oriented design with [zero-copy file-to-network techniques](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations), such as `sendfile()`, when serving consumers.
 > - **Architectural Lesson**: Cache ownership is a design choice. Some storage engines maintain specialized user-space buffer pools, while Kafka deliberately delegates much of this responsibility to the operating system.
 
 ### Journaling and Crash Consistency

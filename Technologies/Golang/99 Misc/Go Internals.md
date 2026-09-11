@@ -253,7 +253,7 @@ By default, Go's `net/http` package utilizes the **[Single Listener, Multiple Wo
 
 ### Handling I/O Blocking (The Netpoller)
 
-Socket I/O is usually handled asynchronously with mechanisms like `epoll` or `select`. If network data is not yet available, standard socket reads would block the OS thread. Go abstracts this entirely through the internal **Netpoller**:
+[Socket I/O](../../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O) is usually handled asynchronously with mechanisms like `epoll` or `select`. If network data is not yet available, standard socket reads would block the OS thread. Go abstracts this entirely through the internal **Netpoller**:
 
 - Instead of blocking the OS thread (**M**), the runtime parks the worker goroutine and registers the file descriptor with the OS's `epoll` mechanism.
 - The **M** is instantly freed to grab the next ready goroutine from the run queue.

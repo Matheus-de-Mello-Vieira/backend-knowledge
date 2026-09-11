@@ -35,49 +35,64 @@
 
 ## File Descriptors (FDs)
 
-- **File Descriptor (FD)**: A **File Descriptor (FD)** is a non-negative integer that a Unix-like process uses as a local handle for an open I/O resource.
-- **Integer Meaning**: The integer itself contains no file data and is meaningful only inside that process's descriptor table.
-- **Common Interface**: Many resources—not only filesystem files—use the same abstraction, allowing system calls such as `read()`, `write()`, and `close()` to operate through a common interface.
-- **Regular-File Entry Point**: When the resource is a regular file, `open()` first resolves a pathname and then returns one of these descriptors.
-- **Storage-Specific Details**: The storage-specific details of pathname resolution, open flags, and regular-file I/O live in [Opening Files](06%20Storage%20Management.md#Opening%20Files).
-- **Section Boundary**: This section keeps the process-level model: what an FD is, where its shared state lives, and why the same abstraction also applies to sockets, pipes, and devices.
+In the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface used by Unix-like systems, a **File Descriptor (FD)** is a non-negative integer that a process uses as a local handle for an open I/O resource. The integer contains no resource data by itself; it is meaningful only as an index into that process's descriptor table.
+
+The important abstraction is that the process manipulates a small handle while the kernel owns the actual resource and its state. Many different resources participate in this model, so common operations such as `read()`, `write()`, and `close()` can accept the same descriptor type even though the resources behind those descriptors behave differently.
 
 ### Descriptor Indirection
 
-- **The File Descriptor Table:** Each process maintains its own local File Descriptor Table. A File Descriptor (FD) is simply an index into this process-local table.
-- **Open File Descriptions:** The table entry corresponding to an FD refers to a kernel object called an **open file description**. This object represents one active, open instance of a resource and stores shared state, such as the current file offset and [file status flags](06%20Storage%20Management.md#Open%20Flags).
-- **The Underlying Object:** For regular files, the open file description ultimately points to the physical filesystem object, typically represented by an [inode](06%20Storage%20Management.md#Object%20Metadata%20and%20Resolution). However, the inode is not a universal final layer; other resources point to entirely different kernel objects (e.g., sockets refer to networking state, while pipes refer to kernel pipe objects).
-- **Independent State (Opening Twice):** Opening the same regular file twice naturally creates two completely different open file descriptions, even though both ultimately point to the exact same underlying inode. This allows the descriptors to maintain completely independent file offsets.
+An FD reaches the underlying resource through several layers of indirection:
+
+- **Descriptor Number:** The FD is a process-local non-negative integer. By itself, the number contains no resource data.
+- **Descriptor-Table Entry:** The number selects one entry in the process's descriptor table.
+    - Properties attached to this entry remain descriptor-specific.
+    - The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
+- **Shared Open Resource State:** The descriptor-table entry refers to kernel-maintained state for an already-open resource.
+    - For regular files, POSIX describes an **open file description** that stores shared state such as the current file offset and file-status flags.
+    - Those properties are not universal to every descriptor-backed resource; sockets and pipes, for example, are non-seekable and maintain different resource-specific state.
+- **Resource-Specific Kernel Object:** The final object depends on what was opened.
+    - A regular file eventually reaches filesystem state.
+    - A socket reaches networking state.
+    - A pipe reaches kernel pipe state.
+    - A device reaches driver-specific state.
+
+Opening the same regular file twice creates independent open file descriptions even though both ultimately refer to the same filesystem object. The descriptors can therefore maintain independent file positions:
+
 ```c
 int a = open("data.txt", O_RDONLY);
 int b = open("data.txt", O_RDONLY);
 ```
-- **Shared State (Duplication and Forking):** By contrast, duplicating a descriptor using `dup()` creates a new FD that refers to the exact _same_ open file description. As a result, both descriptors share the same open-file offset and status flags. A similar sharing relationship occurs when `fork()` causes a child process to inherit descriptors that refer to the same open file descriptions as the parent.    
-    ```c
-    int a = open("data.txt", O_RDONLY);
-    int b = dup(a);
-    ```
-- **Descriptor-Specific Properties:** While file offsets and status flags are shared at the open file description layer, properties specific to the descriptor itself (such as the close-on-exec flag) belong exclusively to the individual descriptor-table entry.
 
-### Types of File Descriptors
+By contrast, `dup()` creates another descriptor referring to the same already-open resource state:
 
-Because the descriptor is only a handle, the same integer interface can represent several kinds of resources:
+```c
+int a = open("data.txt", O_RDONLY);
+int b = dup(a);
+```
 
-- **Regular Files:** The open file description refers to a filesystem object, whose persistent identity and storage mapping are represented through structures such as an inode.
-- **Standard Streams (**`**0**`**,** `**1**`**,** `**2**`**):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
-- **Network Sockets:** A descriptor can refer to kernel networking state representing a socket. `read()` and `write()` then receive or send bytes through the networking stack rather than through a filesystem file.
+- **Descriptor Duplication:** `dup()` duplicates the handle rather than the underlying resource.
+- **`fork()` Inheritance:** The same sharing principle applies when `fork()` creates a child process whose inherited descriptors refer to the same underlying open resources as the parent.
+- **Lifetime Consequence:** Shared resource state can remain alive until the final descriptor reference is released.
+
+### Resources Referenced by File Descriptors
+
+Because the descriptor is only a handle, the same integer abstraction can refer to several kinds of resources:
+
+- **Regular Files:** A descriptor can refer to an [open regular file and its filesystem-backed state](06%20Storage%20Management.md#Opening%20Files), including file-position behavior, file-specific operations, and persistence semantics.
+- **Standard Streams (`0`, `1`, `2`):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
+- **Network Sockets:** A descriptor can refer to [kernel networking state representing a socket](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects).
 - **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
 - [**Device Files (`/dev`)**](06%20Storage%20Management.md#%60/dev%60%20%E2%80%94%20Device%20Nodes)**:** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
-- **Event Facilities:** Interfaces such as Linux `epoll` can themselves return descriptors used to monitor other descriptors. 
+- **Event Facilities:** Interfaces such as Linux [`epoll`](07%20Socket%20Management.md#Readiness-Based%20I/O) can themselves return descriptors used to monitor other descriptors.
 
 > [!note] Inspecting File Descriptors Through `/proc`  
 > On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
-> 
+>
 > This does not mean that the descriptors themselves are files stored under `/proc`. The descriptor table remains kernel-managed process state; `procfs` merely exposes a filesystem-based view through which that state can be inspected.
 
-### The Universal Interface
+### The POSIX Descriptor Interface
 
-Because these resources share the descriptor abstraction, low-level code can often process them through the same `read()` and `write()` interface:
+POSIX allows many different resources to participate in common descriptor-based operations. Low-level code can therefore sometimes process a regular file, pipe, or socket through the same `read()` and `write()` interface:
 
 ```c
 void stream_data(int read_fd, int write_fd) {
@@ -90,20 +105,65 @@ void stream_data(int read_fd, int write_fd) {
 }
 ```
 
-The function does not need to know whether `read_fd` represents a regular file, pipe, or socket as long as that resource supports the requested operation.
+- **Common Reference Model:** The same integer descriptor abstraction identifies many different kernel-managed resources.
+- **Common Operations:** Calls such as `read()`, `write()`, and `close()` can operate on multiple resource types when the underlying resource supports that operation.
+- **Resource-Specific Semantics:** A common interface does **not** mean the resources behave identically.
+    - **Regular File:** `read()` consumes bytes according to regular-file position semantics.
+    - **TCP Socket:** `read()` consumes bytes from a network byte stream.
+    - **Pipe:** `read()` consumes bytes supplied through the pipe.
+    - **Device:** The driver can define the operation's behavior.
 
-### Operations and Shared Open-File State
+### Descriptor Operations and Lifetime
 
-For seekable resources such as regular files, ordinary `read()` and `write()` operations use the current offset stored in the **open file description** and advance it as data is transferred. Consequently, descriptors created with `dup()` or inherited through `fork()` can observe changes to the same shared offset.
+Some operations act primarily on the descriptor relationship rather than on one particular resource type:
 
-- **Manual Navigation (`lseek`):** `lseek()` changes the current file offset without transferring data. It works only for resources that support seeking; pipes, FIFOs, and sockets are non-seekable and reject this operation.
-- **Positional I/O (`pread` and `pwrite`):** These calls take an explicit byte offset and do not modify the shared open-file offset. They are useful when concurrent operations should not coordinate through one mutable offset. They do not make overlapping accesses inherently safe; concurrent writes to the same byte ranges can still require application-level synchronization.
-- **Descriptor Duplication (`dup` and `dup2`):** These calls allocate another descriptor that refers to the same open file description. Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open file description before launching another program.
-- **Kernel-Space Transfer (`sendfile`):** `sendfile()` can transfer file data toward another compatible descriptor, commonly a socket, without first copying the payload through a user-space buffer. This can reduce CPU copying and memory-bandwidth consumption for file-to-network workloads.
+- **`close()` — Release Reference:** Releases one descriptor's reference to its open resource. The underlying resource does not necessarily disappear immediately if another descriptor or kernel reference still keeps it alive.
+- **`dup()` / `dup2()` — Duplicate Handle:** Allocate another descriptor referring to the same already-open resource state.
+    - Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
+- **`fork()` — Inherit References:** The child receives descriptor-table entries referring to the same underlying open resources as the parent.
+    - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
+- **Close-on-Exec — Control `exec()` Lifetime:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
 
 > [!note] FD Exhaustion
+> - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
+> - **Failure:** If a program repeatedly opens files, [sockets](07%20Socket%20Management.md#Socket%20Lifetime%20and%20Closure), or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files").
+> - **System-Wide Limits:** System-wide limits can also exist independently of the per-process limit.
+> - **Different Resource Limits:** Descriptor exhaustion is distinct from exhaustion of resource-specific kernel memory such as socket buffers.
+
+### Resource-Specific Operations
+
+Beyond the common descriptor interface, operations depend on the resource behind the FD.
+
+- **Regular Files:** Operations such as [`lseek()`, `pread()`, and `pwrite()`](06%20Storage%20Management.md#Reading%20and%20Writing%20Files) use file-position semantics that do not apply to non-seekable resources.
+- **Sockets:** Operations such as [`bind()`, `listen()`, `accept()`, `connect()`, `send()`, and `recv()`](07%20Socket%20Management.md#POSIX%20Socket%20Interface) manipulate networking-specific state.
+
+#### File-to-Socket Transfers and Zero-Copy
+
+Operating systems can expose specialized operations for moving data directly between different kinds of file-descriptor-backed resources. On Linux, `sendfile()` can transfer data from a regular file to a compatible output descriptor, such as a socket, without copying the payload through an application buffer.
+
+##### Conventional File-to-Socket Path
+
+With a conventional `read()` followed by `write()`, data typically moves through these stages:
+
+1. **Storage to Page Cache:** The storage device transfers data into the page cache, usually using DMA.
+2. **Page Cache to User Buffer:** `read()` copies the data into an application buffer.
+3. **User Buffer to Kernel Networking Path:** `write()` copies the data back into the kernel's networking path.
+4. **Kernel Memory to NIC:** The network interface reads the data from memory for transmission, usually using DMA.
+
+The two middle copies consume CPU time and memory bandwidth even when the application only forwards unchanged bytes.
+
+##### Zero-Copy with `sendfile()`
+
+- **Avoided Copies:** `sendfile()` avoids the two intermediate application-buffer copies. The file data can remain in the page cache while the networking stack refers to those pages for transmission, so the application does not copy the payload into user space and back into the kernel.
+- **Meaning of Zero-Copy:** In this context, **zero-copy** means zero unnecessary CPU-mediated payload copies through application memory. Bytes still move between storage, memory, and the network device, often via DMA.
+- **Unchanged-Body Requirement:** The output body must already exist in a form that can be forwarded unchanged.
+    - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.
+    - **Headers:** Adding HTTP headers does not alter the file body and therefore does not, by itself, prevent zero-copy.
+
+> [!example] Kafka and Bun — Zero-Copy Eligibility
 >
-> Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`. If a program repeatedly opens files, sockets, or other resources without closing descriptors it no longer needs, it can eventually reach that limit and receive `EMFILE` ("Too many open files"). System-wide limits can also exist independently of the per-process limit.
+> - **Kafka:** A broker can serve the same persisted log batches to many consumers. Its shared record format, including compressed batches that remain stored in that form, favors `sendfile()` when the stored batch can be forwarded unchanged, so one page-cache copy can support repeated network transfers.
+> - **Bun:** A static-file response can use `sendfile()` when its file body is forwarded unchanged. Dynamic response bodies are less likely to qualify because the runtime must first produce their output bytes.
 
 ## Producing machine code
 

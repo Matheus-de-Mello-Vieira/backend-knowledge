@@ -54,7 +54,7 @@ events {}
   * it allows as to control things like:
     * **worker_connections** — maximum simultaneous connections per worker.
     * **multi_accept** — whether to accept multiple connections at once.
-    * **use** — which event method to use (epoll, kqueue, etc.).
+    * **use** — which [event method](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O) to use (epoll, kqueue, etc.).
 
 
 
@@ -328,4 +328,3 @@ sequenceDiagram
 * sets a timeout during which a idle keep-alive connection to an upstream server will stay open.
 * it is good to set something about 60s
   * if your server is busy, the connection won't be idle for 60s
-

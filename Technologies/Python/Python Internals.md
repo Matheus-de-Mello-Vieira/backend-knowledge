@@ -91,7 +91,7 @@ Gunicorn allows you to swap its internal execution engine depending on your work
 - **A. Sync Workers (The Default):** Each worker process handles exactly one request at a time. It is highly robust and avoids thread race conditions, but a slow I/O request (like a long database query) will completely block that worker from taking new connections from the OS backlog.
 - **B. Gthread Workers (Threads):** Each worker process spawns a pool of OS threads. Threads are used to solve IO blocking problems, keeping the main execution path responsive by offloading waiting tasks so other threads can handle new users.
 - **C. Async Workers (Gevent / Eventlet):** Uses "Greenlets" to monkey-patch synchronous libraries into behaving asynchronously. It leverages User-Space Context Switching to juggle massive concurrent connections without the memory bloat of OS threads.
-- **D. Uvicorn Workers (ASGI):** Each Gunicorn worker process runs an `asyncio` Event Loop. Internally, each worker acts as a [**Single Listener, Single Worker Thread**](02%20Application%20Server%20Concurrency.md#1.%20Single%20Listener,%20Single%20Worker%20Thread), using OS event monitors (like `epoll`) to multiplex thousands of sockets non-blockingly. 
+- **D. Uvicorn Workers (ASGI):** Each Gunicorn worker process runs an `asyncio` Event Loop. Internally, each worker acts as a [**Single Listener, Single Worker Thread**](02%20Application%20Server%20Concurrency.md#1.%20Single%20Listener,%20Single%20Worker%20Thread), using [OS event monitors (like `epoll`)](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O) to multiplex thousands of sockets non-blockingly.
 
 ### Python Thread Pools: Single Listener, Multiple Worker Threads
 

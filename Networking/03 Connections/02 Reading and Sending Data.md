@@ -1,149 +1,76 @@
-# Reading and sending data
+# Reading and Sending Data
 
-This note covers what happens after a TCP connection is already established and the backend process has a connected socket.
+After a TCP connection is established, the application exchanges a byte stream through a [connected socket](../../Operating%20Systems/07%20Socket%20Management.md#Receiving%20Data). Kernel send and receive buffers, blocking and non-blocking I/O, backpressure, and readiness determine when application I/O can make progress, while TCP provides the ordered-stream, reliability, flow-control, retransmission, and congestion-control behavior applied to those bytes.
 
-Once a connection is established, the OS creates two separate memory buffers: one for sending data and one for receiving data. The receive buffer specifically handles incoming client data, while the send buffer handles outbound server data.
-## Receiving data
+## Receiving Data over TCP
 
-Here is the exact lifecycle of how incoming data moves from the network into your application:
+- **Ordered Byte Stream:** The kernel receives TCP segments, validates and reorders byte ranges when necessary, and exposes an ordered byte stream to the application.
+- **No Message Boundaries:** TCP packet boundaries are not application message boundaries.
+    - The application may receive only part of one logical message or several logical messages in one `recv()`, depending on its framing protocol and the bytes currently available.
+- **Flow-Control Integration:** Receive-side buffering participates directly in TCP flow control.
+    - As unread application data occupies receive-buffer capacity, the TCP implementation adjusts the receive window (`rwnd`) advertised to the peer.
+    - The sender must respect that [advertised capacity](../02%20Protocols/05%20TCP.md#1.%20Flow%20Control%20%28Receiver-Driven%29).
+- **Application-Speed Dependency:** Network progress depends partly on how quickly the receiving application consumes data.
+    - If the application stops reading, kernel receive capacity becomes constrained.
+    - TCP eventually slows or stops the peer rather than allowing receive memory to grow without bound.
 
-1. **Data Arrival:** The client transmits data over the established connection.
-2. **Kernel Interception:** The Kernel automatically receives the data and places it directly into the OS receive buffer. This happens autonomously in the background, entirely without the backend application asking for it.
-3. **ACKs and Flow Control:** The Kernel is responsible for acknowledging the received data to the client. [See more](05%20TCP.md#1.%20Flow%20Control%20(Receiver-Driven)).
-4. **The User-Space Copy:** The backend application must call a function to copy the data out of the Kernel's buffer and into its own memory space. Because crossing the user/kernel boundary requires memory copying, this operation is computationally expensive.
-    - The process can use `read()` (a general-purpose system call for any file descriptor, including sockets) or `recv()` (a socket-specific call that provides extra options).
-    - **Blocking Mode:** By default, sockets are blocking, meaning `read()` or `recv()` will completely pause the process until data physically arrives.
-    - **Non-Blocking Mode:** If configured differently, both calls return immediately. If there is no data in the buffer, they throw an error like `EAGAIN` or `EWOULDBLOCK`.
-    - **Event Polling:** To efficiently manage multiple connections, applications use functions like `epoll_wait()`, which allows the process to wait until the Kernel explicitly notifies it that data is available on one of its monitored connections.
-5. **Buffer Cleanup:** Once the data is successfully copied to the application's memory, the Kernel actively discards that duplicated data from the receive buffer to free up space for new traffic.
-6. **Application Processing:** The backend process now has the raw data safely in User Space and can proceed to decrypt, parse, and process the payload.
-### Sockstress
+## Sending Data over TCP
 
-**Sockstress** is a category of low-bandwidth, asymmetric Denial of Service (DoS) attacks that target TCP’s flow-control architecture. Instead of overwhelming a server with brute-force volumetric traffic, an attacker abuses the receiver-driven **Receive Window ($rwnd$)** mechanics to permanently trap critical server-side kernel memory buffers.
+- **Local Acceptance:** A successful socket `send()` means that the local kernel accepted some amount of application data; it does not mean that the peer application has received it.
+- **Transport Processing:** TCP decides how accepted bytes are segmented and transmitted while respecting reliability, flow control, and congestion control.
+- **Retransmission State:** Sent bytes may need to remain represented in kernel state until TCP knows they no longer require retransmission.
+- **Drain Constraints:** A slow peer, packet loss, a small advertised receive window, or network congestion can prevent the sender from draining its local send-side state.
+- **Application Backpressure:** When that pressure reaches the application, [socket writes can block or report that they would block](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Buffers%20and%20Backpressure).
 
-As detailed in the [Flow Control](05%20TCP.md#1.%20Flow%20Control%20(Receiver-Driven)) section, the TCP specification requires a sender to strictly respect the receiver's advertised window size. Because the protocol assumes both endpoints will cooperate in good faith to clear data buffers, the TCP stack lacks a native architectural mechanism to distinguish a legitimately slow client from a malicious one.
+## Slow or Stalled Receivers
 
-> [!NOTE] **Window Stall** 
-> While **Sockstress** describes the malicious exploit, a **Window Stall** is the official structural state the TCP engine enters during the attack. A connection is "stalled" whenever a sender is fully blocked from transmitting because the receiver's advertised window ($rwnd$) has choked the effective transmission window down to zero.
+TCP deliberately allows a receiver to slow the sender by advertising a small receive window.
 
-#### Zero-Window Attacks
+- **Normal Purpose:** This behavior is necessary for flow control because a legitimate application may temporarily stop reading while it is busy, descheduled, or processing data more slowly than it arrives.
+- **Resource Retention:** Long-lived slow receivers can retain server resources.
+    - A server may keep connection state and unsent application data for a client that makes very little progress.
+- **Scale Consequence:** Enough slow connections can consume descriptors, application memory, and kernel socket-buffer memory even when inbound bandwidth is small.
 
-The most straightforward variant of Sockstress relies on freezing transmission entirely by closing the window completely.
-```mermaid
-sequenceDiagram
-    participant Attacker
-    participant Target as Target Server
+### Zero-Window State
 
-    Attacker->>Target: 1. Establishes TCP Connection
-    Note over Attacker,Target: Standard TCP handshake
+- **Trigger:** If the receiver has no available TCP receive-buffer capacity, it may advertise `rwnd = 0`.
+- **Sender Behavior:** The sender stops normal data transmission.
+- **Persist Mechanism:** TCP periodically probes for a window update so a lost update cannot leave the connection deadlocked forever.
+- **Abuse Potential:** A malicious or pathological peer can use long-lived zero-window behavior to make a sender retain connection state and pending data.
+- **Mitigations:** Real systems limit the impact through combinations of kernel timeouts, application deadlines, reverse-proxy policies, connection limits, and resource limits rather than assuming every protocol-compliant slow peer may remain indefinitely.
 
-    Attacker->>Target: 2. Sends Application Request (HTTP GET)
-    Target->>Target: Server processes request
+### Persistently Small Windows
 
-    Target-->>Attacker: 3. Attempts response
-    Attacker-->>Target: Advertises Window Size = 0
-
-    Note over Attacker: Refuses to read payload
-    Note over Target: Response data trapped in send buffer
-
-    loop While rwnd remains 0
-        Target-->>Attacker: Periodic Window Probe
-        Attacker-->>Target: Replies with Window Size = 0
-        Note over Target: Send buffer remains occupied
-    end
-```
-
-- **The Mechanism:** The attacker opens a standard TCP connection and sends a legitimate request demanding a large payload response (e.g., an HTTP `GET` for a large file or an intense database query).
-- **The Freeze:** Once the server processes the request and moves the payload into its **OS Send Buffer**, the attacker deliberately locks its application socket, refuses to call `read()` or `recv()`, and explicitly advertises a $Window Size = 0$ ($rwnd = 0$).
-- **Memory Entrapment:** The response data becomes trapped in the server's kernel memory. The server must keep the data cached while periodically transmitting 1-byte **Window Probes** to check the attacker's status. The attacker simply replies to every probe with $rwnd = 0$, holding the connection open indefinitely.
-
-#### Small-Window Attacks
-
-If a server implements basic security timers that automatically drop connections that remain at $rwnd = 0$ for too long, attackers use a highly effective workaround: the **Small-Window Attack**.
-
-```mermaid
-sequenceDiagram
-    participant Attacker
-    participant Target as Target Server
-
-    Attacker->>Target: 1. Requests large file
-    Target->>Target: Server puts data in send buffer
-
-    Attacker-->>Target: 2. Advertises rwnd = 1 Byte
-
-    loop Repeated tiny-window cycle
-        Target-->>Attacker: Sends 1 Byte Payload
-        Target->>Target: Drains 1 byte from buffer
-        Attacker-->>Target: Instantly advertises rwnd = 1 Byte
-        Note over Target: Server remains effectively trapped
-    end
-```
-
-- **The Mechanism:** Instead of completely closing the window, the attacker advertises a tiny, absurd window size, such as **$rwnd = 1$ byte**.
-- **Bypassing the Timers:** Because the window is technically non-zero, standard zero-window protection timers are never tripped. The server views this as a slow, legitimate client making progress.
-- **The Trickle:** The server transmits exactly 1 byte of data, drains 1 byte from its send buffer, and is forced to immediately halt again until the attacker sends another 1-byte window update. This effectively trickles data out over hours, keeping the server's connection slots and memory buffers locked just as effectively as the zero-window method.
-
-#### Operational Impact
-
-- **Kernel Buffer Exhaustion:** By launching thousands of these deadlocked or trickling connections simultaneously, an attacker can completely fill the server's connection tables (`connection slots`) and exhaust the kernel RAM allocated for global TCP send buffers.
-- **Stealth and Asymmetry:** Sockstress generates almost no incoming bandwidth traffic. Traditional volumetric firewalls and [Intrusion Detection System (IDS)](Intrusion%20Detection%20and%20Prevention.md#Intrusion%20Detection%20System%20(IDS)) often miss it entirely because the attacker's packets look like perfectly compliant, standard TCP flow-control adjustments.
-#### Modern Mitigations
-
-Because basic timers are easily bypassed by window dithering, modern operating systems and reverse proxies utilize advanced behavioral defenses:
-
-- **Minimum Throughput Thresholds:** Rather than checking if a window is exactly zero, modern network stacks track the actual _throughput pacing_ of the socket. If a connection is transferring data below a minimum threshold (e.g., less than 50 bytes/second over a set period), the system marks it as anomalous and drops the socket.
-- **Dynamic Socket Buffer Shrinking:** If a client drops its $rwnd$ to a suspiciously small size, advanced Linux kernel TCP auto-tuning features will dynamically shrink the maximum kernel buffer size allocated to that specific socket. This limits the total amount of RAM a single attacker can trap.
-- **Connection Rate and State Limits:** Firewalls and Reverse Proxies (such as Nginx or cloud load balancers) are configured to strictly limit the maximum number of concurrent connections allowed per individual source IP, preventing a single attacker from exhausting the global socket table. 
-## Send buffers
-
-1. **The `send()` Call:** The backend process initiates the outbound transfer by calling `send()`. This action copies the payload data from the application's memory directly into the Kernel's send buffer.
-- **Kernel Dispatch & Efficiency:** Once the data is in the send buffer, the Kernel does not always transmit it immediately; it may wait until it has accumulated enough information to dispatch it efficiently to the client. For example, [Nagle's algorithm](03%20Nagle's%20algorithm.md) intentionally delays transmission until the data reaches the maximum segment size to optimize network efficiency.
-- **Transmission and ACKs:** The Kernel begins transmitting the data across the network. As long as the client continues to acknowledge (ACK) the receipt of the data, the Kernel will proceed to send the rest of the data from the buffer to the client.
+- **Slow Progress Without Zero:** A peer does not need to advertise exactly zero to make progress extremely slow.
+- **Long-Lived Connection:** Persistently tiny receive windows can keep a connection alive while allowing only limited forward progress.
+- **Implementation Variance:** TCP implementations contain algorithms intended to avoid inefficient tiny transmissions, so the exact packet behavior is implementation-dependent.
+- **Resource Consequence:** Connections that make insufficient progress can occupy scarce state for a long time.
+- **Backend Implication:** Connection count alone is not enough to characterize load.
+    - Connection **progress**, buffered bytes, deadlines, and per-client limits also matter.
 
 ## Nagle's Algorithm
 
-- **The Problem It Solves:** In the early days of the internet (such as the Telnet era), sending a single byte of data per packet was incredibly inefficient. Every TCP/IP packet requires a 40-byte header (20 bytes for IP + 20 bytes for TCP). Sending 1 byte of payload meant transmitting 41 bytes total—a massive waste of bandwidth.
-- **The Solution:** Nagle's algorithm was introduced to combine small segments of data and send them together in a single packet, preventing this overhead waste.
-### How It Works
+Nagle's algorithm reduces the number of very small TCP segments produced by applications that repeatedly write tiny amounts of data. The historical problem was especially visible in interactive applications where a one-byte payload could otherwise carry tens of bytes of TCP/IP headers.
 
-- The algorithm dictates that if a process has small chunks of data to send, the Kernel must hold that data in the send buffer until one of two conditions is met:
-    1. The accumulated data reaches the [MSS](#Maximum%20Segment%20Size%20(MSS)) (e.g., 1460 bytes).
-    2. There is no unacknowledged data in flight (i.e., if the client has already ACKed all previous packets, the new data will be sent immediately, regardless of size).
-- **Example:** If the [MSS](#Maximum%20Segment%20Size%20(MSS)) is 1460 bytes and the application sends 500 bytes, the algorithm holds it. If the application then sends another 1000 bytes, the buffer hits 1500 bytes. The Kernel immediately sends out one full 1460-byte segment and holds the remaining 40 bytes.
+- **Purpose:** Reduce inefficient streams of tiny TCP segments.
+- **No Outstanding Data:** If there is no unacknowledged data in flight, TCP can send new small data immediately.
+- **Outstanding Data:** While unacknowledged data exists, additional small writes can be buffered.
+    - Transmission can resume when enough data accumulates for a full-sized segment or the outstanding data is acknowledged.
+- **Relevant Size Boundary:** The size boundary is the [Maximum Segment Size (MSS)](../02%20Protocols/05%20TCP.md#Maximum%20Segment%20Size%20%28MSS%29).
+- **Latency Trade-off:** Because acknowledgments depend on network timing and the peer's ACK policy, Nagle's algorithm can introduce latency that is difficult for an application to predict.
 
-### The Problem (Non-Deterministic Tail Delays)
+### `TCP_NODELAY`
 
-- While Nagle's algorithm saves bandwidth, it introduces non-deterministic delays.
-- **The Tail-End Delay:** This delay is especially noticeable when sending large amounts of data that do not perfectly divide into the MSS.
-- **Example:** If an application wants to send 5000 bytes over a connection with a 1440-byte [MSS](#Maximum%20Segment%20Size%20(MSS)):
-    - The Kernel immediately sends 3 full segments (1440 bytes × 3 = 4320 bytes).
-    - The 4th segment contains the remaining 680 bytes. Because it is not a full segment, and the previous segments have not yet been ACKed, Nagle's algorithm pauses and refuses to send the 4th segment until the ACK for the earlier data arrives.
+- **Behavior:** `TCP_NODELAY` disables Nagle's algorithm for a TCP socket.
+- **When It Helps:** Applications that prioritize latency for small writes often enable it.
+- **Trade-off:** The application accepts the possibility of more small TCP segments in exchange for avoiding Nagle-induced waiting.
+- **What It Does Not Bypass:** Disabling Nagle does not remove TCP's other constraints.
+    - Flow control, congestion control, socket-buffer capacity, and the network itself can still delay a write after the application submits its bytes.
 
-```mermaid
-sequenceDiagram
-    participant A
-    participant B
-
-    A->>B: 1460 bytes
-    A->>B: 1460 bytes
-    A->>B: 1460 bytes
-    
-    Note over A: Nagle's algorithm delays further small sends<br/>waiting for ACK
-    
-    B-->>A: ACK
-    A->>B: 620 bytes
-```
-
-### Disabling Nagle's Algorithm
-
-- **Prioritizing Latency over Bandwidth:** Because modern applications (like APIs, gaming, and real-time systems) prioritize fast response times over saving a few bytes of network capacity, most clients and servers explicitly disable Nagle's algorithm.
-- **`TCP_NODELAY`:** This is the socket option used to disable the algorithm, instructing the Kernel to send data immediately, regardless of segment size.
-- **The cURL Example:** The popular `curl` utility disabled Nagle's algorithm by default back in 2016 because the artificial delays were severely slowing down TLS handshakes.
-
-> After a few wasted hours hunting down the reason for slowness during a TLS handshake that turned out to be because of `TCP_NODELAY` not being set, I think we have enough motivation to toggle the default for this option. We now enable `TCP_NODELAY` by default and allow applications to switch it off.
-> 
-> This also makes `--tcp-nodelay` unnecessary, but `--no-tcp-nodelay` can be used to disable it.
-> 
-> Thanks-to: Tim Rühsen
-> 
-> Bug: [https://curl.haxx.se/mail/lib-2016-06/0143.html](https://curl.haxx.se/mail/lib-2016-06/0143.html)
+> [!example] TLS Handshakes and Delayed Acknowledgments
+> A TLS implementation can emit related handshake records through several small TCP writes. After the first sub-MSS segment is sent, Nagle's algorithm can buffer a following small write until the first segment is acknowledged. If the peer uses delayed acknowledgments while waiting for more data, the handshake can stall even though both endpoints are otherwise ready to continue.
+>
+> `TCP_NODELAY` allows the subsequent write to be transmitted without waiting for that acknowledgment, which can avoid this latency-sensitive interaction. It does not make TLS intrinsically faster and can increase the number of small segments.
+<!-- -->
+> [!example] cURL's Default
+> cURL enabled `TCP_NODELAY` by default in 2016. This choice favors prompt progress in interactive transfers while accepting that some workloads can produce more small TCP segments.

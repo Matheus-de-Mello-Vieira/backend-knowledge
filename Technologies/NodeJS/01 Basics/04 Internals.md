@@ -2,275 +2,126 @@
 
 ## libuv
 
-* **what?**: `Libuv` is a cross platform open source library written in C language
-* **why?**: handles asynchronous non-blocking operations in Node.JS
-* **how?**: using, mainly, thread pool and event loop
+libuv is a cross-platform C library that supplies Node.js with an event loop, non-blocking networking, a worker pool, and abstractions over several operating-system facilities. Node uses it beneath many system-facing asynchronous APIs, but libuv does not implement every form of asynchronous JavaScript execution.
 
-In Node.JS, async methods are handled by libuv
+- **Node Boundary:** Node's JavaScript and C++ layers translate operations such as opening a TCP server or reading a file into libuv work. Promise reactions and `process.nextTick()` use Node and V8 scheduling rather than libuv socket I/O.
+- **Event Loop:** A `uv_loop_t` coordinates I/O, timers, process events, signals, and callbacks. Each loop is associated with one thread, and APIs involving that loop are not thread-safe unless documented otherwise.
+- **Handles:** Long-lived `uv_handle_t` objects represent resources that produce events over time. A TCP server or connected TCP stream is represented by a `uv_tcp_t` handle.
+- **Requests:** Short-lived `uv_req_t` objects represent individual operations. Connect, write, shutdown, filesystem, and address-resolution requests carry the state needed to report one operation's result.
+- **Other Event Sources:** Timers, filesystem-change notifications, signals, child-process management, and cross-thread notifications also feed work into the loop through their corresponding libuv abstractions.
 
-They are handled in two different ways:
+### Network I/O
 
-1) Native async mechanism (delegates to the OS kernel)
-   * Network I/O (TCP, UDP, pipes, TTY)
-   * File system change notifications
-   * Timers
-   * OS signals
-   * Child process spawning
-   * Cross-thread async notifications
-2) Thread pool
-   * Filesystem operations (reading, writing, metadata)
-   * DNS resolution
-   * CPU-bound tasks (e.g., crypto, compression, custom work)
+libuv performs network I/O through [non-blocking sockets](../../../Operating%20Systems/07%20Socket%20Management.md#Blocking%20and%20Non-Blocking%20Sockets) and delegates waiting to the operating system. One event-loop thread can therefore coordinate many sockets without blocking one thread for every connection.
 
-### thread pool
+A socket operation moves through the following path:
 
-#### Structure
+1. A Node binding creates or reuses a libuv handle and starts an operation such as listening, connecting, reading, or writing.
+2. Libuv configures the socket as non-blocking and records the resource, requested activity, and callback state.
+3. The platform backend either registers an interest in socket readiness or submits an asynchronous operation.
+4. The event loop waits through that backend while the thread has no callbacks ready to execute.
+5. Libuv translates the returned readiness event or completion into its handle/request model and invokes the associated callback on the loop thread.
+6. The callback consumes the result, updates application state, and starts later work when the connection should continue.
 
-```mermaid
-flowchart LR
-    MainThread(Main Thread)
-    ThreadPool(Thread Pool)
-     
-    MainThread --> ThreadPool
-    subgraph "libuv"
-      ThreadPool
-    end
+The kernel interaction depends on the platform:
 
-```
+- **Linux — `epoll`:** The backend waits for socket readiness. When a descriptor becomes readable or writable, libuv performs or continues the relevant non-blocking operation.
+- **macOS and BSD-Derived Systems — `kqueue`:** The backend uses persistent event registrations to learn which sockets can make progress.
+- **Solaris — Event Ports:** The backend associates sockets with event sources and consumes the resulting notifications.
+- **Windows — IOCP:** Libuv uses overlapped socket operations and receives their results through an I/O completion port.
 
-#### How it works
+These backends span both [readiness and completion](../../../Operating%20Systems/07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared), yet libuv presents a broadly consistent callback-oriented execution model. A callback that reports a completed read or write therefore does not imply that every platform used a completion-based kernel interface internally. Socket stream semantics also remain unchanged: reads and writes can be partial, buffers are finite, and backpressure still has to propagate through the application.
 
-For example, the code:
+> [!note] `io_uring` and libuv Networking
+> `io_uring` is not libuv's general Linux network backend. Libuv documents an optional `io_uring` loop configuration for filesystem operations; its ordinary Linux socket path remains based on non-blocking sockets and `epoll`.
+
+### Thread Pool
+
+[Regular-file readiness](../../../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) does not reveal whether a read or write will wait for storage. Libuv therefore uses worker-thread offload for operations that cannot be integrated with the loop through non-blocking socket readiness.
+
+- **Internal Users:** Libuv uses the pool for filesystem operations, `getaddrinfo()`, `getnameinfo()`, and work submitted through `uv_queue_work()`.
+- **Node Users:** Node routes asynchronous filesystem APIs and selected DNS, cryptographic, and compression work through this facility.
+- **Shared Capacity:** The pool is global and shared by all libuv loops in the process. Unrelated operations can therefore contend for the same workers.
+- **Default Size:** The pool contains four workers by default.
+- **Startup Configuration:** `UV_THREADPOOL_SIZE` changes the configured size and should be set before Node starts so no earlier operation initializes the pool with another value.
+- **Scaling Trade-off:** More workers can increase concurrency when tasks spend time waiting, but they also consume more memory. CPU-bound throughput remains constrained by available CPU time, and excessive workers can add scheduling and contention costs.
+- **Saturation:** Offload keeps the event-loop thread available, but requests still queue when every worker is occupied.
+
+For example, `fs.readFile()` submits filesystem work and returns without waiting for the read to finish:
 
 ```javascript
-const fs = require('fs');
+const fs = require('node:fs');
 
-// 1. Offload file read to libuv's thread pool via async API
-fs.readFile('example.txt', 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading file:', err);
+fs.readFile('example.txt', 'utf8', (error, data) => {
+  if (error) {
+    console.error(error);
     return;
   }
-  console.log('Main thread: File contents received:', data);
+
+  console.log(data);
 });
 
-// 2. Meanwhile, main thread keeps running other tasks
-console.log('Main thread: Doing Task A...');
-console.log('Main thread: Doing Task B...');;
-```
-
-It runs:
-
-```mermaid
-sequenceDiagram
-    participant MainThread
-    participant libuv
-    participant ThreadPool
-
-	MainThread->>libuv: Request to read file
-    Note right of MainThread: Continues executing other tasks...
-
-    libuv->>ThreadPool: Assign file read task
-    ThreadPool-->>libuv: Task complete with file contents
-
-    MainThread-->>MainThread: Do Task A
-    MainThread-->>MainThread: Do Task B
-
-    libuv-->>MainThread: Invoke callback with data
-
-```
-
-It increases the performance in doing multiple async tasks at same time, for example:
-
-```javascript
-const fs = require('fs');
-
-// List of files to read
-const files = ['file1.txt', 'file2.txt', 'file3.txt'];
-
-files.forEach((filename) => {
-  fs.readFile(filename, 'utf8', (err, data) => {
-    if (err) {
-      console.error(`Error reading ${filename}:`, err);
-      return;
-    }
-    console.log(`File ${filename} contents:\n`, data);
-  });
-});
-
-// Meanwhile, the main thread keeps doing other things
-console.log('Main thread: Executing Task A...');
-console.log('Main thread: Executing Task B...');
+console.log('The event-loop thread remains available.');
 ```
 
 ```mermaid
 sequenceDiagram
-    participant MainThread
+    participant JavaScript
+    participant NodeBindings as Node C++ bindings
     participant libuv
-    participant ThreadPool
+    participant WorkerPool as Worker pool
+    participant EventLoop as Event loop
 
-    MainThread->>libuv: Request read file1
-    libuv->>ThreadPool: Assign file1 task
-    MainThread->>libuv: Request read file2
-    libuv->>ThreadPool: Assign file2 task
-    MainThread->>libuv: Request read file3
-    libuv->>ThreadPool: Assign file3 task
-
-    Note right of MainThread: Executes Task A and B...
-
-    ThreadPool-->>libuv: file1 read complete
-    ThreadPool-->>libuv: file2 read complete
-    ThreadPool-->>libuv: file3 read complete
-
-    libuv-->>MainThread: Callback with file1 contents
-    libuv-->>MainThread: Callback with file2 contents
-    libuv-->>MainThread: Callback with file3 contents
-
+    JavaScript->>NodeBindings: fs.readFile(...)
+    NodeBindings->>libuv: Submit filesystem request
+    libuv->>WorkerPool: Queue blocking file operation
+    NodeBindings-->>JavaScript: Return without waiting
+    WorkerPool-->>libuv: Report operation result
+    libuv-->>EventLoop: Make completion callback eligible
+    EventLoop-->>JavaScript: Invoke callback
 ```
 
-By default, Libuv's thread pool have 4 threads.
+Configure the pool at process startup when a measured workload requires a different size:
 
-* You can change it by:
-
-  ```
-  process.env.UV_THREADPOOL_SIZE = 5;
-  ```
-
-  * if you increase the thread-pool size beyond to number of CPU cores, the average time per CPU-bound task increase.
-    * Given `n` cores and `UV_THREADPOOL_SIZE=n`, each task has its own CPU core. Then, `n` similar asynchronous CPU-bound tasks requested at the same time will run in parallel, with each taking roughly `t` time, so all tasks together will take about `t` time.
-    * Conversely, given `UV_THREADPOOL_SIZE=2n`, each pair of tasks shares the same CPU core, so their pace is halved. Then, `2n` similar asynchronous CPU-bound tasks requested at the same time will run in parallel, with each taking roughly `2t` time, so all tasks together will take about `2t` time.
-    * Although the thread pool preserves asynchronous with respect to Node’s main thread, it can still become a bottleneck if all threads are busy
-
-network IO tasks don't use thread pool, instead Libuv delegates the work to the operation system kernel and whenever possible, it will poll the kernel and see if the request has completed.
+```bash
+UV_THREADPOOL_SIZE=8 node server.js
+```
 
 ### Event loop
 
-* It is a C program and is part of libuv
-* A design pattern that orchestrates or co-ordinates the execution of synchronous and asynchronous code in Node.js.
-* It co-ordinates the execution of callbacks in six different queues:
+The event loop repeatedly waits for events and dispatches the callbacks associated with them. Libuv provides the native loop and platform polling backend; Node integrates that loop with JavaScript callback execution, `process.nextTick()`, and V8's microtask processing.
 
-  * 4 macro-tasks queue:
-    1) **timer queue**: `setTimeout`/`setInterval` callbacks
-    2) **I/O queue**: I/O callbacks
-    3) **check queue**: `setImmediate` callbacks
-    4) **close queue**: close handlers
-  * 2 micro-tasks queue
-    1) **nextTick queue**
-    2) **promise queue**
+- **I/O Concurrency:** The loop can wait for activity across many sockets while executing JavaScript on one application thread.
+- **Application Execution:** Each JavaScript callback runs synchronously until it returns. A long callback therefore delays every other callback assigned to that loop, which is the central trade-off of a [single-threaded application execution model](../../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Single-Threaded%20Process).
+- **Callback Boundaries:** After a JavaScript callback returns, Node processes `process.nextTick()` callbacks and V8 microtasks before allowing the native loop to continue. These queues are not libuv phases.
+- **Loop Lifetime:** The default loop continues while it has active referenced handles, active requests, or handles that are still closing.
+
+The visible loop phases have distinct responsibilities:
+
+- **Timers:** Run callbacks whose `setTimeout()` or `setInterval()` thresholds have elapsed. A threshold makes a callback eligible; it does not guarantee an exact execution time.
+- **Pending Callbacks:** Run selected I/O callbacks that were deferred from the previous iteration, including some platform-specific error reporting.
+- **Idle and Prepare:** Run internal libuv callbacks immediately before the loop calculates how long it can wait for I/O.
+- **Poll:** Wait for new I/O when appropriate and process available I/O events. The loop avoids blocking when timers, `setImmediate()` callbacks, or other conditions require it to continue.
+- **Check:** Run `setImmediate()` callbacks after the poll phase.
+- **Close Callbacks:** Run callbacks associated with handles whose closure must be reported asynchronously.
+
+Within a phase, callbacks are processed in FIFO order until the queue is exhausted or an implementation-specific callback limit is reached. Node processes tick and microtask queues at JavaScript callback boundaries rather than treating them as another pair of libuv phases.
 
 #### Process
 
-1) After the call stack is empty, the event loop takes control.
-   * Synchronous JavaScript runs to completion before any async callbacks.
-   * Async callbacks are enqueued synchronously.
+One current libuv iteration follows this high-level sequence:
 
-2) The event loop processes its phases in order. In each phase, it executes *all* ready callbacks in that phase. For **each** callback:
-   * Runs the callback.
-   * Drains all microtasks:
-     * `process.nextTick` queue first, then the Promise microtask queue.
-     * After draining Promises, Node.js rechecks `nextTick` before continuing.
-     * If microtasks keep being scheduled, this draining can repeat indefinitely before the next callback.
+1. Run pending callbacks, followed by active idle and prepare callbacks.
+2. Calculate a poll timeout from the nearest timer and from whether other work requires the loop to remain non-blocking.
+3. Wait for I/O through the platform backend and dispatch callbacks for the returned events.
+4. Run check callbacks and then close callbacks.
+5. Update the loop's cached time and run timers whose thresholds have elapsed.
+6. Start another iteration while active work keeps the loop alive; otherwise return from the loop.
 
-3) Phases are processed in order:
-   1. Timers phase: executes timer callbacks one by one, draining microtasks after each.
-   1. I/O phase: executes I/O callbacks one by one, draining microtasks after each.
-   1. Check phase: executes check callbacks one by one, draining microtasks after each.
-   1. Close phase: executes close callbacks one by one, draining microtasks after each.
+> [!note] Timer Ordering in Node 20+
+> Starting with libuv 1.45, used by Node.js 20, the per-iteration timer pass occurs after the poll phase. Earlier versions ran timers before polling. Libuv still performs an initial timer pass before entering the loop, so examples that depend on exact timer-versus-I/O ordering must state their Node/libuv version and runtime conditions.
 
-4) When there are no more callbacks to process in any queue and no pending work, the event loop exits and the process ends.
-
-So:
-
-```mermaid
-sequenceDiagram
-  participant EventLoop
-  participant NextTickQueue
-  participant PromiseQueue
-
-  Note over EventLoop: Start draining microtasks
-
-  loop While microtasks queues are not empty
-    Note over NextTickQueue: Drain nextTick queue completely
-    loop While nextTickQueue is not empty
-      EventLoop->>NextTickQueue: Get next nextTick callback
-      NextTickQueue-->>EventLoop: Execute nextTick callback
-    end
-    Note over NextTickQueue: nextTick queue is empty
-
-    Note over PromiseQueue: Drain Promise queue completely
-    loop While Promise queue is not empty
-      EventLoop->>PromiseQueue: Get next Promise callback
-      PromiseQueue-->>EventLoop: Execute Promise callback
-    end
-    Note over PromiseQueue: Promise queue is empty
-  end
-
-  Note over EventLoop: Microtasks fully drained
-```
-
-```mermaid
-sequenceDiagram
-  participant MainThread
-  participant EventLoop
-  participant TimerQueue
-  participant IOQueue
-  participant CheckQueue
-  participant CloseQueue
-
-  MainThread->>EventLoop: Call stack empty
-  Note over EventLoop: Event loop cycle starts
-
-  loop While there are callbacks to process
-    EventLoop->>EventLoop: Drain Microtasks Queue (see microtasks diagram)
-
-    Note over EventLoop: Timers phase
-    loop For each timer callback
-      EventLoop->>TimerQueue: Get next timer callback
-      TimerQueue-->>EventLoop: Timer callback
-      EventLoop->>EventLoop: Drain Microtasks Queue (see microtasks diagram)
-    end
-
-    Note over EventLoop: Poll phase
-
-  	loop While in Poll phase
-    alt I/O callbacks ready
-      EventLoop->>IOQueue: Get next I/O callback
-      IOQueue-->>EventLoop: I/O callback
-      EventLoop->>EventLoop: Drain Microtasks Queue (see microtasks diagram)
-    else Can Node wait for I/O?
-      alt setImmediate queue is empty AND no timers are ready
-        Note over EventLoop: Node waits for I/O to complete
-      else setImmediate queue is not empty OR timers are ready
-        Note over EventLoop: Node skips waiting and exits Poll phase
-      end
-    end
-    end
-
-    Note over EventLoop: Poll phase ends
-
-    Note over EventLoop: Check phase
-    loop For each check callback
-      EventLoop->>CheckQueue: Get next check callback
-      CheckQueue-->>EventLoop: Check callback
-      EventLoop->>EventLoop: Drain Microtasks Queue (see microtasks diagram)
-    end
-
-    Note over EventLoop: Close phase
-    loop For each close callback
-      EventLoop->>CloseQueue: Get next close callback
-      CloseQueue-->>EventLoop: Close callback
-      EventLoop->>EventLoop: Drain Microtasks Queue (see microtasks diagram)
-    end
-  end
-
-  Note over EventLoop: No more callbacks to process, event loop exits
-  EventLoop-->>MainThread: Exit process
-
-```
-
-
-
-#### Micro tasks queue
+#### Microtask Queues
 
 ##### nextTick queue
 
@@ -280,7 +131,7 @@ process.nextTick(() => {
 })
 ```
 
-it will enqueue the callback to nextTick queue
+This schedules the callback in Node's next-tick queue. Node processes that queue after the current operation completes and before the event loop continues.
 
 ##### promise queue
 
@@ -290,9 +141,11 @@ Promise.resolve().then(() => {
 })
 ```
 
+This schedules a Promise reaction in V8's microtask queue. Promise microtasks and next-tick callbacks both run between event-loop callbacks, but Node gives the next-tick queue priority at the start of that processing boundary.
+
 ##### Experiment
 
-The, the code:
+Consider the following scheduling experiment:
 
 ```javascript
 process.nextTick(() => console.log("this is process.nextTick 1"));
@@ -316,9 +169,9 @@ Promise.resolve().then(() => console.log("this is Promise.resolve 3"));
 
 ```
 
-It would result:
+The callbacks run in this order:
 
-```
+```text
 this is process.nextTick 1
 this is process.nextTick 2
 this is process.nextTick 3
@@ -330,7 +183,7 @@ this is inner Promise
 this is the inner next tick inside Promise then block
 ```
 
-It is executed in this way:
+The ordering follows this sequence:
 
 ```mermaid
 sequenceDiagram
@@ -375,9 +228,9 @@ sequenceDiagram
   Note over nextTickQueue: Both nextTickQueue and PromiseQueue are now empty, moving to the next event loop phase
 ```
 
-#### Timer Queue
+#### Timer Callbacks
 
-It is called "queue", but it is heap, because involves time
+Timers are organized by their eligibility thresholds rather than as one unconditional FIFO callback queue. Once a threshold has elapsed, the corresponding callback becomes eligible to run in the timers phase; other callbacks and operating-system scheduling can still delay its execution.
 
 ```javascript
 setTimeout(() => console.log("this is setTimeout"), 0)
@@ -398,7 +251,7 @@ setTimeout(() => {
 
 results in:
 
-```
+```text
 timer 1
 microtask inside timer 1
 timer 2
@@ -414,15 +267,15 @@ setTimeout(() =>  console.log('timer 3'), 0);
 
 results in:
 
-```
+```text
 timer 3
 timer 2
 timer 1
 ```
 
-#### I/O Queue
+#### Poll and Pending I/O Callbacks
 
-Most of the async methods from the built-in modules queue the callback function in the I/O queue
+Callbacks for many completed I/O operations become eligible through the poll or pending-callback machinery, but not every asynchronous Node API follows this path. Timers, `setImmediate()`, `process.nextTick()`, and Promise reactions use distinct scheduling mechanisms.
 
 ```javascript
 fs.readFile(__filename, () => {
@@ -441,7 +294,7 @@ setTimeout(() => console.log("this is setTimeout1"), 0);
 fs.readFile(__filename, () => console.log("this is readFile1"))
 ```
 
-Will result in:
+Repeated executions can produce either ordering:
 
 ```bash
 
@@ -459,11 +312,13 @@ this is setTimeout1
 this is readFile1
 ```
 
-When running `setTimeout` with delay `0ms` and an I/O async method, the order of execution can never be guaranteed.
+The relative order is not guaranteed because the two callbacks become eligible through independent mechanisms:
 
-* It is because even when you use 0 milliseconds, the JavaScript puts a least 1 milliseconds delay. And whether the event pass pass through queue time before or after it is pure fluke
+- **Timer Threshold:** A delay of `0` creates a minimum timer threshold; it does not execute the callback immediately.
+- **Filesystem Completion:** `fs.readFile()` finishes on the worker pool and becomes eligible only after its completion is reported to the loop.
+- **Runtime Timing:** Startup work, filesystem latency, operating-system scheduling, and the Node/libuv version affect which callback is ready when the loop reaches the relevant phase.
 
-If we put a loop that does nothing, but ensures that the event loop pass through timer queue after 1 millisecond, the order can be guaranteed
+Adding synchronous work before the event loop starts gives the timer threshold more time to elapse, so the timer is more likely to run first. It does not guarantee the relative order because the filesystem operation still completes independently.
 
 ```javascript
 const fs = require("fs");
@@ -503,7 +358,7 @@ setImmediate(() => console.log("this is setImmediate 1"))
 for(let i = 0; i < 2e6; i++) {}
 ```
 
-will result in
+One possible result is:
 
 ```bash
 $ node index.js 
@@ -511,59 +366,9 @@ this is setImmediate 1
 this is readFile1
 ```
 
-The `this is setImmediate 1` was printed before `this is readFile1` because when the Poll phase ran, the `fs.readFile` I/O had not completed yet, so there were no ready I/O callbacks. Since the `setImmediate` was already queued, Node skipped waiting in the Poll phase and moved immediately to the Check phase to run `setImmediate 1`. The `readFile1` callback only ran later, once the I/O actually finished and the event loop returned to the Poll phase in a subsequent iteration.
+This ordering occurs when the filesystem request is not ready when the loop reaches poll. Because `setImmediate()` is already queued, poll does not wait indefinitely and the loop advances to check. If the filesystem completion becomes eligible at another point, the observed order can differ; the top-level example does not establish a general ordering guarantee.
 
-```mermaid
-sequenceDiagram
-  participant MainThread
-  participant EventLoop
-  participant Libuv
-  participant CheckQueue
-  participant Threadpool
-
-  Note over MainThread: Synchronous script execution
-  MainThread->>Threadpool: offload fs.readFile
-  MainThread->>CheckQueue: schedule setImmediate 1
-
-  Note over Threadpool: fs.readFile runs asynchronously
-  Threadpool-->>Libuv: Marks fs.readFile completion as ready
-  Note over Libuv: Completion is ready internally, even while MainThread is blocking
-
-  Note over MainThread: Long blocking for-loop runs to completion
-
-  Note over EventLoop: Event loop iteration 1 begins
-
-  EventLoop->>EventLoop: Drain Microtasks (none here)
-
-  Note over EventLoop: Poll phase
-  EventLoop->>Libuv: Checks for ready I/O events
-  alt setImmediate is queued
-    Note over EventLoop: Poll phase skips waiting for I/O readiness
-    Note over EventLoop: Even though fs.readFile is ready internally, it isn't delivered yet
-    EventLoop->>EventLoop: Moves immediately to Check phase
-  end
-
-  Note over EventLoop: Check phase
-  EventLoop->>CheckQueue: Get setImmediate 1
-  CheckQueue-->>EventLoop: setImmediate 1 callback
-  EventLoop->>MainThread: console.log("this is setImmediate 1")
-  EventLoop->>EventLoop: Drain Microtasks (none)
-
-  Note over EventLoop: Event loop iteration 2 begins
-
-  EventLoop->>EventLoop: Drain Microtasks (none here)
-
-  Note over EventLoop: Poll phase
-  EventLoop->>Libuv: Checks for ready I/O events
-  alt fs.readFile completion now delivered
-    Libuv-->>EventLoop: Delivers fs.readFile callback
-    EventLoop->>MainThread: console.log("this is readFile1")
-    EventLoop->>EventLoop: Drain Microtasks (none)
-  end
-
-```
-
-#### Close Queue
+#### Close Callbacks
 
 ```javascript
 const fs = require("fs");
@@ -575,4 +380,3 @@ readableStream.on("close", () => {
   console.log("this is from readableStream close event callback");
 });
 ```
-

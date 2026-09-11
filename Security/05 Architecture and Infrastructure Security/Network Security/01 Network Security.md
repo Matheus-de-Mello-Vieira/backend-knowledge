@@ -2,6 +2,15 @@
 
 Network security encompasses a comprehensive set of technologies and practices designed to protect network infrastructure and the data transmitted across it. Modern network security goes far beyond traditional perimeter defense to include advanced threat detection, network segmentation, and continuous monitoring.
 
+## Service Listening Scope and Network Reachability
+
+Socket binding establishes a service's local acceptance scope; [a wildcard listener](../../../Operating%20Systems/07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) can make an unintended network-facing or management interface part of that scope. It is not, however, an access-control policy and does not itself make the service reachable from a remote network.
+
+Network reachability requires both a path to the host and permission for traffic to traverse it. Routing, NAT or other ingress controls, and [firewall rules](Firewall%20Technologies.md#Firewalls%20Across%20the%20OSI%20Model%20Layers) determine which sources can reach a service; segmentation constrains which network paths exist. Binding to loopback or an intended internal address is therefore a defense-in-depth control that limits the service's local exposure, while network policy protects the permitted service path.
+
+> [!example] Public Proxy, Internal Backend
+> A reverse proxy may accept public traffic on a network-facing address and forward selected requests to a backend bound only to loopback or an internal address. The backend's bind prevents direct delivery through the public address, while the proxy's ingress policy, authentication, encryption, and firewall rules protect the exposed service path.
+
 ## Network Segmentation Strategies
 
 Network segmentation is one of the most effective ways to stop a cyberattack from turning into a company-wide catastrophe. Think of it like the bulkhead doors on a ship: if water floods one compartment, the doors seal it off so the whole ship doesn't sink.
@@ -24,7 +33,7 @@ A DMZ (`/ˌdiː ɛm ˈziː/`) stands for Demilitarized Zone. In the physical wor
 
 **The DMZ Solution**: By placing public-facing servers outside the internal network and into a DMZ, they remain fully exposed and accessible to the internet without granting external users access to the internal network. If a hacker compromises your public web server in the DMZ, the internal firewall still blocks them from jumping deeper into your private Active Directory or customer databases.
 
-**Enterprise DMZ Architectures**
+#### Enterprise DMZ Architectures
 
 - **Single Firewall Setup:** Divides a network into two parts by taking specific devices from inside the trusted network and placing them on the outside of the firewall, directly facing the internet.
 - **Dual Firewall Setup (More Secure):** Typically structured using a "triple-homed firewall" or two separate firewalls (external and internal). The first (external) firewall filters initial traffic from the internet, ensuring only legitimate requests reach the public-facing servers sitting in the middle. The second (internal) firewall protects the private corporate network. Hackers would have to successfully bypass two separate firewalls to reach sensitive internal data.
