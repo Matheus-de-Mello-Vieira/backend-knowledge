@@ -1326,6 +1326,45 @@ Readiness-based and completion-based I/O both allow one execution context to coo
     - **Proactor:** Submit the I/O operation first and dispatch application code when that operation completes.
 - **Mechanism and Architecture:** The operating-system mechanism and the application architecture should still be distinguished. A library can expose a Proactor-style completion API while internally using a readiness mechanism, and a readiness interface does not by itself determine how an application structures its handlers or concurrency.
 
+#### Linux `epoll` and `io_uring`
+
+Linux `epoll` and `io_uring` both coordinate large amounts of concurrent I/O, but they favor different workload shapes. The choice depends less on connection count alone than on what operations the application performs, how frequently it performs them, how much work can be batched, and which kernel features the deployment can rely on.
+
+- **Application Control Flow:**
+    - **`epoll`:** Fits applications organized around resource state: wait until a socket becomes readable or writable, then decide which operation to attempt.
+    - **`io_uring`:** Fits applications organized around outstanding work: submit an accept, receive, send, or other operation, then process its result when it completes.
+    - **Decision:** Prefer `epoll` when a readiness-driven event loop matches the application's natural control flow. Prefer `io_uring` when expressing work as asynchronous operations makes the execution model clearer or more efficient.
+- **Operation Rate and Batching:**
+    - **`epoll`:** Batches readiness notifications through `epoll_wait()`, while the actual socket operations still run through calls such as `accept()`, `recv()`, and `send()`.
+    - **`io_uring`:** Batches operation submission and completion processing by preparing multiple SQEs before submission and consuming multiple CQEs together.
+    - **Decision:** `io_uring` is more attractive when the application performs a high rate of small operations and can batch them effectively. When operations are infrequent or substantial application work occurs between them, submission overhead matters less.
+- **Repeated Operations:**
+    - **`epoll`:** Persistent registrations continue monitoring a descriptor across waits, so ordinary readiness monitoring does not require a new registration after every read or write.
+    - **`io_uring`:** Normal single-shot operations finish when their completion is produced. Supported multishot operations on suitable kernels can keep work such as accept or receive active across multiple completions.
+    - **Decision:** Both interfaces can handle long-lived connections efficiently. `io_uring` gains more from repeated-operation support when the same high-frequency operation would otherwise be resubmitted continuously.
+- **Kinds of I/O Being Coordinated:**
+    - **`epoll`:** Primarily coordinates readiness for file descriptors, which fits sockets, pipes, and other resources whose useful state can be represented as readiness.
+    - **`io_uring`:** Coordinates socket I/O, file I/O, polling, timeouts, and other kernel operations through one submission/completion mechanism.
+    - **Decision:** `epoll` is often sufficient for a primarily socket-oriented event loop. `io_uring` becomes more useful when one asynchronous model should coordinate both networking and other I/O operations.
+- **Application State and Complexity:**
+    - **`epoll`:** The application tracks descriptors, readiness interests, and connection state. When readiness arrives, the handler determines and performs the next operation.
+    - **`io_uring`:** The application also tracks outstanding operation identity and lifetime. Buffers and request state referenced by in-flight work must remain valid until the operation no longer requires them, and completions must be correlated with submissions.
+    - **Decision:** `epoll` is simpler when readiness is enough. `io_uring` is easier to justify when asynchronous submission, batching, or broader operation support offsets the extra operation-lifecycle management.
+- **User-Kernel Transition Cost:**
+    - **`epoll`:** Waiting for many descriptors is amortized through `epoll_wait()`, but subsequent socket operations normally require separate system calls.
+    - **`io_uring`:** Shared submission and completion queues exchange requests and results without copying a complete request set on every interaction. Optional configurations such as submission-queue polling can reduce submission-related system calls further at the cost of additional CPU usage.
+    - **Decision:** `io_uring` is more compelling when user-kernel transitions and per-operation submission costs are a meaningful part of the workload. If protocol processing, application logic, or network latency dominates, this advantage may have little effect on overall performance.
+- **Kernel and Deployment Requirements:**
+    - **`epoll`:** A long-established Linux interface with broad availability and stable deployment expectations.
+    - **`io_uring`:** A newer Linux interface whose available operations and optimizations depend on kernel version, configuration, and deployment policy.
+    - **Decision:** Prefer `epoll` when broad Linux compatibility and operational simplicity matter most. Prefer `io_uring` when the application controls its target kernels closely enough to rely on the needed features.
+
+As a practical starting point:
+
+- Choose **`epoll`** for a primarily socket-oriented server whose natural model is “wait for activity, then handle it,” especially when simplicity and broad Linux compatibility matter more than minimizing per-operation submission overhead.
+- Choose **`io_uring`** when the workload has many asynchronous operations in flight, benefits from submission/completion batching or supported multishot operations, coordinates several kinds of I/O, or spends enough CPU on kernel transitions that reducing those interactions is valuable.
+- **Benchmark when performance decides the choice:** Connection count alone does not imply that `io_uring` outperforms `epoll`; operation frequency, batching opportunities, application work, kernel version, and workload shape determine whether its additional machinery produces a useful gain.
+
 ## Socket Lifetime and Closure
 
 Descriptor lifetime and transport shutdown are related but not identical concepts.
