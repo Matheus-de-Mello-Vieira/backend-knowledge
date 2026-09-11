@@ -1330,34 +1330,27 @@ Readiness-based and completion-based I/O both allow one execution context to coo
 
 Linux `epoll` and `io_uring` both coordinate large amounts of concurrent I/O, but they favor different workload shapes. The choice depends less on connection count alone than on what operations the application performs, how frequently it performs them, how much work can be batched, and which kernel features the deployment can rely on.
 
-- **Application Control Flow:**
-    - **`epoll`:** Fits applications organized around resource state: wait until a socket becomes readable or writable, then decide which operation to attempt.
-    - **`io_uring`:** Fits applications organized around outstanding work: submit an accept, receive, send, or other operation, then process its result when it completes.
-    - **Decision:** Prefer `epoll` when a readiness-driven event loop matches the application's natural control flow. Prefer `io_uring` when expressing work as asynchronous operations makes the execution model clearer or more efficient.
-- **Operation Rate and Batching:**
-    - **`epoll`:** Batches readiness notifications through `epoll_wait()`, while the actual socket operations still run through calls such as `accept()`, `recv()`, and `send()`.
-    - **`io_uring`:** Batches operation submission and completion processing by preparing multiple SQEs before submission and consuming multiple CQEs together.
-    - **Decision:** `io_uring` is more attractive when the application performs a high rate of small operations and can batch them effectively. When operations are infrequent or substantial application work occurs between them, submission overhead matters less.
-- **Repeated Operations:**
-    - **`epoll`:** Persistent registrations continue monitoring a descriptor across waits, so ordinary readiness monitoring does not require a new registration after every read or write.
-    - **`io_uring`:** Normal single-shot operations finish when their completion is produced. Supported multishot operations on suitable kernels can keep work such as accept or receive active across multiple completions.
-    - **Decision:** Both interfaces can handle long-lived connections efficiently. `io_uring` gains more from repeated-operation support when the same high-frequency operation would otherwise be resubmitted continuously.
-- **Kinds of I/O Being Coordinated:**
-    - **`epoll`:** Primarily coordinates readiness for file descriptors, which fits sockets, pipes, and other resources whose useful state can be represented as readiness.
-    - **`io_uring`:** Coordinates socket I/O, file I/O, polling, timeouts, and other kernel operations through one submission/completion mechanism.
-    - **Decision:** `epoll` is often sufficient for a primarily socket-oriented event loop. `io_uring` becomes more useful when one asynchronous model should coordinate both networking and other I/O operations.
-- **Application State and Complexity:**
-    - **`epoll`:** The application tracks descriptors, readiness interests, and connection state. When readiness arrives, the handler determines and performs the next operation.
-    - **`io_uring`:** The application also tracks outstanding operation identity and lifetime. Buffers and request state referenced by in-flight work must remain valid until the operation no longer requires them, and completions must be correlated with submissions.
-    - **Decision:** `epoll` is simpler when readiness is enough. `io_uring` is easier to justify when asynchronous submission, batching, or broader operation support offsets the extra operation-lifecycle management.
-- **User-Kernel Transition Cost:**
-    - **`epoll`:** Waiting for many descriptors is amortized through `epoll_wait()`, but subsequent socket operations normally require separate system calls.
-    - **`io_uring`:** Shared submission and completion queues exchange requests and results without copying a complete request set on every interaction. Optional configurations such as submission-queue polling can reduce submission-related system calls further at the cost of additional CPU usage.
-    - **Decision:** `io_uring` is more compelling when user-kernel transitions and per-operation submission costs are a meaningful part of the workload. If protocol processing, application logic, or network latency dominates, this advantage may have little effect on overall performance.
-- **Kernel and Deployment Requirements:**
-    - **`epoll`:** A long-established Linux interface with broad availability and stable deployment expectations.
-    - **`io_uring`:** A newer Linux interface whose available operations and optimizations depend on kernel version, configuration, and deployment policy.
-    - **Decision:** Prefer `epoll` when broad Linux compatibility and operational simplicity matter most. Prefer `io_uring` when the application controls its target kernels closely enough to rely on the needed features.
+- **Application Control Flow:** The appropriate interface depends on whether the application naturally reacts to resource readiness or tracks concrete operations from submission to completion. Prefer `epoll` for a readiness-driven event loop; prefer `io_uring` when asynchronous operations make the execution model clearer or more efficient.
+    - **`epoll`:** The application waits until a socket becomes readable or writable, then decides which operation to attempt. Because the event identifies resource state rather than a completed operation, `epoll` fits control flow organized around readiness.
+    - **`io_uring`:** The application submits an accept, receive, send, or other operation and processes its result when it completes. Because the completion belongs to submitted work, `io_uring` fits control flow organized around outstanding operations.
+- **Operation Rate and Batching:** `io_uring` becomes more attractive as the rate of small operations and the opportunity to batch them increase. When operations are infrequent or substantial application work occurs between them, submission overhead contributes less to the total cost.
+    - **`epoll`:** `epoll_wait()` batches readiness notifications, but the application still performs the corresponding socket operations through calls such as `accept()`, `recv()`, and `send()`. It therefore amortizes readiness waiting without batching submission of those operations through the same interface.
+    - **`io_uring`:** The application can prepare multiple SQEs before submission and consume multiple CQEs together. Batching both submissions and completions spreads coordination overhead across many operations, which matters most when small operations occur frequently.
+- **Repeated Operations:** Both interfaces support long-lived connections efficiently, so connection lifetime alone does not distinguish them. `io_uring` benefits more from repeated-operation support when a high-frequency operation would otherwise require continuous resubmission.
+    - **`epoll`:** A persistent registration continues monitoring a descriptor across waits, so the application does not register the descriptor again after every read or write. Long-lived connections therefore retain their readiness interests without repeated registration.
+    - **`io_uring`:** A normal single-shot operation ends when its completion is produced and must be submitted again if the work should continue. On kernels that support the relevant multishot operation, work such as accept or receive can remain active across multiple completions and avoid that resubmission cycle.
+- **Kinds of I/O Being Coordinated:** `epoll` is often sufficient when an event loop primarily coordinates socket readiness. `io_uring` becomes more useful when networking and other I/O operations should share one asynchronous submission-and-completion model.
+    - **`epoll`:** It primarily coordinates readiness for file descriptors, which fits sockets, pipes, and other resources whose useful state can be represented as readiness. This focus matches a socket-oriented event loop that does not need to submit broader kernel operations through the same mechanism.
+    - **`io_uring`:** It coordinates socket I/O, file I/O, polling, timeouts, and other kernel operations through the same submission and completion queues. This broader operation set supports a unified asynchronous model across networking and other I/O.
+- **Application State and Complexity:** `epoll` is simpler when readiness information is sufficient. `io_uring` is justified when asynchronous submission, batching, or broader operation support outweighs the additional work of managing operation lifecycles.
+    - **`epoll`:** The application tracks descriptors, readiness interests, and connection state; after a readiness notification, the handler determines and performs the next operation. State management remains centered on resources because no submitted I/O operation must be retained until a later completion.
+    - **`io_uring`:** The application tracks the identity and lifetime of each outstanding operation, keeps referenced buffers and request state valid for as long as the operation requires them, and correlates completions with submissions. These responsibilities add complexity in exchange for explicit asynchronous operations and their batching and coordination capabilities.
+- **User-Kernel Transition Cost:** `io_uring` is more compelling when user-kernel transitions and per-operation submission costs form a meaningful part of the workload. If protocol processing, application logic, or network latency dominates, reducing those costs may have little effect on overall performance.
+    - **`epoll`:** `epoll_wait()` amortizes waiting across many descriptors, but the subsequent socket operations normally require separate system calls. Workloads dominated by those calls retain a per-operation transition cost after readiness has been reported.
+    - **`io_uring`:** Shared submission and completion queues exchange requests and results without copying a complete request set on every interaction. Submission-queue polling can further reduce submission-related system calls, when enabled, at the cost of additional CPU usage; these mechanisms matter most when transition and submission overhead is significant.
+- **Kernel and Deployment Requirements:** Prefer `epoll` when broad Linux compatibility and operational simplicity are primary constraints. Prefer `io_uring` when the deployment controls its target kernels closely enough to depend on the required operations and optimizations.
+    - **`epoll`:** It is a long-established Linux interface with broad availability and stable deployment expectations. Those properties reduce compatibility and operational constraints across varied Linux environments.
+    - **`io_uring`:** It is a newer Linux interface whose available operations and optimizations depend on kernel version, configuration, and deployment policy. An application therefore needs sufficient control over its target kernels before relying on specific features.
 
 As a practical starting point:
 
