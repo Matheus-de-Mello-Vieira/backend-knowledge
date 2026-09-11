@@ -59,6 +59,20 @@ Then apply a second-stage retrieval test. After the minimum context or dependenc
 
 Before making a bullet set, verify that its members share a coherent semantic dimension, not merely a common parent. They should answer the same implicit question in comparable terms; do not mix states, events, transitions, actors, or unrelated kinds of fact in one sibling group.
 
+### Causal spine and branches
+
+A causal explanation may contain both a **causal spine** and **retrievable branches**. Preserve in prose only the claims whose adjacency is still doing conceptual work: establishing causality, transition, scope, qualification, contrast, or convergence.
+
+After that spine is explicit, inspect the remaining claims individually. A claim may be causally downstream from earlier prose without itself needing to remain prose. If it depends only on context already established above, can be understood independently of neighboring claims, and belongs to the same semantic dimension as its peers, expose it as a scannable branch when that improves retrieval.
+
+Several consecutive explanatory paragraphs should trigger an explicit decomposition check. This is a review heuristic, not a paragraph-count quota: two strong siblings may justify bullets, while many tightly dependent statements may still require prose.
+
+A common local shape is therefore:
+
+1. prose establishes why the mechanism exists or what dependency matters;
+2. labeled or unlabeled bullets expose properties, constraints, consequences, responsibilities, alternatives, or observations that now stand independently under that context;
+3. prose resumes when those branches converge or another dependency must be established.
+
 Then choose the local representation:
 
 - **Prose:** the minimum dependency edges, causality, motivation, transitions, contrast, qualification, and conceptual development required for understanding. Prose should make clear why one idea leads to, constrains, or changes the interpretation of another.
@@ -67,7 +81,7 @@ Then choose the local representation:
 - **Nested bullets:** consequences, qualifications, submechanisms, or details owned by a parent item.
 - **Numbered lists:** ordered procedures, protocols, algorithms, lifecycles, state transitions, or other dependencies where the sequence itself is part of the meaning.
 - **Tables:** repeated comparison dimensions across several entities.
-- **Mermaid:** branches, loops, topology, dependencies, or state transitions that prose cannot express as clearly.
+- **Mermaid:** branches, loops, topology, interactions, dependencies, parallel flows, or state transitions that are materially clearer visually than in compact prose or a numbered list. The existence of branching alone does not justify a diagram.
 - **Callouts:** secondary examples, warnings, terminology clarifications, implementation observations, practical inspection, or architectural stories.
 
 A causal subject does not require one uninterrupted paragraph. Use the minimum prose necessary to establish a dependency, expose independently retrievable sibling consequences, properties, constraints, alternatives, observations, or branches as bullets when that improves scanning, and resume prose when the branches converge or another dependency must be established.
@@ -91,8 +105,10 @@ When rewriting existing prose for clarity, explanation quality, or repository st
 - preserve the supported technical meaning, scope, qualifiers, distinctions, caveats, and established terminology unless an accepted semantic decision explicitly changes them;
 - use surrounding note context and repository writing policy to infer style rather than mechanically copying another section's formatting;
 - improve causal progression, local coherence, and structure without introducing new technical claims merely to make the text feel more complete;
-- reassess the conceptual relationships rather than mechanically preserving the source representation: make dependencies explicit with the minimum necessary prose, then expose independently retrievable and semantically coherent sibling ideas as labeled or unlabeled bullets according to whether stable names aid retrieval; use numbered lists when sequence is part of the meaning, and use nested bullets only for details genuinely owned by the parent item;
+- reassess the conceptual relationships rather than mechanically preserving the source representation: identify the minimum causal spine, inspect the residual claims individually, and expose independently retrievable and semantically coherent siblings as labeled or unlabeled bullets according to whether stable names aid retrieval; use numbered lists when sequence is part of the meaning, and use nested bullets only for details genuinely owned by the parent item;
 - allow local alternation among prose, bullet groups, and numbered sequences when that better matches how the explanation branches and converges;
+- preserve supported claims and relationships rather than the source's paragraphing, labels, grouping, or taxonomy. If the source places non-peer concepts in one category, preserve the underlying claims while reorganizing them into a more coherent representation instead of silently retaining the weak categorization;
+- prefer the simplest representation that preserves the relationship; do not introduce Mermaid when compact prose or numbering is equally clear;
 - do not treat a style-focused rewrite as vocabulary, tone, or sentence-level editing only;
 - keep changes within the approved destination and content boundary.
 
@@ -102,7 +118,7 @@ Before restructuring existing prose, identify the distinct supported information
 
 Rewrite and reorganize those units according to the repository's explanatory grammar, then compare the result with the original. Every unique supported unit must remain represented unless its removal was explicitly authorized as duplication, correction, irrelevance, or scope cleanup.
 
-A style-focused rewrite may change wording, ordering, paragraph/list structure, and local transitions, but it must not silently remove technical information or change the semantic strength of supported claims. Structural compression is valid only when it preserves semantic coverage.
+A style-focused rewrite may change wording, ordering, paragraph/list structure, labels, grouping, and local taxonomy when needed to represent the supported relationships more accurately. Preservation applies to semantic coverage and strength, not to the source representation. Structural compression or reclassification is valid only when it preserves every supported claim, qualification, relationship, and relevant distinction.
 
 ### Modal precision
 
@@ -174,8 +190,10 @@ Before returning the written candidate:
 - reread the affected section as a first-time reader;
 - confirm the assigned concept is understandable without duplicated neighboring theory;
 - confirm rewrites preserve the intended technical meaning, scope, qualifiers, and terminology;
-- confirm structural compression or reformatting did not discard unique technical claims, relationships, qualifiers, caveats, constraints, examples, or exceptions from the original material;
-- confirm the local representation matches the conceptual partial order and retrieval test: dependencies use only the prose needed to remain explicit; independently retrievable consequences, properties, constraints, alternatives, observations, and sibling branches are exposed when scanning benefits; every bullet set has a coherent semantic dimension; stable named siblings use labels when useful; lightweight siblings remain unlabeled when labels would be artificial; subordinate details remain attached to their parent; and ordered relationships use numbering when sequence matters;
+- confirm structural compression, reclassification, or reformatting did not discard unique technical claims, relationships, qualifiers, caveats, constraints, examples, or exceptions from the original material;
+- confirm the local representation matches the conceptual partial order and retrieval test: dependencies use only the prose needed to remain explicit; after the causal spine is established, residual claims are inspected individually and independently retrievable consequences, properties, constraints, alternatives, observations, and sibling branches are exposed when scanning benefits; every bullet set has a coherent semantic dimension; stable named siblings use labels when useful; lightweight siblings remain unlabeled when labels would be artificial; subordinate details remain attached to their parent; and ordered relationships use numbering when sequence matters;
+- when several consecutive explanatory paragraphs remain, confirm they still require prose adjacency rather than merely inheriting context already established above;
+- confirm Mermaid is used only when the visual relationship is materially clearer than compact prose or numbering;
 - confirm modal verbs and frequency qualifiers represent real technical contingency rather than generic caution, and that each qualification is attached to the narrowest claim that requires it;
 - confirm examples remain subordinate;
 - when the mechanism-code walkthrough pattern was used, confirm each split corresponds to a meaningful technical transition rather than arbitrary code length;
