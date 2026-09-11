@@ -36,11 +36,11 @@ Determine mutation intent from the user's request, not from punctuation or a fix
 
 Write as coherent, scannable explanatory notes. Choose local representation from the conceptual dependency structure rather than treating prose or bullets as a section-wide default.
 
-Treat nearby ideas as a **conceptual partial order**. If one idea must be understood before another, make that dependency explicit. If several sibling ideas share a parent but do not depend on one another, they are independent branches and should normally be exposed in a scannable form.
+Treat nearby ideas as a **conceptual partial order**. First determine whether one idea must be understood before another and make that dependency explicit. Then apply a second-stage retrieval test: once the necessary context or dependency is established, expose independently retrievable consequences, properties, constraints, alternatives, or observations as bullets when that improves scanning. Do not let the presence of a causal relationship force its entire surrounding region into prose.
 
 Use structured formatting according to that relationship:
 
-- use **prose** to express dependency edges, motivation, transitions, contrast, qualification, and conceptual progression;
+- use **prose** to express the minimum dependency edges, motivation, transitions, contrast, qualification, and conceptual progression required for understanding;
 - use **labeled bullets** for sibling named properties, components, alternatives, responsibilities, states, mechanisms, or comparison dimensions when each item has a concise stable name that improves retrieval, using the form `- **Label:** Explanation.`;
 - use **unlabeled bullets** for sibling consequences, observations, conditions, implications, or other independently understandable points when inventing labels would add ceremony rather than meaning;
 - use **nested bullets** for consequences, qualifications, submechanisms, or details owned by the parent item;
@@ -49,9 +49,9 @@ Use structured formatting according to that relationship:
 - use Mermaid only when branches, loops, topology, dependencies, or state transitions are materially clearer visually;
 - use callouts for secondary examples, warnings, caveats, terminology clarifications, implementation variance, practical inspection, or architectural stories.
 
-A causal subject does not require one continuous paragraph. Use prose to establish why one concept follows from another, then expose independent consequences or branches as bullets when that improves scanning, and resume prose when another dependency or convergence must be explained.
+A causal subject does not require one continuous paragraph. Use the minimum prose necessary to establish why one concept follows from another, then expose independently retrievable consequences, properties, constraints, alternatives, or branches as bullets when that improves scanning, and resume prose when another dependency or convergence must be explained.
 
-Prefer labeled bullets when sibling items have stable names worth retrieving later. Prefer unlabeled bullets when the sibling structure is real but labels would be artificial. Do not use bullets solely because the sentences are short or because a list looks easier to scan; the items must first be locally independent under the current parent concept.
+Prefer labeled bullets when sibling items have stable names worth retrieving later. Prefer unlabeled bullets when the sibling structure is real but labels would be artificial. Bullet siblings must share a coherent semantic dimension, not merely a common parent: they should answer the same implicit question in comparable terms rather than mixing states, events, transitions, or actors. Do not use bullets solely because the sentences are short or because a list looks easier to scan; the items must first be locally independent and independently retrievable under the established context.
 
 Do not force every section into the same template. A single section may legitimately alternate among prose, bullet groups, and numbered sequences as its conceptual structure branches, orders, and converges.
 

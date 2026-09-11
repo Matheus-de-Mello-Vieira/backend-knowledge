@@ -100,16 +100,18 @@ Ownership, placement, and boundary vocabulary describes repository architecture 
 
 Write primarily as concise technical study notes: make conceptual dependencies explicit while using structured decomposition aggressively enough to keep the material scannable.
 
-Treat the local dependency structure as a **conceptual partial order**. If understanding one idea depends on another, make that relationship explicit. When several sibling ideas share a parent but do not depend on one another, treat them as independently scannable branches and expose that structure with bullets.
+Treat the local dependency structure as a **conceptual partial order**. First determine which ideas must be understood before others and make those relationships explicit. Then apply a second-stage retrieval test: after the necessary context or dependency is established, expose independently retrievable consequences, properties, constraints, alternatives, or observations as bullets when doing so improves scanning. A causal section may therefore establish a short prose spine and then fan out into scannable branches.
 
 ### Encourage
 
 - Lead with the definition, mechanism, distinction, or question the section exists to explain.
 - Identify the local dependency structure before choosing formatting: which ideas depend on earlier ideas, which are sibling branches, which are subordinate details, and which are genuinely ordered steps.
+- Use only the minimum prose necessary to make each dependency, transition, or convergence explicit; then apply the retrieval test to identify facts that are independently useful to scan under that established context.
 - Explain causally: problem → mechanism → consequence → trade-off.
 - Use prose to express dependency edges, transitions, contrasts, and conceptual progression. Prose may introduce a group of sibling ideas and resume afterward to connect that group to the next concept.
-- Use **labeled bullets** for sibling properties, components, alternatives, responsibilities, states, mechanisms, or other concepts whose concise stable names improve retrieval and comparison.
-- Use **unlabeled bullets** for sibling consequences, observations, conditions, implications, or other independently understandable points when inventing labels would add ceremony rather than meaning.
+- Use **labeled bullets** for independently retrievable sibling properties, components, alternatives, responsibilities, states, mechanisms, or other concepts whose concise stable names improve retrieval and comparison.
+- Use **unlabeled bullets** for independently retrievable sibling consequences, observations, conditions, implications, constraints, or alternatives when inventing labels would add ceremony rather than meaning.
+- Ensure bullet siblings share a coherent semantic dimension, not merely a common parent. A group should answer one implicit question in comparable terms; do not mix, for example, states, events, transitions, and actors in one set.
 - Use nested bullets for consequences, qualifications, submechanisms, or details owned by the parent item.
 - Use numbered lists when sequence itself matters.
 - Alternate between prose, bullets, and numbered lists within one section when the conceptual structure branches, orders, and converges.
@@ -121,7 +123,7 @@ Treat the local dependency structure as a **conceptual partial order**. If under
 ### Discourage
 
 - Turning every sentence into a bullet or every idea into a heading.
-- Using bullets merely because statements are short or because a list looks more scannable; conceptual independence must justify the sibling structure first.
+- Using bullets merely because statements are short or because a list looks more scannable; conceptual independence, retrieval value, and a coherent semantic dimension must justify the sibling structure first.
 - Inventing bold labels for points that do not have useful stable names.
 - Long introductions that delay the concept.
 - Dense paragraphs that combine unrelated topics.
@@ -137,8 +139,8 @@ Treat the local dependency structure as a **conceptual partial order**. If under
 - Use exactly one `#` heading for the note title.
 - Use `##` for major conceptual units and deeper headings only when the content justifies them.
 - Do not number headings unless the material has an inherent order, lifecycle, or dependency.
-- Use paragraphs to express conceptual dependencies and transitions.
-- Use bullets for sibling ideas that can be understood in any order under the current parent concept. Use labels when the siblings have stable names that aid retrieval; leave them unlabeled when labels would be artificial.
+- Use paragraphs to express the minimum conceptual dependencies and transitions required for understanding, then resume prose when another dependency must be established.
+- Use bullets for independently retrievable sibling ideas that can be understood in any order under the established context and share a coherent semantic dimension. Use labels when the siblings have stable names that aid retrieval; leave them unlabeled when labels would be artificial.
 - Use numbered lists for chronological procedures, algorithms, protocols, lifecycles, state transitions, or other cases where the order is part of the meaning.
 - Use fenced code blocks with the correct language identifier. Keep examples minimal, valid, and relevant.
 - Define every symbol in an equation and explain its operational meaning.
