@@ -149,13 +149,13 @@ The multiplication depends on the value loaded by the first instruction. If the 
 
 The hardware tracks dependencies and makes the Warp eligible again when the required result becomes available. Warps can similarly become ineligible while waiting for synchronization or other dependencies. Because their execution state remains resident throughout these stalls, changing to another eligible Warp does not require saving and restoring an operating-system-style thread context.
 
-The main Warp states are:
+The main resident and schedulability conditions are:
 
 - **Resident:** Hardware resources and execution state have been allocated to the Warp on the SM.
 - **Eligible:** The Warp is resident and its next instruction has no blocking dependency.
-- **Selected:** A Warp Scheduler has chosen the Warp and issued its next instruction.
 - **Stalled / Ineligible:** The Warp remains resident but cannot currently issue its next instruction because a required dependency is unresolved.
-- **Completed:** The Warp has finished execution.
+
+A Warp reaches its terminal **completed** condition when it has finished execution.
 
 A Warp can alternate between eligible and stalled states many times during its lifetime. Once all Warps in a Thread Block have completed, the block's resources can be released and the SM can admit additional work.
 
@@ -230,9 +230,10 @@ GPU memory follows the same capacity-versus-latency trade-off as [CPU memory hie
 
 Each logical thread has private register values, while physical storage for those values comes from the SM's banked physical register file. Before a Thread Block can become resident, the SM must have enough register-file capacity for the registers required by all of that block's threads.
 
-For a kernel requiring 32 registers per thread and a block containing 256 threads, the conceptual requirement is `32 × 256 = 8192` register values. Real hardware allocates registers with architecture-specific granularity, but every resident thread still consumes part of a finite SM-level register pool.
+Two allocation details follow from this finite SM-level pool:
 
-Register allocation differs from register initialization. The required capacity is reserved before the block becomes resident, but the registers do not all need to contain useful values at that point. Values are produced and consumed incrementally as instructions execute. For example, when a load instruction receives data from memory, it writes the result into storage already allocated to the thread; a later dependent instruction can read that register.
+- **Capacity calculation:** A kernel requiring 32 registers per thread and a block containing 256 threads conceptually requires `32 × 256 = 8192` register values. Real hardware allocates registers with architecture-specific granularity, but every resident thread still consumes part of the finite pool.
+- **Allocation and initialization:** Capacity is reserved before the block becomes resident, but registers do not all need useful values at that point. Values are produced and consumed incrementally as instructions execute. When a load receives data from memory, for example, it writes the result into storage already allocated to the thread; a later dependent instruction can read that register.
 
 The compiler determines a thread's **register demand** largely from the values that must remain simultaneously available during execution. Higher per-thread demand consumes more of the SM's finite register file and can reduce the number of Thread Blocks and Warps that remain resident at the same time, lowering Occupancy.
 
@@ -258,24 +259,24 @@ Technologies such as GDDR and HBM are designed around this need for bandwidth. H
 
 Threads inside a Warp maintain independent logical contexts, so they are technically free to request unrelated addresses. When neighboring threads access neighboring data, the memory controller can combine those requests into a smaller number of large transfers. This optimization is **memory coalescing**.
 
-A favorable pattern is:
+A favorable pattern maps neighboring threads to neighboring elements:
 
-```text
-Thread 0  -> array[0]
-Thread 1  -> array[1]
-Thread 2  -> array[2]
-...
-Thread 31 -> array[31]
-```
+| Thread | Requested element |
+| --- | --- |
+| 0 | `array[0]` |
+| 1 | `array[1]` |
+| 2 | `array[2]` |
+| … | … |
+| 31 | `array[31]` |
 
 Because the requested addresses belong to a contiguous region, the memory hardware can service them efficiently. A Warp that accesses widely scattered addresses loses that opportunity and may require many separate memory transactions.
 
-```text
-Thread 0 -> array[10]
-Thread 1 -> array[9000]
-Thread 2 -> array[31]
-Thread 3 -> array[700000]
-```
+| Thread | Requested element |
+| --- | --- |
+| 0 | `array[10]` |
+| 1 | `array[9000]` |
+| 2 | `array[31]` |
+| 3 | `array[700000]` |
 
 The program remains correct in both cases, but the second pattern makes much poorer use of the available memory bandwidth. Coalescing is closely related to [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality): both reward software for organizing related accesses close together, although the GPU applies the principle across the simultaneous memory requests of a Warp.
 
@@ -295,9 +296,12 @@ DMA requires the device to have stable access to the physical memory backing the
 
 **Pinned (Page-Locked) Memory** keeps the required pages resident and stable while the device accesses them. The GPU can then perform DMA against those pages without requiring the CPU to copy every byte itself.
 
-If an application requests a transfer involving ordinary pageable memory, the runtime or driver may need additional preparation before DMA can proceed, such as temporarily pinning the pages or copying the data through an internal pinned staging buffer. These extra operations are one reason pinned memory can improve repeated high-throughput transfers.
+Transfers involving ordinary pageable memory may require additional preparation before DMA can proceed. The runtime or driver may temporarily pin the pages or copy data through an internal pinned staging buffer.
 
-Pinned memory also consumes a more constrained resource. Because pinned pages cannot be reclaimed as freely as ordinary pageable memory, pinning excessive amounts of RAM reduces the operating system's ability to respond to memory pressure.
+That preparation creates a trade-off for application-provided pinned memory:
+
+- **Repeated transfer throughput:** Avoiding those extra operations can improve repeated high-throughput transfers.
+- **Memory pressure:** Pinned pages cannot be reclaimed as freely as ordinary pageable memory, so pinning excessive amounts of RAM reduces the operating system's ability to respond to memory pressure.
 
 ### The Transfer Penalty
 
@@ -369,7 +373,8 @@ CPU scheduling and Warp scheduling are therefore separate mechanisms operating a
 
 GPU work is submitted as commands describing operations such as kernel launches, memory transfers, and synchronization points. Rather than requiring the CPU to directly initiate every low-level GPU action, these commands are placed into queues that the device can consume independently.
 
-A **queue** represents submitted GPU operations waiting or ready to execute. Many GPU APIs also expose a concept such as a **stream**, which represents an ordered sequence of operations whose dependencies can be coordinated.
+- **Queue:** Represents submitted GPU operations waiting or ready to execute.
+- **Stream:** In many GPU APIs, represents an ordered sequence of operations whose dependencies can be coordinated.
 
 Ordering matters because some operations depend on previous results. A kernel that consumes data produced by an earlier memory transfer, for example, cannot safely execute before that transfer has completed. Independent operations, however, may be able to overlap when the hardware and programming model permit it.
 
