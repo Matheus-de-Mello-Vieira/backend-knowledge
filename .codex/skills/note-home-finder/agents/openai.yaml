@@ -1,10 +1,4 @@
 interface:
   display_name: "Note Home Finder"
-  short_description: "Choose note homes or split plans"
-  default_prompt: "Use $note-home-finder to decide whether a topic belongs in one note or should be split across several notes with qmd search."
-
-dependencies:
-  tools:
-    - type: "mcp"
-      value: "qmd"
-      description: "qmd knowledge-base search and retrieval MCP server"
+  short_description: "Choose canonical note homes and split plans"
+  default_prompt: "Use $note-home-finder to choose the canonical home or split plan for substantial material. Delegate repository retrieval to $note-topic-search."

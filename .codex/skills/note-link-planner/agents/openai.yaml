@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Link Planner"
+  short_description: "Plan natural semantic cross-links"
+  default_prompt: "Use $note-link-planner to identify existing phrases that should naturally link to useful repository context."

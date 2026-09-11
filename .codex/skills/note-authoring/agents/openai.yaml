@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Authoring"
+  short_description: "Orchestrate explicit note additions and rewrites"
+  default_prompt: "Use $note-authoring to orchestrate explicit additions, rewrites, explanation repairs, or style-focused amendments. Delegate every substantive durable-prose mutation to $note-writer; do not draft or rewrite note prose directly in the authoring workflow."

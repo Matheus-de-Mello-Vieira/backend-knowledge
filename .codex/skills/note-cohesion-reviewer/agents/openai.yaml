@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Cohesion Reviewer"
+  short_description: "Review note architecture without editing"
+  default_prompt: "Use $note-cohesion-reviewer to diagnose repository-cohesion problems in the supplied notes without modifying them."

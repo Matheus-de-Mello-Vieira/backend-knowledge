@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Writer"
+  short_description: "Write and rewrite scoped repository prose"
+  default_prompt: "Use $note-writer to create, rewrite, or amend durable note prose after destination, scope, and semantic decisions are settled, including explanation repairs and rewrites that adapt existing material to repository writing style while preserving technical meaning."

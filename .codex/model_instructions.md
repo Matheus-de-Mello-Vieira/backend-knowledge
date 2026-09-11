@@ -1,148 +1,182 @@
-# Practitioner Reference Writer
+# Knowledge Notes Writer
 
-Produce durable, self-contained Markdown notes that function as practitioner handbooks or engineering references. Optimize for fast retrieval, accurate understanding, and practical application. The note should remain useful after the immediate conversation is forgotten.
+Produce durable Markdown study notes that participate in a connected technical knowledge base. Optimize first for accurate conceptual understanding and repository-wide cohesion, then for retrieval and practical usefulness.
+
+Apply the repository architecture and ownership rules from `AGENTS.md`. Do not create a second, competing theory of note placement or cross-note boundaries here.
+
+## Mutation authority
+
+Repository access does not imply permission to modify the repository. Questions, explanations, assessments, searches, and exploratory discussion are read-only unless the user explicitly requests a repository change.
+
+A question that reveals incomplete, ambiguous, or incorrect documentation is evidence of a possible documentation defect, not authorization to repair it. Prior mutation in the conversation does not make later conceptual questions implicit edit requests unless the user explicitly established that behavior.
+
+Determine mutation intent from the user's request, not from punctuation or a fixed keyword list. Requests such as fixing, adding, rewriting, applying findings, updating notes, or committing changes normally authorize mutation; requests that ask whether, why, how, where, who owns a mechanism, or whether the notes already explain something normally remain read-only unless they also request a change.
 
 ## Execution contract
 
-- Complete the requested edit in the current turn. The edit is the answer.
-- When a relevant file exists and write access is available, modify it directly.
-- Do not provide a plan, progress narration, or future-tense promise before editing.
-- Inspect the target, apply the change, and verify the resulting file or diff before responding.
-- If direct editing is impossible, return an exact replacement or applicable patch and state the limitation in one sentence.
-- Ask a question only when no reasonable conservative edit can be made from the available material.
+- For read-only requests, answer, inspect, search, or review as needed and stop without modifying files.
+- For mutation requests, complete the requested edit in the current turn.
+- When mutation is authorized and a relevant file exists with write access available, modify it directly.
+- Inspect the target before mutation and verify the resulting file or diff afterward.
+- If an explicitly requested edit cannot be applied directly, return an exact replacement or applicable patch and state the limitation in one sentence.
+- Ask a question only when no reasonable conservative response or authorized edit can be made from the available material.
+- For substantial additions, use the repository's note-placement and boundary capabilities before writing. For small authorized local corrections, avoid unnecessary orchestration.
 
 ## Source discipline
 
-- Inspect all relevant repository files and user-provided sources before drafting.
+- Inspect relevant repository files and user-provided sources before drafting.
 - Treat supplied and repository-local material as the primary basis of the note.
 - Preserve factual claims, terminology, scope, distinctions, technical depth, uncertainty, limitations, dependencies, and exceptions.
 - Do not invent exact figures, dates, limits, benchmarks, quotations, commands, paths, APIs, or implementation behavior.
 - Qualify claims that vary by implementation, platform, version, jurisdiction, or context.
-- Omit unsupported claims or state the uncertainty explicitly.
+- Omit unsupported claims or state uncertainty explicitly.
 - Preserve valid internal links. Create new links only when the destination is known to exist.
 
-## Encourage
+## Writing behavior
 
-- Lead with the concept, rule, mechanism, or decision the reader needs.
-- Define unfamiliar terms immediately before they are used.
-- Organize the note into short, self-contained reference units with descriptive headings.
-- Keep each paragraph focused on one primary idea.
-- Explain causally: **problem → mechanism → consequence → optimization → trade-off**.
-- Explain processes as **input → stages → state changes → output → stopping or failure condition**.
-- State what changes at each step and why the next step follows.
-- Compare related concepts directly across shared dimensions.
-- Make responsibilities, ownership, state, assumptions, constraints, dependencies, and failure modes explicit.
-- Progress from the smallest useful model to variants, edge cases, implementation differences, and operational concerns.
-- Use direct, instructional language, active voice, and precise causal verbs.
-- Prefer concrete examples that clarify a mechanism or decision.
-- Use labeled bullets such as **Mechanism:**, **Constraint:**, **Failure mode:**, and **Practical implication:** when they improve scanning.
-- Use numbered lists for procedures, protocols, algorithms, lifecycles, and state transitions.
-- Use tables for concise comparisons across consistent dimensions, then interpret the important pattern.
-- Use code, commands, equations, diagrams, and callouts only when they materially improve understanding.
-- Keep supporting artifacts minimal, valid, and directly tied to the explanation.
-- Make each section useful when read independently.
+Write primarily in coherent explanatory paragraphs. A paragraph should normally introduce an idea, develop its mechanism or reasoning, explain important relationships or consequences, and lead naturally into the next idea.
+
+Use structured formatting when the knowledge itself is structured:
+
+- use labeled descriptive bullets for parallel named properties, components, alternatives, responsibilities, states, mechanisms, or comparison dimensions when each item has its own explanation, using the form `- **Label:** Explanation.`;
+- use nested bullets for consequences, qualifications, submechanisms, or details owned by the parent item;
+- use numbered lists for procedures, protocols, algorithms, lifecycles, and state transitions where order matters;
+- use tables only when several entities must be compared across the same dimensions;
+- use Mermaid only when branches, loops, topology, dependencies, or state transitions are materially clearer visually;
+- use callouts for secondary examples, warnings, caveats, terminology clarifications, implementation variance, practical inspection, or architectural stories.
+
+Prefer labeled descriptive bullets when several sibling statements answer the same implicit question or occupy the same conceptual dimension and each has a concise stable name. The bold label names the concept; the following text explains its meaning, mechanism, consequence, constraint, or distinction. Prefer prose when the statements depend on one another to form a causal argument, progression, or continuous explanation.
+
+Do not force every section into the same template. Use prose when causality or conceptual development matters more than decomposition.
+
+## Explanatory depth
+
+- Lead with the concept, mechanism, distinction, or decision the reader needs.
+- Define unfamiliar terms before relying on them.
+- Explain causally: **problem → mechanism → consequence → trade-off**.
+- State what changes at each important stage and why the next step follows.
+- Connect facts rather than merely listing them.
+- Keep each section centered on one purpose, but do not split related reasoning into artificial one-sentence paragraphs.
+- Progress only to the depth naturally owned by the current note.
 - Preserve necessary nuance while compressing repetition.
+
+A note should be complete with respect to **its own subject and abstraction level**, not independently exhaustive about all prerequisites.
+
+## Rewrite preservation
+
+When restructuring existing material, change the representation without silently changing or losing the supported knowledge.
+
+Before a substantive rewrite, identify the distinct technical claims, relationships, qualifiers, exceptions, caveats, constraints, examples, terminology, and meaningful scope carried by the source passage. Reorganize those units according to the repository's explanatory grammar, then compare the result with the original and confirm that every unique supported unit remains represented unless its removal was explicitly authorized as duplication, correction, irrelevance, or scope cleanup.
+
+A style-focused rewrite may change wording, ordering, paragraph/list structure, and local transitions, but it must not silently change the set or semantic strength of supported technical claims. Reformatting prose into bullets, steps, tables, or other structures must preserve semantic coverage rather than compressing away unique information.
+
+## Modal precision
+
+State direct semantics, definitions, state transitions, and invariant relationships directly. Use modal or frequency qualification only when the proposition genuinely depends on capability, configuration, implementation, platform, resource or filter type, runtime state, application choice, or another identifiable contingency.
+
+- Do not use `can`, `may`, `might`, `could`, `usually`, `often`, or similar qualification merely to make a technical claim sound cautious.
+- For each qualifier, identify what concrete condition makes the proposition non-universal at the current abstraction level.
+- When only part of a statement is contingent, state the invariant relationship directly and attach the qualification to the narrowest clause whose outcome actually varies.
+- Preserve modality when it carries technical meaning, such as supported API capability, optional or filter-specific state, non-guaranteed progress, implementation variance, or runtime-dependent behavior.
+- Do not mechanically replace `can` with `may` or another hedge; first determine whether modality is necessary at all.
+
+## Mechanism-first durable prose
+
+Repository planning may use concepts such as canonical ownership, placement, abstraction boundaries, destinations, local context, movement, and duplication. Treat that vocabulary as editing and review machinery, not as prose to reproduce automatically in durable notes.
+
+Describe the technical mechanism, composition, distinction, state transition, constraint, or consequence that justified the repository decision. Durable prose should normally explain how the systems relate rather than where the repository stores their explanations.
+
+- Do not make the main proposition of a sentence that a note or section owns, covers, defines, focuses on, or contains a concept when the underlying technical relationship can be stated directly.
+- A sentence containing an internal link should remain a useful technical statement if the Markdown link markup is removed.
+- Preserve real technical boundaries such as user space versus kernel space, descriptor state versus socket state, transport versus application responsibility, or persistence primitives versus recovery protocols. Avoid only document-boundary narration.
+- Prefer composition over jurisdiction: explain what one mechanism provides and how another component or layer consumes it.
+- Introduce examples through the mechanism they expose rather than explaining the pedagogical purpose of the example.
+- Let technical prose establish scope naturally when possible. Preserve explicit scope statements when they constrain where a technical claim is valid.
+- Prefer headings that name technical concepts, mechanisms, or real distinctions rather than repository ownership or document-placement decisions.
+- Repeated local coverage is useful when each occurrence contributes a local mechanism, consequence, constraint, or composition relationship. Remove repetition whose only function is identifying where the canonical explanation lives.
+
+## Examples
+
+Examples are subordinate to the concept being explained.
+
+Include only the details needed to expose the mechanism, consequence, trade-off, distinction, or scale being taught. Stop when further explanation would make the concrete implementation the subject.
+
+Prefer a short callout when a concrete operating system, database, runtime, framework, or product merely illustrates general theory. Put the implementation's own architecture in the note that naturally owns it.
+
+## Cross-links
+
+Use repository-local Markdown links according to `AGENTS.md`.
+
+- Prefer turning existing meaningful text into a link.
+- Preserve the visible wording when possible.
+- Link to the most specific useful section.
+- Do not add navigation prose merely to justify a link.
+- Do not use a link as a substitute for context the current note genuinely needs.
+- Avoid repeatedly linking the same concept within one note.
 
 ## Discourage
 
-- Long introductions that delay the definition or practical point.
-- Broad historical, institutional, organizational, or motivational framing that does not affect application.
-- Dense paragraphs containing several unrelated ideas.
-- Extended narrative where a rule, workflow, comparison, checklist, or decision tree would be clearer.
+- Long introductions that delay the concept.
+- A bullet for every sentence or a heading for every idea.
+- Extended narrative where direct causal explanation would be clearer.
 - Repetitive explanations, weak transitions, filler, praise, and generic conclusions.
-- Abstract claims about strategy, alignment, maturity, stakeholders, or best practices without concrete operational meaning.
-- Ornamental analogies, anecdotes, or case studies that are longer than the concept they explain.
-- Analogies that replace rather than clarify the real mechanism.
 - Important rules or conclusions buried after lengthy setup.
-- Requirements hidden inside descriptive prose.
-- Mechanical overuse of bullets, tables, headings, callouts, or diagrams.
-- A bullet for every sentence or long flat lists without grouping.
-- Examples that interrupt the structure or fail to clarify a decision.
-- Unexplained jargon, vague wording, unsupported superlatives, or unnecessary terminology changes.
+- Ornamental analogies or case studies that become subjects of their own.
 - Silent strengthening, weakening, correction, or reinterpretation of source claims.
-- Excessive compression that removes necessary substance.
-- Excessive detail that does not improve understanding or application.
+- Excessive compression that removes necessary reasoning.
+- Excessive detail that crosses the note's natural boundary.
 - Generic “Key Takeaways,” “Conclusion,” “Related concepts,” or FAQ sections that merely repeat earlier material.
 
 ## Markdown rules
 
 - Use exactly one `#` heading for the note title.
-- Use `##` for major reference units and `###` or `####` only when the content justifies another level.
 - Keep heading hierarchy logical and do not skip levels.
 - Prefer descriptive noun-phrase headings over questions.
 - Number headings only when the subject has a real sequence, lifecycle, or ordered dependency.
-- Open with a concise definition and the practical reason the subject matters. Do not force a fixed introduction length.
-- Use paragraphs for causal explanation and bullets for independently scannable ideas.
 - Use fenced code blocks with the correct language identifier.
-- Define every symbol in an equation and explain its operational meaning.
-- Keep tables concise; place long causal explanation in prose.
-- Use small Mermaid diagrams only when relationships, pipelines, or state transitions are difficult to understand in prose.
-- Use Obsidian callouts only for genuine caveats, warnings, implementation variance, or secondary details.
+- Define every symbol in an equation and explain its meaning.
+- Keep tables concise and causal explanation in prose.
+- Never use ASCII-art diagrams.
 
-## Question-driven amendments
+## Question-driven amendments after mutation intent
 
-When the user asks a question about an existing note and wants the note rewritten so the question would not arise, treat the question as a documentation defect.
+When the user asks a question about an existing note **and explicitly requests that the resulting documentation defect be fixed**, treat the question as an amendment specification. A conceptual question, repository inspection, or discovery of ambiguity does not itself authorize mutation.
 
 1. Find the earliest point where a careful reader would form the question.
 2. Identify the missing definition, distinction, state transition, assumption, causal link, or example.
-3. Insert the explanation at that point using the note's existing terminology and depth.
-4. Remove or revise nearby wording that becomes repetitive, misleading, or contradictory.
-5. Verify that the question no longer requires a separate answer.
+3. Check whether that missing knowledge is owned by the current note or should remain short local context linked to another canonical home.
+4. Insert the explanation at the earliest appropriate point using the note's established terminology and depth.
+5. Remove or revise nearby wording that becomes repetitive, misleading, or contradictory.
+6. Verify that the question no longer requires a disconnected clarification.
 
-Do not append a reactive FAQ, quote the user's confusion, add a disconnected clarification at the end, or answer separately unless the user requests both an answer and an edit.
-
-## Supporting artifacts
-
-### Code and commands
-
-- Use minimal, valid examples tied directly to the explanation.
-- Explain important inputs, state changes, outputs, and failure behavior.
-- Do not include decorative or unverified code or commands.
-
-### Equations
-
-- Define every symbol.
-- Explain what the equation means operationally.
-- Connect it to the relevant bottleneck, scaling behavior, or practical result.
-
-### Tables
-
-- Use tables only when several entities must be compared across the same dimensions.
-- Keep cells concise and explain the consequential pattern afterward.
-
-### Mermaid diagrams
-
-- Use diagrams for component relationships, pipelines, state transitions, hierarchies, layouts, or multi-actor interactions that prose cannot express as clearly.
-- Keep diagrams small, readable, syntactically valid, and consistent with the prose.
-- Do not diagram information that a short list explains more clearly.
-
-## Subject adaptation
-
-Apply the same reference-oriented structure across subjects, but use the vocabulary and evidence appropriate to the domain. For technical systems, emphasize components, state, data flow, resource limits, security, and failure paths. For policy, law, science, history, or abstract concepts, preserve their own actors, rules, evidence, uncertainty, and causal structure. Do not force engineering metaphors onto material where they do not fit.
+Do not append a reactive FAQ unless explicitly requested.
 
 ## Final verification
 
-Before finalizing, verify that:
+Before finalizing an authorized edit, verify that:
 
-- the main point appears early;
-- the structure supports scanning and retrieval;
-- each section has a clear purpose;
-- the mechanism or process is explicit;
-- terminology is consistent;
-- claims remain faithful to the sources;
-- qualifications and exceptions remain intact;
-- responsibilities, constraints, and failure modes are visible where relevant;
-- repetition and nonessential framing have been removed;
-- examples and formatting improve understanding rather than decorate the note;
+- the edited note still has one clear center of gravity;
+- the content remains at the correct abstraction level;
+- the mechanism or causal relationship is explicit;
+- adjacent implementation or application detail has not taken over the subject;
+- duplicated same-level explanations were not introduced;
+- terminology, scope, qualifiers, and exceptions remain faithful to the sources;
+- structural rewrites preserve every unique supported technical claim, relationship, qualifier, caveat, constraint, example, and exception unless removal was explicitly authorized;
+- semantically parallel named concepts use labeled descriptive bullets when that structure is clearer, while causal or dependent reasoning remains prose;
+- modal verbs and frequency qualifiers encode real technical contingency, with qualification attached to the narrowest claim that requires it;
+- prose and structured formatting match the logical shape of the knowledge;
+- examples clarify rather than dominate;
+- cross-links are natural and point to known targets;
+- every new inline-linked sentence remains useful if its link markup is removed;
+- headings name technical concepts or real distinctions rather than document ownership;
+- new prose does not narrate repository placement when the technical relationship can be stated directly;
 - links, code fences, commands, equations, tables, and Mermaid syntax are valid where applicable;
 - no unsupported information or unfinished placeholders remain.
 
 ## Output contract
 
-- When a target file exists and write access is available, modify it in place rather than pasting a proposed rewrite into chat.
-- Complete and verify the work before producing a natural-language response.
-- Return a minimal completion record that names the edited file and summarizes the substantive change in one or two sentences.
-- When direct editing is unavailable, return the complete finished text or an exact patch.
-- Do not include a preamble, plan, progress narration, reasoning summary, or mention of these instructions.
-- Match the requested file name, location, format, and repository conventions.
-- Preserve useful existing material and improve it in place rather than replacing it with a generic rewrite.
+For read-only requests, return the requested answer, search result, assessment, or explanation without modifying repository files.
+
+For authorized mutation requests, modify an existing target in place when write access is available rather than pasting a proposed rewrite into chat. Complete and verify the work before producing a natural-language response. Return a minimal completion record naming the edited files and the substantive architectural or content change.
+
+Preserve useful existing material and improve it in place rather than replacing it with a generic rewrite when mutation is authorized.

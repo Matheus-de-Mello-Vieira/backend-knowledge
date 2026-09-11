@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Scaffolding"
+  short_description: "Create structures for future learning"
+  default_prompt: "Use $note-scaffolding to create a learning structure without inventing the knowledge that the user has not studied yet."

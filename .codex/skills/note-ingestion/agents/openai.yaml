@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Ingestion"
+  short_description: "Absorb supplied content into durable notes"
+  default_prompt: "Use $note-ingestion when source material must be extracted into knowledge before it can be placed and written into the repository."

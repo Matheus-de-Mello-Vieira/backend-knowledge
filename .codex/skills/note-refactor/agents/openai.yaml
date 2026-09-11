@@ -1,0 +1,4 @@
+interface:
+  display_name: "Note Refactor"
+  short_description: "Refactor knowledge across note boundaries"
+  default_prompt: "Use $note-refactor to relocate, merge, split, or deduplicate note content through the canonical placement, boundary, mutation, writing, and link skills."
