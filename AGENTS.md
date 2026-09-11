@@ -100,13 +100,14 @@ Ownership, placement, and boundary vocabulary describes repository architecture 
 
 Write primarily as concise technical study notes: make conceptual dependencies explicit while using structured decomposition aggressively enough to keep the material scannable.
 
-Treat the local dependency structure as a **conceptual partial order**. First determine which ideas must be understood before others and make those relationships explicit. Then apply a second-stage retrieval test: after the necessary context or dependency is established, expose independently retrievable consequences, properties, constraints, alternatives, or observations as bullets when doing so improves scanning. A causal section may therefore establish a short prose spine and then fan out into scannable branches.
+Treat the local dependency structure as a **conceptual partial order**. First determine which ideas must be understood before others and make those relationships explicit. Then apply a second-stage retrieval test. Preserve in prose only the minimum **causal spine** required to establish causality, transition, scope, qualification, contrast, or convergence. After that context is established, inspect the remaining claims individually: facts that depend only on the established context, can be understood independently of one another, and share a coherent semantic dimension should be exposed as scannable branches when that improves retrieval. A claim may be causally downstream without needing to remain prose.
 
 ### Encourage
 
 - Lead with the definition, mechanism, distinction, or question the section exists to explain.
 - Identify the local dependency structure before choosing formatting: which ideas depend on earlier ideas, which are sibling branches, which are subordinate details, and which are genuinely ordered steps.
-- Use only the minimum prose necessary to make each dependency, transition, or convergence explicit; then apply the retrieval test to identify facts that are independently useful to scan under that established context.
+- Use only the minimum prose necessary to make each dependency, transition, scope condition, qualification, or convergence explicit; then inspect the residual claims individually for retrieval-oriented decomposition.
+- Treat several consecutive explanatory paragraphs as a trigger to check whether some statements merely inherit context already established above. This is a review heuristic, not a paragraph-count quota.
 - Explain causally: problem → mechanism → consequence → trade-off.
 - Use prose to express dependency edges, transitions, contrasts, and conceptual progression. Prose may introduce a group of sibling ideas and resume afterward to connect that group to the next concept.
 - Use **labeled bullets** for independently retrievable sibling properties, components, alternatives, responsibilities, states, mechanisms, or other concepts whose concise stable names improve retrieval and comparison.
@@ -118,12 +119,14 @@ Treat the local dependency structure as a **conceptual partial order**. First de
 - Compare related concepts across shared dimensions when comparison clarifies the distinction.
 - Progress from the smallest useful model to the depth naturally owned by the current note.
 - Preserve important terminology, qualifications, uncertainty, limitations, and implementation-specific variation.
+- Preserve supported claims and relationships rather than the source's paragraphing, labels, grouping, or taxonomy; reorganize weak source categorization when the same knowledge can be represented more accurately without semantic loss.
 - Use direct, precise language and active voice where appropriate.
 
 ### Discourage
 
 - Turning every sentence into a bullet or every idea into a heading.
 - Using bullets merely because statements are short or because a list looks more scannable; conceptual independence, retrieval value, and a coherent semantic dimension must justify the sibling structure first.
+- Keeping independently retrievable claims in residual prose merely because they originated in the same causal explanation.
 - Inventing bold labels for points that do not have useful stable names.
 - Long introductions that delay the concept.
 - Dense paragraphs that combine unrelated topics.
@@ -132,6 +135,7 @@ Treat the local dependency structure as a **conceptual partial order**. First de
 - Examples or case studies that become longer than the mechanism they exist to illustrate.
 - Important conclusions buried after lengthy setup.
 - Mechanical overuse of tables, diagrams, callouts, or formatting.
+- Preserving a source taxonomy merely because it already exists when its items are not true semantic peers.
 - Unexplained jargon, vague wording, unsupported superlatives, invented precision, or silent changes in scope or certainty.
 
 ## Markdown conventions
@@ -139,13 +143,13 @@ Treat the local dependency structure as a **conceptual partial order**. First de
 - Use exactly one `#` heading for the note title.
 - Use `##` for major conceptual units and deeper headings only when the content justifies them.
 - Do not number headings unless the material has an inherent order, lifecycle, or dependency.
-- Use paragraphs to express the minimum conceptual dependencies and transitions required for understanding, then resume prose when another dependency must be established.
+- Use paragraphs for the minimum conceptual dependencies and transitions required for understanding, then resume prose when another dependency must be established.
 - Use bullets for independently retrievable sibling ideas that can be understood in any order under the established context and share a coherent semantic dimension. Use labels when the siblings have stable names that aid retrieval; leave them unlabeled when labels would be artificial.
 - Use numbered lists for chronological procedures, algorithms, protocols, lifecycles, state transitions, or other cases where the order is part of the meaning.
 - Use fenced code blocks with the correct language identifier. Keep examples minimal, valid, and relevant.
 - Define every symbol in an equation and explain its operational meaning.
 - Use tables only for concise comparison across repeated dimensions, then explain the consequential pattern in prose.
-- Use small Mermaid diagrams only when relationships, branches, loops, topology, or state transitions are materially clearer visually.
+- Use small Mermaid diagrams only when relationships, loops, topology, interactions, parallel flows, dependencies, or state transitions are materially clearer visually than in compact prose or a numbered list. Branching by itself is not sufficient reason to introduce a diagram.
 - Never use ASCII-art diagrams.
 - Use Obsidian callouts for secondary material such as examples, warnings, terminology clarifications, implementation-specific observations, practical inspection tips, or architectural stories. The main body should retain ownership of the theory.
 
@@ -168,6 +172,7 @@ Repository mutation requires explicit user intent. Conceptual questions, searche
 - Preserve valid internal links and create new links only when the destination is known to exist.
 - Use paths relative to the current note and update affected links or anchors when moving content.
 - Preserve useful existing content. Integrate missing explanations where the reader first needs them, then remove nearby repetition or contradiction.
+- Preserve supported technical claims, relationships, qualifiers, examples, and scope during structural rewrites; source paragraphing, list structure, labels, grouping, and taxonomy are not fidelity requirements when a different representation preserves the knowledge more accurately.
 - Make the smallest coherent edit that resolves the request **after** determining the correct conceptual home.
 
 ## Skill architecture
