@@ -36,7 +36,9 @@ Determine mutation intent from the user's request, not from punctuation or a fix
 
 Write as coherent, scannable explanatory notes. Choose local representation from the conceptual dependency structure rather than treating prose or bullets as a section-wide default.
 
-Treat nearby ideas as a **conceptual partial order**. First determine whether one idea must be understood before another and make that dependency explicit. Then apply a second-stage retrieval test: once the necessary context or dependency is established, expose independently retrievable consequences, properties, constraints, alternatives, or observations as bullets when that improves scanning. Do not let the presence of a causal relationship force its entire surrounding region into prose.
+Treat nearby ideas as a **conceptual partial order**. First determine whether one idea must be understood before another and make that dependency explicit. Then apply a second-stage retrieval test. Preserve in prose only the minimum **causal spine** needed to establish causality, transition, scope, qualification, contrast, or convergence. Once that context is established, inspect the remaining claims individually rather than leaving the whole causal region in prose.
+
+A claim may be causally downstream without requiring prose adjacency. If it depends only on context already established above, can be understood independently of neighboring claims, and belongs to the same semantic dimension as its peers, expose it as a scannable branch when that improves retrieval.
 
 Use structured formatting according to that relationship:
 
@@ -46,10 +48,12 @@ Use structured formatting according to that relationship:
 - use **nested bullets** for consequences, qualifications, submechanisms, or details owned by the parent item;
 - use **numbered lists** for procedures, protocols, algorithms, lifecycles, state transitions, or other relationships where sequence itself is part of the meaning;
 - use tables only when several entities must be compared across the same dimensions;
-- use Mermaid only when branches, loops, topology, dependencies, or state transitions are materially clearer visually;
+- use Mermaid only when topology, interaction, loops, parallel flows, dependencies, or state transitions are materially clearer visually than in compact prose or a numbered list; the mere presence of branching is not sufficient;
 - use callouts for secondary examples, warnings, caveats, terminology clarifications, implementation variance, practical inspection, or architectural stories.
 
-A causal subject does not require one continuous paragraph. Use the minimum prose necessary to establish why one concept follows from another, then expose independently retrievable consequences, properties, constraints, alternatives, or branches as bullets when that improves scanning, and resume prose when another dependency or convergence must be explained.
+A causal subject does not require one continuous paragraph. First establish the causal spine. Then inspect the residual claims individually: properties, consequences, constraints, responsibilities, alternatives, observations, or examples that now rely only on the established context should become labeled or unlabeled bullets when they form a coherent sibling set and scanning improves. Resume prose when another dependency, transition, qualification, or convergence must be explained.
+
+Several consecutive explanatory paragraphs should trigger an explicit decomposition check. This is a review heuristic rather than a quota: two strong siblings may justify bullets, while many tightly dependent statements may still require prose.
 
 Prefer labeled bullets when sibling items have stable names worth retrieving later. Prefer unlabeled bullets when the sibling structure is real but labels would be artificial. Bullet siblings must share a coherent semantic dimension, not merely a common parent: they should answer the same implicit question in comparable terms rather than mixing states, events, transitions, or actors. Do not use bullets solely because the sentences are short or because a list looks easier to scan; the items must first be locally independent and independently retrievable under the established context.
 
@@ -70,11 +74,11 @@ A note should be complete with respect to **its own subject and abstraction leve
 
 ## Rewrite preservation
 
-When restructuring existing material, change the representation without silently changing or losing the supported knowledge.
+When restructuring existing material, preserve the supported knowledge, not the source representation.
 
 Before a substantive rewrite, identify the distinct technical claims, relationships, qualifiers, exceptions, caveats, constraints, examples, terminology, and meaningful scope carried by the source passage. Reorganize those units according to the repository's explanatory grammar, then compare the result with the original and confirm that every unique supported unit remains represented unless its removal was explicitly authorized as duplication, correction, irrelevance, or scope cleanup.
 
-A style-focused rewrite may change wording, ordering, paragraph/list structure, and local transitions, but it must not silently change the set or semantic strength of supported technical claims. Reformatting prose into bullets, steps, tables, or other structures must preserve semantic coverage rather than compressing away unique information.
+A style-focused rewrite may change wording, ordering, paragraph/list structure, labels, grouping, local transitions, and taxonomy when needed to represent the supported relationships more accurately. It must not silently change the set or semantic strength of supported technical claims. Reformatting or reclassification must preserve semantic coverage rather than preserving a weak source categorization merely because it already exists.
 
 ## Modal precision
 
@@ -125,7 +129,8 @@ Use repository-local Markdown links according to `AGENTS.md`.
 - Long introductions that delay the concept.
 - A bullet for every sentence or a heading for every idea.
 - Using bullet formatting to hide a dependency chain that should be explicit.
-- Dense prose that hides genuinely independent sibling ideas that would scan more clearly as bullets.
+- Dense prose that retains independently retrievable sibling facts after their shared context has already been established.
+- Preserving source paragraphing, labels, grouping, or taxonomy when they misrepresent the actual relationships among the claims.
 - Extended narrative where direct causal explanation would be clearer.
 - Repetitive explanations, weak transitions, filler, praise, and generic conclusions.
 - Important rules or conclusions buried after lengthy setup.
@@ -169,8 +174,10 @@ Before finalizing an authorized edit, verify that:
 - adjacent implementation or application detail has not taken over the subject;
 - duplicated same-level explanations were not introduced;
 - terminology, scope, qualifiers, and exceptions remain faithful to the sources;
-- structural rewrites preserve every unique supported technical claim, relationship, qualifier, caveat, constraint, example, and exception unless removal was explicitly authorized;
-- the local representation matches the conceptual partial order: dependencies and transitions are explicit, sibling ideas are exposed as bullets when that improves scanning, stable named siblings use labels when useful, and ordered relationships use numbering when sequence is part of the meaning;
+- structural rewrites preserve every unique supported technical claim, relationship, qualifier, caveat, constraint, example, and exception unless removal was explicitly authorized, without treating source paragraphing, grouping, labels, or taxonomy as preservation requirements;
+- the local representation matches the conceptual partial order and causal-spine decomposition: dependencies and transitions are explicit; once their context is established, residual claims are inspected individually and independently retrievable sibling ideas are exposed when scanning benefits; bullet groups share a coherent semantic dimension; stable named siblings use labels when useful; and ordered relationships use numbering when sequence is part of the meaning;
+- several consecutive explanatory paragraphs have been checked to confirm that prose adjacency is still carrying conceptual meaning rather than merely inheriting established context;
+- Mermaid is used only when the visual representation is materially clearer than compact prose or numbering;
 - modal verbs and frequency qualifiers encode real technical contingency, with qualification attached to the narrowest claim that requires it;
 - prose and structured formatting match the logical shape of the knowledge;
 - examples clarify rather than dominate;
