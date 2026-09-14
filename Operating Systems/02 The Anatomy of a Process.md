@@ -35,55 +35,47 @@
 
 ## File Descriptors (FDs)
 
-In the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface used by Unix-like systems, a **File Descriptor (FD)** is a non-negative integer that a process uses as a local handle for an open I/O resource. The integer contains no resource data by itself; it is meaningful only as an index into that process's descriptor table.
+In the [POSIX](01%20Why%20an%20OS.md#Software%2C%20Hardware%2C%20and%20POSIX) interface used by Unix-like systems, a **File Descriptor (FD)** is a non-negative integer that a process uses as a local handle for an open I/O resource. The integer contains no resource data by itself; it is meaningful only as an index into that process's descriptor table.
 
 The important abstraction is that the process manipulates a small handle while the kernel owns the actual resource and its state. Many different resources participate in this model, so common operations such as `read()`, `write()`, and `close()` can accept the same descriptor type even though the resources behind those descriptors behave differently.
 
 ### Descriptor Indirection
 
-An FD reaches the underlying resource through several layers of indirection:
+An FD reaches an underlying resource through a chain of kernel-managed references:
 
-- **Descriptor Number:** The FD is a process-local non-negative integer. By itself, the number contains no resource data.
-- **Descriptor-Table Entry:** The number selects one entry in the process's descriptor table.
-    - Properties attached to this entry remain descriptor-specific.
-    - The close-on-exec flag, for example, belongs to an individual descriptor rather than to every other descriptor that may refer to the same open resource.
-- **Shared Open Resource State:** The descriptor-table entry refers to kernel-maintained state for an already-open resource.
-    - For regular files, POSIX describes an **open file description** that stores shared state such as the current file offset and file-status flags.
-    - Those properties are not universal to every descriptor-backed resource; sockets and pipes, for example, are non-seekable and maintain different resource-specific state.
-- **Resource-Specific Kernel Object:** The final object depends on what was opened.
-    - A regular file eventually reaches filesystem state.
-    - A socket reaches networking state.
-    - A pipe reaches kernel pipe state.
-    - A device reaches driver-specific state.
+```mermaid
+flowchart LR
+    subgraph P["One process"]
+        FD["FD 3"] -->|indexes| ENTRY["Descriptor-table entry"]
+    end
 
-Opening the same regular file twice creates independent open file descriptions even though both ultimately refer to the same filesystem object. The descriptors can therefore maintain independent file positions:
+    subgraph K["Kernel-managed state"]
+        OFD["Open file description"] -->|references| RESOURCE["Underlying resource"]
+    end
 
-```c
-int a = open("data.txt", O_RDONLY);
-int b = open("data.txt", O_RDONLY);
+    ENTRY -->|references| OFD
 ```
 
-By contrast, `dup()` creates another descriptor referring to the same already-open resource state:
+- **Descriptor number:** The FD is a process-local non-negative integer. By itself, the number contains no resource data.
+- **Descriptor-table entry:** The number selects an entry in the calling process's descriptor table. Properties attached to this entry remain descriptor-specific; the close-on-exec flag, for example, does not apply to every other descriptor that refers to the same open resource.
+- **Shared open-resource state:** The entry refers to kernel-maintained state for an already-open resource. For a regular file, POSIX calls this state an **open file description**. It stores the current file offset and file-status flags and maintains the reference to the underlying filesystem object.
+- **Underlying resource:** The final object depends on what was opened: a regular file reaches filesystem state, a socket reaches networking state, a pipe reaches kernel pipe state, and a device reaches driver-specific state.
 
-```c
-int a = open("data.txt", O_RDONLY);
-int b = dup(a);
-```
-
-- **Descriptor Duplication:** `dup()` duplicates the handle rather than the underlying resource.
-- **`fork()` Inheritance:** The same sharing principle applies when `fork()` creates a child process whose inherited descriptors refer to the same underlying open resources as the parent.
-- **Lifetime Consequence:** Shared resource state can remain alive until the final descriptor reference is released.
+Two descriptors can refer to the same open file description. Shared regular-file state, including the current offset, remains common to those descriptors. Pipes and sockets use the same descriptor-table model, but their shared kernel state has resource-specific semantics rather than regular-file position semantics.
 
 ### Resources Referenced by File Descriptors
 
 Because the descriptor is only a handle, the same integer abstraction can refer to several kinds of resources:
 
 - **Regular Files:** A descriptor can refer to an [open regular file and its filesystem-backed state](06%20Storage%20Management.md#Opening%20Files), including file-position behavior, file-specific operations, and persistence semantics.
-- **Standard Streams (`0`, `1`, `2`):** Processes conventionally begin with descriptors for standard input, standard output, and standard error. Their actual targets depend on how the process was launched and may be terminals, files, pipes, sockets, or other resources.
+- **Standard Streams (`0`, `1`, `2`):** On POSIX systems, `0` conventionally denotes standard input, `1` standard output, and `2` standard error. These descriptor-table positions can refer to terminals, files, pipes, sockets, devices, or other compatible resources; they can also be closed or reassigned. The C `stdin`, `stdout`, and `stderr` objects are higher-level buffered `FILE *` streams normally associated with these descriptors.
 - **Network Sockets:** A descriptor can refer to [kernel networking state representing a socket](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects).
 - **Pipes and FIFOs:** Descriptors can represent the read and write ends of byte streams used for inter-process communication.
 - [**Device Files (`/dev`)**](06%20Storage%20Management.md#%60/dev%60%20%E2%80%94%20Device%20Nodes)**:** Opening a device node can produce a descriptor whose operations are handled by the corresponding device driver.
-- **Event Facilities:** Interfaces such as Linux [`epoll`](07%20Socket%20Management.md#Readiness-Based%20I/O) can themselves return descriptors used to monitor other descriptors.
+- **Event Facilities:** Descriptor-based asynchronous I/O uses either an existing descriptor as the resource being monitored or a descriptor that refers to the coordination facility itself.
+    - **Repeated readiness sets:** [`select()`](07%20Socket%20Management.md#%60select%28%29%60%20Readiness%20Cycle), [`poll()`](07%20Socket%20Management.md#%60poll%28%29%60), [`pselect()` and `ppoll()`](07%20Socket%20Management.md#%60pselect%28%29%60%20and%20%60ppoll%28%29%60) monitor descriptors supplied by the caller for readiness.
+    - **Persistent readiness facilities:** Linux [`epoll`](07%20Socket%20Management.md#%60epoll%60%20Readiness%20Cycle), BSD-derived [`kqueue`](07%20Socket%20Management.md#%60kqueue%60%20Readiness%20Cycle), Solaris [event ports](07%20Socket%20Management.md#Solaris%20Event%20Ports), and Solaris [`/dev/poll`](07%20Socket%20Management.md#Solaris%20%60/dev/poll%60) retain readiness state in kernel-managed facilities. `epoll_create1()` and `kqueue()` return descriptors for their facilities; event ports and `/dev/poll` also use descriptors as their coordination handles.
+    - **Completion-based coordination:** Linux [`io_uring`](07%20Socket%20Management.md#%60io_uring%60%20Completion%20Cycle) submits operations that identify resources such as socket descriptors, and `io_uring_setup()` returns a descriptor for the ring itself.
 
 > [!note] Inspecting File Descriptors Through `/proc`  
 > On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
@@ -115,14 +107,88 @@ void stream_data(int read_fd, int write_fd) {
 
 ### Descriptor Operations and Lifetime
 
-Some operations act primarily on the descriptor relationship rather than on one particular resource type:
+Descriptor operations either create, change, or release the relationship between a process-local entry and kernel-managed resource state. `read()` and `write()` use that relationship to transfer bytes, but the resource determines what those transfers mean.
 
-- **`close()` — Release Reference:** Releases one descriptor's reference to its open resource. The underlying resource does not necessarily disappear immediately if another descriptor or kernel reference still keeps it alive.
-- **`dup()` / `dup2()` — Duplicate Handle:** Allocate another descriptor referring to the same already-open resource state.
-    - Shell redirection relies on this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
-- **`fork()` — Inherit References:** The child receives descriptor-table entries referring to the same underlying open resources as the parent.
-    - This is why inherited files, pipes, and listening sockets can remain shared after a process forks.
-- **Close-on-Exec — Control `exec()` Lifetime:** Descriptor-specific close-on-exec state controls whether a descriptor survives a successful `exec` transition into another program image.
+- **Acquire a descriptor:** Resource-specific creation or opening calls install a descriptor in the calling process's table. `open()` returns one for a regular file; `socket()` returns one for a socket; `pipe()` returns descriptors for pipe endpoints; and `accept()` returns one for an accepted socket.
+
+#### Independent and Shared Open File Descriptions
+
+Two independent calls to `open()` on the same pathname normally create independent open file descriptions. The descriptors reach the same filesystem object but maintain independent offsets:
+
+```c
+int a = open("data.txt", O_RDONLY);
+int b = open("data.txt", O_RDONLY);
+```
+
+If those calls return FDs 3 and 4, their descriptor entries refer to separate open file descriptions even though both reach `data.txt`:
+
+```mermaid
+flowchart LR
+    subgraph P["One process"]
+        FD3["FD 3"] --> E3["Descriptor entry"]
+        FD4["FD 4"] --> E4["Descriptor entry"]
+    end
+
+    subgraph K["Kernel-managed state"]
+        OFD_A["Open file description A<br/>offset and status flags"] --> FILE["data.txt filesystem object"]
+        OFD_B["Open file description B<br/>offset and status flags"] --> FILE
+    end
+
+    E3 --> OFD_A
+    E4 --> OFD_B
+```
+
+- **Transfer data — `read()` and `write()`:** These operations transfer bytes when the referenced resource supports them. Regular files use file-position semantics, sockets use networking semantics, and pipes use stream semantics.
+- **Release a reference — `close()`:** `close(fd)` removes one descriptor-table reference. The underlying open resource remains alive while other descriptors or kernel references still refer to it.
+
+#### `dup()` and `dup2()`
+
+Both operations add another descriptor-table entry that refers to the same open file description; they do not reopen the underlying resource.
+- `dup()` chooses a new available descriptor number.
+- `dup2(oldfd, newfd)` assigns the duplicate to `newfd`, replacing that descriptor's previous reference when necessary.
+
+Shell redirection uses this property: a shell can open a file and use `dup2()` to make standard output refer to the same open resource before launching another program.
+
+After `dup(3)` returns `4`, both descriptors in the same process refer to the same open file description:
+
+```mermaid
+flowchart LR
+    subgraph P["One process after dup(3)"]
+        FD3["FD 3"] --> E3["Descriptor entry"]
+        FD4["FD 4"] --> E4["Descriptor entry"]
+    end
+
+    OFD["Open file description A"] --> RESOURCE["Underlying resource"]
+    E3 --> OFD
+    E4 --> OFD
+```
+
+`dup2(3, 7)` first replaces FD 7's existing descriptor-table reference when one exists, then makes FD 7 refer to the same open file description as FD 3:
+
+```mermaid
+flowchart TB
+    subgraph BEFORE["Before dup2(3, 7)"]
+        direction LR
+        OLD3["FD 3"] --> OLD_E3["Descriptor entry"] --> OLD_A["Open file description A"]
+        OLD7["FD 7"] --> OLD_E7["Descriptor entry"] --> OLD_B["Open file description B"]
+    end
+
+    subgraph AFTER["After dup2(3, 7)"]
+        direction LR
+        NEW3["FD 3"] --> NEW_E3["Descriptor entry"] --> NEW_A["Open file description A"]
+        NEW7["FD 7"] --> NEW_E7["Descriptor entry"] --> NEW_A
+    end
+
+    BEFORE -->|"dup2(3, 7)"| AFTER
+```
+
+Replacing FD 7 releases only its previous descriptor-table reference. Its previous open resource remains alive if other descriptors or kernel references still refer to it.
+
+- **Control descriptor and open-resource flags — `fcntl()`:** `fcntl()` operates on both kinds of state. Close-on-exec is descriptor-specific, while file-status flags such as `O_NONBLOCK` belong to shared open-resource state when the resource supports them.
+- **Inherit references — `fork()`:** The child receives descriptor-table entries referring to the same underlying open resources as the parent. Inherited files, pipes, and listening sockets therefore remain shared after a process forks.
+- **Control survival across `exec()` — close-on-exec:** A successful `exec()` replaces the process image while open descriptors normally survive. A descriptor whose close-on-exec flag is set is closed during that transition.
+
+### Descriptor Limits and Exhaustion
 
 > [!note] FD Exhaustion
 > - **Per-Process Limit:** Operating systems limit how many descriptors a process may keep open. On Unix-like systems this is commonly controlled by a per-process resource limit such as `RLIMIT_NOFILE`.
@@ -220,7 +286,7 @@ str r3, #0xffeeddcc
 
 ### SIMD in Code Generation
 
-- **Auto-Vectorization:** While developers rarely write [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction,%20Multiple%20Data%20(SIMD)) assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
+- **Auto-Vectorization:** While developers rarely write [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction%2C%20Multiple%20Data%20%28SIMD)) assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
 - **Throughput Impact:** SIMD does not split a program into multiple instruction streams; instead, it dramatically increases throughput by applying a single decoded operation across multiple packed data lanes simultaneously.
 - **Machine-Code Transformation:** Because of auto-vectorization, the compiled instruction stream often stops being purely scalar. Source code explicitly written to process a single element per iteration will regularly compile into machine code that processes chunks of data all at once.
 - **Assembly Divergence:** This fundamental shift in register usage and data throughput is a primary reason why highly optimized assembly code can look completely different from the original human-readable source structure.
@@ -289,26 +355,20 @@ When one function calls another, the caller does not disappear. Its stack frame 
 
 For example:
 
-```text
-main()
-  └─ func1()
-       └─ func2()
+```mermaid
+flowchart TD
+    MAIN["main()"] --> FUNC1["func1()"] --> FUNC2["func2()"]
 ```
 
-While `func2` is executing, the stack conceptually contains:
+While `func2` is executing, the stack conceptually contains these frames, arranged from higher to lower addresses:
 
-```text
-Higher addresses
+```mermaid
+flowchart TB
+    MAIN_FRAME["main() frame"]
+    FUNC1_FRAME["func1() frame"]
+    FUNC2_FRAME["func2() frame<br/>(currently executing)"]
 
-┌─────────────────────┐
-│ main() frame        │
-├─────────────────────┤
-│ func1() frame       │
-├─────────────────────┤
-│ func2() frame       │ ← currently executing
-└─────────────────────┘
-
-Lower addresses
+    MAIN_FRAME ~~~ FUNC1_FRAME ~~~ FUNC2_FRAME
 ```
 
 Because the stack follows **Last-In, First-Out (LIFO)** ordering, `func2` must finish before `func1` can resume, and `func1` must finish before `main` can resume.
@@ -333,10 +393,9 @@ Each nested call can therefore add another frame to the stack. When functions re
 
 This chain of active function frames is the **call stack**. It records the current hierarchy of function calls and is what debuggers use to produce stack traces such as:
 
-```text
-func2()
-func1()
-main()
+```mermaid
+flowchart BT
+    MAIN_TRACE["main()"] --> FUNC1_TRACE["func1()"] --> FUNC2_TRACE["func2()"]
 ```
 
 ### Calling Conventions (Parameters & Returns)
@@ -462,7 +521,7 @@ When the page is resident, the page table translates the virtual address to a ph
 
 > [!example] Lucene — Searching an Index Larger Than Available RAM
 >
-> [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20(Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
+> [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20%28Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
 >
 > Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
 <!-- -->
