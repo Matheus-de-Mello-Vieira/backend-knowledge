@@ -14,6 +14,21 @@ Process management is the heartbeat of the operating system. It is the complex m
 - **Blocking vs. Runnable:** If a process needs to wait for a network packet or a slow disk read, the OS moves it to a `Blocked` state. It is immediately evicted from the CPU core so another program can use the hardware, consuming zero CPU cycles until a hardware interrupt wakes it back up.
 - **System Calls:** When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it triggers a hardware trap. The CPU pauses the application, elevates its privilege level (Ring 0), and hands control to the kernel to safely execute the requested work.
 
+## POSIX Process-Control Interface
+
+On POSIX systems, process control provides separate operations for creating a child, replacing a process's program, and collecting child state. A program can use these operations independently or compose them to let a parent retain control while a child becomes another program.
+
+- **Create a child — `fork()`:** `fork()` creates a child process as a copy of the calling process. The child initially executes the same program image at the instruction after `fork()`, but it has a separate address space. The parent and child choose different paths because `fork()` returns the child's PID in the parent and `0` in the child.
+    - The copy is a process-level starting state, not necessarily an immediate physical copy of every memory page. Many Unix-like systems use [copy-on-write](03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) so that both processes initially share physical pages and a write creates a private page for the writer.
+    - The child receives [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) that refer to the same open resources as the parent's corresponding descriptors. It can change or close its own descriptor-table entries without changing the parent's entries, although the referenced open resource remains shared while either process retains a reference.
+- **Replace the program image — `execve()`**: `execve()` replaces the calling process's program image with a new program. It does not create a process: execution begins at the new program's entry point under the caller's existing process identity. The previous code, data, heap, and stack no longer define execution; the new program receives a new initial memory image. File descriptors remain available unless they are marked close-on-exec.
+- **End the current process — `_exit()`:** `_exit()` terminates the calling process without returning. A child that cannot successfully execute its intended program must take another path, such as reporting the error and terminating.
+- **Collect child state — `wait()` and `waitpid()`:** These calls wait for a child state change and obtain its status. `wait()` selects an eligible child, while `waitpid()` can select a particular child. Waiting for a terminated child releases the kernel state retained for that child; without it, the terminated child remains a zombie until another process reaps it.
+
+> [!example] Shell command execution
+>
+> A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. A [shell pipeline](08%20Pipes.md#Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()` or `waitpid()`.
+
 ## Processes vs. Threads
 
 To understand how the kernel manages work, you must separate the concept of _resources_ from the concept of _execution_.
@@ -70,9 +85,9 @@ Daemons commonly:
 - expose functionality to other processes through sockets, pipes, files, or other IPC mechanisms.
 
 > [!info] Daemons and Services
-> 
+>
 > The terms **daemon** and **service** are closely related but describe slightly different perspectives. A daemon refers primarily to the **process performing the work**, while a service refers more broadly to the functionality being provided and managed.
-> 
+>
 > On Unix-like systems, services are commonly implemented by one or more daemon processes. On Windows, the corresponding operating-system concept is normally called a **Windows Service**.
 
 ### Common Use Cases
@@ -285,9 +300,7 @@ Linux exposes a similar idea differently. For ordinary time-sharing workloads, a
 
 Despite the name, a "higher" nice value actually means the task is being **nicer to other tasks**, so the scheduler gives it a smaller share of CPU time when there is contention.
 
-For example:
-
-`nice -n 10 ./program`
+For example: `nice -n 10 ./program`.
 
 starts a program with a lower scheduling preference than the default. Conversely, decreasing the nice value gives the task a greater share of CPU time, although increasing priority is normally restricted by permissions.
 
