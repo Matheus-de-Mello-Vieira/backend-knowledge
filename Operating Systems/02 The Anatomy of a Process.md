@@ -277,7 +277,7 @@ str r3, #0xffeeddcc
 >
 >
 >
-> - **Breaking Hardware Polling:** High-speed hardware often relies on "[polling](08%20More%20OS%20Concepts.md#Device%20drivers)," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
+> - **Breaking Hardware Polling:** High-speed hardware often relies on "[polling](99%20More%20OS%20Concepts.md#Device%20drivers)," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
 >
 >
 >
