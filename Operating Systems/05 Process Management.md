@@ -14,6 +14,43 @@ Process management is the heartbeat of the operating system. It is the complex m
 - **Blocking vs. Runnable:** If a process needs to wait for a network packet or a slow disk read, the OS moves it to a `Blocked` state. It is immediately evicted from the CPU core so another program can use the hardware, consuming zero CPU cycles until a hardware interrupt wakes it back up.
 - **System Calls:** When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it triggers a hardware trap. The CPU pauses the application, elevates its privilege level (Ring 0), and hands control to the kernel to safely execute the requested work.
 
+## POSIX Process-Control Interface
+
+On POSIX systems, process control provides separate operations for creating a child, replacing a process's program, ending a process, and collecting child state. A program can compose them to let a parent retain control while a child becomes another program; it can also use a spawn operation for common create-and-execute cases.
+
+- **Create a child — `fork()`:**
+    - **Starting state:** `fork()` creates a child process as a copy of the calling process. The child initially executes the same program image at the instruction after `fork()`, but it has a separate address space.
+    - **Return values:** The parent and child choose different paths because `fork()` returns the child's PID in the parent and `0` in the child.
+    - **Memory:** The copy is a process-level starting state, not necessarily an immediate physical copy of every memory page. Many Unix-like systems use [copy-on-write](03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) so that both processes initially share physical pages and a write creates a private page for the writer.
+    - **File descriptors:** The child receives [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) that refer to the same open resources as the parent's corresponding descriptors. It can change or close its own descriptor-table entries without changing the parent's entries, although the referenced open resource remains shared while either process retains a reference.
+- **Create and execute — `posix_spawn()` and `posix_spawnp()`:**
+    - **Operation:** These functions create a child to execute a specified program, combining the common creation-and-execution case without exposing a child-side interval in which application code runs before the new program begins.
+    - **Configuration:** Spawn attributes and file actions configure properties such as signal state, process group, and file-descriptor changes.
+    - **Availability:** They belong to POSIX's optional Spawn option, so an implementation need not provide them.
+- **Replace the program image — `execve()`:**
+    - **No new process:** `execve()` does not create a process; execution begins at the new program's entry point under the caller's existing process identity.
+    - **New image:** The previous code, data, heap, and stack no longer define execution; the new program receives a new initial memory image.
+    - **File descriptors:** File descriptors remain available unless they are marked close-on-exec.
+- **End the current process — `exit()` and `_exit()`:**
+    - **`exit()`:** Performs normal C-library termination work, including registered termination handlers and standard-I/O cleanup.
+    - **`_exit()`:** Terminates the calling process directly, without returning.
+    - **After `fork()`:** A child that cannot execute its intended program normally reports the error and uses `_exit()` so it does not repeat cleanup for runtime state inherited from the parent.
+- **Send a signal — `kill()`:**
+    - **Target:** `kill()` sends a signal to a process or process group, subject to permission checks.
+    - **Effect:** Sending a signal does not inherently terminate its target; the signal's disposition determines whether it terminates, stops, continues, or notifies the receiving process.
+- **Organize jobs — `setpgid()` and `setsid()`:**
+    - **`setpgid()`:** Assigns a process to a process group, which lets a shell signal and manage a job as a unit.
+    - **`setsid()`:** Creates a new session and process group and detaches the caller from its controlling terminal; traditional daemonization uses it to become independent of the launching terminal.
+- **Collect child state — `wait()`, `waitpid()`, and `waitid()`:**
+    - **`wait()`:** Selects an eligible child.
+    - **`waitpid()`:** Can select a particular child.
+    - **`waitid()`:** Supports selection by child identifier type and returns structured status information.
+    - **Reaping:** Waiting for a terminated child releases the kernel state retained for that child; without it, the terminated child remains a zombie until another process reaps it.
+
+> [!example] Shell command execution
+>
+> A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. For command launches whose setup fits its defined attributes and file actions, a shell can instead use `posix_spawn()` or `posix_spawnp()`. A [shell pipeline](08%20Pipes.md#Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()`, `waitpid()`, or `waitid()`.
+
 ## Processes vs. Threads
 
 To understand how the kernel manages work, you must separate the concept of _resources_ from the concept of _execution_.
@@ -70,9 +107,9 @@ Daemons commonly:
 - expose functionality to other processes through sockets, pipes, files, or other IPC mechanisms.
 
 > [!info] Daemons and Services
-> 
+>
 > The terms **daemon** and **service** are closely related but describe slightly different perspectives. A daemon refers primarily to the **process performing the work**, while a service refers more broadly to the functionality being provided and managed.
-> 
+>
 > On Unix-like systems, services are commonly implemented by one or more daemon processes. On Windows, the corresponding operating-system concept is normally called a **Windows Service**.
 
 ### Common Use Cases
@@ -104,7 +141,7 @@ The defining property of a daemon is instead its independence from an interactiv
 >
 > Containers are a useful example of why defining a daemon simply as a **background process** is incomplete.
 >
-> A web server running inside a [container](08%20More%20OS%20Concepts.md#Containers) is commonly the container's main process and may run as **PID 1** inside it. The server normally stays in the foreground rather than performing traditional daemonization. This allows the container runtime to directly observe its lifetime, collect its standard output and error, and detect when it terminates.
+> A web server running inside a [container](99%20More%20OS%20Concepts.md#Containers) is commonly the container's main process and may run as **PID 1** inside it. The server normally stays in the foreground rather than performing traditional daemonization. This allows the container runtime to directly observe its lifetime, collect its standard output and error, and detect when it terminates.
 >
 > Nevertheless, the server can still fulfill the role normally associated with a daemon: it is long-lived, operates independently of an interactive user session, waits for requests, and provides a persistent service.
 >
@@ -211,7 +248,7 @@ Therefore, the distinction between a "process switch" and a "thread switch" is m
 
 #### TLB Behavior
 
-Historically, switching from one process to another often required flushing the **Translation Lookaside Buffer (TLB)**. The TLB caches recent virtual-to-physical address translations, but without additional metadata the CPU cannot distinguish which process a cached translation belongs to. Since two processes can use the same virtual address while mapping it to completely different physical pages, retaining the previous process's TLB entries would be unsafe.
+Historically, switching from one process to another often required flushing the **Translation Lookaside Buffer (TLB)**. The TLB caches recent virtual-to-physical address translations, but witgit lhout additional metadata the CPU cannot distinguish which process a cached translation belongs to. Since two processes can use the same virtual address while mapping it to completely different physical pages, retaining the previous process's TLB entries would be unsafe.
 
 Modern CPUs reduce this overhead by tagging TLB entries with an **address-space identifier**. Different architectures use different names for this mechanism: ARM commonly uses **ASID (Address Space Identifier)**, while x86 uses **PCID (Process-Context Identifier)**.
 
@@ -285,9 +322,7 @@ Linux exposes a similar idea differently. For ordinary time-sharing workloads, a
 
 Despite the name, a "higher" nice value actually means the task is being **nicer to other tasks**, so the scheduler gives it a smaller share of CPU time when there is contention.
 
-For example:
-
-`nice -n 10 ./program`
+For example: `nice -n 10 ./program`.
 
 starts a program with a lower scheduling preference than the default. Conversely, decreasing the nice value gives the task a greater share of CPU time, although increasing priority is normally restricted by permissions.
 
