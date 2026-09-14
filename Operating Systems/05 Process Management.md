@@ -16,18 +16,40 @@ Process management is the heartbeat of the operating system. It is the complex m
 
 ## POSIX Process-Control Interface
 
-On POSIX systems, process control provides separate operations for creating a child, replacing a process's program, and collecting child state. A program can use these operations independently or compose them to let a parent retain control while a child becomes another program.
+On POSIX systems, process control provides separate operations for creating a child, replacing a process's program, ending a process, and collecting child state. A program can compose them to let a parent retain control while a child becomes another program; it can also use a spawn operation for common create-and-execute cases.
 
-- **Create a child — `fork()`:** `fork()` creates a child process as a copy of the calling process. The child initially executes the same program image at the instruction after `fork()`, but it has a separate address space. The parent and child choose different paths because `fork()` returns the child's PID in the parent and `0` in the child.
-    - The copy is a process-level starting state, not necessarily an immediate physical copy of every memory page. Many Unix-like systems use [copy-on-write](03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) so that both processes initially share physical pages and a write creates a private page for the writer.
-    - The child receives [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) that refer to the same open resources as the parent's corresponding descriptors. It can change or close its own descriptor-table entries without changing the parent's entries, although the referenced open resource remains shared while either process retains a reference.
-- **Replace the program image — `execve()`**: `execve()` replaces the calling process's program image with a new program. It does not create a process: execution begins at the new program's entry point under the caller's existing process identity. The previous code, data, heap, and stack no longer define execution; the new program receives a new initial memory image. File descriptors remain available unless they are marked close-on-exec.
-- **End the current process — `_exit()`:** `_exit()` terminates the calling process without returning. A child that cannot successfully execute its intended program must take another path, such as reporting the error and terminating.
-- **Collect child state — `wait()` and `waitpid()`:** These calls wait for a child state change and obtain its status. `wait()` selects an eligible child, while `waitpid()` can select a particular child. Waiting for a terminated child releases the kernel state retained for that child; without it, the terminated child remains a zombie until another process reaps it.
+- **Create a child — `fork()`:**
+    - **Starting state:** `fork()` creates a child process as a copy of the calling process. The child initially executes the same program image at the instruction after `fork()`, but it has a separate address space.
+    - **Return values:** The parent and child choose different paths because `fork()` returns the child's PID in the parent and `0` in the child.
+    - **Memory:** The copy is a process-level starting state, not necessarily an immediate physical copy of every memory page. Many Unix-like systems use [copy-on-write](03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) so that both processes initially share physical pages and a write creates a private page for the writer.
+    - **File descriptors:** The child receives [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) that refer to the same open resources as the parent's corresponding descriptors. It can change or close its own descriptor-table entries without changing the parent's entries, although the referenced open resource remains shared while either process retains a reference.
+- **Create and execute — `posix_spawn()` and `posix_spawnp()`:**
+    - **Operation:** These functions create a child to execute a specified program, combining the common creation-and-execution case without exposing a child-side interval in which application code runs before the new program begins.
+    - **Configuration:** Spawn attributes and file actions configure properties such as signal state, process group, and file-descriptor changes.
+    - **Availability:** They belong to POSIX's optional Spawn option, so an implementation need not provide them.
+- **Replace the program image — `execve()`:**
+    - **No new process:** `execve()` does not create a process; execution begins at the new program's entry point under the caller's existing process identity.
+    - **New image:** The previous code, data, heap, and stack no longer define execution; the new program receives a new initial memory image.
+    - **File descriptors:** File descriptors remain available unless they are marked close-on-exec.
+- **End the current process — `exit()` and `_exit()`:**
+    - **`exit()`:** Performs normal C-library termination work, including registered termination handlers and standard-I/O cleanup.
+    - **`_exit()`:** Terminates the calling process directly, without returning.
+    - **After `fork()`:** A child that cannot execute its intended program normally reports the error and uses `_exit()` so it does not repeat cleanup for runtime state inherited from the parent.
+- **Send a signal — `kill()`:**
+    - **Target:** `kill()` sends a signal to a process or process group, subject to permission checks.
+    - **Effect:** Sending a signal does not inherently terminate its target; the signal's disposition determines whether it terminates, stops, continues, or notifies the receiving process.
+- **Organize jobs — `setpgid()` and `setsid()`:**
+    - **`setpgid()`:** Assigns a process to a process group, which lets a shell signal and manage a job as a unit.
+    - **`setsid()`:** Creates a new session and process group and detaches the caller from its controlling terminal; traditional daemonization uses it to become independent of the launching terminal.
+- **Collect child state — `wait()`, `waitpid()`, and `waitid()`:**
+    - **`wait()`:** Selects an eligible child.
+    - **`waitpid()`:** Can select a particular child.
+    - **`waitid()`:** Supports selection by child identifier type and returns structured status information.
+    - **Reaping:** Waiting for a terminated child releases the kernel state retained for that child; without it, the terminated child remains a zombie until another process reaps it.
 
 > [!example] Shell command execution
 >
-> A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. A [shell pipeline](08%20Pipes.md#Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()` or `waitpid()`.
+> A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. For command launches whose setup fits its defined attributes and file actions, a shell can instead use `posix_spawn()` or `posix_spawnp()`. A [shell pipeline](08%20Pipes.md#Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()`, `waitpid()`, or `waitid()`.
 
 ## Processes vs. Threads
 
