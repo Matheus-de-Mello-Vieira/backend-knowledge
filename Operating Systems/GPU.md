@@ -303,6 +303,23 @@ That preparation creates a trade-off for application-provided pinned memory:
 - **Repeated transfer throughput:** Avoiding those extra operations can improve repeated high-throughput transfers.
 - **Memory pressure:** Pinned pages cannot be reclaimed as freely as ordinary pageable memory, so pinning excessive amounts of RAM reduces the operating system's ability to respond to memory pressure.
 
+### Device-Memory TCP Receive
+
+Pinned memory enables the conventional DMA transfer from host memory to a discrete GPU, but it does not remove every host-memory hop. When an application receives TCP data for GPU processing, the NIC normally DMA-writes the packet into host memory, the kernel processes the TCP connection, and the application receives the payload into a host buffer before transferring it to GPU memory. For bulk accelerator traffic, that staging path consumes host-memory and PCIe bandwidth even when the host has no need to inspect the payload.
+
+Linux **Device Memory TCP** (devmem TCP) removes that payload-staging step for a specialized receive path. The application exposes device memory as a DMA-BUF, binds it to a NIC receive queue, and opts in when receiving from the [TCP socket](07%20Socket%20Management.md#Receiving%20Data). A compatible NIC then splits each packet: its headers go to host memory for normal TCP/IP processing, while DMA writes the payload into the bound device buffer. The receive operation returns metadata identifying the buffer region, which the application returns after use so the NIC can reuse its finite buffer space.
+
+This path changes where payload bytes land, not TCP's transport responsibilities:
+
+- **Kernel processing remains necessary:** TCP still uses the host-resident headers to maintain connection state, sequence data, and perform its normal transport processing.
+- **Hardware and queue setup are required:** The NIC must support header splitting, and the receiving flow must be steered to a queue bound to the DMA-BUF. Data can fall back to ordinary host-memory delivery when a packet cannot be split at its header boundary.
+- **Payload inspection is constrained:** Because the payload remains in device memory, kernel components that need to read it, such as software checksumming, packet capture, or BPF payload inspection, cannot process that payload through the usual path.
+- **The benefit is workload-dependent:** Avoiding the host-memory staging copy reduces pressure on host-memory bandwidth and on PCIe paths through the root complex. It matters most for large device-to-device transfers, such as distributed accelerator workloads, rather than for small transfers whose setup and synchronization costs dominate.
+
+> [!note] Linux-Specific Interface
+>
+> Device Memory TCP is a Linux implementation for TCP sockets, not a general property of DMA or TCP. It requires driver, NIC, DMA-BUF, and application support; a regular TCP application continues to receive payload bytes through ordinary user-space buffers.
+
 ### The Transfer Penalty
 
 GPU acceleration must be evaluated across the complete operation rather than by comparing kernel execution time alone. Suppose transferring the input takes `100 ms`, GPU computation takes `2 ms`, and transferring the result back takes `20 ms`. The complete operation takes `122 ms`, even though the kernel itself executes in only `2 ms`.

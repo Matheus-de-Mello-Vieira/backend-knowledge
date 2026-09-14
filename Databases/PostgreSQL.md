@@ -24,6 +24,13 @@ When a backend needs a database page, PostgreSQL checks whether that page is alr
 
 Shared buffers are therefore part of PostgreSQL's own buffer-management layer. The operating system may additionally cache the same underlying files in its filesystem page cache, so PostgreSQL intentionally has both database-managed caching and OS-managed caching in the I/O path.
 
+> [!note] PostgreSQL 18 asynchronous I/O
+> A shared-buffer miss requires PostgreSQL to read a database page from its data files. Before PostgreSQL 18, the backend could spend that time waiting for a read to complete before it could submit later reads. Kernel read-ahead helped for sequential access, but the kernel does not know PostgreSQL's query plan and therefore cannot always predict which pages the operation will need.
+>
+> PostgreSQL 18 addresses this gap by letting a backend queue multiple eligible reads. Sequential scans, bitmap heap scans, and vacuum can therefore keep several reads in flight and use database-specific knowledge to prefetch pages, improving throughput when storage latency would otherwise serialize progress.
+>
+> The `io_method` setting selects the [asynchronous file-I/O execution model](../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files): `worker` uses PostgreSQL I/O worker processes, `io_uring` uses Linux `io_uring` when PostgreSQL was built with `liburing`, and `sync` executes eligible operations synchronously. This changes data-file read submission; shared-buffer caching and WAL durability remain separate concerns.
+
 ## Storage Files and OS I/O
 
 PostgreSQL ultimately stores relations and other persistent structures in ordinary filesystem files managed by the database server.
