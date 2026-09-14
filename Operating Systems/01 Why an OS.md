@@ -4,6 +4,12 @@ Strictly speaking, you don’t actually need an operating system; we use them to
 
 You could build software that communicates with the hardware directly—which would be highly specialized and significantly faster—but the code would be far more complex and error-prone. A middle ground is to extend the kernel to fit your specific purpose. However, you will still face limitations stemming from architectural decisions originally designed to make the kernel general-purpose.
 
+## Kernel and Operating System
+
+The **kernel** is the privileged core of an operating system. It manages scarce hardware resources such as CPU time, memory, storage, and I/O devices, and it exposes controlled abstractions through which programs use them.
+
+An **operating system** is broader than its kernel. It combines that core with user-space software such as libraries, command-line or graphical interfaces, system utilities, and application-management tools. The kernel enforces the boundary between programs and hardware; the surrounding software makes the machine usable.
+
 ## Software, Hardware, and POSIX
 
 An operating system and POSIX solve related but different portability problems.

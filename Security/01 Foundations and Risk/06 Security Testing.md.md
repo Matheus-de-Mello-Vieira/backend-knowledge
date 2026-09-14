@@ -50,7 +50,7 @@ Security testing is rarely a one-off event; to be effective, it must be treated 
 
 **2. Model Threats**
 
-- **The Goal:** Understand the ahttps://www.google.com/search?q=%23dversary before launching any tools, by [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md).
+- **The Goal:** Understand the adversary before launching any tools, by [Risk Management and Threat Modeling](02%20Risk%20Management%20and%20Threat%20Modeling.md).
 - **Key Actions:** Identifying the most critical business assets (e.g., the customer database) and determining the most likely threat actors (e.g., financially motivated hackers or malicious insiders). This ensures the subsequent tests mimic realistic attack scenarios.
 
 **3. Select Test Strategy**

@@ -48,7 +48,7 @@
 - **Name Origin:** The term is used because developers have had "zero days" to fix the issue before cybercriminals begin exploiting it.
 - **The Threat:** These vulnerabilities are highly dangerous as they allow attackers to take control of a system or network completely undetected. They are frequently used in highly targeted attacks or broader campaigns, such as malware and ransomware distribution.
 - **Protection:** To mitigate zero-day threats, it is crucial to keep software and operating systems updated with the latest [security patches](../05%20Architecture%20and%20Infrastructure%20Security/Patch%20Management%20and%20Security%20Updates.md). Additional measures include using firewalls, intrusion detection systems, updated antivirus software, and practicing safe browsing habits (e.g., avoiding suspicious links, files, and unknown emails).
-- **Recovery**: Recovery from a zero-day is uniquely difficult because a standard vendor patch is not immediately available. 
+- **Recovery**: Recovery from a zero-day is uniquely difficult because a standard vendor patch is not immediately available.
     - Similar to the process for [**Computer Viruses**](#Computer%20Viruses), initial efforts must focus on **[Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) and Isolation**—often by taking the affected service offline entirely—to prevent further damage.
     - Real-world recovery involves implementing temporary "workarounds" or configuration changes identified through [**Root Cause Analysis**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis) to block the exploit's specific behavior.
     - Full restoration should only be completed once the organization can validate that the "gap" is closed—either through a newly released official patch or a permanent architectural change—to ensure the system does not immediately face a re-incidence of the same attack.
@@ -72,7 +72,7 @@
 - **Execution Mechanism:** Spyware is commonly installed through bundled software, malicious email attachments, drive-by downloads, or as a secondary payload dropped by other malware such as Trojans.
 - **Impact:** Once installed, spyware can capture credentials, browsing history, keystrokes, screenshots, financial data, or other confidential information, enabling identity theft, fraud, surveillance, or follow-on compromise.
 - **Prevention:** Users should install software only from trusted sources, keep systems patched, use updated anti-malware protection, and remain cautious with unsolicited links, downloads, and attachments.
-- **Recovery**: Following the same logic as [**trojans**](#Trojans%20%28Trojan%20Horses%29), recovery must prioritize [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Account Isolation** and a total reset of all credentials, as the primary goal of spyware is the theft of access data. 
+- **Recovery**: Following the same logic as [**trojans**](#Trojans%20%28Trojan%20Horses%29), recovery must prioritize [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Account Isolation** and a total reset of all credentials, as the primary goal of spyware is the theft of access data.
     - Because spyware's main activity is sending data to external servers, security teams should use [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Types%20of%20digital%20forensics) to analyze volatile RAM data and identify active network connections before shutting down the device.
     - Restoration from clean backups is only effective after a [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis) identifies the entry point—such as a phishing link—and the system is patched to prevent the attacker from immediately harvesting new credentials.
 
@@ -86,9 +86,9 @@
     - **NoSQL Injection:** Targeting non-relational databases by manipulating query syntax (e.g., JSON).
 - **Impact:** Injection attacks primarily target **Confidentiality** (stealing data) and **Integrity** (modifying or deleting data). In severe cases, they can lead to a total system compromise or a [backdoors](#Backdoors) installation.
 - **Prevention:** - **Parameterized Queries:** The primary defense is the use of Prepared Statements, which ensure the interpreter treats input strictly as data, never as executable code.
-	- **Static Code Analysis (SAST):** Automated tools should be used during the development phase to scan the source code for "sinkholes"—specific lines of code where unvalidated user input reaches a sensitive interpreter.
-	- **Input Validation:** Implementing "allow-lists" to ensure input matches expected patterns (e.g., numeric-only fields).
-	- **Principle of Least Privilege:** Limiting the permissions of the database or application account so that even a successful injection cannot drop tables or access the OS.
+       - **Static Code Analysis (SAST):** Automated tools should be used during the development phase to scan the source code for "sinkholes"—specific lines of code where unvalidated user input reaches a sensitive interpreter.
+       - **Input Validation:** Implementing "allow-lists" to ensure input matches expected patterns (e.g., numeric-only fields).
+       - **Principle of Least Privilege:** Limiting the permissions of the database or application account so that even a successful injection cannot drop tables or access the OS.
 - **Recovery:** Recovery must begin with immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **Isolation** of the affected application or database to prevent further data exfiltration.
     - Security teams must conduct a [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis) to identify the specific vulnerable input field and apply code-level patches.
     - Following the logic of [spyware](#Spyware), a total reset of potentially compromised credentials is required if the attacker gained access to user tables.
@@ -129,21 +129,23 @@
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) by modifying or temporarily disabling the vulnerable API endpoints to stop ongoing data exfiltration.
     - Security teams must run an automated configuration audit to identify where the **CORS** policy or access control rules were misconfigured.
     - A comprehensive **Root Cause Analysis (RCA)** is required to determine the exact volume and scope of the data intercepted during the breach. Access control lists (ACLs) and server headers must be strictly hardened to legitimate origins before returning the data services to production.
+
 ### Defacement
 
 - **Definition:** An application- or infrastructure-layer attack where an actor maliciously alters the visual appearance, textual content, or structural components of an organization's public-facing digital asset (such as a website or web application).
 - **Execution Mechanism:** Defacement is explicitly classified as a **Modification** attack operating at the application layer. It relies entirely on the attacker first exploiting underlying software vulnerabilities—such as **[Injection Attacks](#Injection%20Attacks)** or **[Port Scanning and Brute Force](#Port%20Scanning%20and%20Brute%20Force)**—or leveraging **[Phishing](#Phishing)** and **[Spyware](#Spyware)** to harvest valid administrative credentials. Once unauthorized access to the web server, Content Management System (CMS), or source code repository is achieved, the attacker replaces legitimate files with their own fabricated content.
 - **Impact:** Defacement primarily targets **Integrity** and **Authenticity** by distorting official information and presenting an unauthorized interface to the public. While the physical availability of the underlying server may remain intact, the ultimate **Goal** is usually ideological sabotage, political activism, or reputational damage. It severely compromises consumer trust, signals that the organization's internal infrastructure is vulnerable, and can be used as a vector to host secondary malicious payloads or false announcements that fuel follow-on social engineering campaigns.
-	- **Prevention:** Standard network-layer protections cannot block unauthorized application-level content changes. Defenses must be embedded into deployment workflows and access configurations:
-	- **File Integrity Monitoring (FIM):** Utilizing specialized tools to continuously scan web directories against a known-good baseline, automatically alerting administrators or blocking unauthorized modifications to core system files.
-	- **Principle of Least Privilege:** Restricting web server process permissions to "read-only" for source directories, ensuring that a compromised web application runtime cannot overwrite local files on the disk.
-	- **Input Validation and Parameterized Queries:** Implementing rigorous code-level safeguards to eliminate injection vectors that grant unauthorized database or OS shell access.
-	- **Multi-Factor Authentication (MFA):** Enforcing cryptographic or multi-factor authentication across all management consoles, hosting dashboards, and CMS backends to mitigate credential theft.
+       - **Prevention:** Standard network-layer protections cannot block unauthorized application-level content changes. Defenses must be embedded into deployment workflows and access configurations:
+       - **File Integrity Monitoring (FIM):** Utilizing specialized tools to continuously scan web directories against a known-good baseline, automatically alerting administrators or blocking unauthorized modifications to core system files.
+       - **Principle of Least Privilege:** Restricting web server process permissions to "read-only" for source directories, ensuring that a compromised web application runtime cannot overwrite local files on the disk.
+       - **Input Validation and Parameterized Queries:** Implementing rigorous code-level safeguards to eliminate injection vectors that grant unauthorized database or OS shell access.
+       - **Multi-Factor Authentication (MFA):** Enforcing cryptographic or multi-factor authentication across all management consoles, hosting dashboards, and CMS backends to mitigate credential theft.
 - **Recovery:** Mirroring the restoration and security patching logic found in **[Injection Attacks](#Injection%20Attacks)** and **[Computer Viruses](#Computer%20Viruses)**, recovery requires taking the altered asset offline, diagnosing the entry breach, and validating system integrity:
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **service isolation**, either taking the vulnerable web application completely offline or routing traffic to a secure, static maintenance page to stop ongoing reputational damage and protect users from secondary scripts.
     - Security teams must enforce **Account Isolation** by terminating all active administrative sessions and forcing a mandatory reset of all portal and server credentials.
     - A comprehensive **[Root Cause Analysis (RCA)](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis)** is required to determine the exact security gap (e.g., an unpatched CMS vulnerability or a leaked password) that allowed entry, ensuring a code-level patch or configuration fix is applied.
     - Final restoration involves entirely wiping the compromised directories, restoring files from a trusted, offline backup, and performing a thorough [forensic investigation](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Digital%20Forensics) to confirm that no persistent **[backdoors](#backdoors)** or malicious configuration scripts were left behind before re-introducing the application to production traffic.
+
 ### Backdoors
 
 - **Definition:** A hidden method or entry point that bypasses a system’s standard authentication or encryption measures, providing unauthorized access to a computer, network, or software application.
@@ -161,13 +163,13 @@
 - **Execution Mechanism:** The term comes from "root"—the most privileged account on Unix/Linux systems. Rootkits modify core operating system structures, APIs, or even kernel-level components. Instead of relying on social engineering to trick the user continuously, a rootkit establishes its deep-level presence by hooking directly into the OS's internal pathways, filtering out any information that would reveal its files, processes, or open network connections.
 - **Impact:** Rootkits primarily target **Integrity** and long-term **Persistence**. Because they operate at the same or higher privilege level than the operating system itself, they can completely subvert local security controls. A rootkit can modify antivirus software so it skips scanning malicious files, make unauthorized configuration changes, or provide an attacker with permanent, invisible administrative access to the host server.
 - **Prevention:** Since rootkits modify low-level system code, regular signature-based antivirus software often cannot detect them once installed. Prevention relies heavily on securing the boot process using technical controls like [Secure Boot](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md#Virus%20and%20Malware%20Protection) and the **Trusted Platform Module (TPM)** discussed in [Windows Security](Windows%20Security.md#BitLocker%20Drive%20Encryption%20Integration) to ensure that only cryptographically signed, untampered firmware and operating system components are loaded. Regular kernel-level file integrity monitoring (FIM) and deploying advanced **Endpoint Detection and Response (EDR)** tools capable of behavioral analysis are also critical.
-- **Recovery:** Recovery from a rootkit is uniquely difficult because the operating system cannot be trusted to accurately report on its own status or cleanly delete the malware. Furthermore, because a rootkit operates with administrative or kernel-level privileges, you must always assume the infection has upgraded itself to a firmware-level **[bootkit](https://www.google.com/search?q=%23bootkits)**, so both have the same recoveries procedures.
-	- A comprehensive **[**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis)** must be conducted to identify and patch the original entry point (such as a [Trojans](#Trojans%20(Trojan%20Horses)) or an unpatched vulnerability) that allowed the attacker to gain administrative privileges in the first place.
+- **Recovery:** Recovery from a rootkit is uniquely difficult because the operating system cannot be trusted to accurately report on its own status or cleanly delete the malware. Furthermore, because a rootkit operates with administrative or kernel-level privileges, you must always assume the infection has upgraded itself to a firmware-level **[bootkit](#Bootkits)**, so both have the same recoveries procedures.
+       - A comprehensive **[**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis)** must be conducted to identify and patch the original entry point (such as a [Trojans](#Trojans%20(Trojan%20Horses)) or an unpatched vulnerability) that allowed the attacker to gain administrative privileges in the first place.
 
 ### Bootkits
 
 - **Definition:** An extremely dangerous and advanced variant of a [**rootkit**](#rootkits) that infects the computer’s master boot record (MBR), volume boot record (VBR), or malicious Unified Extensible Firmware Interface (UEFI) / BIOS firmware.
-- **Execution Mechanism:** While a standard rootkit targets the operating system kernel, a bootkit executes _before_ the operating system even begins to load. It hijacks the very early stages of the system startup sequence, allowing it to modify the OS kernel file in memory as it is being loaded from the disk, completely evading detection from any security controls operating inside the OS environment.
+- **Execution Mechanism:** While a standard rootkit targets the operating system kernel, a bootkit executes _before_ the operating system even begins to load. It compromises an early stage of the [boot chain](../../Operating%20Systems/99%20More%20OS%20Concepts.md#Boot%20chain), allowing it to modify the OS kernel file in memory as it is being loaded from the disk and evade security controls operating inside the OS environment.
 - **Impact:** Bootkits primarily target **Integrity** and achieve the highest possible level of **Persistence** on a compromised machine. Because they reside outside the standard file system, in the boot sector or firmware, they remain completely invisible to traditional antivirus software and Endpoint Detection and Response (EDR) agents. This gives the attacker permanent administrative control, allowing them to decrypt storage drives or inject other persistent payloads like [**spyware**](#spyware) or [**backdoors**](#backdoors) on every single boot.
 - **Prevention:** Standard operating system protections are entirely bypassed by bootkits. Defenses must be hardware- and firmware-based, strictly utilizing [UEFI Secure Boot](../05%20Architecture%20and%20Infrastructure%20Security/Linux%20Endpoint%20Security.md#Virus%20and%20Malware%20Protection) to ensure that only cryptographically signed bootloaders can execute. Additional protections include enabling **Trusted Boot** and leveraging a **Trusted Platform Module (TPM)** for measured boot validation, as discussed in [Windows Security](../05%20Architecture%20and%20Infrastructure%20Security/Windows%20Security.md#BitLocker%20Drive%20Encryption%20Integration), keeping the motherboard's BIOS/UEFI firmware updated, and password-protecting the BIOS to prevent unauthorized boot-order changes.
 - **Recovery:** Recovery from a bootkit is one of the most difficult challenges in incident response because the underlying hardware's boot process itself cannot be trusted.
@@ -199,17 +201,18 @@
 - **Common Fraud Scenarios:** Purchasing cell phones or vehicles, financing electronics, and opening shell companies using stolen data.
 - **Equipment Theft:** The physical loss or theft of electronic devices (laptops, smartphones, tablets), leading to unauthorized access to personal, financial, or corporate data.
 - **Prevention:**
-    - *For Equipment:* Install remote tracking/wiping software, use strong device passwords, and keep security software updated.
-    - *For Identity:* Be vigilant against [phishing](#phishing), never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
+    - _For Equipment:_ Install remote tracking/wiping software, use strong device passwords, and keep security software updated.
+    - _For Identity:_ Be vigilant against [phishing](#phishing), never share personal data on untrusted sites, monitor financial accounts regularly, and report suspicious activities immediately.
 
 ### Hardware and Power Failures
 
 - **Hardware Failures:** The breakdown of physical computer components due to natural wear and tear, malfunctions, physical damage, or even cyberattacks (like DDoS) that overwork the hardware. This leads to service interruptions and potential data loss.
 - **Power Failures:** Disruptions in the electrical supply caused by grid outages, lightning strikes, or faulty power equipment, which can instantly interrupt services and cause data loss.
 - **Prevention:**
-    - *Hardware:* Implement regular monitoring, diagnostic testing, data backups, firmware updates, and strong encryption/passwords.
-    - *Power:* Install backup power systems (such as generators or Uninterruptible Power Supplies - UPS), perform regular electrical maintenance, and utilize surge protectors to defend against power spikes.
-### **Insider Threats**
+    - _Hardware:_ Implement regular monitoring, diagnostic testing, data backups, firmware updates, and strong encryption/passwords.
+    - _Power:_ Install backup power systems (such as generators or Uninterruptible Power Supplies - UPS), perform regular electrical maintenance, and utilize surge protectors to defend against power spikes.
+
+### Insider Threats
 
 - **Definition:** Security threats that originate from within the organization, such as employees, former employees, contractors, or business associates who have authorized access to the network, system, or data.
 - **Execution Mechanism:** Unlike external attackers who must bypass the perimeter, insider threats leverage their legitimate access to bypass standard security controls. This can manifest as **Human Error** (accidental) or **Sabotage** (intentional).
@@ -228,6 +231,7 @@
     - **Forensic Investigation:** Conduct [live forensic](Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Types%20of%20digital%20forensics) to determine the full scope of the data accessed or modified.
     - [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis): Identify whether the breach was due to a process failure (Human Error) or a gap in technical controls (Sabotage).
     - **System Restoration:** Restore any deleted or corrupted data from clean, offsite backups and update access control lists (ACLs) to prevent a re-incidence.
+
 ## Network Threats
 
 We can classify the various types of network attacks and/or threats by the attacker's level of interaction with the data:
@@ -235,10 +239,10 @@ We can classify the various types of network attacks and/or threats by the attac
 - **Passive Attacks:** These are attacks that intercept the data traveling across the network but do not act upon or alter it in any way. They merely make a copy of the information (e.g., eavesdropping or wiretapping).
 
 We can also classify them by their impact on the physical flow of information between the source and destination:
-- **Interruption:** The information leaves the source but cannot reach the destination because it has been blocked or destroyed in some way. This is an attack on *Availability* (e.g., a Denial of Service attack).
-- **Interception :** The information leaves the source, but an attacker manages to intercept and copy it before it reaches the destination. This is an attack on *Confidentiality* (e.g., packet sniffing or wiretapping).
-- **Modification:** The information leaves the source and is intercepted by the attacker, who alters the data before forwarding it to the destination. This is an attack on *Integrity* (e.g., a Man-in-the-Middle attack altering a message).
-- **Fabrication:** The information is entirely manufactured by the attacker, who falsifies (spoofs) the source address of the information to deceive the destination into believing it came from a legitimate user. This is an attack on *Authenticity* (e.g., IP spoofing or injecting fake routing data).
+- **Interruption:** The information leaves the source but cannot reach the destination because it has been blocked or destroyed in some way. This is an attack on _Availability_ (e.g., a Denial of Service attack).
+- **Interception :** The information leaves the source, but an attacker manages to intercept and copy it before it reaches the destination. This is an attack on _Confidentiality_ (e.g., packet sniffing or wiretapping).
+- **Modification:** The information leaves the source and is intercepted by the attacker, who alters the data before forwarding it to the destination. This is an attack on _Integrity_ (e.g., a Man-in-the-Middle attack altering a message).
+- **Fabrication:** The information is entirely manufactured by the attacker, who falsifies (spoofs) the source address of the information to deceive the destination into believing it came from a legitimate user. This is an attack on _Authenticity_ (e.g., IP spoofing or injecting fake routing data).
 
 ### Types
 
@@ -263,6 +267,7 @@ We can also classify them by their impact on the physical flow of information be
     - Initial efforts must focus on immediate risk mitigation by auditing and activating privacy redaction services across all corporate domain portfolios to "cut off" the source of open-source intelligence harvesting.
     - Security operations teams must conduct a proactive review of the specific data points that were publicly accessible (such as a specific administrator's name) and alert internal security monitors or email filters to watch for incoming spear-phishing lures targeting those specific individuals or departments.
     - Finally, a specialized **Root Cause Analysis (RCA)** should be conducted to establish a standardized corporate policy ensuring that any newly registered domain or network asset automatically defaults to a strict privacy posture before being exposed to the public internet.
+
 #### IP Spoofing
 
 - **Definition:** A technique where an attacker creates Internet Protocol (IP) packets with a falsified source IP address to impersonate another computer system or user.
@@ -283,6 +288,7 @@ We can also classify them by their impact on the physical flow of information be
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) by isolating the attacker's physical node from the switch fabric and forcing a manual flush of the poisoned ARP caches across all affected client machines and the local router interfaces to restore legitimate paths.
     - Because data was actively intercepted, security teams must deploy **Session Termination** to globally invalidate active session tokens and initiate a mandatory credential reset for any user profiles active during the period of interception.
     - A comprehensive **Root Cause Analysis (RCA)** must be completed to investigate the initial host compromise that allowed the attacker to gain local network access, ensuring switch port configurations are hardened with DAI before re-introducing the segment to production.
+
 #### Man-in-the-Middle (MitM)
 
 - **Definition:** A type of network attack where an attacker intercepts and potentially alters the communication between two parties who believe they are communicating directly with each other.
@@ -302,6 +308,7 @@ We can also classify them by their impact on the physical flow of information be
 - Following the network isolation logic discussed in [**Computer Viruses**](#Computer%20Viruses), DoS recovery begins with [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) by identifying and blocking the attack source (using techniques like ACLs or blackholing).
     - Restoration focuses on clearing processing queues and re-enabling systems that were forced offline or "hung" by the surge.
     - Recovery is only complete after a [**Root Cause Analysis (RCA)**](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis) is used to update filtering rules and adjust resource scaling policies to better handle similar traffic spikes in the future.
+
 #### Teardrop Attack
 
 - **Definition:** A specific type of network hardware and protocol exploit where an attacker sends fragmented, malformed Internet Protocol (IP) packets with overlapping offsets to a target machine.
@@ -315,6 +322,7 @@ We can also classify them by their impact on the physical flow of information be
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **network isolation**, temporarily cutting off the affected network interface or updating upstream firewall Access Control Lists (ACLs) to drop incoming fragmented packets from the attacking source.
     - Because the attack causes kernel-level failure, restoration requires a physical or remote power cycle to clear corrupted memory processing queues and re-enable systems that were forced offline or "hung" by the malformed packets.
     - A comprehensive **[Root Cause Analysis (RCA)](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis)** must be completed to identify why the host's operating system failed to discard the overlapping fragments, leading directly to the deployment of vendor security patches or OS updates to close the underlying network stack vulnerability permanently before returning the machine to production.
+
 #### Malformed Packet Attack
 
 - **Definition:** A type of network infrastructure exploit where an attacker intentionally crafts and transmits network packets that violate established protocol specifications (RFCs) or contain invalid, corrupted, or contradictory header fields.
@@ -328,6 +336,7 @@ We can also classify them by their impact on the physical flow of information be
     - Initial efforts must focus on immediate [Containment](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Containment) through **network isolation** or updating upstream boundary rules to filter out the specific anomalous packet structure, stopping ongoing disruption.
     - Because the attack results in a kernel-level failure or a locked system state, restoration requires a physical or remote power cycle (reboot) to clear the corrupted buffer processing queues and restore standard availability.
     - A comprehensive **[Root Cause Analysis (RCA)](../06%20Security%20Operations%20and%20Governance/Incident%20Response,%20Forensics,%20and%20Disaster%20Recovery.md#Root%20Cause%20Analysis)** must be executed using packet captures from the edge monitors to determine the precise field abnormality that triggered the crash, allowing security engineering teams to deploy a targeted vendor patch or strict firewall filter to close the exploit vector entirely.
+
 #### DDoS (Distributed Denial of Service)
 
 - **Definition:** A sophisticated cyberattack aimed at overwhelming an online system or service with excessive network traffic from multiple sources, rendering it unavailable to legitimate users.
@@ -381,6 +390,7 @@ We can also classify them by their impact on the physical flow of information be
     - Because data may have been redirected through a malicious gateway, teams must enforce a global **Session Termination** to invalidate all active bearer tokens and perform an audit to verify that no core configuration data was exfiltrated during the diversion window.
 
 ## Specifics Threats
+
 - TCP: [SYN flood](01%20How%20Connections%20are%20Established.md#SYN%20flood), [Sockstress](02%20Reading%20and%20Sending%20Data.md#Sockstress) and [Optimistic ACKing](05%20TCP.md#Optimistic%20ACKing).
 - HTTP1.1: [Slowloris](07%20HTTP1.1.md#The%20Slowloris%20Attack)
 - HTTP2: [The HPACK Bomb](09%20HTTP2.md#The%20HPACK%20Bomb) and [The HPACK Bookkeeping Bomb](09%20HTTP2.md#The%20HPACK%20Bookkeeping%20Bomb)

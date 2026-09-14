@@ -330,13 +330,13 @@ Keeping reusable data on the GPU can consequently be as important as optimizing 
 
 ## GPU and the Operating System
 
-A GPU is a shared hardware resource whose ownership and protection are controlled by the operating system. An application running in [User Space](00%20System%20Architecture%20Overview.md#User%20Space%20vs%20Kernel%20Space) cannot freely manipulate privileged GPU state or grant itself unrestricted access to device resources because doing so could interfere with other processes or the operating system.
+A GPU is a shared hardware resource whose ownership and protection are controlled by the operating system. An application running in [user space](09%20Kernel%20and%20User%20Space.md#Privilege%20Boundary) cannot freely manipulate privileged GPU state or grant itself unrestricted access to device resources because doing so could interfere with other processes or the operating system.
 
 GPU software therefore commonly includes:
 
 - an application-facing runtime or API;
 - user-space driver components; and
-- a kernel-space [Device Driver](00%20System%20Architecture%20Overview.md#Device%20Drivers).
+- a kernel-space [device driver](99%20More%20OS%20Concepts.md#Device%20Drivers).
 
 The exact division depends on the operating system and GPU vendor. Operations that do not require privilege can remain in User Space, while the kernel driver controls operations that require authority over the physical device.
 

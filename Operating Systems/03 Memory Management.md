@@ -136,6 +136,8 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 
 - **The MMU Interception (Security & Isolation):** When a program attempts to execute a command at a specific virtual address, a hardware component inside the CPU core called the **Memory Management Unit (MMU)** intercepts the request. Because of this constant translation layer, every program operates under the illusion that it has the computer's memory entirely to itself. This completely prevents address conflicts and secures the data of individual applications from spying or corruption.
 
+The process's virtual address space also distinguishes ordinary application mappings from privileged kernel mappings. Page-table permissions prevent user-mode code from accessing privileged mappings even when they are present in that address-space layout. [User and kernel space](09%20Kernel%20and%20User%20Space.md) explains how that memory-protection boundary combines with CPU privilege modes and system calls.
+
 ### Paging & Fragmentation Trade-offs
 
 The OS manages this memory using fixed-size blocks called **Pages** (typically 4KB). While a program sees its virtual pages as a perfect, contiguous sequence, each virtual page is mapped to physical pages (often called _Frames_) that can be scattered chaotically across the RAM. By decoupling the addresses, the OS can piece together physical memory like a mosaic, filling in random gaps.
