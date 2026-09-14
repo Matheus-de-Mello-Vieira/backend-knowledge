@@ -29,6 +29,28 @@ A pipe buffer decouples producer and consumer only while it holds unread bytes o
 
 While an operation waits, its calling thread is in the operating system's [blocked state](05%20Process%20Management.md#Core%20Mechanics), allowing another runnable thread to use the CPU.
 
+## Readiness and Completion
+
+Pipes work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
+
+- **Readable read end:** The read end is readable when the pipe holds bytes or when an end condition is observable. A subsequent `read()` therefore either consumes available bytes or returns EOF after the buffer is empty and no write-end references remain.
+- **Writable write end:** The write end is writable when the pipe has capacity for a write to make progress. A writer still performs the `write()` after receiving the notification.
+
+A readiness-driven consumer follows this sequence:
+
+1. The consumer waits for the pipe read end to become readable.
+2. A producer writes bytes, or the last write-end reference closes.
+3. The readiness interface reports the state change.
+4. The consumer calls `read()` and handles bytes or EOF.
+
+Completion-based I/O instead submits a concrete operation, including its destination buffer, before data is available. A submitted pipe read remains pending until the system can perform the transfer, then reports a completion for that particular operation. The application therefore tracks outstanding operations and keeps each operation's buffer valid until its completion is processed.
+
+The two models differ in when the application supplies the I/O operation: readiness reports permission to attempt a read or write, while completion reports the result of work already submitted. An implementation can expose completion semantics while using readiness or polling internally. The same distinction applies to [readiness- and completion-based socket I/O](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared), where transport semantics add networking-specific concerns.
+
+### Buffering and Backpressure Boundary
+
+Pending reads do not increase the pipe's kernel buffer capacity. When a submitted read completes, it drains bytes from that buffer into its user-space destination buffer. Pre-submitting reads can therefore drain the pipe earlier and queue additional data in user-space memory; it moves the effective backpressure boundary downstream rather than increasing the pipe's bounded kernel buffer.
+
 ## EOF and Pipe Lifetime
 
 A reader observes EOF only after the pipe has no more buffered data and no process retains a write-end reference:
