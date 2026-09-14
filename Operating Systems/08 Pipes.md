@@ -16,6 +16,8 @@ A pipe exposes an ordered byte stream rather than discrete messages. A `read()` 
 
 Pipes are non-seekable: consuming bytes advances through the stream, but `lseek()` does not supply the position semantics of a regular file. This is one example of how [resource-specific operations](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations) remain different beneath the common descriptor interface.
 
+On Linux, [`splice()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20Descriptor%20Transfers%20and%20Zero-Copy) transfers bytes between a pipe and another compatible file-descriptor-backed resource without copying the payload through an application buffer. At least one descriptor must refer to a pipe; paths such as regular file → pipe and pipe → socket depend on endpoint support.
+
 > [!note] Pipes and Go Channels
 > Go channels transfer typed values and preserve value boundaries; pipes transfer untyped stream bytes. Both can use bounded buffering and impose blocking or backpressure when producer and consumer rates differ.
 

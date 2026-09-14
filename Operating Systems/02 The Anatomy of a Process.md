@@ -203,9 +203,16 @@ Beyond the common descriptor interface, operations depend on the resource behind
 - **Regular Files:** Operations such as [`lseek()`, `pread()`, and `pwrite()`](06%20Storage%20Management.md#Reading%20and%20Writing%20Files) use file-position semantics that do not apply to non-seekable resources.
 - **Sockets:** Operations such as [`bind()`, `listen()`, `accept()`, `connect()`, `send()`, and `recv()`](07%20Socket%20Management.md#POSIX%20Socket%20Interface) manipulate networking-specific state.
 
-#### File-to-Socket Transfers and Zero-Copy
+#### Specialized Descriptor Transfers and Zero-Copy
 
-Operating systems can expose specialized operations for moving data directly between different kinds of file-descriptor-backed resources. On Linux, `sendfile()` can transfer data from a regular file to a compatible output descriptor, such as a socket, without copying the payload through an application buffer.
+Linux exposes specialized operations for transferring unmodified bytes between compatible file-descriptor-backed resources without copying the payload through an application buffer. These operations are not interchangeable with generic `read()` and `write()` for every descriptor pair.
+
+- **`sendfile()`:** Transfers bytes from a regular file to a compatible output descriptor, such as a socket.
+- **`splice()`:** Transfers bytes to or from a pipe; at least one of its descriptors must refer to a [pipes](08%20Pipes.md#Pipes). It can support paths such as regular file → pipe and pipe → socket when the endpoints support the operation. 
+
+Both operations avoid application-buffer copies rather than every physical movement of data. Storage devices and network interfaces can still move bytes between memory and the device through DMA.
+
+##### File-to-Socket Transfers with `sendfile()`
 
 ##### Conventional File-to-Socket Path
 
