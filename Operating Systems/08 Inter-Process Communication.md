@@ -173,8 +173,6 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 | Independently started peers | Natural fit | Requires endpoint distribution |
 | Connection setup | Address-based connection lifecycle | Endpoints created already connected |
 | Filesystem pathname required | Only for pathname-based addressing | No |
-| Connected communication | Bidirectional for the connected socket types discussed here | Bidirectional |
-| Byte stream or record semantics | Determined by socket type | Determined by socket type |
 
 > [!example] Docker Daemon and `/var/run/docker.sock`
 > On Linux, Docker Engine uses `unix:///var/run/docker.sock` as its default local daemon endpoint. The pathname gives independently started clients such as the Docker CLI and other Engine API clients a stable address through which they can reach the same listener without receiving a descriptor in advance.
@@ -182,6 +180,12 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 > This naturally supports a **one-listener-to-many-clients** service model. The listening socket remains the shared rendezvous point, while each successful `accept()` creates a separate connected socket for one client.
 >
 > A `socketpair()` would instead create one already-connected pair of endpoints. The daemon could create many socket pairs, but every future client would still need another mechanism to receive its endpoint descriptor. The addressed Unix-domain socket solves that discovery and distribution problem directly: clients know one stable address, connect when needed, and receive an independent connection to the daemon.
+
+> [!example] Node.js `child_process.fork()` IPC
+> On Unix, [`child_process.fork()`](../Technologies/NodeJS/01%20Basics/04%20Internals.md#Child%20Processes%20and%20IPC) creates a parent-child IPC channel that libuv backs with a Unix-domain `SOCK_STREAM` socket pair. Because the parent creates the specific child and can distribute an endpoint during process creation, no stable address or listener is needed.
+
+> [!example] NGINX Master and Worker Control Channels
+> [NGINX](../Technologies/NGINX/01%20Introduction.md#Master%20Process%20and%20Worker%20Control) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
 
 The way peers obtain their endpoints is separate from the socket's data model:
 
@@ -223,7 +227,7 @@ Select an IPC mechanism from the required communication shape rather than from t
 
 - **Pipe or FIFO:** A bounded, unidirectional byte stream is sufficient. Use two channels when both peers must send independent byte streams.
 - **Socket pair:** Two known peers need an unnamed bidirectional socket channel.
-- **Unix-domain socket:** Local clients need to rendezvous with a local service through a Unix-domain address.
+- **Unix-domain socket:** Local clients need to rendezvous with a Unix-domain address.
 - **Loopback TCP/IP:** Local participants need Internet-domain addressing or TCP behavior that is also usable across hosts.
 - **Shared mapping:** Participants need access to the same data rather than a copied byte stream, and the design includes an explicit synchronization protocol.
 
