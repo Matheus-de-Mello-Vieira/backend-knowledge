@@ -140,7 +140,7 @@ title TCP Segment Header (32-bit width)
 112-127: "Window Size"
 128-143: "Checksum"
 144-159: "Urgent Pointer"
-160-191: "Options & Padding (Variable Length)"
+160-191: "Options & Padding (Variable)"
 192-223: "Data / Payload"
 ```
 
