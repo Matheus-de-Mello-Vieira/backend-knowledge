@@ -140,7 +140,7 @@ title TCP Segment Header (32-bit width)
 112-127: "Window Size"
 128-143: "Checksum"
 144-159: "Urgent Pointer"
-160-191: "Options & Padding (Variable)"
+160-191: "Options & Padding (Variable Length)"
 192-223: "Data / Payload"
 ```
 
@@ -199,6 +199,8 @@ sequenceDiagram
     Note right of Receiver: Still in transit
 
     Receiver-->>Sender: Optimistic ACK: Next Expected 2001
+    Note right of Receiver: Sent early!
+
     Note over Sender: Sender assumes zero network latency
     Note over Sender: Artificially inflates cwnd
 
