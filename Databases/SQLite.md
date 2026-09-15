@@ -8,7 +8,7 @@ SQLite is useful when an application needs structured, transactional local persi
 
 This makes SQLite well suited to mobile applications, desktop software, local caches, device software, command-line tools, and application-specific file formats. Instead of inventing a binary or JSON file format and writing custom indexing and transaction logic, an application can use SQLite as its persistent storage layer.
 
-Unlike [PostgreSQL](PostgreSQL.md#Main%20Point), there is no dedicated database server process accepting requests from many remote clients. SQLite executes in the same address space and usually the same thread that called it, so database operations are ordinary library calls rather than network or IPC requests.
+Unlike [PostgreSQL](PostgreSQL.md#Main%20Point), there is no dedicated database server process accepting requests from many remote clients. SQLite executes in the same address space and usually the same thread that called it, so database operations are ordinary library calls rather than network or [IPC](../Operating%20Systems/08%20Inter-Process%20Communication.md) requests.
 
 ## Execution Model
 

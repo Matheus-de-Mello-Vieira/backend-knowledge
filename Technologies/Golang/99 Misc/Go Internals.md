@@ -6,7 +6,7 @@ To understand why Go's concurrency is highly efficient, you must look at [how th
 
 ### Processes and OS Threads (The Kernel's Domain)
 
-- **Processes:** The ultimate resource container. The OS allocates each process a completely isolated virtual address space, managed by hardware Memory Management Units (MMU) and dedicated Page Tables. They cannot directly read each other's memory without heavy Inter-Process Communication (IPC) mechanisms like pipes or shared `mmap` files.
+- **Processes:** The ultimate resource container. The OS allocates each process a completely isolated virtual address space, managed by hardware Memory Management Units (MMU) and dedicated Page Tables. They cannot directly read each other's memory without heavy [Inter-Process Communication (IPC)](../../../Operating%20Systems/08%20Inter-Process%20Communication.md#Shared-Memory%20IPC) mechanisms like pipes or shared `mmap` files.
 - **OS Threads:** Threads exist within a process, natively sharing the parent's virtual memory (Heap, Data sections, and File Descriptor arrays). However, the OS kernel must still schedule these threads onto physical CPU cores, meaning context switching requires expensive CPU register saving and state restoration. Furthermore, the OS typically parachutes a fixed, contiguous memory block (often 8MB) for each thread's stack, which requires memory Guard Pages to prevent fatal Segmentation Faults.
 
 ### Goroutines (User-Space Threads)

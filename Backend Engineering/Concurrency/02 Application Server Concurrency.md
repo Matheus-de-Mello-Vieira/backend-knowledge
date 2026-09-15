@@ -32,7 +32,7 @@ A multi-process application runs several worker processes as part of the same ap
     - One process cannot normally access another process's private memory directly.
 - **CPU Parallelism:** Because each process contains at least one schedulable thread, workers from different processes can execute simultaneously on different CPU cores.
 - **Communication Cost:** Isolation makes communication less direct.
-    - Processes that need to exchange data must use Inter-Process Communication or explicitly mapped shared memory.
+    - Processes that need to exchange data must use [Inter-Process Communication](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Process%20Boundaries%20and%20Communication) or explicitly mapped shared memory.
     - If several processes modify the same shared state, that state still requires synchronization.
 - **Duplicated State:** Multiple processes duplicate some application and kernel state.
 - **Address-Space Switching:** Switching execution between threads belonging to different processes can additionally require changing the active address-space context.

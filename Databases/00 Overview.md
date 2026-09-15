@@ -12,7 +12,7 @@ A database is software that gives applications a structured way to persist, retr
 
 The most important distinction is not SQL versus key-value by itself. PostgreSQL is a **database server** that owns the database on behalf of many clients, while SQLite and LMDB are **embedded databases** whose engine executes inside the application process. SQLite then provides a full relational SQL interface, whereas LMDB deliberately exposes a much smaller ordered key-value abstraction.
 
-These differences affect almost every internal design choice: whether communication requires IPC or networking, where caches live, how concurrency is coordinated, how files are accessed, and how much responsibility is delegated to the operating system.
+These differences affect almost every internal design choice: whether communication requires [IPC](../Operating%20Systems/08%20Inter-Process%20Communication.md) or networking, where caches live, how concurrency is coordinated, how files are accessed, and how much responsibility is delegated to the operating system.
 
 ## Buffer Pools and Storage Caching
 
