@@ -120,8 +120,8 @@ A local loopback exchange exposes UDP as a sequence of independent datagrams, no
 
 The receiver and sender construct the destination `127.0.0.1:5501` before passing it to a socket operation.
 
-- **`AF_INET`:** Selects the IPv4 address family. `AF_INET6` selects IPv6 instead.
-- **`SOCK_DGRAM`:** Selects message-oriented datagram semantics. With `AF_INET`, protocol `0` selects the normal protocol for that type: UDP.
+- **`AF_INET`:** Places the socket in the IPv4 [socket family](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Families), so its endpoints use IPv4 addresses and UDP ports. `AF_INET6` provides the corresponding IPv6 family.
+- **`SOCK_DGRAM`:** Selects message-oriented datagram semantics. With `AF_INET`, protocol `0` selects the normal protocol for that family/type combination: UDP.
 - **`struct sockaddr_in`:** Stores an IPv4 socket address. `{0}` initializes every field to zero before the required fields are set.
     - **`sin_family`:** Must name the same address family as the socket.
     - **`sin_port`:** Stores the transport port in network byte order.
