@@ -227,7 +227,7 @@ Select an IPC mechanism from the required communication shape rather than from t
 
 - **Pipe or FIFO:** A bounded, unidirectional byte stream is sufficient. Use two channels when both peers must send independent byte streams.
 - **Socket pair:** Two known peers need an unnamed bidirectional socket channel.
-- **Unix-domain socket:** Local clients need to rendezvous with a Unix-domain address.
+- **Unix-domain socket:** Local clients need to rendezvous with a local service through a Unix-domain address.
 - **Loopback TCP/IP:** Local participants need Internet-domain addressing or TCP behavior that is also usable across hosts.
 - **Shared mapping:** Participants need access to the same data rather than a copied byte stream, and the design includes an explicit synchronization protocol.
 
