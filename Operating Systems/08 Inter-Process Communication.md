@@ -157,18 +157,38 @@ When `cat` reaches file EOF and exits, its write descriptor closes. After `grep`
 
 ## Unix-Domain Sockets and Socket Pairs
 
-<!-- TODO: Expand local socket addressing and rendezvous, then contrast an addressed Unix-domain socket with the unnamed connected endpoints returned by `socketpair()`. Preserve the distinction between socket directionality and socket type. Possible connections: [Socket Management — Sockets as Kernel Objects](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) for descriptor-backed socket state; [The Anatomy of a Process — Descriptor Operations and Lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) for inherited and duplicated endpoint references. -->
+Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
 
-Unix-domain sockets use the `AF_UNIX` address family for communication between processes on the same machine. A server can bind one to a local socket address and clients can connect to it; Unix-like systems commonly support pathname addresses, while details such as abstract namespaces are implementation-specific. The socket model adds bidirectional communication to the descriptor-based I/O model.
+An **addressed Unix-domain socket** provides a rendezvous mechanism. A server binds a [local Unix-domain address](07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) and, for connection-oriented socket types, listens for clients. Independently started processes can then create their own sockets and connect using that address. With a pathname-based address, the pathname identifies where the peers meet; after connection establishment, application data flows through the resulting socket endpoints rather than through the pathname itself.
 
-`socketpair()` instead creates two unnamed, already-connected socket endpoints. It is useful when two processes need a private bidirectional channel and can receive the endpoints through inheritance or another descriptor-distribution mechanism. A socket pair therefore replaces the two oppositely directed pipes that a bidirectional pipe design would otherwise require.
+For a connection-oriented addressed socket, the server typically creates a socket, binds its address, begins listening, and accepts connected endpoints as clients arrive. A client creates its own socket and connects to the server's address. The listening address therefore remains a stable rendezvous point while each accepted connection has its own endpoint state.
 
-The socket type determines the data model:
+`socketpair()` solves a different problem. It creates two unnamed, already-connected socket endpoints in one operation. No `bind()`, `listen()`, `connect()`, or `accept()` rendezvous is required. The processes must instead receive those endpoint descriptors through an existing relationship, commonly [descriptor inheritance across `fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface) or an explicit descriptor-passing mechanism.
 
-- **`SOCK_STREAM`:** Transfers an ordered byte stream. It does not preserve the boundaries between individual writes.
-- **`SOCK_SEQPACKET`:** Transfers ordered records and preserves message boundaries. Support depends on the address family and operating-system implementation.
+This makes the mechanisms useful under different process relationships:
 
-[Socket management](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) explains the shared kernel-object, buffer, lifetime, and readiness model behind socket descriptors.
+- **Addressed Unix-domain socket:** Processes need a stable local rendezvous point, including clients that start independently of the server.
+- **Socket pair:** The two peers are already related or the endpoints can be distributed directly, so a discoverable address is unnecessary.
+
+A socket pair therefore provides the bidirectional channel that would otherwise require two oppositely directed pipes when each peer needs an independent byte stream.
+
+The way peers obtain their endpoints is separate from the socket's data model:
+
+- **`SOCK_STREAM`:** Transfers an ordered byte stream and does not preserve individual write boundaries.
+- **`SOCK_SEQPACKET`:** Transfers ordered records while preserving message boundaries, where the address family and operating system support it.
+
+Both addressed Unix-domain sockets and socket pairs can use socket types supported by the platform. Addressability, directionality, and message-boundary semantics therefore describe separate properties of the channel.
+
+| Property | Addressed Unix-domain socket | `socketpair()` |
+| --- | --- | --- |
+| Peer rendezvous | Through a Unix-domain address | Not required |
+| Independently started peers | Natural fit | Requires endpoint distribution |
+| Connection setup | Address-based connection lifecycle | Endpoints created already connected |
+| Filesystem pathname required | Only for pathname-based addressing | No |
+| Connected communication | Bidirectional for the connected socket types discussed here | Bidirectional |
+| Byte stream or record semantics | Determined by socket type | Determined by socket type |
+
+[Socket management](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) provides the common descriptor-backed socket model; the address family and binding rules determine how an addressed local socket becomes discoverable.
 
 ## Stream Framing and Logical Channels
 
