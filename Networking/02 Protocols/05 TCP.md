@@ -199,8 +199,6 @@ sequenceDiagram
     Note right of Receiver: Still in transit
 
     Receiver-->>Sender: Optimistic ACK: Next Expected 2001
-    Note right of Receiver: Sent early!
-
     Note over Sender: Sender assumes zero network latency
     Note over Sender: Artificially inflates cwnd
 
@@ -245,8 +243,8 @@ A local loopback exchange exposes TCP as one connection with two endpoints. The 
 
 The C socket interface represents the endpoint separately from the socket descriptor. Both programs construct the same IPv4 destination, `127.0.0.1:5501`, before passing it to a socket operation.
 
-* **`AF_INET`:** Selects the IPv4 address family. `AF_INET6` selects IPv6 instead.
-* **`SOCK_STREAM`:** Selects an ordered byte-stream socket. With `AF_INET`, protocol `0` selects the normal protocol for that type: TCP.
+* **`AF_INET`:** Places the socket in the IPv4 [socket family](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Families), so its endpoints use IPv4 addresses and TCP ports. `AF_INET6` provides the corresponding IPv6 family.
+* **`SOCK_STREAM`:** Selects an ordered byte-stream socket. With `AF_INET`, protocol `0` selects the normal protocol for that family/type combination: TCP.
 * **`struct sockaddr_in`:** Stores an IPv4 socket address. `{0}` initializes every field to zero before the required fields are set.
     * **`sin_family`:** Must name the same address family as the socket.
     * **`sin_port`:** Stores the transport port in network byte order.
