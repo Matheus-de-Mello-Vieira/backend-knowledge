@@ -33,23 +33,17 @@ The `socket()` interface exposes these dimensions separately:
 socket(domain, type, protocol);
 ```
 
-- **Domain / Address Family:** Selects the addressing model. `AF_INET` uses IPv4 addresses and ports, `AF_INET6` uses IPv6 addresses and ports, and `AF_UNIX` uses local Unix-domain addresses for communication within one host.
+- **Domain / Address Family:** Selects the addressing model. `AF_INET` uses IPv4 addresses and ports, `AF_INET6` uses IPv6 addresses and ports, and `AF_UNIX` uses [local Unix-domain addresses](08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) for communication within one host.
 - **Socket Type:** Selects communication semantics such as `SOCK_STREAM`, `SOCK_DGRAM`, or, where supported for the chosen family, `SOCK_SEQPACKET`.
 - **Protocol:** Selects a compatible concrete protocol when the family and type do not already determine it.
 
 The dimensions are related but not interchangeable. `SOCK_STREAM` does not mean TCP: an `AF_INET` stream socket commonly uses [TCP](../Networking/02%20Protocols/05%20TCP.md), while an `AF_UNIX` stream socket provides an ordered local byte stream without using TCP or IP.
 
-| Family | Address model | Typical role |
-| --- | --- | --- |
-| `AF_INET` | IPv4 address + port | IPv4 network communication |
-| `AF_INET6` | IPv6 address + port | IPv6 network communication |
-| `AF_UNIX` | Local Unix-domain address | [Same-host inter-process communication](08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) |
-
 ## Socket Types
 
-After the address family establishes how endpoints are addressed, the socket type establishes the data model exposed to the application. The same socket type can exist in different families: both Internet-domain and Unix-domain sockets, for example, can expose stream semantics.
+After the address family establishes how endpoints are addressed, the socket type establishes the data model exposed to the application. Internet-domain and Unix-domain sockets, for example, can both expose stream semantics.
 
-The concrete protocol depends on a compatible family, type, and protocol selection. With Internet sockets, `SOCK_STREAM` is commonly paired with TCP and `SOCK_DGRAM` with UDP; those pairings are examples rather than definitions of the socket types themselves.
+A concrete protocol requires a compatible family, type, and protocol selection. With Internet sockets, `SOCK_STREAM` is commonly paired with TCP and `SOCK_DGRAM` with UDP; those pairings are examples rather than definitions of the socket types themselves.
 
 ### Stream Sockets
 
@@ -116,6 +110,7 @@ Creating the socket establishes the kernel object and its communication semantic
 - **Unix-Domain Address:** `AF_UNIX` uses a local Unix-domain address. A common form is a filesystem pathname such as `/run/my-service.sock`.
 - **Server Use:** A server commonly binds explicitly because other participants need a stable local address through which to reach it.
 - **Internet Client Use:** An Internet-domain client can often let the kernel select a suitable local IP address and ephemeral port automatically when communication begins.
+- **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket family, socket type, current state, operating system, and socket options.
 
 For Internet-domain sockets, binding to a specific local IP restricts the socket to traffic addressed to that interface or address. A wildcard such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. This expands the local addresses through which the process can receive traffic; it does not by itself make the service reachable from another network or from the Internet.
 
@@ -137,8 +132,6 @@ Filesystem rules therefore participate in pathname-based rendezvous:
 
 > [!note] Linux Abstract Unix-Domain Addresses
 > Linux also supports an abstract Unix-domain namespace that is independent of filesystem pathnames. Abstract addresses do not create filesystem entries, so their naming and lifetime rules differ from pathname-based Unix-domain addresses.
-
-- **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket family, socket type, current state, operating system, and socket options.
 
 ### Establishing Outbound Connections
 
