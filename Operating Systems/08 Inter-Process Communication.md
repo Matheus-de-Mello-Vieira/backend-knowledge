@@ -176,6 +176,13 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 | Connected communication | Bidirectional for the connected socket types discussed here | Bidirectional |
 | Byte stream or record semantics | Determined by socket type | Determined by socket type |
 
+> [!example] Docker Daemon and `/var/run/docker.sock`
+> On Linux, Docker Engine uses `unix:///var/run/docker.sock` as its default local daemon endpoint. The pathname gives independently started clients such as the Docker CLI and other Engine API clients a stable address through which they can reach the same listener without receiving a descriptor in advance.
+>
+> This naturally supports a **one-listener-to-many-clients** service model. The listening socket remains the shared rendezvous point, while each successful `accept()` creates a separate connected socket for one client.
+>
+> A `socketpair()` would instead create one already-connected pair of endpoints. The daemon could create many socket pairs, but every future client would still need another mechanism to receive its endpoint descriptor. The addressed Unix-domain socket solves that discovery and distribution problem directly: clients know one stable address, connect when needed, and receive an independent connection to the daemon.
+
 The way peers obtain their endpoints is separate from the socket's data model:
 
 - **`SOCK_STREAM`:** Transfers an ordered byte stream and does not preserve individual write boundaries.
