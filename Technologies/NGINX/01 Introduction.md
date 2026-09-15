@@ -18,11 +18,21 @@ _See also: [Backend Execution Patterns](02%20Application%20Server%20Concurrency.
 
 ### The Worker Process Model
 
-- **Multi-Process Architecture:** NGINX relies on a multi-process model rather than spawning new threads per connection.
+An NGINX instance normally consists of one master process and multiple worker processes; helper processes may also exist for features such as cache management. The master owns process lifecycle and control, while workers handle client traffic. A worker is primarily event-driven and single-threaded; optional thread pools can offload selected blocking work without turning the whole NGINX instance into a single process.
+
+- **Multi-Process Architecture:** NGINX relies on multiple worker processes rather than spawning a new thread per connection.
 - **Hardware Thread Mapping:** By default (when set to auto-mode), NGINX spins up exactly one worker process per available hardware thread (CPU core).
 - **High Concurrency:** Because of its non-blocking, event-driven nature, a single NGINX worker process can simultaneously handle thousands of active client connections.
 - **CPU Efficiency:** Workers are designed to stay active on the CPU for the maximum time possible to process requests efficiently.
 - **Context Switching:** A worker only exits the CPU (yields) when it is forced to wait on a blocking I/O operation, such as reading content from a physical disk or waiting for a response from an upstream backend server.
+
+### Master Process and Worker Control
+
+The master process creates worker and helper processes and coordinates their lifecycle. On Unix, before `fork()` creates a non-detached child, NGINX creates a `socketpair(AF_UNIX, SOCK_STREAM, ...)`; the parent and child retain opposite endpoints as an internal control channel. Because the master creates the child itself, the endpoints can be distributed through that process-creation relationship without a pathname, listener, or later connection handshake.
+
+NGINX sends compact process-control messages through these channels rather than client request data. The channel protocol includes commands for graceful quit, immediate termination, reopening logs, and opening or closing process channels. When a new worker or helper starts, the master can send an `OPEN_CHANNEL` message containing that process's channel descriptor to already-running children; when a child exits, it sends `CLOSE_CHANNEL` so the remaining processes can release the stale descriptor. The socket pair is bidirectional as an IPC primitive, although NGINX currently uses these process-control messages from the master toward its children.
+
+These control channels are separate from the listening and connected sockets that carry client traffic. A worker's event loop handles network connections, while the master-to-child socket pairs coordinate the process topology that surrounds those workers.
 
 ### Connection Acceptance and Socket Management
 
