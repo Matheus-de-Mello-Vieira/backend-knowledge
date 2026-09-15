@@ -35,6 +35,20 @@ These backends span both [readiness and completion](../../../Operating%20Systems
 > [!note] `io_uring` and libuv Networking
 > `io_uring` is not libuv's general Linux network backend. Libuv documents an optional `io_uring` loop configuration for filesystem operations; its ordinary Linux socket path remains based on non-blocking sockets and `epoll`.
 
+### Child Processes and IPC
+
+`child_process.fork()` is a specialized Node.js process-spawning API that starts another Node.js process and creates an IPC channel between the parent and child by default. Despite the API name, it does not expose POSIX `fork()` semantics to JavaScript; Node prepares the child process configuration and delegates process creation to libuv.
+
+For this IPC channel, Node adds an `ipc` entry to the child's stdio configuration. On Unix, libuv turns that entry into an IPC pipe backed by a [Unix-domain socket pair](../../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs): it creates `socketpair(AF_UNIX, SOCK_STREAM, ...)` before the child starts, retains one endpoint in the parent, and makes the other endpoint available to the child as a file descriptor. The child learns which descriptor carries the channel during startup, and Node wraps both endpoints in its higher-level process IPC implementation.
+
+Node then exposes the channel through APIs such as `subprocess.send()` and the `'message'` event in the parent, with corresponding `process.send()` and `'message'` handling in the child. The socket pair fits this relationship because the parent is creating one specific peer and can distribute the endpoint during process creation; no stable pathname, listener, `connect()`, or `accept()` rendezvous is necessary.
+
+This process IPC is distinct from Node's other forms of concurrency:
+
+- **Child process:** Runs in a separate process with its own address space and event loop; the IPC channel crosses a process boundary.
+- **Worker thread:** Runs another JavaScript execution thread inside the same process and can share process memory through explicit shared-memory mechanisms.
+- **libuv worker pool:** Contains native threads used internally to offload selected operations such as filesystem, DNS, cryptographic, and compression work; these workers are not `child_process` children.
+
 ### Thread Pool
 
 [Regular-file readiness](../../../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) does not reveal whether a read or write will wait for storage. Libuv therefore uses worker-thread offload for operations that cannot be integrated with the loop through non-blocking socket readiness.
