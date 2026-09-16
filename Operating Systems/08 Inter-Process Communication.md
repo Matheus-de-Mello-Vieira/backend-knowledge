@@ -180,14 +180,10 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 > This naturally supports a **one-listener-to-many-clients** service model. The listening socket remains the shared rendezvous point, while each successful `accept()` creates a separate connected socket for one client.
 >
 > A `socketpair()` would instead create one already-connected pair of endpoints. The daemon could create many socket pairs, but every future client would still need another mechanism to receive its endpoint descriptor. The addressed Unix-domain socket solves that discovery and distribution problem directly: clients know one stable address, connect when needed, and receive an independent connection to the daemon.
-
 <!-- -->
-
 > [!example] Node.js `child_process.fork()` IPC
 > On Unix, [`child_process.fork()`](../Technologies/NodeJS/01%20Basics/04%20Internals.md#Child%20Processes%20and%20IPC) creates a parent-child IPC channel that libuv backs with a Unix-domain `SOCK_STREAM` socket pair. Because the parent creates the specific child and can distribute an endpoint during process creation, no stable address or listener is needed.
-
 <!-- -->
-
 > [!example] NGINX Master and Worker Control Channels
 > [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Master%20Process%20and%20Worker%20Control) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
 

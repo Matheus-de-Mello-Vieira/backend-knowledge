@@ -29,14 +29,32 @@ Here are the most common use cases for a reverse proxy:
 - **Canary Deployments:** Facilitating safe release strategies by intelligently routing a small, controlled percentage of user traffic to a newly deployed version of a service, while keeping the majority of traffic on the stable version.
 - **Microservice Routing (API Gateway):** Inspecting incoming requests and directing them to different internal microservices based on URL paths, headers, or domains (for example, seamlessly routing traffic for `/api/users` to the User Service and `/api/billing` to the Billing Service).
 
-**The Relationship with Load Balancers**
+#### Relationship with Load Balancers
+
 It is important to note that load balancers are a specific, specialized type of reverse proxy. While a standard reverse proxy might sit in front of just one server simply to handle SSL encryption and caching, a load balancer is explicitly designed to take that incoming proxied traffic and distribute it across _multiple_ backend instances.
 
-**The Relationship with API Gateways**
+#### Relationship with API Gateways
 
 Much like load balancers, an API Gateway is a specialized, highly intelligent evolution of a reverse proxy. While a standard reverse proxy primarily focuses on routing traffic, hiding backend servers, or providing caching, an API Gateway operates with a deep understanding of your application's specific logic and APIs.
 
 It sits between external clients and your internal microservices, acting as a centralized control plane. Instead of just blindly forwarding requests, an API Gateway handles complex, cross-cutting concerns such as user authentication, rate limiting, request throttling, payload transformation, and API versioning.
+
+## Traffic Distribution Without a Dedicated Load Balancer
+
+A dedicated reverse proxy is not the only place where traffic can be distributed. Endpoint selection can happen before a connection reaches the server pool, either in the client or in the network's routing layer.
+
+### Client-Side Selection
+
+Client-side load balancing gives the client a set of service endpoints and makes the client responsible for selecting one before opening a connection. The endpoint set can come from different discovery mechanisms:
+
+- **Service registry:** A registry such as ZooKeeper stores the available instance addresses so clients can discover them.
+- **Multi-address DNS:** One DNS name resolves to several addresses, and the client selects or attempts one of the returned addresses.
+
+A client that measures endpoint latency can prefer a lower-latency address, producing location-aware distribution when network latency corresponds to proximity.
+
+### Routing-Based Selection
+
+[Anycast routing](02%20Protocols/03%20Internet%20Protocol.md#Anycast%20Routing) exposes one IP address from multiple network locations. The routing system selects a path before the connection reaches a service instance, so the client does not need the address of every location.
 
 ## Layer 4 vs Layer 7 Load Balancers
 
@@ -44,22 +62,22 @@ When configuring your network architecture, it is important to remember that the
 
 - **Layer 4:** Use this when you want simple, efficient, and application-level-protocol-agnostic traffic distribution.
 - **Layer 7:** Use this when you need intelligent routing and policy decisions based on application data, making it the standard for HTTP-based systems, APIs, and microservice platforms.
+
 ### Layer 4 Load Balancing
 
 Layer 4 load balancers route traffic by evaluating transport-level metadata, such as IP addresses and port numbers. Because they do not decrypt the payload or parse application data (like HTTP headers), they offer incredibly high throughput and extremely low latency.
 
 #### Common Operational Modes
 
-**Direct Connection Proxying (direct-route)**
+##### Direct Connection Proxying (Direct Route)
 
 In this implementation, the load balancer acts as a high-speed intermediary that maintains persistent, long-lived TCP connections with the backend server pool.
 
 - **Segment Forwarding:** When a client initiates a connection, the balancer maps that session to an existing backend connection. All subsequent segments for that client are seamlessly forwarded through the same pipe.
 - **1:1 Mapping:** To maintain state and performance, one backend connection is effectively dedicated to serving one active client connection at a time.
 - **Efficiency:** This architecture significantly reduces the latency and computational overhead of constant TCP handshakes between the balancer and the backend servers.
-    
 
-**Network Address Translation (nat-mode)**
+##### Network Address Translation (NAT Mode)
 
 In NAT mode, the load balancer functions by intercepting and readdressing packets at the IP layer rather than proxying the connection entirely.
 
@@ -67,15 +85,15 @@ In NAT mode, the load balancer functions by intercepting and readdressing packet
 - **Connection Tracking:** It maintains a detailed state table to track these mappings, ensuring that all packets belonging to a specific client session are consistently routed to the correct backend.
 - **Buffering:** Certain reverse proxies utilize buffering to reconcile Maximum Transmission Unit (MTU) discrepancies between external and internal networks, ensuring optimal packet sizing for each environment.
 
-#### The Trade-offs
+#### Layer 4 Trade-Offs
 
-**Pros**
+##### Layer 4 Advantages
 
 - **Simpler & Highly Efficient:** Routing decisions are incredibly fast and computationally inexpensive because they only rely on basic IP and port metadata.
 - **Protocol-Agnostic:** Capable of handling a wide variety of transport protocols effortlessly, without needing to understand the underlying application data.
 - **Streamlined Paths:** In NAT mode, the architecture can preserve a single, direct TCP connection path.
 
-**Cons**
+##### Layer 4 Limitations
 
 - **Lacks Smart Routing:** Cannot perform request-aware load balancing, meaning it cannot route traffic based on URL paths, HTTP headers, or cookies.
 - **Weak for Microservices:** Not well-suited for modern, API-driven architectures that require intelligent routing based on application-layer context.
@@ -93,17 +111,16 @@ Unlike Layer 4, a Layer 7 load balancer is highly protocol-aware. It explicitly 
 - **Handle Protocol Upgrades:** It can manage connections that start as HTTP and upgrade to other protocols, sometimes downgrading into more transport-like forwarding (such as with WebSockets).
 - **Manage TLS Termination:** It usually sits at the edge and terminates TLS connections. This means the SSL/TLS certificate resides on the load balancer, which takes on the computational work of decrypting incoming requests before sending them to the backend.
 
-#### The Trade-offs
+#### Layer 7 Trade-Offs
 
-**Pros**
+##### Layer 7 Advantages
 
 - **Smart Load Balancing:** Distributes traffic based on the actual content and context of the request, preventing uneven loads on backend servers.
 - **Application-Layer Caching:** Can cache HTTP responses directly at the proxy to reduce backend load and speed up delivery.
 - **Microservice Alignment:** An exceptionally strong fit for modern microservice architectures, allowing for precise API routing.
 - **Advanced Logic:** Enables API gateway capabilities, including centralized authentication, rate limiting, and policy enforcement.
-    
 
-**Cons**
+##### Layer 7 Limitations
 
 - **Computationally Expensive:** Inspecting, buffering, and parsing application data consumes significantly more CPU and memory than simple IP/port routing.
 - **Dual TCP Connections:** It typically requires maintaining two separate TCP connections per request—one between the client and the balancer, and another between the balancer and the backend server.
@@ -115,7 +132,7 @@ Unlike Layer 4, a Layer 7 load balancer is highly protocol-aware. It explicitly 
 
 Having a load balancer in place is only half the battle; the other half is determining exactly _how_ it should distribute incoming traffic across your backend infrastructure. This decision-making process is governed by a **load balancing algorithm**.
 
-- **Round Robin:** The simplest and most widely used algorithm. It distributes incoming requests sequentially across the pool of available servers in a repeating cycle (Server A, then Server B, then Server C, and back to Server A). It assumes all servers have equal capacity and processing power.    
+- **Round Robin:** The simplest and most widely used algorithm. It distributes incoming requests sequentially across the pool of available servers in a repeating cycle (Server A, then Server B, then Server C, and back to Server A). It assumes all servers have equal capacity and processing power.
 - **Weighted Round Robin:** A variation of Round Robin designed for server pools with different hardware capabilities. Administrators assign a "weight" to each server based on its processing power. A server with double the weight will receive twice as many sequential requests as a lower-weighted server.
 - **Least Connections:** This algorithm routes new requests to the server with the fewest active, concurrent connections at that exact moment. It is highly effective for traffic with long-lived connections (like WebSockets or heavy database queries) where a simple Round Robin might accidentally overload a server that is stuck processing complex tasks.
 - **Weighted Least Connections:** Similar to Weighted Round Robin, this combines the Least Connections logic with pre-assigned server capacities. It routes traffic to the server that has the lowest ratio of active connections to its assigned weight.

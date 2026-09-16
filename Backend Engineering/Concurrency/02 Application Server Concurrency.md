@@ -60,28 +60,24 @@ The execution model determines which workers exist. The I/O coordination model d
 
 ### Event-Driven Connection Handling
 
-An event-driven server retains state for active listeners and connections, waits for events across them, and dispatches the handler associated with each event. It avoids dedicating one blocked execution unit to every connection that is waiting for I/O.
+Event-driven connection handling lets one execution unit manage many active listeners and connections without blocking on every connection that is waiting for I/O. The event loop retains each resource's state, waits for events across those resources, dispatches each event to its handler, and then returns to waiting after that handler advances the connection or operation.
 
 An event loop repeats this sequence:
 
 1. It records the state needed to continue each connection and registers readiness interests or submits I/O operations.
 2. It waits for one or more events.
 3. It maps each event to the connection or operation that produced it.
-4. The corresponding handler advances that connection's state, then updates its interests or submits its next operation.
+4. The corresponding handler advances that state, then updates its interests or submits its next operation.
 
-[Readiness- and completion-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) differ in what the event represents:
+The meaning of an event depends on the I/O model:
 
-| Model | Event means | Handler action |
-| --- | --- | --- |
-| **Readiness-driven** | A socket may be able to make progress. | The handler attempts `accept()`, `read()`, `write()`, or another appropriate operation. |
-| **Completion-driven** | A submitted I/O operation has reached a result. | The handler processes that result and submits subsequent work when needed. |
-
-The [Reactor pattern](../../Operating%20Systems/07%20Socket%20Management.md#Reactor%20Pattern) organizes dispatch around readiness, while the [Proactor pattern](../../Operating%20Systems/07%20Socket%20Management.md#Proactor%20Pattern) organizes dispatch around completed operations. They are two event-driven architectures, not different process or thread models.
+- **[Readiness-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO):** An event says that a socket may be able to make progress. The handler then attempts `accept()`, `read()`, `write()`, or another appropriate operation.
+- **[Completion-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Completion-Based%20I%2FO):** An event reports the result of an I/O operation that the server submitted earlier. The handler processes that result and submits subsequent work when needed.
 
 Event-driven coordination provides I/O concurrency, not CPU parallelism. One event-loop thread can coordinate many connections, but a CPU-intensive handler or a blocking operation prevents that loop from processing later events. Such work must run in another execution unit when the server needs the loop to remain responsive.
 
-- **Execution-model relationship:** A server can use one event loop in a single-threaded process or run separate loops in several threads or processes. Multiple loops provide CPU parallelism when the operating system schedules them on different cores.
-- **Connection-distribution relationship:** Listener and acceptor architecture assigns a transport connection to a worker or loop. The event loop then coordinates I/O for the connections assigned to it.
+- **Execution Model:** A server can use one event loop in a single-threaded process or run separate loops in several threads or processes. Multiple loops provide CPU parallelism when the operating system schedules them on different cores.
+- **Connection Distribution:** Listener and acceptor architecture assigns a transport connection to a worker or loop. The event loop then coordinates I/O for the connections assigned to it.
 
 ## Connection Distribution Models
 
