@@ -51,6 +51,89 @@ On POSIX systems, process control provides separate operations for creating a ch
 >
 > A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. For command launches whose setup fits its defined attributes and file actions, a shell can instead use `posix_spawn()` or `posix_spawnp()`. A [shell pipeline](08%20Inter-Process%20Communication.md#Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()`, `waitpid()`, or `waitid()`.
 
+## POSIX Signals
+
+A POSIX signal is an asynchronous notification that the kernel delivers to a process or thread. An external actor can request delivery with `kill()`, and the kernel also generates signals for events such as a child changing state. A signal is a control notification, not a stream of structured application messages: its number identifies the event or requested action, while any associated work remains the receiver's responsibility.
+
+The receiving process chooses a **disposition** for each signal: the default action, ignoring it, or a signal handler. A caught signal interrupts the normal control flow to run its handler, so a handler must limit itself to async-signal-safe work. It commonly records a small piece of state that the program's normal control loop examines later; substantial cleanup, I/O protocol work, and state transitions then occur outside the handler.
+
+- **Pending signals:** A signal that is temporarily blocked becomes pending until it is unblocked. `sigprocmask()` controls a thread's signal mask; `sigsuspend()` temporarily replaces that mask while suspending the caller, so delivery of an unblocked caught signal wakes the wait without a race between unblocking and sleeping.
+- **Coalescing:** Standard signals do not form a reliable event log. If an instance is already pending, further instances of that signal can merge rather than being delivered as distinct notifications. Real-time signals have separate queued-delivery semantics.
+- **Child-state notification:** `SIGCHLD` tells a parent that an eligible child changed state. The parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children; one notification can require collecting more than one child status.
+
+Signal delivery therefore requests or reports a state change; it does not perform the receiving program's higher-level lifecycle policy. A process such as a supervisor decides how to translate the notification into shutdown, restart, reconfiguration, or cleanup work.
+
+### Common Signals
+
+The following signals are common in POSIX and Unix-like process control. Their **default action** applies only when the process has not installed a handler or changed the disposition. Signal names are portable identifiers; their numeric values vary by platform and must not be hard-coded.
+
+| Signal                | Typical source or meaning                                         | Default action                                                      |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `SIGHUP`              | The controlling terminal disconnects                              | Terminate                                                           |
+| `SIGINT`              | An interactive interrupt, commonly `Ctrl-C`                       | Terminate                                                           |
+| `SIGQUIT`             | An interactive quit request                                       | Terminate and produce a core dump                                   |
+| `SIGTERM`             | A request to terminate                                            | Terminate                                                           |
+| `SIGKILL`             | A request for immediate termination                               | Terminate; cannot be caught, blocked, or ignored                    |
+| `SIGSTOP`             | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                         |
+| `SIGTSTP`             | An interactive stop request, commonly `Ctrl-Z`                    | Stop                                                                |
+| `SIGCONT`             | A request to resume a stopped process                             | Continue if stopped                                                 |
+| `SIGCHLD`             | An eligible child changes state                                   | Ignore; the parent still collects child status with a wait function |
+| `SIGPIPE`             | A write targets a pipe or stream socket whose read side is closed | Terminate                                                           |
+| `SIGALRM`             | An alarm timer expires                                            | Terminate                                                           |
+| `SIGUSR1` / `SIGUSR2` | Application-defined notification                                  | Terminate                                                           |
+| `SIGSEGV`             | Invalid memory reference                                          | Terminate and produce a core dump                                   |
+
+`SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
+
+### Receiving `SIGTERM` in C
+
+This single-threaded program installs a `SIGTERM` handler with `sigaction()`. The handler runs on the program's existing thread; it sets a flag and leaves normal control flow to perform the shutdown work.
+
+```c
+#define _POSIX_C_SOURCE 200809L
+
+#include <signal.h>
+#include <stdlib.h>
+
+static volatile sig_atomic_t stop_requested = 0;
+
+static void on_sigterm(int signal_number) {
+    (void)signal_number;
+    stop_requested = 1;
+}
+
+int main(void) {
+    struct sigaction action = {0};
+    sigset_t blocked;
+    sigset_t previous_mask;
+
+    action.sa_handler = on_sigterm;
+    sigemptyset(&action.sa_mask);
+
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGTERM);
+
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous_mask) == -1 ||
+        sigaction(SIGTERM, &action, NULL) == -1) {
+        return EXIT_FAILURE;
+    }
+
+    while (!stop_requested) {
+        sigsuspend(&previous_mask);
+    }
+
+    sigprocmask(SIG_SETMASK, &previous_mask, NULL);
+
+    /* Perform normal shutdown outside the signal handler. */
+    return EXIT_SUCCESS;
+}
+```
+
+The program blocks `SIGTERM` before it installs the handler and tests `stop_requested`. `sigsuspend()` then temporarily restores the previous mask and sleeps as one operation. If `SIGTERM` is already pending, or arrives while the program sleeps, the kernel invokes `on_sigterm()` and `sigsuspend()` returns after the handler finishes. Its mask is restored with `SIGTERM` blocked, so the next loop test sees the flag without a check-then-sleep race.
+
+> [!warning] Signal-handler scope
+> The handler only assigns `stop_requested`, a `volatile sig_atomic_t` object. Functions such as `printf()`, memory allocation, and most library operations are not async-signal-safe, so the handler must not use them. A multithreaded program needs an explicit signal-mask policy; it commonly blocks a signal in all threads and dedicates one thread to waiting for it.
+
 ## Processes vs. Threads
 
 To understand how the kernel manages work, you must separate the concept of _resources_ from the concept of _execution_.
