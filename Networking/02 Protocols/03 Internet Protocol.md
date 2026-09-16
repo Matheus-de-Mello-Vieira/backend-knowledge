@@ -96,7 +96,7 @@ graph TD
   2) When the source and destination are on the same subnet, they communicate through the [switch](../02%20Network%20Components.md#The%20Switch) using MAC addresses.
 * Host `192.168.1.3` wants to talk to `192.168.2.2`
   1) `192.168.1.3` applies subnet mask to itself and the destination IP `192.168.2.2`
-     * `255.255.255.0 & 192.168.2.3 = 192.168.1.0`
+     * `255.255.255.0 & 192.168.1.3 = 192.168.1.0`
      * `255.255.255.0 & 192.168.2.2 = 192.168.2.0`
      * They are different
   2) The packet is sent to the default gateway `192.168.1.100` through MAC address, that also is `192.168.2.100`, from where the packed is sent as the first scenario.
