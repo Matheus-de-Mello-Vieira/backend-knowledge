@@ -91,13 +91,19 @@ On Unix, the master owns the control plane for its workers and helper processes.
 
 ### Signal Reception and Command Dispatch
 
-For received [POSIX signals](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals), the master handler records control state for the master loop to evaluate. That loop, rather than the handler, performs NGINX shutdown, reload, and worker-management work.
+The master process runs a control loop for worker and helper lifecycle management; it does not run the client-I/O event loop. That loop normally waits in `sigsuspend()` until a signal wakes it, then evaluates the recorded control state and performs the required lifecycle work.
 
-Most master signal handlers only set a flag corresponding to the received signal. `SIGCHLD` is the exception: after setting the reap flag, its handler immediately calls `ngx_process_get_status()`, which loops over `waitpid(..., WNOHANG)`, records collected statuses, marks matching process entries as exited, and releases locks held by the dead processes. The master then wakes from its normal `sigsuspend()`-based wait and evaluates the pending flags in its control loop. It does not run the client-I/O event loop.
+[POSIX signals](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals) change that control state; they do not cause the signal handler to perform shutdown, reload, or worker-management work directly.
 
-External POSIX signals and internal channel commands therefore form two control tiers. For actions directed at existing children, NGINX normally maps `QUIT`, `TERM` or `INT`, and `USR1` to the compact `QUIT`, `TERMINATE`, and `REOPEN` channel commands. If a child has no usable channel or a channel write fails, the master falls back to `kill()` with the corresponding signal.
+Most master signal handlers only set the flag associated with the received signal. `SIGCHLD` also begins nonblocking status collection:
 
-During initialization, each child registers its own channel endpoint with its event mechanism. Its channel handler converts lifecycle commands into flags that the worker or helper loop processes at a safe point; topology commands update the local process table and descriptor set.
+1. Its handler sets the reap flag and calls `ngx_process_get_status()`.
+2. That function loops over `waitpid(..., WNOHANG)`, records each collected status, marks the matching process entry as exited, and releases locks held by the dead process.
+3. The master loop later observes the reap flag and completes the lifecycle transition.
+
+External signals and internal channel commands form separate control tiers. The master interprets the external signal, then sends a compact command to an existing child when the requested action belongs in that child. It normally maps `QUIT`, `TERM` or `INT`, and `USR1` to `QUIT`, `TERMINATE`, and `REOPEN`, respectively. If a child has no usable channel or the channel write fails, the master falls back to `kill()` with the corresponding signal.
+
+During initialization, each child registers its channel endpoint with its event mechanism. The channel handler records lifecycle commands as flags for the worker or helper loop to process at a safe point, while topology commands update the local process table and descriptor set.
 
 ```mermaid
 flowchart TD

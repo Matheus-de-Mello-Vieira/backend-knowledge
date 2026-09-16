@@ -9,7 +9,20 @@ Process management is the heartbeat of the operating system. It is the complex m
 
 ## Core Mechanics
 
-- **The Process Lifecycle:** The transition of a program through distinct states: `Created` -> `Ready` (waiting in line for a CPU) -> `Running` (actively executing on a core) -> `Blocked` (waiting for an external event) -> `Terminated`.
+### Process Lifecycle
+
+A process lifecycle describes the execution states through which a process moves. Exact state names vary by operating system, but the model distinguishes work that is ready to execute, executing, unable to proceed, deliberately suspended, and finished.
+
+- **Created:** The kernel has created the process, but it has not yet begun execution.
+- **Runnable:** The process is ready to execute and waits for a CPU.
+- **Running:** The process is actively executing on a CPU.
+- **Blocked:** The process cannot proceed until an external event occurs, such as a network packet or disk I/O completion, so it does not consume CPU time while it waits.
+- **Stopped:** The process is suspended and is not eligible for scheduling until it is continued.
+- **Terminated:** The process has finished execution.
+
+These states are not one linear path. A newly created process becomes runnable; the scheduler moves a runnable process to running; a running process can block and later become runnable again. Stopping suspends the process, while continuing it makes it runnable again. A running process eventually terminates.
+### Scheduling and System Calls
+
 - **Context Switching:** The physical act of evicting a process from the CPU. The kernel must pause execution, save the exact state of the CPU's registers (Instruction Pointer, Stack Pointer, Flags) into the PCB, and load the saved registers of the next process. This heavy computational overhead is why thread-thrashing destroys application performance.
 - **Blocking vs. Runnable:** If a process needs to wait for a network packet or a slow disk read, the OS moves it to a `Blocked` state. It is immediately evicted from the CPU core so another program can use the hardware, consuming zero CPU cycles until a hardware interrupt wakes it back up.
 - **System Calls:** When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it triggers a hardware trap. The CPU pauses the application, elevates its privilege level (Ring 0), and hands control to the kernel to safely execute the requested work.
@@ -41,11 +54,12 @@ On POSIX systems, process control provides separate operations for creating a ch
 - **Organize jobs — `setpgid()` and `setsid()`:**
     - **`setpgid()`:** Assigns a process to a process group, which lets a shell signal and manage a job as a unit.
     - **`setsid()`:** Creates a new session and process group and detaches the caller from its controlling terminal; traditional daemonization uses it to become independent of the launching terminal.
-- **Collect child state — `wait()`, `waitpid()`, and `waitid()`:**
-    - **`wait()`:** Selects an eligible child.
-    - **`waitpid()`:** Can select a particular child.
-    - **`waitid()`:** Supports selection by child identifier type and returns structured status information.
-    - **Reaping:** Waiting for a terminated child releases the kernel state retained for that child; without it, the terminated child remains a zombie until another process reaps it.
+- **Collect child state — `wait()`, `waitpid()`, and `waitid()`:** These functions observe state transitions that a direct child has already reached; they do not cause the child to finish. A blocking call waits only when no selected child has a qualifying state to report. If the state is already available, it returns immediately.
+    - **`wait()`:** Waits for the termination of an eligible child.
+    - **`waitpid()`:** Selects a child, a process group, or any eligible child according to its process-ID argument. By default, it waits for termination; its options can also request reports for stopped or continued children.
+        - **`WNOHANG`:** Requests a nonblocking check. If no selected child has a qualifying state change to report, `waitpid()` returns immediately instead of waiting.
+    - **`waitid()`:** Supports selection by child identifier type, selects the reportable state through options, and returns structured status information.
+    - **Reaping:** Collecting a terminated child's status normally releases the kernel state retained for that child. Without reaping, the terminated child remains a zombie until another process collects its status.
 
 > [!example] Shell command execution
 >
@@ -55,11 +69,24 @@ On POSIX systems, process control provides separate operations for creating a ch
 
 A POSIX signal is an asynchronous notification that the kernel delivers to a process or thread. An external actor can request delivery with `kill()`, and the kernel also generates signals for events such as a child changing state. A signal is a control notification, not a stream of structured application messages: its number identifies the event or requested action, while any associated work remains the receiver's responsibility.
 
-The receiving process chooses a **disposition** for each signal: the default action, ignoring it, or a signal handler. A caught signal interrupts the normal control flow to run its handler, so a handler must limit itself to async-signal-safe work. It commonly records a small piece of state that the program's normal control loop examines later; substantial cleanup, I/O protocol work, and state transitions then occur outside the handler.
+> [!note] `kill()` sends signals
+> Despite its name, the `kill()` function sends the signal specified by its `sig` argument to a process or process group; it does not inherently terminate the target. It can send `SIGTERM`, `SIGHUP`, `SIGUSR1`, or `SIGKILL`, subject to permission checks. `SIGKILL` is special because the receiving process cannot catch, ignore, or block it. The shell `kill` utility traditionally sends `SIGTERM` when no signal is specified.
 
-- **Pending signals:** A signal that is temporarily blocked becomes pending until it is unblocked. `sigprocmask()` controls a thread's signal mask; `sigsuspend()` temporarily replaces that mask while suspending the caller, so delivery of an unblocked caught signal wakes the wait without a race between unblocking and sleeping.
-- **Coalescing:** Standard signals do not form a reliable event log. If an instance is already pending, further instances of that signal can merge rather than being delivered as distinct notifications. Real-time signals have separate queued-delivery semantics.
-- **Child-state notification:** `SIGCHLD` tells a parent that an eligible child changed state. The parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children; one notification can require collecting more than one child status.
+For a signal whose disposition can be changed, the receiving process chooses a **disposition**, which determines the immediate response to delivery.
+
+- **Default action:** The kernel applies the signal's defined action, such as terminating, stopping, or continuing the process.
+- **Ignore:** The process discards the signal.
+- **Handler:** A caught signal interrupts normal control flow to run the process's handler.
+
+Because a handler interrupts normal control flow, it must limit itself to async-signal-safe work. It commonly records a small piece of state that the program's normal control loop examines later; substantial cleanup, I/O protocol work, and state transitions then occur outside the handler.
+
+Each thread also has a **signal mask**: a set of signal identifiers whose delivery to that thread is temporarily blocked.
+
+- **Pending delivery:** A blocked signal remains pending until it is unblocked.
+- **Standard-signal coalescing:** Standard signals do not form a reliable event log. If an instance is already pending, further instances of that signal can merge rather than being delivered as distinct notifications.
+- **Real-time signals:** Real-time signals have separate queued-delivery semantics.
+
+`SIGCHLD` reports an eligible lifecycle transition of a direct child, but the parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children. One notification can require collecting more than one child status.
 
 Signal delivery therefore requests or reports a state change; it does not perform the receiving program's higher-level lifecycle policy. A process such as a supervisor decides how to translate the notification into shutdown, restart, reconfiguration, or cleanup work.
 
@@ -85,9 +112,19 @@ The following signals are common in POSIX and Unix-like process control. Their *
 
 `SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
 
+### POSIX Signal Interface
+
+These interfaces let a program install a handler without losing a signal that arrives between setup and a blocking wait.
+
+- **`sigaction()`:** Sets a signal's disposition. A `struct sigaction` specifies either a handler or another disposition, the signal mask used while that handler runs, and behavior flags.
+- **`sigprocmask()`:** Examines or changes the calling thread's signal mask. With `SIG_BLOCK`, it adds signals to the mask and can save the old mask for later restoration.
+- **`sigsuspend()`:** Replaces the calling thread's mask only while it sleeps, then restores the mask that was active when the call began. An unblocked caught signal wakes the call after its handler returns, which makes unblocking and waiting one operation.
+
 ### Receiving `SIGTERM` in C
 
-This single-threaded program installs a `SIGTERM` handler with `sigaction()`. The handler runs on the program's existing thread; it sets a flag and leaves normal control flow to perform the shutdown work.
+This single-threaded program converts `SIGTERM` delivery into a normal control-flow decision. Its handler runs on the program's existing thread, records that shutdown was requested, and leaves cleanup to the main control flow.
+
+The handler communicates with normal control flow through one `volatile sig_atomic_t` object. It does not perform shutdown work itself.
 
 ```c
 #define _POSIX_C_SOURCE 200809L
@@ -101,35 +138,55 @@ static void on_sigterm(int signal_number) {
     (void)signal_number;
     stop_requested = 1;
 }
+```
 
+Before installing the handler, the program blocks `SIGTERM` and saves the caller's earlier mask. Delivery during the remaining setup then leaves `SIGTERM` pending rather than invoking the default disposition. The waiting mask begins as that earlier mask, but explicitly unblocks `SIGTERM` so the wait does not depend on whether the caller had already blocked it.
+
+```c
 int main(void) {
     struct sigaction action = {0};
     sigset_t blocked;
     sigset_t previous_mask;
-
-    action.sa_handler = on_sigterm;
-    sigemptyset(&action.sa_mask);
+    sigset_t waiting_mask;
 
     sigemptyset(&blocked);
     sigaddset(&blocked, SIGTERM);
 
-    if (sigprocmask(SIG_BLOCK, &blocked, &previous_mask) == -1 ||
-        sigaction(SIGTERM, &action, NULL) == -1) {
+    if (sigprocmask(SIG_BLOCK, &blocked, &previous_mask) == -1) {
         return EXIT_FAILURE;
     }
 
-    while (!stop_requested) {
-        sigsuspend(&previous_mask);
+    action.sa_handler = on_sigterm;
+    sigemptyset(&action.sa_mask);
+
+    if (sigaction(SIGTERM, &action, NULL) == -1) {
+        (void)sigprocmask(SIG_SETMASK, &previous_mask, NULL);
+        return EXIT_FAILURE;
     }
 
-    sigprocmask(SIG_SETMASK, &previous_mask, NULL);
+    waiting_mask = previous_mask;
+    sigdelset(&waiting_mask, SIGTERM);
+```
+
+The loop tests the flag while `SIGTERM` remains blocked. `sigsuspend()` atomically installs `waiting_mask` and sleeps, so a pending `SIGTERM`, or one that arrives while the thread waits, invokes `on_sigterm()` and wakes the wait. When `sigsuspend()` returns after the handler, it has restored the blocked mask; the next test observes the flag without a check-then-sleep race.
+
+```c
+    while (!stop_requested) {
+        sigsuspend(&waiting_mask);
+    }
+```
+
+Once the loop observes the request, the program restores the caller's original mask before it performs its ordinary shutdown work.
+
+```c
+    if (sigprocmask(SIG_SETMASK, &previous_mask, NULL) == -1) {
+        return EXIT_FAILURE;
+    }
 
     /* Perform normal shutdown outside the signal handler. */
     return EXIT_SUCCESS;
 }
 ```
-
-The program blocks `SIGTERM` before it installs the handler and tests `stop_requested`. `sigsuspend()` then temporarily restores the previous mask and sleeps as one operation. If `SIGTERM` is already pending, or arrives while the program sleeps, the kernel invokes `on_sigterm()` and `sigsuspend()` returns after the handler finishes. Its mask is restored with `SIGTERM` blocked, so the next loop test sees the flag without a check-then-sleep race.
 
 > [!warning] Signal-handler scope
 > The handler only assigns `stop_requested`, a `volatile sig_atomic_t` object. Functions such as `printf()`, memory allocation, and most library operations are not async-signal-safe, so the handler must not use them. A multithreaded program needs an explicit signal-mask policy; it commonly blocks a signal in all threads and dedicates one thread to waiting for it.
