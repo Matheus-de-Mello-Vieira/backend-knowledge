@@ -16,7 +16,15 @@ On Unix-like systems, a process ordinarily accesses a pipe or socket endpoint th
 
 Descriptor lifetime controls whether an endpoint remains usable. `fork()` gives a child descriptors referring to the parent's open resources, `dup()` creates another descriptor referring to the same resource, and `close()` removes one such reference. An endpoint reaches its end-of-file or shutdown state only according to the resource's own rules after the relevant references are gone.
 
-[POSIX process control](05%20Process%20Management.md#POSIX%20Process-Control%20Interface) explains descriptor inheritance across `fork()`, while [descriptor operations and lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) explains the common handle model.
+### Explicit Descriptor Passing
+
+Explicit descriptor passing gives an already-running process access to an already-open resource. It transfers a reference to the underlying kernel-managed resource, not the sender's descriptor number: the receiving process receives a newly allocated entry in its own descriptor table. The two descriptor numbers therefore need not match, even though both entries refer to the same pipe end, socket, or open file description.
+
+On Unix-like systems, connected Unix-domain sockets support this transfer as ancillary (control) data. The sender supplies an `SCM_RIGHTS` control message to `sendmsg()`, and the receiver obtains the new descriptor through `recvmsg()`. Ordinary bytes sent with the control message form the application protocol that identifies the resource and its intended use; passing a descriptor neither discovers a peer nor creates a new channel.
+
+- **Shared resource state:** The received descriptor refers to the same underlying open resource rather than reopening it. Resource-specific shared state, such as a regular file's current offset or a socket endpoint's connection state, remains shared.
+- **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
+- **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed or before an unrelated program inherits it across `exec()`.
 
 ## Shared-Memory IPC
 
@@ -90,7 +98,7 @@ An open write end means the kernel must still allow for a future write. An empty
 
 ### Anonymous Pipes and FIFOs
 
-An anonymous pipe is reached through descriptors that a process already holds. It is commonly created before `fork()` so related processes inherit references to the same kernel pipe state; descriptor-passing mechanisms can also transfer an endpoint to another process.
+An anonymous pipe is reached through descriptors that a process already holds. It is commonly created before `fork()` so related processes inherit references to the same kernel pipe state; [explicit descriptor passing](#Explicit%20Descriptor%20Passing) can also transfer an endpoint to another process.
 
 A **FIFO** (named pipe) adds a filesystem pathname that independent processes can use as a rendezvous point. Once opened, a FIFO still carries a bounded byte stream through kernel-managed state. Its pathname does not make the transferred bytes persistent regular-file content.
 
@@ -159,11 +167,11 @@ When `cat` reaches file EOF and exits, its write descriptor closes. After `grep`
 
 Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
 
-An **addressed Unix-domain socket** provides a rendezvous mechanism. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
+An **addressed Unix-domain socket** provides a rendezvous mechanism. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
 
 With a pathname-based address, the pathname identifies where the peers meet; after connection establishment, application data flows through the resulting socket endpoints rather than through the pathname itself.
 
-`socketpair()` solves a different problem. It creates two unnamed, already-connected socket endpoints in one operation. No `bind()`, `listen()`, `connect()`, or `accept()` rendezvous is required. The processes must instead receive those endpoint descriptors through an existing relationship, commonly [descriptor inheritance across `fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface) or an explicit descriptor-passing mechanism.
+`socketpair()` solves a different problem. It creates two unnamed, already-connected socket endpoints in one operation. No `bind()`, `listen()`, `connect()`, or `accept()` rendezvous is required. The processes must instead receive those endpoint descriptors through an existing relationship, commonly [descriptor inheritance across `fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface) or [explicit descriptor passing](#Explicit%20Descriptor%20Passing).
 
 A socket pair therefore provides the bidirectional channel that would otherwise require two oppositely directed pipes when each peer needs an independent byte stream. The mechanisms differ in how peers obtain their endpoints:
 
@@ -217,7 +225,7 @@ A loopback connection remains on the host, but it still follows the IP and trans
 - **Unix-domain socket:** Fits communication that is inherently local and can use Unix-domain addressing.
 - **Loopback TCP/IP:** Fits local communication that should use the same IP address, port, and TCP socket model as a networked service.
 
-[TCP](../Networking/02%20Protocols/05%20TCP.md) and [UDP](../Networking/02%20Protocols/04%20UDP.md) explain the transport behavior used by Internet-domain sockets; [Socket Management](07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) explains binding and local acceptance scope.
+[TCP](../Networking/02%20Protocols/05%20TCP.md) and [UDP](../Networking/02%20Protocols/04%20UDP.md) explain the transport behavior used by Internet-domain sockets; [Socket Management](07%20Socket%20Management.md#Binding) explains binding and local acceptance scope.
 
 ## Mechanism Selection
 

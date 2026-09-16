@@ -23,7 +23,7 @@ Network sockets are one important kind of resource referenced through a [file de
 > [!example] Forked Server Workers
 > A server can create and bind a listening socket before calling `fork()`. The child processes inherit descriptors referring to the same underlying listening resource, so several workers can call `accept()` on that listener. Closing the listener in one child does not remove the other inherited references.
 
-## Socket Families
+## Socket Families and Types
 
 A socket belongs to an **address family**, which defines the addressing namespace in which its endpoints exist and constrains which protocols can operate through it. This is separate from the socket's **type**, which defines data-transfer semantics such as byte-stream or datagram behavior.
 
@@ -38,8 +38,6 @@ socket(domain, type, protocol);
 - **Protocol:** Selects a compatible concrete protocol when the family and type do not already determine it.
 
 The dimensions are related but not interchangeable. `SOCK_STREAM` does not mean TCP: an `AF_INET` stream socket commonly uses [TCP](../Networking/02%20Protocols/05%20TCP.md), while an `AF_UNIX` stream socket provides an ordered local byte stream without using TCP or IP.
-
-## Socket Types
 
 After the address family establishes how endpoints are addressed, the socket type establishes the data model exposed to the application. Internet-domain and Unix-domain sockets, for example, can both expose stream semantics.
 
@@ -102,21 +100,18 @@ Both calls request stream semantics, but they create sockets in different addres
 
 Creating the socket establishes the kernel object and its communication semantics. It does not by itself assign a local address, establish a peer relationship, or make the socket a listening endpoint.
 
-### Binding and Local Endpoints
+### Binding
 
 `bind()` associates a socket with a local address in the addressing namespace defined by its socket family. The meaning and representation of that address therefore depend on the family.
 
 - **Internet-Domain Address:** `AF_INET` and `AF_INET6` local addresses combine an IP address with a transport port.
+    - **Interface Selection:** Binding to a specific local IP restricts the socket to traffic addressed to that interface or address.
+        - **Security Exposure:** The selected local address establishes the service's local listening scope and therefore affects its [security exposure](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability).
+    - **Wildcard Addresses:** The IPv4 wildcard `0.0.0.0` accepts traffic for the chosen port on all suitable local IPv4 interfaces. IPv6 uses the separate wildcard `::`; whether an IPv6 listener also accepts IPv4 traffic is platform- and socket-option-dependent.
 - **Unix-Domain Address:** `AF_UNIX` uses a local Unix-domain address. A common form is a filesystem pathname such as `/run/my-service.sock`.
 - **Server Use:** A server commonly binds explicitly because other participants need a stable local address through which to reach it.
 - **Internet Client Use:** An Internet-domain client can often let the kernel select a suitable local IP address and ephemeral port automatically when communication begins.
 - **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket family, socket type, current state, operating system, and socket options.
-
-For Internet-domain sockets, binding to a specific local IP restricts the socket to traffic addressed to that interface or address. A wildcard such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. This expands the local addresses through which the process can receive traffic; it does not by itself make the service reachable from another network or from the Internet.
-
-- Actual reachability also depends on address assignment and routing, network address translation or other ingress controls, and [firewall policy](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability).
-- A wildcard listener can nevertheless expose a service through an interface that was not intended to serve it, such as an internal or management network. Binding to a specific address, including a loopback address when only local clients should connect, narrows that local acceptance scope as defense in depth.
-- `0.0.0.0` is an IPv4 wildcard. IPv6 uses a separate wildcard address, `::`; whether an IPv6 listener also accepts IPv4 traffic is platform- and socket-option-dependent.
 
 #### Unix-Domain Pathname Addresses
 
