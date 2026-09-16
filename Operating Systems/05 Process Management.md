@@ -21,6 +21,9 @@ A process lifecycle describes the execution states through which a process moves
 - **Terminated:** The process has finished execution.
 
 These states are not one linear path. A newly created process becomes runnable; the scheduler moves a runnable process to running; a running process can block and later become runnable again. Stopping suspends the process, while continuing it makes it runnable again. A running process eventually terminates.
+
+<!-- TODO: Review the abstraction level of these lifecycle states against the later Processes vs. Threads section. Modern schedulers ordinarily schedule threads/tasks, and a multithreaded process can contain execution units in different runnable/blocked/running states at the same time. Decide how to keep this process-level introductory model useful without contradicting the thread-level scheduling model. -->
+
 ### Scheduling and System Calls
 
 - **Context Switching:** The physical act of evicting a process from the CPU. The kernel must pause execution, save the exact state of the CPU's registers (Instruction Pointer, Stack Pointer, Flags) into the PCB, and load the saved registers of the next process. This heavy computational overhead is why thread-thrashing destroys application performance.
@@ -94,6 +97,8 @@ Signal delivery therefore requests or reports a state change; it does not perfor
 
 The following signals are common in POSIX and Unix-like process control. Their **default action** applies only when the process has not installed a handler or changed the disposition. Signal names are portable identifiers; their numeric values vary by platform and must not be hard-coded.
 
+<!-- TODO: Review the SIGCHLD default-action row for POSIX precision. Distinguish the signal's default disposition being "ignore" from an application explicitly setting SIGCHLD to SIG_IGN, because explicit SIG_IGN has special child-status/reaping semantics and should not be implied to be identical to merely leaving the default disposition unchanged. -->
+
 | Signal                | Typical source or meaning                                         | Default action                                                      |
 | --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
 | `SIGHUP`              | The controlling terminal disconnects                              | Terminate                                                           |
@@ -115,6 +120,8 @@ The following signals are common in POSIX and Unix-like process control. Their *
 ### POSIX Signal Interface
 
 These interfaces let a program install a handler without losing a signal that arrives between setup and a blocking wait.
+
+<!-- TODO: Review signal-mask API precision for multithreaded programs. POSIX specifies sigprocmask() for the single-threaded case, while pthread_sigmask() is the thread-mask interface for multithreaded code. Keep the following example explicitly single-threaded and make the generic interface description avoid implying that sigprocmask() is the portable multithreaded API. -->
 
 - **`sigaction()`:** Sets a signal's disposition. A `struct sigaction` specifies either a handler or another disposition, the signal mask used while that handler runs, and behavior flags.
 - **`sigprocmask()`:** Examines or changes the calling thread's signal mask. With `SIG_BLOCK`, it adds signals to the mask and can save the old mask for later restoration.
@@ -417,7 +424,6 @@ The scheduler decides **which runnable thread executes on which CPU core and for
 Modern operating systems normally schedule **threads**, rather than processes directly. The scheduler may also consider where a thread previously executed. Running a thread again on the same core can preserve **cache and TLB locality**, because some of its instructions, data, and address translations may still be available close to that core. This tendency is known as **CPU affinity**.
 
 However, locality is only one objective. If several threads from the same process can execute independently, spreading them across different cores may provide true parallelism. The scheduler therefore balances locality against load distribution and parallel execution.
-
 Some classic scheduling algorithms include:
 
 - **First-Come, First-Served (FCFS):** Runnable tasks execute in the order they arrive. It is simple, but a long-running task can delay every task behind it.
