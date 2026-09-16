@@ -159,6 +159,7 @@ The `SIGCHLD` handler performs nonblocking status collection through `ngx_proces
 A child marked as respawnable remains eligible for replacement unless it exited with fatal status code `2`, the master is terminating, or that child generation is already exiting. A replacement receives a new socket pair and process-table entry, and the master redistributes the resulting channel topology with `OPEN_CHANNEL`. This preserves supervision after an unexpected worker exit without reviving workers that were deliberately drained during reload or shutdown.
 
 Workers and helper processes share this spawning, channel, and reaping infrastructure. Their respawn policies differ by process role, so use of the common mechanism does not imply that every helper is restarted under the same conditions as a worker.
+
 ### Configuration Reload and Worker Generations
 
 When the master receives a [reload signal](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Process-Control%20Interface), it builds and validates a candidate configuration cycle before disturbing the running generation. The preparation step opens resources required by the candidate and reuses compatible resources from the current cycle; it does not blindly reopen every listener, file, or shared object.
