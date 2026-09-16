@@ -20,11 +20,15 @@ Descriptor lifetime controls whether an endpoint remains usable. `fork()` gives 
 
 Explicit descriptor passing gives an already-running process access to an already-open resource. It transfers a reference to the underlying kernel-managed resource, not the sender's descriptor number: the receiving process receives a newly allocated entry in its own descriptor table. The two descriptor numbers therefore need not match, even though both entries refer to the same pipe end, socket, or open file description.
 
+<!-- TODO: Review the Unix-domain-socket qualification here. Verify whether requiring a "connected" Unix-domain socket is too restrictive because descriptor ancillary data can also be carried by Unix-domain datagram sockets; keep the section focused on the generic SCM_RIGHTS mechanism rather than one socket lifecycle. -->
+
 On Unix-like systems, connected Unix-domain sockets support this transfer as ancillary (control) data. The sender supplies an `SCM_RIGHTS` control message to `sendmsg()`, and the receiver obtains the new descriptor through `recvmsg()`. Ordinary bytes sent with the control message form the application protocol that identifies the resource and its intended use; passing a descriptor neither discovers a peer nor creates a new channel.
 
 - **Shared resource state:** The received descriptor refers to the same underlying open resource rather than reopening it. Resource-specific shared state, such as a regular file's current offset or a socket endpoint's connection state, remains shared.
 - **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
 - **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed or before an unrelated program inherits it across `exec()`.
+
+<!-- TODO: Reassess the NGINX example's causal wording against current upstream behavior. NGINX really does distribute later-created channel descriptors with OPEN_CHANNEL/SCM_RIGHTS to keep a broader per-process channel table synchronized, but current core lifecycle messages are ordinarily master-to-child. Avoid implying that W1 needs W2's descriptor for ordinary master control or that descriptor passing is required by the current master→worker command flow. -->
 
 > [!example] NGINX Process-Channel Topology
 > A newly forked NGINX worker inherits descriptors that were already open before its [`fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). An already-running worker cannot inherit a descriptor for a socket pair created later. The [NGINX master](../Technologies/NGINX/02%20NGINX%20Internals.md#Master%20Process%20and%20Worker%20Control) therefore passes the new process-channel descriptor to existing workers with `SCM_RIGHTS`, combining descriptor inheritance with explicit passing as its process topology changes.
@@ -67,7 +71,6 @@ A pipe buffer decouples producer and consumer only while it holds unread bytes o
 - **Backpressure:** A consumer that reads too slowly eventually fills the bounded pipe buffer and constrains producer progress instead of allowing queued data to grow without bound.
 
 While an operation waits, its calling thread is in the operating system's [blocked state](05%20Process%20Management.md#Core%20Mechanics), allowing another runnable thread to use the CPU.
-
 ### Readiness and Completion
 
 Pipes work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
@@ -137,7 +140,6 @@ The following fragments show the pipe-specific descriptor setup. They omit argum
     close(p[0]);
     close(p[1]);
     ```
-
     FD `0` retains the read-end reference after `p[0]` is closed; the child no longer retains a write-end reference. When that child executes `grep`, its prepared FD `0` determines where `grep` reads.
 
 4. **Release the shell's construction handles:** Once both children have inherited the endpoints, the shell no longer needs either reference:
@@ -167,6 +169,8 @@ read(0, buffer, n);
 When `cat` reaches file EOF and exits, its write descriptor closes. After `grep` consumes the remaining pipe bytes and no write-end references remain, a later `read(0, ...)` returns `0` to signal EOF.
 
 ## Unix-Domain Sockets and Socket Pairs
+
+<!-- TODO: Verify the Socket Management heading target on the existing "socket family" link after the section rename to "Socket Families and Types"; update only the semantic link target if needed. -->
 
 Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
 
