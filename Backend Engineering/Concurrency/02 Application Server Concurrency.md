@@ -1,11 +1,12 @@
 # Application Server Concurrency
 
-An application server often needs to handle many independent requests while making efficient use of the available CPU cores. There are two separate architectural decisions involved:
+An application server often needs to handle many independent requests while making efficient use of the available CPU cores. Three separate architectural decisions shape that behavior:
 
 1. **Application execution model:** How the application is divided into processes and threads.
-2. **Connection distribution model:** How listening sockets and accepted connections are distributed among those execution units.
+2. **I/O coordination model:** How each execution unit waits for and responds to connection activity.
+3. **Connection distribution model:** How listening sockets and accepted connections are distributed among those execution units.
 
-These dimensions are related but independent. A multi-process server, for example, can have all processes compete on one shared listening socket or give each process its own listening socket. Likewise, a multi-threaded server can use one dedicated acceptor thread or distribute connection handling among several threads.
+These dimensions are related but independent. A multi-process server, for example, can have all processes compete on one shared listening socket or give each process its own listening socket. A single-threaded worker can use an event loop to coordinate many connections, while a multi-process or multi-threaded deployment can give each execution unit its own event loop. Likewise, a multi-threaded server can use one dedicated acceptor thread or distribute connection handling among several threads.
 
 ## Application Execution Models
 
@@ -51,11 +52,42 @@ A multi-threaded application uses one process containing several OS threads.
     - Synchronization mechanisms can make the access correct, but contention around shared state can reduce throughput.
 - **CPU Parallelism:** Multiple runnable threads can execute simultaneously on different CPU cores when the workload can be divided into independent work.
 
+## I/O Coordination Models
+
+<!-- TODO: Add blocking-per-connection, bounded worker-pool, runtime-managed task-per-connection, and hybrid event-loop/worker-offload models. Contrast their resource costs, backpressure behavior, and CPU-bound-work handling with explicit event loops. -->
+
+The execution model determines which workers exist. The I/O coordination model determines how a worker makes progress across many active connections when an individual socket operation cannot proceed immediately. It is separate from connection distribution, which determines where a newly arrived connection goes.
+
+### Event-Driven Connection Handling
+
+An event-driven server retains state for active listeners and connections, waits for events across them, and dispatches the handler associated with each event. It avoids dedicating one blocked execution unit to every connection that is waiting for I/O.
+
+An event loop repeats this sequence:
+
+1. It records the state needed to continue each connection and registers readiness interests or submits I/O operations.
+2. It waits for one or more events.
+3. It maps each event to the connection or operation that produced it.
+4. The corresponding handler advances that connection's state, then updates its interests or submits its next operation.
+
+[Readiness- and completion-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) differ in what the event represents:
+
+| Model | Event means | Handler action |
+| --- | --- | --- |
+| **Readiness-driven** | A socket may be able to make progress. | The handler attempts `accept()`, `read()`, `write()`, or another appropriate operation. |
+| **Completion-driven** | A submitted I/O operation has reached a result. | The handler processes that result and submits subsequent work when needed. |
+
+The [Reactor pattern](../../Operating%20Systems/07%20Socket%20Management.md#Reactor%20Pattern) organizes dispatch around readiness, while the [Proactor pattern](../../Operating%20Systems/07%20Socket%20Management.md#Proactor%20Pattern) organizes dispatch around completed operations. They are two event-driven architectures, not different process or thread models.
+
+Event-driven coordination provides I/O concurrency, not CPU parallelism. One event-loop thread can coordinate many connections, but a CPU-intensive handler or a blocking operation prevents that loop from processing later events. Such work must run in another execution unit when the server needs the loop to remain responsive.
+
+- **Execution-model relationship:** A server can use one event loop in a single-threaded process or run separate loops in several threads or processes. Multiple loops provide CPU parallelism when the operating system schedules them on different cores.
+- **Connection-distribution relationship:** Listener and acceptor architecture assigns a transport connection to a worker or loop. The event loop then coordinates I/O for the connections assigned to it.
+
 ## Connection Distribution Models
 
 The application execution model determines **what workers exist**. A separate decision determines **how incoming network connections reach those workers**.
 
-Application servers build connection-distribution architectures from listening sockets, `accept()`, connected sockets, descriptor sharing, and the [listener, acceptor, and worker roles](../../Operating%20Systems/07%20Socket%20Management.md#Listener,%20Acceptor,%20and%20Worker%20Roles).
+Application servers build connection-distribution architectures from listening sockets, `accept()`, connected sockets, descriptor sharing, and the [listener, acceptor, and worker roles](../../Operating%20Systems/07%20Socket%20Management.md#Listener%2C%20Acceptor%2C%20and%20Worker%20Roles).
 
 - **Primary Model:** These architectures primarily distribute TCP connections.
 - **UDP Difference:** [Datagram sockets](../../Operating%20Systems/07%20Socket%20Management.md#Datagram%20Sockets) do not use `accept()` to create a new socket for every peer.
@@ -75,7 +107,7 @@ One execution thread owns the listening socket, accepts connections, and process
     - CPU-heavy request processing can therefore become a bottleneck regardless of how many connections are managed concurrently.
 
 > [!example] Node.js Event Loop
-> A single [Node.js process](../../Technologies/NodeJS/01%20Basics/04%20Internals.md#Event%20loop) combines the listener, acceptor, and worker roles in its event loop. Network I/O waits through [operating-system readiness mechanisms](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O), allowing the event loop to process callbacks for other connections. A long CPU-bound JavaScript callback nevertheless prevents that application thread from accepting or processing more work until it completes.
+> A single [Node.js process](../../Technologies/NodeJS/01%20Basics/04%20Internals.md#Event%20loop) combines the listener, acceptor, and worker roles in its event loop. Network I/O waits through [operating-system readiness mechanisms](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO), allowing the event loop to process callbacks for other connections. A long CPU-bound JavaScript callback nevertheless prevents that application thread from accepting or processing more work until it completes.
 
 ### Single Acceptor, Multiple Workers
 
@@ -134,7 +166,7 @@ With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Mult
     - Two connections may look equivalent to the kernel while requiring very different amounts of CPU time, memory, or response processing.
 
 > [!example] NGINX Socket Sharding
-> [NGINX](../../Technologies/NGINX/01%20Introduction.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
+> [NGINX](../../Technologies/NGINX/02%20NGINX%20Internals.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
 
 #### Multiplexed Protocols
 

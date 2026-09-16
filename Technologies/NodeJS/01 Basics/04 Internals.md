@@ -37,17 +37,37 @@ These backends span both [readiness and completion](../../../Operating%20Systems
 
 ### Child Processes and IPC
 
-`child_process.fork()` is a specialized Node.js process-spawning API that starts another Node.js process and creates an IPC channel between the parent and child by default. Despite the API name, it does not expose POSIX `fork()` semantics to JavaScript; Node prepares the child process configuration and delegates process creation to libuv.
+`child_process.fork()` starts a specific Node.js program and gives the parent and child an IPC channel by default. Cluster uses this parent-child relationship for [process-based server scaling](07%20Process%20and%20Thread%20Parallelism.md#Cluster%20Module).
 
-For this IPC channel, Node adds an `ipc` entry to the child's stdio configuration. On Unix, libuv turns that entry into an IPC pipe backed by a [Unix-domain socket pair](../../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs): it creates `socketpair(AF_UNIX, SOCK_STREAM, ...)` before the child starts, retains one endpoint in the parent, and makes the other endpoint available to the child as a file descriptor. The child learns which descriptor carries the channel during startup, and Node wraps both endpoints in its higher-level process IPC implementation.
+```javascript
+// parent.js
+const { fork } = require('node:child_process');
 
-Node then exposes the channel through APIs such as `subprocess.send()` and the `'message'` event in the parent, with corresponding `process.send()` and `'message'` handling in the child. The socket pair fits this relationship because the parent is creating one specific peer and can distribute the endpoint during process creation; no stable pathname, listener, `connect()`, or `accept()` rendezvous is necessary.
+const child = fork('./child.js');
+child.on('message', (message) => {
+  console.log('Result:', message);
+});
+child.send({ limit: 10 });
+```
 
-This process IPC is distinct from Node's other forms of concurrency:
+```javascript
+// child.js
+process.on('message', ({ limit }) => {
+  process.send({ total: limit * 2 });
+});
+```
 
-- **Child process:** Runs in a separate process with its own address space and event loop; the IPC channel crosses a process boundary.
-- **Worker thread:** Runs another JavaScript execution thread inside the same process and can share process memory through explicit shared-memory mechanisms.
-- **libuv worker pool:** Contains native threads used internally to offload selected operations such as filesystem, DNS, cryptographic, and compression work; these workers are not `child_process` children.
+The parent sends through `subprocess.send()` and receives the child's replies through `'message'`; the child receives through its own `'message'` event and replies through `process.send()`. The channel transfers messages between separate processes, not shared JavaScript objects.
+
+#### Process Boundary
+
+`child_process.fork()` starts a new Node.js process rather than cloning the current one with the POSIX `fork()` system call. The child has its own address space, V8 instance, and event loop. Node prepares the child configuration and delegates process creation to libuv, so starting many child processes has a memory and startup cost.
+
+#### IPC Channel Implementation
+
+Node adds an `ipc` entry to the child's stdio configuration. On Unix, libuv turns that entry into an IPC pipe backed by a [Unix-domain socket pair](../../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs): it creates `socketpair(AF_UNIX, SOCK_STREAM, ...)` before the child starts, retains one endpoint in the parent, and makes the other endpoint available to the child as a file descriptor. The child learns which descriptor carries the channel during startup, and Node wraps both endpoints in its higher-level process IPC implementation.
+
+A socket pair fits this parent-child relationship because the parent creates one specific peer and distributes an endpoint while starting it. No stable pathname, listener, `connect()`, or `accept()` rendezvous is necessary.
 
 ### Thread Pool
 
