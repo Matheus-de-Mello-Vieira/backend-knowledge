@@ -87,7 +87,11 @@ NGINX thread pools provide bounded offload for selected operations, including su
 
 ## Master Process and Worker Control
 
-The master uses the Unix-domain socket pairs created during startup to send compact process-control messages rather than client request data. Commands include graceful quit, immediate termination, log reopening, and opening or closing process channels. When a new child starts, the master can send an `OPEN_CHANNEL` message containing that process's channel descriptor to already-running children. When a child exits, the master sends `CLOSE_CHANNEL` so the remaining processes release the stale descriptor.
+The master uses the Unix-domain socket pairs it creates for child processes to send compact process-control messages rather than client request data. Commands include graceful quit, immediate termination, log reopening, and opening or closing process channels.
+
+NGINX maintains process-channel information in every process as its topology changes. The master creates a child's socket pair before `fork()`, so the new child inherits descriptors that already exist, including channels for earlier children. If the master later creates a socket pair for another child, that new child inherits the older channels, but an earlier worker cannot retroactively inherit the newly created channel.
+
+To distribute that later channel, the master sends an `NGX_CMD_OPEN_CHANNEL` (`OPEN_CHANNEL`) message to already-running children. The message passes the new process's [channel descriptor](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Explicit%20Descriptor%20Passing) with `SCM_RIGHTS`; it does not create the underlying socket pair. Each receiver gets its own process-local descriptor referring to the same channel endpoint and updates its local process/channel bookkeeping. When a child exits, the master sends `CLOSE_CHANNEL` so the remaining processes release the stale descriptor.
 
 These bidirectional socket pairs are IPC primitives, but NGINX's process-control protocol primarily uses them from the master toward its children. They remain separate from the [listening and connected sockets](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20Socket%20vs.%20Connected%20Socket) that carry client and upstream traffic.
 

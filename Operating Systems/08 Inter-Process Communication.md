@@ -26,6 +26,9 @@ On Unix-like systems, connected Unix-domain sockets support this transfer as anc
 - **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
 - **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed or before an unrelated program inherits it across `exec()`.
 
+> [!example] NGINX Process-Channel Topology
+> A newly forked NGINX worker inherits descriptors that were already open before its [`fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). An already-running worker cannot inherit a descriptor for a socket pair created later. The [NGINX master](../Technologies/NGINX/02%20NGINX%20Internals.md#Master%20Process%20and%20Worker%20Control) therefore passes the new process-channel descriptor to existing workers with `SCM_RIGHTS`, combining descriptor inheritance with explicit passing as its process topology changes.
+
 ## Shared-Memory IPC
 
 `mmap()` creates a mapping in a process's virtual address space; a shared mapping gives multiple processes virtual addresses that ultimately refer to the same physical pages. For compatible `MAP_SHARED` mappings, a process can observe changes made through another process's mapping without transferring those bytes through a pipe or socket. [Memory visibility and IPC](02%20The%20Anatomy%20of%20a%20Process.md#Memory%20Visibility%20%26%20Inter-Process%20Communication%20%28IPC%29) explains the mapping, backing, lifetime, and copy-on-write distinctions.
@@ -204,34 +207,42 @@ Both addressed Unix-domain sockets and socket pairs can use socket types support
 
 [Socket management](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) provides the common descriptor-backed socket model; the address family and binding rules determine how an addressed local socket becomes discoverable.
 
-## Stream Framing and Logical Channels
-
-<!-- TODO: Explain how a receiver accumulates stream bytes until a complete frame is available, validates a declared length before allocating or waiting for a payload, and recovers or closes the channel after malformed input. Compare that application protocol with record boundaries supplied by `SOCK_SEQPACKET`. Possible connections: [Socket Management — Stream Sockets](07%20Socket%20Management.md#Stream%20Sockets) for byte-stream behavior; [TCP](../Networking/02%20Protocols/05%20TCP.md) for stream transport. -->
+## Stream Framing
 
 A stream delivers bytes, not application messages. A receiver can obtain a partial message, several messages together, or data ending in the middle of an application-level field. The application protocol must therefore define how the receiver identifies each message's beginning and end.
 
+### Frame Format
+
 A common frame contains a message type, a payload length, and the payload. The type selects how the payload is interpreted, while the length lets the receiver determine how many bytes belong to that message before processing the next frame. A record-preserving transport such as `SOCK_SEQPACKET` supplies record boundaries, but the application still defines the meaning of each record.
+
+### Incremental Frame Decoding
+
+<!-- TODO: Explain the receiver state machine: retain unread bytes across reads; parse a complete fixed-size header; validate its type and declared payload length; wait only for the declared payload after validation; emit one frame; and retain any following bytes for the next frame. Contrast partial input, which is normal, with a completed invalid header. -->
+
+### Invalid Frames and Resource Bounds
+
+<!-- TODO: Explain that the application validates declared lengths before allocating or waiting indefinitely, defines frame-size, buffering, and progress limits, and treats malformed input as a protocol violation. State that a simple length-prefixed stream should be closed after malformed input unless its format provides a trustworthy resynchronization mechanism. Clarify that `SOCK_SEQPACKET` preserves record boundaries but does not validate record meaning or resource policy. -->
+
+### Logical Channels and Endpoint Isolation
 
 One connection can carry several logical message types when a framing protocol distinguishes them. Separate pipes or socket pairs instead isolate those channels through independent endpoints. The choice depends on whether independent endpoint lifetime and flow control are more valuable than one shared protocol and connection.
 
 ## Unix-Domain Sockets and Loopback TCP/IP
 
-<!-- TODO: Expand the path from a local TCP/IP send through the host networking stack to local delivery. Contrast Unix-domain addressing, access control, deployment constraints, and interoperability with an IP address and port. Keep transport lifecycle details in Socket Management and TCP. Possible connections: [Socket Management — Binding and Local Endpoints](07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints), [TCP](../Networking/02%20Protocols/05%20TCP.md), [UDP](../Networking/02%20Protocols/04%20UDP.md), and [Network Security — Service Listening Scope and Network Reachability](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability). -->
+Unix-domain sockets and loopback Internet sockets both let local processes exchange data through kernel socket objects, but they use different addressing namespaces and protocol models. `AF_UNIX` selects local Unix-domain addressing. `AF_INET` and `AF_INET6` select IPv4 and IPv6 Internet-domain addressing, respectively; the socket type and protocol then determine whether the endpoint uses TCP, UDP, or another compatible transport.
 
-`AF_UNIX` selects local socket communication. `AF_INET` selects IPv4 Internet-protocol communication, including local loopback; `127.0.0.1` is the conventional IPv4 loopback address, and `::1` is the IPv6 loopback address. `localhost` is commonly configured to resolve to one or both loopback addresses.
+An addressed Unix-domain socket uses a local Unix-domain address, commonly a pathname. Only processes on the same host can connect through that address, and the communication does not use IP or a transport protocol such as TCP. An Internet-domain listener instead uses an IP address and port. Binding it to the IPv4 loopback address `127.0.0.1` or the IPv6 loopback address `::1` restricts it to local traffic. `localhost` is commonly configured to resolve to one or both of those addresses.
 
-A loopback connection remains on the host, but it still follows the IP and transport-stack model rather than Unix-domain socket addressing. It does not traverse an Ethernet or Wi-Fi link to reach another machine. A Unix-domain socket instead uses local socket addressing and cannot be used by a process on another host.
+Loopback traffic never traverses an Ethernet or Wi-Fi link to reach another machine, but it still follows the IP and selected transport-stack model. This makes a loopback TCP endpoint behave like a local instance of the same address, port, and transport model that a service can use for remote clients when it binds a non-loopback address.
 
-- **Unix-domain socket:** Fits communication that is inherently local and can use Unix-domain addressing.
-- **Loopback TCP/IP:** Fits local communication that should use the same IP address, port, and TCP socket model as a networked service.
-
-[TCP](../Networking/02%20Protocols/05%20TCP.md) and [UDP](../Networking/02%20Protocols/04%20UDP.md) explain the transport behavior used by Internet-domain sockets; [Socket Management](07%20Socket%20Management.md#Binding) explains binding and local acceptance scope.
+- **Unix-domain socket:** Use when the communication is inherently host-local and a Unix-domain address is suitable for peer rendezvous.
+- **Loopback TCP/IP:** Use when local participants need Internet-domain addressing or transport behavior that also applies to a networked deployment.
 
 ## Mechanism Selection
 
-<!-- TODO: Develop a comparison across directionality, peer discovery, addressing, byte-stream versus record semantics, message framing, buffering, synchronization, and cross-host reachability. Use concrete requirements to show why no mechanism is universally preferable. Possible connections: [Memory visibility and IPC](02%20The%20Anatomy%20of%20a%20Process.md#Memory%20Visibility%20%26%20Inter-Process%20Communication%20%28IPC%29) for shared mappings; [Synchronization Mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) for coordination; [Socket Management](07%20Socket%20Management.md) and [TCP](../Networking/02%20Protocols/05%20TCP.md) for socket and transport behavior. -->
-
 Select an IPC mechanism from the required communication shape rather than from the fact that all participants happen to run locally.
+
+<!-- TODO: Refine this selection list in place. Distinguish a pipe's endpoint distribution through an existing relationship from a FIFO's pathname rendezvous; distinguish a socket pair's known peers from an addressed Unix-domain listener's independently started clients; and make the trade-off between one framed connection and separate endpoints explicit as independent lifetime, flow-control, and failure boundaries. Keep loopback TCP as a local use of an Internet-domain model that can also be deployed across hosts, not as cross-host IPC. -->
 
 - **Pipe or FIFO:** A bounded, unidirectional byte stream is sufficient. Use two channels when both peers must send independent byte streams.
 - **Socket pair:** Two known peers need an unnamed bidirectional socket channel.
