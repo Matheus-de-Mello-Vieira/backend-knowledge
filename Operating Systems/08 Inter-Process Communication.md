@@ -71,6 +71,7 @@ A pipe buffer decouples producer and consumer only while it holds unread bytes o
 - **Backpressure:** A consumer that reads too slowly eventually fills the bounded pipe buffer and constrains producer progress instead of allowing queued data to grow without bound.
 
 While an operation waits, its calling thread is in the operating system's [blocked state](05%20Process%20Management.md#Core%20Mechanics), allowing another runnable thread to use the CPU.
+
 ### Readiness and Completion
 
 Pipes work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
@@ -140,6 +141,7 @@ The following fragments show the pipe-specific descriptor setup. They omit argum
     close(p[0]);
     close(p[1]);
     ```
+
     FD `0` retains the read-end reference after `p[0]` is closed; the child no longer retains a write-end reference. When that child executes `grep`, its prepared FD `0` determines where `grep` reads.
 
 4. **Release the shell's construction handles:** Once both children have inherited the endpoints, the shell no longer needs either reference:
