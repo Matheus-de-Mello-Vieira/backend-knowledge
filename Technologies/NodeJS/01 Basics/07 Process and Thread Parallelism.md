@@ -22,6 +22,8 @@ The `node:cluster` module starts several Node.js worker processes under a primar
 
 ### Cluster Connection Distribution
 
+<!-- TODO: Revisit the worker-count wording here: distinguish Cluster behavior from the example's policy of starting one worker per available parallelism unit. -->
+
 The primary starts a worker for each available parallelism unit. The following program creates the application server only in worker processes:
 
 ```javascript
