@@ -43,7 +43,7 @@ The dimensions are related but not interchangeable. `SOCK_STREAM` does not mean 
 
 After the address family establishes how endpoints are addressed, the socket type establishes the data model exposed to the application. Internet-domain and Unix-domain sockets, for example, can both expose stream semantics.
 
-A concrete protocol requires a compatible family, type, and protocol selection. With Internet sockets, `SOCK_STREAM` is commonly paired with TCP and `SOCK_DGRAM` with UDP; those pairings are examples rather than definitions of the socket types themselves.
+The resulting concrete protocol must be compatible with the selected family and socket type. The protocol argument may be `0` when that combination determines the normal protocol; an explicit value is needed only to select among compatible protocols. With Internet sockets, `SOCK_STREAM` is commonly paired with TCP and `SOCK_DGRAM` with UDP; those pairings are examples rather than definitions of the socket types themselves.
 
 ### Stream Sockets
 

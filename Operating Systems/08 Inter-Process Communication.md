@@ -173,7 +173,6 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 | Independently started peers | Natural fit | Requires endpoint distribution |
 | Connection setup | Address-based connection lifecycle | Endpoints created already connected |
 | Filesystem pathname required | Only for pathname-based addressing | No |
-
 > [!example] Docker Daemon and `/var/run/docker.sock`
 > On Linux, Docker Engine uses `unix:///var/run/docker.sock` as its default local daemon endpoint. The pathname gives independently started clients such as the Docker CLI and other Engine API clients a stable address through which they can reach the same listener without receiving a descriptor in advance.
 >
