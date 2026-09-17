@@ -304,9 +304,18 @@ Traditional daemonization could involve:
 - configuring the process's file-creation mask;
 - closing inherited [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs));
 - redirecting standard input, output, and error;
-- configuring signal handling and, historically, sometimes maintaining a PID file.
+- configuring signal handling.
 
 These steps made the process independent of the terminal and login session that originally launched it. They were conventions used to achieve the daemon's desired lifecycle rather than requirements imposed by the kernel.
+
+### PID Files
+
+A **PID file** is an application-maintained file that publishes the numeric PID chosen to represent a service. A service-specific control tool can use its stable path to find that PID and then inspect or signal the process.
+
+- **Kernel relationship:** Every running process has a kernel-assigned PID, but the kernel does not automatically create or maintain a PID file for it. A PID file is therefore external runtime metadata, historically used to control daemons rather than a part of the process itself.
+- **Staleness and reuse:** Because the kernel does not keep the file synchronized with process lifetime, a PID file can become stale after a crash or unclean shutdown. A PID is also reusable after its original process exits, so reading a number from a PID file does not by itself prove that the process still belongs to the intended service.
+
+Service managers can track the processes they start directly. Applications managed this way often do not need to create PID files themselves.
 
 ### Modern Service Managers
 

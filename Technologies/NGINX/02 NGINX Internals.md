@@ -173,7 +173,7 @@ NGINX cannot decide whether a new executable is acceptable. A human operator—o
 
 `USR2` starts a new executable alongside the old generation rather than replacing the running master in place. Sending it to the old master initiates this sequence:
 
-1. The old master renames its PID file with the `.oldbin` suffix and prepares the `NGINX` environment variable with inherited listening-descriptor numbers.
+1. The old master renames its [PID file](../../Operating%20Systems/05%20Process%20Management.md#PID%20Files) with the `.oldbin` suffix and prepares the `NGINX` environment variable with inherited listening-descriptor numbers.
 2. It starts a detached child, which calls `execve()` and becomes the new master.
 3. The new master reconstructs access to the inherited listeners and starts its workers. The old master and workers continue to exist alongside them.
 

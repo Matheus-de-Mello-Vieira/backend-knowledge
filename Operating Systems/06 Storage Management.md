@@ -670,7 +670,7 @@ mount --bind /srv/database /mnt/database
 #### `/run` — Current-Boot Runtime State
 
 - **Transient Runtime State**: `/run` contains information associated with the currently running system.
-- **Typical Contents**: PID files, sockets, locks, and other service runtime state may appear beneath `/run`.
+- **Typical Contents**: [PID files](05%20Process%20Management.md#PID%20Files) that associate a service path with its current PID, sockets, locks, and other service runtime state may appear beneath `/run`.
 - **Boot Lifetime**: Its contents generally do not need to survive reboot.
 - **Memory Backing**: `/run` is commonly backed by a temporary memory-based filesystem such as `tmpfs`.
 - **Useful Distinction**:
@@ -795,7 +795,7 @@ mount --bind /srv/database /mnt/database
 >
 ### Opening Files
 
-Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) regular-file interface. `open()` resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
+Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software%2C%20Hardware%2C%20and%20POSIX) regular-file interface. `open()` resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
 
 Conceptually, the interface looks like:
 
@@ -943,17 +943,17 @@ These operations illustrate the distinction between the common [POSIX descriptor
 
 The distinction between [readiness and completion](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) applies to regular files, but their readiness state does not reveal storage latency as socket readiness reveals changing data availability or send capacity.
 
-- **Regular-file readiness:** POSIX `poll()` reports an ordinary regular file as readable and writable, even at EOF or when the next read must fetch uncached data from storage. It therefore cannot determine whether a file operation will wait for storage I/O or notify an application when a file grows. 
-	- On Linux, `O_NONBLOCK` does not change this behavior, and `epoll` rejects ordinary regular files (`epoll_ctl()` returns `EPERM`).
+- **Regular-file readiness:** POSIX `poll()` reports an ordinary regular file as readable and writable, even at EOF or when the next read must fetch uncached data from storage. It therefore cannot determine whether a file operation will wait for storage I/O or notify an application when a file grows.
+    - On Linux, `O_NONBLOCK` does not change this behavior, and `epoll` rejects ordinary regular files (`epoll_ctl()` returns `EPERM`).
 - **Submitted operations:** Asynchronous file I/O submits a specific read, write, or synchronization operation and later reports its result.
-	- Requests commonly use explicit offsets, so they do not depend on the shared current file position.
-	- The application keeps request state and buffers valid until completion, handles short transfers and errors, and does not assume independently submitted operations complete in submission order.
+    - Requests commonly use explicit offsets, so they do not depend on the shared current file position.
+    - The application keeps request state and buffers valid until completion, handles short transfers and errors, and does not assume independently submitted operations complete in submission order.
 - **Execution models:** A native completion interface, such as Linux `io_uring` or Windows overlapped I/O with I/O completion ports, can report file-operation completions directly. -
-	- Worker-thread offload instead prevents the event-loop thread from blocking while another thread performs a blocking file operation.
-	- Both approaches wait for an operation's completion rather than treating readiness as an indication of storage latency.
-- **Completion and durability:** Completion of a buffered write means the kernel accepted the operation, not that the data has reached non-volatile storage. 
-	- A completed synchronization operation or synchronized-write mode establishes the relevant [durability boundary](#Write%20Durability%20and%20Synchronization).
-	- Writes that must be covered by a synchronization operation must complete before it runs; submission order alone does not establish that dependency when operations can execute independently.
+    - Worker-thread offload instead prevents the event-loop thread from blocking while another thread performs a blocking file operation.
+    - Both approaches wait for an operation's completion rather than treating readiness as an indication of storage latency.
+- **Completion and durability:** Completion of a buffered write means the kernel accepted the operation, not that the data has reached non-volatile storage.
+    - A completed synchronization operation or synchronized-write mode establishes the relevant [durability boundary](#Write%20Durability%20and%20Synchronization).
+    - Writes that must be covered by a synchronization operation must complete before it runs; submission order alone does not establish that dependency when operations can execute independently.
 
 ### Mapping Files to Logical Blocks
 
