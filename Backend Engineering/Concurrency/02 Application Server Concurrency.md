@@ -162,7 +162,7 @@ With [`SO_REUSEPORT`](../../Operating%20Systems/07%20Socket%20Management.md#Mult
     - Two connections may look equivalent to the kernel while requiring very different amounts of CPU time, memory, or response processing.
 
 > [!example] NGINX Socket Sharding
-> [NGINX](../../Technologies/NGINX/02%20NGINX%20Internals.md#Connection%20Acceptance%20and%20Socket%20Management) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
+> [NGINX](../../Technologies/NGINX/02%20NGINX%20Internals.md#Listener%20Ownership%20and%20Connection%20Acceptance) can use `SO_REUSEPORT` so multiple worker processes each own an independent listening socket bound to the same address and port. The kernel distributes incoming connections among those listeners, reducing contention around a single shared accept path. Kernel distribution selects a listener; the selected NGINX worker then accepts and processes the connection.
 
 #### Multiplexed Protocols
 

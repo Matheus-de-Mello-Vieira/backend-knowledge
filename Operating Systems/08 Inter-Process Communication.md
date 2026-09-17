@@ -31,7 +31,7 @@ On Unix-like systems, connected Unix-domain sockets support this transfer as anc
 <!-- TODO: Reassess the NGINX example's causal wording against current upstream behavior. NGINX really does distribute later-created channel descriptors with OPEN_CHANNEL/SCM_RIGHTS to keep a broader per-process channel table synchronized, but current core lifecycle messages are ordinarily master-to-child. Avoid implying that W1 needs W2's descriptor for ordinary master control or that descriptor passing is required by the current master→worker command flow. -->
 
 > [!example] NGINX Process-Channel Topology
-> A newly forked NGINX worker inherits descriptors that were already open before its [`fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). An already-running worker cannot inherit a descriptor for a socket pair created later. The [NGINX master](../Technologies/NGINX/02%20NGINX%20Internals.md#Master%20Process%20and%20Worker%20Control) therefore passes the new process-channel descriptor to existing workers with `SCM_RIGHTS`, combining descriptor inheritance with explicit passing as its process topology changes.
+> A newly forked NGINX worker inherits descriptors that were already open before its [`fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). An already-running worker cannot inherit a descriptor for a socket pair created later. The [NGINX master](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Channels%20and%20Topology%20Updates) therefore passes the new process-channel descriptor to existing workers with `SCM_RIGHTS`, combining descriptor inheritance with explicit passing as its process topology changes.
 
 ## Shared-Memory IPC
 
@@ -202,7 +202,7 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 > On Unix, [`child_process.fork()`](../Technologies/NodeJS/01%20Basics/04%20Internals.md#Child%20Processes%20and%20IPC) creates a parent-child IPC channel that libuv backs with a Unix-domain `SOCK_STREAM` socket pair. Because the parent creates the specific child and can distribute an endpoint during process creation, no stable address or listener is needed.
 <!-- -->
 > [!example] NGINX Master and Worker Control Channels
-> [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Master%20Process%20and%20Worker%20Control) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
+> [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Channels%20and%20Topology%20Updates) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
 
 The way peers obtain their endpoints is separate from the socket's data model:
 

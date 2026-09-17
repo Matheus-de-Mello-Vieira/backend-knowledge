@@ -11,7 +11,7 @@ NGINX can proxy at Layer 4 or Layer 7:
 * Use the `stream` context for TCP or UDP proxying, including protocols NGINX does not interpret, such as a database protocol.
 * Use the `http` context for HTTP-aware proxying, including request routing, response caching, and TLS termination.
 
-NGINX's [master-and-worker architecture](02%20NGINX%20Internals.md#The%20Worker%20Process%20Model) separates process control from event-driven client-connection handling.
+NGINX's [master-and-worker architecture](02%20NGINX%20Internals.md#Architecture%20and%20Startup) separates process control from event-driven client-connection handling.
 
 ## Scaling an NGINX Fleet
 

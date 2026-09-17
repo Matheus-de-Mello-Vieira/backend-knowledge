@@ -16,7 +16,7 @@ stream {
 }
 ```
 
-- **`events`:** Configures connection processing for [worker processes](02%20NGINX%20Internals.md#The%20Worker%20Process%20Model). The context is required even when it is empty.
+- **`events`:** Configures connection processing for [worker processes](02%20NGINX%20Internals.md#Process%20Roles). The context is required even when it is empty.
 - **`http`:** Configures application-layer HTTP handling, including static files, virtual servers, routing, reverse proxying, TLS termination, and HTTP/2.
 - **`stream`:** Configures transport-layer TCP or UDP proxying without requiring NGINX to interpret the application protocol.
 
