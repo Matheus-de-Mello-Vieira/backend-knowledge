@@ -9,25 +9,28 @@ Process management is the heartbeat of the operating system. It is the complex m
 
 ## Core Mechanics
 
-### Process Lifecycle
+### Process Lifecycle and Thread Execution States
 
-A process lifecycle describes the execution states through which a process moves. Exact state names vary by operating system, but the model distinguishes work that is ready to execute, executing, unable to proceed, deliberately suspended, and finished.
+A process provides resources and a virtual address space; its threads execute within that environment. The process lifecycle records process-wide events, while the scheduler tracks the execution state of each thread. Exact state names vary by operating system.
 
-- **Created:** The kernel has created the process, but it has not yet begun execution.
-- **Runnable:** The process is ready to execute and waits for a CPU.
-- **Running:** The process is actively executing on a CPU.
-- **Blocked:** The process cannot proceed until an external event occurs, such as a network packet or disk I/O completion, so it does not consume CPU time while it waits.
-- **Stopped:** The process is suspended and is not eligible for scheduling until it is continued.
-- **Terminated:** The process has finished execution.
+**Process lifecycle** includes these process-wide states:
 
-These states are not one linear path. A newly created process becomes runnable; the scheduler moves a runnable process to running; a running process can block and later become runnable again. Stopping suspends the process, while continuing it makes it runnable again. A running process eventually terminates.
+- **Created:** The kernel has created the process and its initial execution context, but it has not yet begun execution.
+- **Stopped:** The process has been suspended and its threads are not eligible for scheduling until it is continued.
+- **Terminated:** The process no longer executes, either after its final thread exits or because a termination action ends it.
 
-<!-- TODO: Review the abstraction level of these lifecycle states against the later Processes vs. Threads section. Modern schedulers ordinarily schedule threads/tasks, and a multithreaded process can contain execution units in different runnable/blocked/running states at the same time. Decide how to keep this process-level introductory model useful without contradicting the thread-level scheduling model. -->
+**Thread execution states** describe whether an individual thread is eligible to use a CPU:
+
+- **Runnable:** The thread is ready to execute and waits for a CPU.
+- **Running:** The thread is actively executing on a CPU.
+- **Blocked:** The thread cannot proceed until an external event occurs, such as a network packet or disk I/O completion, so it does not consume CPU time while it waits.
+
+Thread execution states are not a linear path. A newly created execution context becomes runnable; the scheduler moves a runnable thread to running; and a running thread can block and later become runnable again. Continuing a stopped process makes its threads eligible to run again. In a single-threaded process, the process and its sole thread move through these states together. A multithreaded process can have threads that are runnable, running, or blocked at the same time.
 
 ### Scheduling and System Calls
 
-- **Context Switching:** The physical act of evicting a process from the CPU. The kernel must pause execution, save the exact state of the CPU's registers (Instruction Pointer, Stack Pointer, Flags) into the PCB, and load the saved registers of the next process. This heavy computational overhead is why thread-thrashing destroys application performance.
-- **Blocking vs. Runnable:** If a process needs to wait for a network packet or a slow disk read, the OS moves it to a `Blocked` state. It is immediately evicted from the CPU core so another program can use the hardware, consuming zero CPU cycles until a hardware interrupt wakes it back up.
+- **Context Switching:** The physical act of replacing one thread's execution context on a CPU. The kernel pauses the outgoing thread, saves CPU registers such as the Instruction Pointer, Stack Pointer, and flags in thread-specific kernel state, and restores the next thread's saved state. If the next thread belongs to another process, the kernel also changes the active address-space context. Frequent switches add overhead and can reduce application performance.
+- **Blocking vs. Runnable:** If a thread needs to wait for a network packet or a slow disk read, the OS moves that thread to a blocked state and schedules another runnable thread. The blocked thread consumes no CPU time until an interrupt or kernel event makes it runnable again.
 - **System Calls:** When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it triggers a hardware trap. The CPU pauses the application, elevates its privilege level (Ring 0), and hands control to the kernel to safely execute the requested work.
 
 ## POSIX Process-Control Interface
