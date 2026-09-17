@@ -208,7 +208,7 @@ Beyond the common descriptor interface, operations depend on the resource behind
 Linux exposes specialized operations for transferring unmodified bytes between compatible file-descriptor-backed resources without copying the payload through an application buffer. These operations are not interchangeable with generic `read()` and `write()` for every descriptor pair.
 
 - **`sendfile()`:** Transfers bytes from a regular file to a compatible output descriptor, such as a socket.
-- **`splice()`:** Transfers bytes to or from a pipe; at least one of its descriptors must refer to a [pipes](08%20Inter-Process%20Communication.md#Pipes). It can support paths such as regular file → pipe and pipe → socket when the endpoints support the operation.
+- **`splice()`:** Transfers bytes to or from a pipe; at least one of its descriptors must refer to [pipes](08%20Inter-Process%20Communication.md#Pipes%20and%20FIFOs). It can support paths such as regular file → pipe and pipe → socket when the endpoints support the operation.
 
 Both operations avoid application-buffer copies rather than every physical movement of data. Storage devices and network interfaces can still move bytes between memory and the device through DMA.
 

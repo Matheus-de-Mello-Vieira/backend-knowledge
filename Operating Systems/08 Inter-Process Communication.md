@@ -43,11 +43,13 @@ The receiver must handle the descriptor as an acquired capability:
 
 Shared storage is not synchronization. A writer and reader still need to agree on ownership, update order, and readiness; otherwise a reader can observe incomplete or conflicting state. [Synchronization mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) provide the relevant mutex, semaphore, atomic-operation, and condition-variable models.
 
-## Pipes
+## Pipes and FIFOs
 
-A POSIX pipe is a kernel-managed inter-process communication (IPC) resource that carries a bounded, unidirectional byte stream. A producer writes bytes at one end and a consumer reads them at the other. The kernel buffer absorbs temporary differences in their execution rates, but its finite capacity eventually makes each side's progress depend on the other.
+Pipes and FIFOs are kernel-managed inter-process communication (IPC) resources that carry bounded, unidirectional byte streams. A producer writes bytes at one end and a consumer reads them at the other. The kernel buffer absorbs temporary differences in their execution rates, but its finite capacity eventually makes each side's progress depend on the other.
 
-### Endpoints and Kernel State
+An anonymous pipe gives its creator descriptor endpoints immediately, whereas a FIFO uses a filesystem pathname so independently started processes can rendezvous before opening endpoints. Once the endpoints are open, both mechanisms share the stream, buffering, readiness, and end-of-file behavior described below.
+
+### Anonymous-Pipe Endpoints and Kernel State
 
 Calling `pipe(p)` creates a pipe and stores two process-local [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) in `p`: `p[0]` is the read end, and `p[1]` is the write end.
 
@@ -57,9 +59,9 @@ Calling `pipe(p)` creates a pipe and stores two process-local [file descriptors]
 
 ### Stream and File Semantics
 
-A pipe exposes an ordered byte stream rather than discrete messages. A `read()` consumes whichever bytes are currently available, so one read result does not reveal application-message or `write()` boundaries.
+Once open, pipes and FIFOs expose an ordered byte stream rather than discrete messages. A `read()` consumes whichever bytes are currently available, so one read result does not reveal application-message or `write()` boundaries.
 
-Pipes are non-seekable: consuming bytes advances through the stream, but `lseek()` does not supply the position semantics of a regular file. This is one example of how [resource-specific operations](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations) remain different beneath the common descriptor interface.
+Pipes and FIFOs are non-seekable: consuming bytes advances through the stream, but `lseek()` does not supply the position semantics of a regular file. This is one example of how [resource-specific operations](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations) remain different beneath the common descriptor interface.
 
 On Linux, [`splice()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20Descriptor%20Transfers%20and%20Zero-Copy) transfers bytes between a pipe and another compatible file-descriptor-backed resource without copying the payload through an application buffer. At least one descriptor must refer to a pipe; paths such as regular file → pipe and pipe → socket depend on endpoint support.
 
@@ -68,52 +70,64 @@ On Linux, [`splice()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20De
 
 ### Blocking and Backpressure
 
-A pipe buffer decouples producer and consumer only while it holds unread bytes or has usable capacity. Once the buffer is empty or full, a blocking operation waits for the other side to change that state.
+A pipe or FIFO buffer decouples producer and consumer only while it holds unread bytes or has usable capacity. Once the buffer is empty or full, a blocking operation waits for the other side to change that state.
 
-- **Empty pipe:** A `read()` blocks while the pipe is empty and at least one write-end reference remains open. When a writer adds bytes, the reader can resume and consume them.
-- **Full pipe:** A `write()` blocks when the pipe lacks enough capacity for the operation to make progress. Reading frees capacity and allows the writer to resume.
-- **Backpressure:** A consumer that reads too slowly eventually fills the bounded pipe buffer and constrains producer progress instead of allowing queued data to grow without bound.
+- **Empty channel:** A `read()` blocks while the channel is empty and at least one write-end reference remains open. When a writer adds bytes, the reader can resume and consume them.
+- **Full channel:** A `write()` blocks when the channel lacks enough capacity for the operation to make progress. Reading frees capacity and allows the writer to resume.
+- **Backpressure:** A consumer that reads too slowly eventually fills the bounded channel buffer and constrains producer progress instead of allowing queued data to grow without bound.
 
 While an operation waits, its calling thread is in the operating system's [blocked state](05%20Process%20Management.md#Core%20Mechanics), allowing another runnable thread to use the CPU.
 
 ### Readiness and Completion
 
-Pipes work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
+Pipes and FIFOs work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
 
-- **Readable read end:** The read end is readable when the pipe holds bytes or when an end condition is observable. A subsequent `read()` therefore either consumes available bytes or returns EOF after the buffer is empty and no write-end references remain.
-- **Writable write end:** The write end is writable when the pipe has capacity for a write to make progress. A writer still performs the `write()` after receiving the notification.
+- **Readable read end:** The read end is readable when the channel holds bytes or when an end condition is observable. A subsequent `read()` therefore either consumes available bytes or returns EOF after the buffer is empty and no write-end references remain.
+- **Writable write end:** The write end is writable when the channel has capacity for a write to make progress. A writer still performs the `write()` after receiving the notification.
 
 A readiness-driven consumer follows this sequence:
 
-1. The consumer waits for the pipe read end to become readable.
+1. The consumer waits for the channel read end to become readable.
 2. A producer writes bytes, or the last write-end reference closes.
 3. The readiness interface reports the state change.
 4. The consumer calls `read()` and handles bytes or EOF.
 
-Completion-based I/O instead submits a concrete operation, including its destination buffer, before data is available. A submitted pipe read remains pending until the system can perform the transfer, then reports a completion for that particular operation. The application therefore tracks outstanding operations and keeps each operation's buffer valid until its completion is processed.
+Completion-based I/O instead submits a concrete operation, including its destination buffer, before data is available. A submitted read remains pending until the system can perform the transfer, then reports a completion for that particular operation. The application therefore tracks outstanding operations and keeps each operation's buffer valid until its completion is processed.
 
 The two models differ in when the application supplies the I/O operation: readiness reports permission to attempt a read or write, while completion reports the result of work already submitted. An implementation can expose completion semantics while using readiness or polling internally. The same distinction applies to [readiness- and completion-based socket I/O](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared), where transport semantics add networking-specific concerns.
 
 #### Buffering and Backpressure Boundary
 
-Pending reads do not increase the pipe's kernel buffer capacity. When a submitted read completes, it drains bytes from that buffer into its user-space destination buffer. Pre-submitting reads can therefore drain the pipe earlier and queue additional data in user-space memory; it moves the effective backpressure boundary downstream rather than increasing the pipe's bounded kernel buffer.
+Pending reads do not increase the channel's kernel buffer capacity. When a submitted read completes, it drains bytes from that buffer into its user-space destination buffer. Pre-submitting reads can therefore drain the channel earlier and queue additional data in user-space memory; it moves the effective backpressure boundary downstream rather than increasing the channel's bounded kernel buffer.
 
-### EOF and Pipe Lifetime
+### EOF and Pipe/FIFO Lifetime
 
-A reader observes EOF only after the pipe has no more buffered data and no process retains a write-end reference:
+A reader observes EOF only after a pipe or FIFO has no more buffered data and no process retains a write-end reference:
 
 1. The reader consumes every buffered byte.
 2. Every write end is closed.
 
-An open write end means the kernel must still allow for a future write. An empty pipe with any write-end reference is therefore a waitable stream rather than EOF. Processes that inherit endpoints must close every unused end; otherwise, a process that only reads can keep its own later read waiting by retaining its write end. These rules follow the same [descriptor lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) model as other FD-backed resources.
+An open write end means the kernel must still allow for a future write. An empty channel with any write-end reference is therefore a waitable stream rather than EOF. Every process must close endpoints it no longer needs; inherited endpoints commonly cause a process that only reads to keep its own later read waiting by retaining its write end. These rules follow the same [descriptor lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) model as other FD-backed resources.
 
-### Anonymous Pipes and FIFOs
+### Anonymous Pipes
 
 An anonymous pipe is reached through descriptors that a process already holds. It is commonly created before `fork()` so related processes inherit references to the same kernel pipe state; [explicit descriptor passing](#Explicit%20Descriptor%20Passing) can also transfer an endpoint to another process.
 
-A **FIFO** (named pipe) adds a filesystem pathname that independent processes can use as a rendezvous point. Once opened, a FIFO still carries a bounded byte stream through kernel-managed state. Its pathname does not make the transferred bytes persistent regular-file content.
+### FIFOs: Pathname Rendezvous and Opening
 
-### Shell Pipeline Construction
+A **FIFO** (named pipe) gives a pipe a filesystem pathname that independently started processes can use as a rendezvous point. After processes open its ends, it carries the same bounded unidirectional byte stream as an anonymous pipe. The pathname identifies the channel; it does not make transferred bytes persistent regular-file content.
+
+Unlike an anonymous pipe, whose endpoints must be inherited or explicitly passed, opening a FIFO coordinates its participants:
+
+- **Blocking open:** A read-only open waits for a writer, and a write-only open waits for a reader.
+- **Nonblocking open:** A read-only open returns immediately. A write-only open fails when no process currently has the FIFO open for reading.
+- **Endpoint lifetime:** An empty FIFO produces EOF only after every write-end reference is closed, following the same [EOF and pipe/FIFO lifetime](#EOF%20and%20Pipe%2FFIFO%20Lifetime) rules as an anonymous pipe.
+
+Several readers or writers share one byte stream rather than receive separate connections. A write no larger than `PIPE_BUF` is not interleaved with another writer's data, but a FIFO still does not preserve application-message boundaries; applications that need messages must use [stream framing](#Stream%20Framing) or a record-preserving transport.
+
+A FIFO is unidirectional. Bidirectional communication requires two FIFOs and a protocol that assigns each pathname to one direction.
+
+### Anonymous-Pipe Shell Pipeline Construction
 
 Shell pipelines combine pipe endpoint configuration with the [POSIX process-control interface](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). For `cat file | grep foo`, the pipe-specific result is that `cat` receives the write end as FD `1` and `grep` receives the read end as FD `0`.
 
@@ -176,9 +190,7 @@ When `cat` reaches file EOF and exits, its write descriptor closes. After `grep`
 
 ## Unix-Domain Sockets and Socket Pairs
 
-<!-- TODO: Verify the Socket Management heading target on the existing "socket family" link after the section rename to "Socket Families and Types"; update only the semantic link target if needed. -->
-
-Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
+Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families%20and%20Types) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
 
 An **addressed Unix-domain socket** provides a rendezvous mechanism. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
 
@@ -219,23 +231,32 @@ Both addressed Unix-domain sockets and socket pairs can use socket types support
 
 ## Stream Framing
 
-A stream delivers bytes, not application messages. A receiver can obtain a partial message, several messages together, or data ending in the middle of an application-level field. The application protocol must therefore define how the receiver identifies each message's beginning and end.
+A byte stream from a pipe or `SOCK_STREAM` socket delivers bytes, not application messages. A receiver can obtain a partial message, several messages together, or data ending in the middle of an application-level field. The application protocol must therefore define how the receiver identifies each message's beginning and end.
 
 ### Frame Format
 
-A common frame contains a message type, a payload length, and the payload. The type selects how the payload is interpreted, while the length lets the receiver determine how many bytes belong to that message before processing the next frame. A record-preserving transport such as `SOCK_SEQPACKET` supplies record boundaries, but the application still defines the meaning of each record.
+A common length-prefixed format has a fixed-size header containing a message type and payload length, followed by the payload. The type selects how the payload is interpreted, while the length lets the receiver determine how many bytes belong to that message before processing the next frame. A record-preserving transport such as `SOCK_SEQPACKET` supplies record boundaries, but the application still defines the meaning of each record.
 
 ### Incremental Frame Decoding
 
-<!-- TODO: Explain the receiver state machine: retain unread bytes across reads; parse a complete fixed-size header; validate its type and declared payload length; wait only for the declared payload after validation; emit one frame; and retain any following bytes for the next frame. Contrast partial input, which is normal, with a completed invalid header. -->
+The receiver retains unread bytes across reads and advances its parser only when the next required part of a frame is complete. For a fixed-size header, decoding proceeds in order:
+
+1. Accumulate bytes until a complete header is available.
+2. Parse and validate the header's message type and declared payload length.
+3. Accumulate bytes until the buffer contains the declared payload.
+4. Emit the complete frame and retain any following bytes as the start of the next frame.
+
+Partial input is an ordinary state of a stream: the receiver needs more bytes before it can continue. A complete header with an invalid type or length is instead a completed protocol violation, not a reason to keep waiting for a payload.
 
 ### Invalid Frames and Resource Bounds
 
-<!-- TODO: Explain that the application validates declared lengths before allocating or waiting indefinitely, defines frame-size, buffering, and progress limits, and treats malformed input as a protocol violation. State that a simple length-prefixed stream should be closed after malformed input unless its format provides a trustworthy resynchronization mechanism. Clarify that `SOCK_SEQPACKET` preserves record boundaries but does not validate record meaning or resource policy. -->
+The receiver validates a declared length before allocating storage or committing to wait for that payload. The protocol also needs explicit resource bounds:
 
-### Logical Channels and Endpoint Isolation
+- **Frame size:** A maximum declared payload prevents one header from requiring an unbounded allocation.
+- **Buffered input:** A limit on unread bytes bounds the memory retained while frames are incomplete or the application is slower than the peer.
+- **Progress:** A deadline or equivalent progress policy bounds the resources held by a peer that starts a frame but never completes it.
 
-One connection can carry several logical message types when a framing protocol distinguishes them. Separate pipes or socket pairs instead isolate those channels through independent endpoints. The choice depends on whether independent endpoint lifetime and flow control are more valuable than one shared protocol and connection.
+Malformed input violates the protocol. After a malformed header, a simple length-prefixed stream normally closes the connection: without a trustworthy resynchronization rule, the receiver cannot determine where the next frame begins. `SOCK_SEQPACKET` removes the need to recover record boundaries, but it does not validate a record's meaning or impose frame-size, buffering, or progress limits.
 
 ## Unix-Domain Sockets and Loopback TCP/IP
 
@@ -252,11 +273,26 @@ Loopback traffic never traverses an Ethernet or Wi-Fi link to reach another mach
 
 Select an IPC mechanism from the required communication shape rather than from the fact that all participants happen to run locally.
 
-<!-- TODO: Refine this selection list in place. Distinguish a pipe's endpoint distribution through an existing relationship from a FIFO's pathname rendezvous; distinguish a socket pair's known peers from an addressed Unix-domain listener's independently started clients; and make the trade-off between one framed connection and separate endpoints explicit as independent lifetime, flow-control, and failure boundaries. Keep loopback TCP as a local use of an Internet-domain model that can also be deployed across hosts, not as cross-host IPC. -->
+The first selection axis is **endpoint distribution and discovery**.
+- An anonymous pipe or a socket pair creates endpoints that participants must inherit or receive through descriptor passing.
+- A FIFO or addressed Unix-domain socket gives independently started processes a stable local rendezvous name.
+- Loopback TCP/IP uses an Internet-domain address and port.
+- A previously anonymous endpoint can still reach an unrelated process through descriptor passing, so a name primarily solves discovery rather than determining the channel's data model.
 
-- **Pipe or FIFO:** A bounded, unidirectional byte stream is sufficient. Use two channels when both peers must send independent byte streams.
-- **Socket pair:** Two known peers need an unnamed bidirectional socket channel.
-- **Unix-domain socket:** Local clients need to rendezvous with a local service through a Unix-domain address.
+The remaining axes are independent of how participants find the endpoint:
+
+- **Directionality:** Pipes and FIFOs carry one byte stream in one direction; two are required for independent bidirectional streams. Socket pairs and connected sockets provide bidirectional communication.
+- **Data model:** Pipes, FIFOs, and `SOCK_STREAM` sockets carry byte streams and need framing for application messages. Record-preserving socket types retain record boundaries. Shared mappings expose the same storage instead of transferring a copied stream and therefore require synchronization.
+- **Peer topology:** A pipe or socket pair naturally connects endpoints that have already been distributed. An addressed Unix-domain socket or loopback listener lets one service accept independently established client connections.
+- **Addressing boundary:** Unix-domain addresses are host-local. Loopback TCP/IP remains local in use but follows the Internet-domain addressing and TCP model that also applies when a service binds a reachable network address.
+- **Isolation:** One framed connection can carry several message types and, when its protocol supplies identifiers and routing rules, several logical channels. They share one endpoint lifetime, kernel buffering and backpressure path, and connection-failure boundary. Separate pipes or socket pairs isolate those boundaries at the cost of more descriptors and coordination.
+
+These axes narrow the candidate mechanisms:
+
+- **Pipe:** Participants already have a relationship through which they can receive the endpoints, and one bounded, unidirectional byte stream is sufficient. Use two pipes when both directions need independent byte streams.
+- **FIFO:** Independently started local processes need a pathname rendezvous and a bounded, unidirectional byte stream is sufficient. Use two FIFOs when both directions need independent byte streams.
+- **Socket pair:** Two known peers can receive endpoints through an existing relationship and need an unnamed bidirectional socket channel.
+- **Unix-domain socket:** Independently started local clients need to rendezvous with a local service through a Unix-domain address.
 - **Loopback TCP/IP:** Local participants need Internet-domain addressing or TCP behavior that is also usable across hosts.
 - **Shared mapping:** Participants need access to the same data rather than a copied byte stream, and the design includes an explicit synchronization protocol.
 
