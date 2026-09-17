@@ -18,5 +18,5 @@
   "readableLineLength": true,
   "strictLineBreaks": false,
   "foldHeading": true,
-  "showLineNumber": false
+  "showLineNumber": true
 }

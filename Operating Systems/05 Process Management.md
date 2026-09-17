@@ -89,15 +89,13 @@ Each thread also has a **signal mask**: a set of signal identifiers whose delive
 - **Standard-signal coalescing:** Standard signals do not form a reliable event log. If an instance is already pending, further instances of that signal can merge rather than being delivered as distinct notifications.
 - **Real-time signals:** Real-time signals have separate queued-delivery semantics.
 
-`SIGCHLD` reports an eligible lifecycle transition of a direct child, but the parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children. One notification can require collecting more than one child status.
+[`SIGCHLD`](#SIGCHLD%2C%20Child%20Status%2C%20and%20Reaping) reports an eligible lifecycle transition of a direct child, but the parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children. One notification can require collecting more than one child status.
 
 Signal delivery therefore requests or reports a state change; it does not perform the receiving program's higher-level lifecycle policy. A process such as a supervisor decides how to translate the notification into shutdown, restart, reconfiguration, or cleanup work.
 
 ### Common Signals
 
 The following signals are common in POSIX and Unix-like process control. Their **default action** applies only when the process has not installed a handler or changed the disposition. Signal names are portable identifiers; their numeric values vary by platform and must not be hard-coded.
-
-<!-- TODO: Review the SIGCHLD default-action row for POSIX precision. Distinguish the signal's default disposition being "ignore" from an application explicitly setting SIGCHLD to SIG_IGN, because explicit SIG_IGN has special child-status/reaping semantics and should not be implied to be identical to merely leaving the default disposition unchanged. -->
 
 | Signal                | Typical source or meaning                                         | Default action                                                      |
 | --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -109,13 +107,24 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGSTOP`             | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                         |
 | `SIGTSTP`             | An interactive stop request, commonly `Ctrl-Z`                    | Stop                                                                |
 | `SIGCONT`             | A request to resume a stopped process                             | Continue if stopped                                                 |
-| `SIGCHLD`             | An eligible child changes state                                   | Ignore; the parent still collects child status with a wait function |
+| `SIGCHLD`             | An eligible child changes state                                   | Ignore; child status normally remains available to a wait function  |
 | `SIGPIPE`             | A write targets a pipe or stream socket whose read side is closed | Terminate                                                           |
 | `SIGALRM`             | An alarm timer expires                                            | Terminate                                                           |
 | `SIGUSR1` / `SIGUSR2` | Application-defined notification                                  | Terminate                                                           |
 | `SIGSEGV`             | Invalid memory reference                                          | Terminate and produce a core dump                                   |
 
 `SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
+
+### SIGCHLD, Child Status, and Reaping
+
+`SIGCHLD` notifies the parent that a direct child reached an eligible lifecycle state; it does not itself contain the child's status. When the kernel retains a terminated child's status, the parent obtains it with `wait()`, `waitpid()`, or `waitid()`. Because standard signals can coalesce, one notification does not identify one child or one state transition.
+
+Both `SIG_DFL` and `SIG_IGN` leave a delivered `SIGCHLD` without an immediate effect on the parent's control flow: neither runs a handler nor applies a terminating or stopping action. They differ in the kernel's child-termination bookkeeping, which determines whether the parent can later collect a child's status.
+
+- **Default disposition — `SIG_DFL` (signal default):** `SIG_DFL` selects the signal's predefined behavior. For `SIGCHLD`, that behavior ignores the notification but retains a terminated child's status. The child normally remains a zombie until the parent collects its status with a wait function.
+- **Explicit ignore — `SIG_IGN` (signal ignore):** `SIG_IGN` explicitly selects ignore behavior. For `SIGCHLD`, POSIX additionally prevents children that terminate under this disposition from becoming zombies, so the parent cannot later collect those termination statuses with a wait function.
+
+Use `SIG_DFL` when the parent needs a child's termination status or plans to reap it. `SIG_IGN` suits children whose parent does not need their termination status.
 
 ### POSIX Signal Interface
 
