@@ -158,24 +158,40 @@ The `WINCH` no-accept behavior and live-upgrade sequence assume normal daemonize
 
 ### Executable Upgrade and Rollback
 
-`USR2` starts an executable upgrade rather than replacing the running master in place. The old master renames its PID file with the `.oldbin` suffix, prepares the `NGINX` environment variable with inherited listening-descriptor numbers, and starts a detached child. That child calls `execve()` and becomes the new master, which reconstructs access to inherited listeners and starts its workers while the old master and workers continue to exist.
+#### Operator-Controlled Procedure
 
-This overlap creates a rollback boundary. `WINCH` sent to the old master gracefully drains its workers but leaves that master and its listening descriptors available. Operators, not NGINX, must verify the new generation before sending `QUIT` to retire the old master. To roll back after draining the old workers, `HUP` first makes the old master restart them; the new master can then be retired. Alternatively, terminating the new master—or its independent exit—causes the old master to restart workers that were previously drained.
+NGINX cannot decide whether a new executable is acceptable. A human operator—or operational automation assigned that policy—must choose whether to complete the upgrade or roll it back. Treated as a black box, the procedure is:
+
+1. Replace the executable file, then send `USR2` to the old master. NGINX starts the new generation while the old generation continues to serve requests.
+2. Send `WINCH` to the old master. Its workers stop accepting new connections and drain, leaving the new generation to serve requests while retaining a rollback path.
+3. Verify the new generation and choose an outcome:
+    - **Complete the upgrade:** Send `QUIT` to the old master to retire it.
+    - **Roll back explicitly:** Send `HUP` to the old master to restore its workers, then send `QUIT` to the new master to retire the new generation.
+    - **Recover after a new-generation failure:** Send `TERM` to the new master, or let it exit independently. The old master then restarts the workers drained by `WINCH` automatically.
+
+#### Process Continuity and Rollback State
+
+`USR2` starts a new executable alongside the old generation rather than replacing the running master in place. Sending it to the old master initiates this sequence:
+
+1. The old master renames its PID file with the `.oldbin` suffix and prepares the `NGINX` environment variable with inherited listening-descriptor numbers.
+2. It starts a detached child, which calls `execve()` and becomes the new master.
+3. The new master reconstructs access to the inherited listeners and starts its workers. The old master and workers continue to exist alongside them.
+
+The old master retains its listening descriptors after `WINCH` drains its workers. Stopping those workers therefore does not remove the rollback path: `HUP` can start workers from the old master again, and the old master restarts them automatically when the new master exits.
 
 ```mermaid
-stateDiagram-v2
-    state "Old master and workers running" as OldRunning
-    state "Old and new masters running" as DualRunning
-    state "Old master retained; old workers drained" as OldStandby
-    state "New master and workers running" as NewRunning
-    state "Old workers restored; new master still active" as RestoredOld
+flowchart TD
+    Old["Old master and workers running"]
+    Both["Old and new generations running<br/>Each has a master and workers"]
+    Standby["New generation running<br/>Old master and listeners retained<br/>Old workers drained"]
+    NewOnly["New master and workers only"]
+    Restored["Old workers restarted<br/>New generation still running"]
+    OldOnly["Old master and workers only"]
 
-    [*] --> OldRunning
-    OldRunning --> DualRunning: USR2 / detached child calls execve
-    DualRunning --> OldStandby: WINCH old master
-    OldStandby --> NewRunning: QUIT old master
-    NewRunning --> [*]
-    OldStandby --> RestoredOld: HUP old master / restart old workers
-    RestoredOld --> OldRunning: QUIT new master
-    OldStandby --> OldRunning: TERM or exit new master / automatic restart
+    Old -->|"USR2 to old master"| Both
+    Both -->|"WINCH to old master"| Standby
+    Standby -->|"Operator verifies new generation<br/>then QUIT to old master"| NewOnly
+    Standby -->|"HUP to old master"| Restored
+    Restored -->|"QUIT to new master"| OldOnly
+    Standby -->|"TERM to new master or independent exit<br/>Automatic old-worker restart"| OldOnly
 ```
