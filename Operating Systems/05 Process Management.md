@@ -86,10 +86,9 @@ Because a handler interrupts normal control flow, it must limit itself to async-
 Each thread also has a **signal mask**: a set of signal identifiers whose delivery to that thread is temporarily blocked.
 
 - **Pending delivery:** A blocked signal remains pending until it is unblocked.
+- **Unblockable signals:** `SIGKILL` and `SIGSTOP` cannot be blocked.
 - **Standard-signal coalescing:** Standard signals do not form a reliable event log. If an instance is already pending, further instances of that signal can merge rather than being delivered as distinct notifications.
 - **Real-time signals:** Real-time signals have separate queued-delivery semantics.
-
-[`SIGCHLD`](#SIGCHLD%2C%20Child%20Status%2C%20and%20Reaping) reports an eligible lifecycle transition of a direct child, but the parent still calls `wait()`, `waitpid()`, or `waitid()` to obtain statuses and reap terminated children. One notification can require collecting more than one child status.
 
 Signal delivery therefore requests or reports a state change; it does not perform the receiving program's higher-level lifecycle policy. A process such as a supervisor decides how to translate the notification into shutdown, restart, reconfiguration, or cleanup work.
 
@@ -97,21 +96,21 @@ Signal delivery therefore requests or reports a state change; it does not perfor
 
 The following signals are common in POSIX and Unix-like process control. Their **default action** applies only when the process has not installed a handler or changed the disposition. Signal names are portable identifiers; their numeric values vary by platform and must not be hard-coded.
 
-| Signal                | Typical source or meaning                                         | Default action                                                      |
-| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `SIGHUP`              | The controlling terminal disconnects                              | Terminate                                                           |
-| `SIGINT`              | An interactive interrupt, commonly `Ctrl-C`                       | Terminate                                                           |
-| `SIGQUIT`             | An interactive quit request                                       | Terminate and produce a core dump                                   |
-| `SIGTERM`             | A request to terminate                                            | Terminate                                                           |
-| `SIGKILL`             | A request for immediate termination                               | Terminate; cannot be caught, blocked, or ignored                    |
-| `SIGSTOP`             | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                         |
-| `SIGTSTP`             | An interactive stop request, commonly `Ctrl-Z`                    | Stop                                                                |
-| `SIGCONT`             | A request to resume a stopped process                             | Continue if stopped                                                 |
-| `SIGCHLD`             | An eligible child changes state                                   | Ignore; child status normally remains available to a wait function  |
-| `SIGPIPE`             | A write targets a pipe or stream socket whose read side is closed | Terminate                                                           |
-| `SIGALRM`             | An alarm timer expires                                            | Terminate                                                           |
-| `SIGUSR1` / `SIGUSR2` | Application-defined notification                                  | Terminate                                                           |
-| `SIGSEGV`             | Invalid memory reference                                          | Terminate and produce a core dump                                   |
+| Signal                | Suffix after `SIG`        | Typical source or meaning                                         | Default action                                                     |
+| --------------------- | ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `SIGHUP`              | Hang up                   | The controlling terminal disconnects                              | Terminate                                                          |
+| `SIGINT`              | Interrupt                 | An interactive interrupt, commonly `Ctrl-C`                       | Terminate                                                          |
+| `SIGQUIT`             | Quit                      | An interactive quit request                                       | Terminate and produce a core dump                                  |
+| `SIGTERM`             | Terminate                 | A request to terminate                                            | Terminate                                                          |
+| `SIGKILL`             | Kill                      | A request for immediate termination                               | Terminate; cannot be caught, blocked, or ignored                   |
+| `SIGSTOP`             | Stop                      | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                        |
+| `SIGTSTP`             | Terminal stop             | An interactive stop request, commonly `Ctrl-Z`                    | Stop                                                               |
+| `SIGCONT`             | Continue                  | A request to resume a stopped process                             | Continue if stopped                                                |
+| `SIGCHLD`             | Child                     | An eligible child changes state                                   | Ignore; child status normally remains available to a wait function |
+| `SIGPIPE`             | Pipe                      | A write targets a pipe or stream socket whose read side is closed | Terminate                                                          |
+| `SIGALRM`             | Alarm                     | An alarm timer expires                                            | Terminate                                                          |
+| `SIGUSR1` / `SIGUSR2` | User-defined signal 1 / 2 | Application-defined notification                                  | Terminate                                                          |
+| `SIGSEGV`             | Segmentation violation    | Invalid memory reference                                          | Terminate and produce a core dump                                  |
 
 `SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
 
@@ -128,17 +127,20 @@ Use `SIG_DFL` when the parent needs a child's termination status or plans to rea
 
 ### POSIX Signal Interface
 
-These interfaces let a program install a handler without losing a signal that arrives between setup and a blocking wait.
-
-<!-- TODO: Review signal-mask API precision for multithreaded programs. POSIX specifies sigprocmask() for the single-threaded case, while pthread_sigmask() is the thread-mask interface for multithreaded code. Keep the following example explicitly single-threaded and make the generic interface description avoid implying that sigprocmask() is the portable multithreaded API. -->
+These interfaces establish a handler and its signal-mask policy without losing a signal that arrives between setup and a blocking wait.
 
 - **`sigaction()`:** Sets a signal's disposition. A `struct sigaction` specifies either a handler or another disposition, the signal mask used while that handler runs, and behavior flags.
-- **`sigprocmask()`:** Examines or changes the calling thread's signal mask. With `SIG_BLOCK`, it adds signals to the mask and can save the old mask for later restoration.
-- **`sigsuspend()`:** Replaces the calling thread's mask only while it sleeps, then restores the mask that was active when the call began. An unblocked caught signal wakes the call after its handler returns, which makes unblocking and waiting one operation.
+- **Signal-set operations — `sigemptyset()`, `sigaddset()`, and `sigdelset()`:** Initialize a `sigset_t` as empty, add a signal to it, or remove a signal from it respectively.
+- **`sigprocmask()` in a single-threaded program:** Examines or changes the calling thread's signal mask. With `SIG_BLOCK`, it adds signals to the mask and can save the old mask for later restoration. POSIX leaves its use unspecified in a multithreaded process.
+- **`pthread_sigmask()` in a multithreaded program:** Examines or changes the calling thread's signal mask regardless of the process's thread count. It provides the same mask operations as `sigprocmask()`, but reports failures as error numbers instead of returning `-1` and setting `errno`.
+- **`sigsuspend()`:** Atomically replaces the calling thread's signal mask and suspends the thread.
+    - **Wake-up and return:** A signal unblocked by the temporary mask whose action invokes a handler ends the suspension. After the handler returns, the original mask is restored and `sigsuspend()` returns `-1` with `errno` set to `EINTR`. If the signal terminates the process, `sigsuspend()` does not return.
+    - **Condition waits:** `sigsuspend()` does not report which signal woke it; any unblocked signal that invokes a handler produces the same return. Code that waits for an application condition rechecks its predicate after every return and suspends again when the condition remains false.
+    - **Race avoidance:** A program blocks a signal while it tests its predicate, then passes `sigsuspend()` a mask that unblocks that signal. Replacing the mask and suspending as one operation leaves no gap between the test and the wait.
 
 ### Receiving `SIGTERM` in C
 
-This single-threaded program converts `SIGTERM` delivery into a normal control-flow decision. Its handler runs on the program's existing thread, records that shutdown was requested, and leaves cleanup to the main control flow.
+This single-threaded service converts `SIGTERM` delivery into a normal control-flow decision. Its handler runs on the program's existing thread, records that shutdown was requested, and leaves work and cleanup to the main control flow.
 
 The handler communicates with normal control flow through one `volatile sig_atomic_t` object. It does not perform shutdown work itself.
 
@@ -156,56 +158,38 @@ static void on_sigterm(int signal_number) {
 }
 ```
 
-Before installing the handler, the program blocks `SIGTERM` and saves the caller's earlier mask. Delivery during the remaining setup then leaves `SIGTERM` pending rather than invoking the default disposition. The waiting mask begins as that earlier mask, but explicitly unblocks `SIGTERM` so the wait does not depend on whether the caller had already blocked it.
+The service installs its handler before it begins processing work. The comments in `main()` stand in for operations that vary by service.
 
 ```c
 int main(void) {
     struct sigaction action = {0};
-    sigset_t blocked;
-    sigset_t previous_mask;
-    sigset_t waiting_mask;
-
-    sigemptyset(&blocked);
-    sigaddset(&blocked, SIGTERM);
-
-    if (sigprocmask(SIG_BLOCK, &blocked, &previous_mask) == -1) {
-        return EXIT_FAILURE;
-    }
 
     action.sa_handler = on_sigterm;
     sigemptyset(&action.sa_mask);
 
     if (sigaction(SIGTERM, &action, NULL) == -1) {
-        (void)sigprocmask(SIG_SETMASK, &previous_mask, NULL);
         return EXIT_FAILURE;
     }
 
-    waiting_mask = previous_mask;
-    sigdelset(&waiting_mask, SIGTERM);
-```
-
-The loop tests the flag while `SIGTERM` remains blocked. `sigsuspend()` atomically installs `waiting_mask` and sleeps, so a pending `SIGTERM`, or one that arrives while the thread waits, invokes `on_sigterm()` and wakes the wait. When `sigsuspend()` returns after the handler, it has restored the blocked mask; the next test observes the flag without a check-then-sleep race.
-
-```c
     while (!stop_requested) {
-        sigsuspend(&waiting_mask);
-    }
-```
-
-Once the loop observes the request, the program restores the caller's original mask before it performs its ordinary shutdown work.
-
-```c
-    if (sigprocmask(SIG_SETMASK, &previous_mask, NULL) == -1) {
-        return EXIT_FAILURE;
+        /*
+         * Process one bounded unit of work. The service-specific operation
+         * needs a separate wake-up or cancellation mechanism when it can
+         * block indefinitely.
+         */
     }
 
-    /* Perform normal shutdown outside the signal handler. */
+    /* Stop accepting new work. */
+    /* Finish or cancel in-flight work according to the service's policy. */
+    /* Release resources. */
     return EXIT_SUCCESS;
 }
 ```
 
+`SIGTERM` can interrupt a work unit, but the handler only records the request. Once normal control flow reaches the next loop test, it stops new work and applies the shutdown policy shown in the comments.
+
 > [!warning] Signal-handler scope
-> The handler only assigns `stop_requested`, a `volatile sig_atomic_t` object. Functions such as `printf()`, memory allocation, and most library operations are not async-signal-safe, so the handler must not use them. A multithreaded program needs an explicit signal-mask policy; it commonly blocks a signal in all threads and dedicates one thread to waiting for it.
+> The handler only assigns `stop_requested`, a `volatile sig_atomic_t` object. Functions such as `printf()`, memory allocation, and most library operations are not async-signal-safe, so the handler must not use them. A multithreaded program needs an explicit signal-mask policy; it commonly uses `pthread_sigmask()` to block a selected signal before creating worker threads, which inherit the mask, and dedicates one thread to receiving it with `sigwait()`.
 
 ## Processes vs. Threads
 
