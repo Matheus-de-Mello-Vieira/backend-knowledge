@@ -18,15 +18,24 @@ Descriptor lifetime controls whether an endpoint remains usable. `fork()` gives 
 
 ### Explicit Descriptor Passing
 
-Explicit descriptor passing gives an already-running process access to an already-open resource. It transfers a reference to the underlying kernel-managed resource, not the sender's descriptor number: the receiving process receives a newly allocated entry in its own descriptor table. The two descriptor numbers therefore need not match, even though both entries refer to the same pipe end, socket, or open file description.
+Explicit descriptor passing gives an already-running process access to an already-open resource. It transfers a reference to the same open-resource state, not the sender's descriptor number: the receiving process receives a newly allocated entry in its own descriptor table. The two descriptor numbers therefore need not match, even though both entries refer to the same pipe end, socket, or open file description. This differs from opening the same underlying resource independently, which creates separate open-resource state.
 
-<!-- TODO: Review the Unix-domain-socket qualification here. Verify whether requiring a "connected" Unix-domain socket is too restrictive because descriptor ancillary data can also be carried by Unix-domain datagram sockets; keep the section focused on the generic SCM_RIGHTS mechanism rather than one socket lifecycle. -->
+On Unix-like systems, Unix-domain sockets carry this transfer as ancillary (control) data. Connection-oriented socket types transfer descriptors between connected peers; a Unix-domain datagram socket can instead send ancillary data to a specified address. The sender supplies an `SCM_RIGHTS` control message to `sendmsg()`, and the receiver obtains the new descriptors through `recvmsg()`.
 
-On Unix-like systems, connected Unix-domain sockets support this transfer as ancillary (control) data. The sender supplies an `SCM_RIGHTS` control message to `sendmsg()`, and the receiver obtains the new descriptor through `recvmsg()`. Ordinary bytes sent with the control message form the application protocol that identifies the resource and its intended use; passing a descriptor neither discovers a peer nor creates a new channel.
+An accompanying ordinary-data payload can identify the resource and its intended use. Passing a descriptor neither discovers a peer nor creates a new channel. A stream socket does not preserve individual `sendmsg()` payload boundaries, so the receiving protocol must frame any such metadata.
+
+> [!note] Ordinary Data with `SCM_RIGHTS`
+> On Linux, `SCM_RIGHTS` over a Unix-domain stream socket requires at least one ordinary-data byte; portable applications should also send one with a datagram transfer.
+
+The transferred reference has shared state and an independent descriptor lifetime:
 
 - **Shared resource state:** The received descriptor refers to the same underlying open resource rather than reopening it. Resource-specific shared state, such as a regular file's current offset or a socket endpoint's connection state, remains shared.
 - **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
-- **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed or before an unrelated program inherits it across `exec()`.
+
+The receiver must handle the descriptor as an acquired capability:
+
+- **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed. A descriptor normally survives `exec()` unless it is marked close-on-exec; on Linux, `recvmsg()` with `MSG_CMSG_CLOEXEC` sets that flag atomically for descriptors received through `SCM_RIGHTS`.
+- **Receive integrity:** The receiver must provide enough control-buffer space and reject truncated ancillary data rather than use a partial descriptor set. If it rejects a truncated message, it closes every descriptor it did receive. On Linux, `recvmsg()` marks discarded control data with `MSG_CTRUNC` and closes descriptors that do not fit in the supplied buffer.
 
 ## Shared-Memory IPC
 
