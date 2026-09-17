@@ -108,6 +108,7 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGKILL`             | Kill                      | A request for immediate termination                               | Terminate; cannot be caught, blocked, or ignored                   |
 | `SIGSTOP`             | Stop                      | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                        |
 | `SIGTSTP`             | Terminal stop             | An interactive stop request, commonly `Ctrl-Z`                    | Stop                                                               |
+| `SIGWINCH`            | Window change             | The controlling terminal reports a window-size change             | Ignore                                                             |
 | `SIGCONT`             | Continue                  | A request to resume a stopped process                             | Continue if stopped                                                |
 | `SIGCHLD`             | Child                     | An eligible child changes state                                   | Ignore; child status normally remains available to a wait function |
 | `SIGPIPE`             | Pipe                      | A write targets a pipe or stream socket whose read side is closed | Terminate                                                          |

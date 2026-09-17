@@ -25,58 +25,43 @@ Startup constructs the state that workers later use to process traffic:
 3. It creates workers and any configured helper processes. A managed, non-detached Unix child receives inherited descriptors and state, then initializes the event-processing environment for its process type.
 4. Workers enter their event loops and begin handling events for their listening sockets and connections.
 
-A managed child uses a control channel created by the master; its Unix socket-pair mechanics and lifecycle are described in [Process Channels and Topology Updates](#Process%20Channels%20and%20Topology%20Updates). The detached child used for a binary upgrade follows a different creation path.
+A managed child uses a control channel created by the master; its Unix socket-pair mechanics and lifecycle are described in [Process Control Channels](#Process%20Control%20Channels). The detached child used for a binary upgrade follows a different creation path.
 
 ## Worker Data Plane
 
 ### Listener Ownership and Connection Acceptance
 
-The kernel maintains the [queues associated with each listening socket](../../Operating%20Systems/07%20Socket%20Management.md#Pending%20and%20Established%20Connection%20Queues). When a connection becomes available, a worker accepts it and receives a new connected socket. That worker owns the client-side transport I/O until the connection closes, although it can coordinate separate upstream connections while processing a request.
+When a connection becomes available, a worker accepts it and receives a connected socket. That worker owns the client-side transport I/O until the connection closes, although it can coordinate separate upstream connections while processing a request.
 
-NGINX supports two listener-ownership models. They differ in how workers and the kernel select the worker that accepts a new connection.
+NGINX uses either [multiple workers sharing one listener](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Multiple%20Workers%2C%20Single%20Shared%20Listening%20Socket) or [multiple listeners with `SO_REUSEPORT`](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Multiple%20Listeners%20with%20%60SO_REUSEPORT%60). Its NGINX-specific controls are:
 
-- **Shared listener:** Several workers inherit references to one [shared listening socket](../../Operating%20Systems/07%20Socket%20Management.md#Shared%20Listening%20Socket) and call `accept()`. One worker receives each connected socket, but several workers can observe activity on the same listener. An enabled `accept_mutex` serializes acceptance among workers. It has been off by default since NGINX 1.11.3. Enabling it is unnecessary on systems that support `EPOLLEXCLUSIVE` or when `reuseport` is in use; the applicable behavior still depends on the event method, platform, version, and configuration.
-- **Per-worker `reuseport` listeners:** When a `listen` directive enables [`reuseport`](../../Operating%20Systems/07%20Socket%20Management.md#Multiple%20Listeners%20with%20SO_REUSEPORT) on a supported platform, NGINX creates one independent listening socket per worker, bound to the same local address and port. The kernel selects a listener, so workers do not coordinate one shared accept path.
-
-Separate `reuseport` listeners reduce accept-path contention, but the kernel distributes transport traffic rather than the application work each connection produces. Connections can be evenly distributed while CPU, memory, or request-processing work remains uneven.
-
-| Dimension | Shared listener | Per-worker `reuseport` listeners |
-| --- | --- | --- |
-| Listener ownership | Several workers reference one socket | Each worker owns an independent socket |
-| Accept queue | Shared by the workers | Separate queue for each listener |
-| Initial distribution | Workers coordinate acceptance | Kernel selects a listener |
-| Main limitation | Contention or unnecessary wake-ups can occur | Transport distribution does not balance application work |
-
-> [!note] Version and platform boundary
-> The `reuseport` parameter became available in NGINX 1.9.1. It is an optional listener architecture, not a replacement for the shared-listener model, and it requires operating-system support.
+- **`accept_mutex`:** Serializes acceptance among workers sharing a listener. It has been off by default since NGINX 1.11.3 and is unnecessary on systems that support `EPOLLEXCLUSIVE` or when `reuseport` is in use.
+- **`reuseport`:** A `listen` directive with this parameter creates one independent listener per worker. It was introduced in NGINX 1.9.1 and requires operating-system support.
 
 ### Event Loop and Connection Lifecycle
 
-A worker uses an operating-system event method such as `epoll` or `kqueue` to observe many resources through [readiness-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO). Readiness means an operation may make progress; the handler still performs `accept()`, `read()`, or `write()` and updates resource state.
+A worker advances connections through three event sources: [readiness-based I/O](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO), timer expirations, and posted events deferred by a handler. [Timeout directives](03%20Nginx%20Configuration.md#Timeout%20Boundaries) choose deadlines for connection and request phases; the event loop stores the resulting active timer events in a timer tree and schedules their handlers. A timer measures a deadline independently of socket readiness—it does not inspect a receive buffer.
 
 Each event-loop iteration follows this ordered cycle:
 
-1. Find the timer nearest to expiration and use it to bound the next wait.
-2. Ask the configured event module to wait for I/O events.
-3. Dispatch handlers for resources reported as ready.
-4. Expire elapsed timers and invoke their handlers.
-5. Process events that handlers deferred to the posted-events queue.
+1. Find the nearest timer expiration and use its remaining duration as the maximum I/O wait.
+2. Ask the configured event module to wait for I/O events. If I/O arrives first, it marks the corresponding events ready and runs their handlers.
+3. Expire every elapsed timer and run its handler. If no I/O arrives first, reaching the nearest deadline ends the wait and leads to this step.
+4. Process posted events after the I/O and timer handlers. A posted handler may defer work without running it recursively in the current handler's call stack.
 
-Handlers advance a connection incrementally instead of completing one connection before considering another:
+Connection handlers change state incrementally instead of completing one connection before considering another:
 
-1. A listener readiness event causes the worker to accept a client connection and allocate state for the resulting socket.
-2. The selected protocol handler initializes the connection, including any required PROXY protocol parsing or TLS handshake.
-3. Later read and write events advance request parsing, response transmission, or bidirectional stream forwarding.
+1. A listener handler accepts a client connection and allocates state for its socket.
+2. The selected protocol handler initializes that connection, including configured PROXY protocol parsing or a TLS handshake.
+3. Later read and write handlers advance request parsing, response transmission, or bidirectional stream forwarding.
 4. Reverse proxying adds an upstream connection whose connect, read, write, and timeout events the same worker event loop coordinates.
 5. After processing finishes, NGINX waits for another request on a reusable connection or closes the connection and releases its state.
 
-When one connection waits for network readiness, the worker continues dispatching ready events for others. This produces high I/O concurrency within a worker; the worker processes separately provide CPU parallelism.
+Each handler returns when its connection must wait for a later event, allowing the worker to advance other ready connections. This produces high I/O concurrency within a worker; separate worker processes provide CPU parallelism.
 
 ### Blocking Work and Thread-Pool Offload
 
-Nonblocking network waits do not suspend a worker on behalf of one connection. The event loop records the required state, stops advancing that connection, and handles other ready work. If no events are ready, it sleeps in the operating system's event-wait operation until I/O or the next timer wakes it.
-
-A blocking system call or long CPU-bound handler occupies the worker's event-loop thread, preventing it from advancing its other connections until the operation returns. Modules must avoid blocking event handlers or arrange an appropriate offload mechanism.
+While a network operation awaits readiness, the worker can progress other ready connections. A blocking system call or long CPU-bound handler instead occupies the event-loop thread, preventing it from advancing other connections until the operation returns. Modules must avoid blocking event handlers or arrange an appropriate offload mechanism.
 
 NGINX thread pools provide bounded offload for selected operations, including supported file I/O. A worker submits a task, continues processing events, and later handles its completion. Thread pools are not a threaded request model: offloaded work must not use NGINX objects that are confined to the event-loop thread.
 
@@ -84,13 +69,11 @@ NGINX thread pools provide bounded offload for selected operations, including su
 
 The master coordinates workers and helpers through process lifecycle state and compact control messages. Those messages are distinct from the request and upstream payloads carried by [listening and connected sockets](../../Operating%20Systems/07%20Socket%20Management.md#Listening%20Socket%20vs.%20Connected%20Socket).
 
-### Process Channels and Topology Updates
+### Process Control Channels
 
-For a managed, non-detached Unix child, the master creates a [`socketpair(AF_UNIX, SOCK_STREAM, ...)`](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) before [`fork()`](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Process-Control%20Interface). The parent retains one endpoint and the child retains the other as a control channel. The child closes inherited endpoints that do not belong to it, preventing unrelated channel references from extending their lifetime.
+For each managed, non-detached Unix child, the master creates a [`socketpair(AF_UNIX, SOCK_STREAM, ...)`](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) before [`fork()`](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Process-Control%20Interface). The parent and child retain opposite endpoints. During initialization, the child registers its endpoint with the event loop, allowing the master to send lifecycle commands to that child.
 
-Current NGINX lifecycle messages travel from the master to its children; workers do not use these channels as a worker-to-worker control or data path. The process table nevertheless tracks channel topology because children created at different times inherit different descriptor sets.
-
-When a channel is created after some children already run, the master sends those children an `OPEN_CHANNEL` record with the new process slot and PID. On Unix, it passes the required descriptor with `SCM_RIGHTS`; each receiver installs a process-local descriptor, whose number need not match the sender's [channel descriptor](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Explicit%20Descriptor%20Passing). After a child exits, the master sends `CLOSE_CHANNEL` with its former slot and PID. A receiver checks that the slot still records that PID before closing its descriptor, preventing a stale close from affecting a reused slot.
+Current lifecycle messages flow from the master to its children. These channels carry process-control commands rather than client requests or upstream payloads.
 
 ### Signal Reception and Command Dispatch
 
@@ -102,25 +85,28 @@ The master runs a control loop for worker and helper lifecycle management rather
 2. That function loops over `waitpid(..., WNOHANG)`, records collected status, marks matching process entries as exited, and releases locks held by dead processes.
 3. The master loop observes the reap flag and completes the lifecycle transition.
 
-External signals and internal channel commands are separate control tiers. The master interprets an external signal, then sends a compact command to an existing child when that action belongs in the child. It maps `QUIT`, `TERM` or `INT`, and `USR1` to `QUIT`, `TERMINATE`, and `REOPEN`, respectively. When a channel command is unavailable or its write fails, including where platform limitations prevent using the channel path, the master falls back to `kill()` with the corresponding signal.
+External signals and internal channel commands are separate control tiers. The master interprets an external signal, then sends a compact command to an existing child when that action belongs in the child. When a channel command is unavailable or its write fails, including where platform limitations prevent using the channel path, the master falls back to `kill()` with the corresponding signal.
 
-During initialization, each child registers its control-channel endpoint with its event mechanism. The channel handler records lifecycle commands as flags for the worker or helper loop to process at a safe point; topology commands update that process's local table and descriptor set.
+The channel handler records lifecycle commands as flags for the worker or helper loop to process at a safe point.
 
-| Signal | Master action | Child command | Result |
-| --- | --- | --- | --- |
-| `QUIT` | Begin graceful shutdown | `QUIT` | Workers drain; helpers exit according to their role loop |
-| `TERM` / `INT` | Begin fast shutdown and escalate if needed | `TERMINATE` | Children exit without draining |
-| `HUP` | Build a candidate cycle and, on success, start new children | `QUIT` to the old generation | Failure preserves the old cycle; success replaces the generation |
-| `USR1` | Reopen files and notify children | `REOPEN` | Log descriptors are replaced after rotation |
-| `USR2` | Prepare PID and environment state, then start a detached child that calls `execve()` | None | Old and new masters coexist during upgrade |
-| `WINCH` | Gracefully stop the current worker and helper set | `QUIT` | Master remains available without active children |
-| `SIGCHLD` | Collect status nonblocking, then clean exited entries in the master loop | None | Channels close and eligible children respawn |
+| Signal         | Master action                                                                        | Child command                | Result                                                           |
+| -------------- | ------------------------------------------------------------------------------------ | ---------------------------- | ---------------------------------------------------------------- |
+| `QUIT`         | Begin graceful shutdown                                                              | `QUIT`                       | Workers drain; helpers exit according to their role loop         |
+| `TERM` / `INT` | Begin fast shutdown and escalate if needed                                           | `TERMINATE`                  | Children exit without draining                                   |
+| `HUP`          | [Reload configuration](#Configuration%20Reload%20and%20Worker%20Generations)         | `QUIT` to the old generation | Failure preserves the old cycle; success replaces the generation |
+| `USR1`         | Reopen files and notify children                                                     | `REOPEN`                     | Log descriptors are replaced after rotation                      |
+| `USR2`         | Prepare PID and environment state, then start a detached child that calls `execve()` | None                         | Old and new masters coexist during upgrade                       |
+| `WINCH`        | Gracefully stop the current worker and helper set                                    | `QUIT`                       | Master remains available without active children                 |
+| `SIGCHLD`      | Collect status nonblocking, then clean exited entries in the master loop             | None                         | Channels close and eligible children respawn                     |
+
+> [!note] `SIGWINCH` in NGINX
+> [`SIGWINCH`](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals) conventionally reports a terminal window-size change and defaults to being ignored. NGINX catches it and repurposes it as a no-accept command: the master remains running while it gracefully stops its current workers and helpers.
 
 ### Child Exit and Respawn
 
-The `SIGCHLD` handler collects status through `ngx_process_get_status()`, but it does not complete the lifecycle transition. When the master observes the reap flag, `ngx_reap_children()` processes entries already marked as exited: it closes master-side channel endpoints, distributes `CLOSE_CHANNEL`, applies respawn policy, and repairs binary-upgrade and PID-file state when a new-binary transition ends or fails.
+The `SIGCHLD` handler collects status through `ngx_process_get_status()`, but it does not complete the lifecycle transition. When the master observes the reap flag, `ngx_reap_children()` cleans up entries already marked as exited, applies respawn policy, and repairs binary-upgrade and PID-file state when a new-binary transition ends or fails.
 
-A respawnable child remains eligible for replacement unless it exited with fatal status code `2`, the master is terminating, or its generation is already exiting. A replacement receives a new socket pair and process-table entry, and the master distributes the resulting topology with `OPEN_CHANNEL`. This maintains supervision after an unexpected worker exit without reviving workers deliberately drained during reload or shutdown.
+A respawnable child remains eligible for replacement unless it exited with fatal status code `2`, the master is terminating, or its generation is already exiting. A replacement receives a fresh control channel. This maintains master supervision after an unexpected worker exit without reviving workers deliberately drained during reload or shutdown.
 
 Workers and helper processes share spawning, channel, and reaping infrastructure, but their respawn policies differ by role. The common mechanism therefore does not mean every helper restarts under the same conditions as a worker.
 

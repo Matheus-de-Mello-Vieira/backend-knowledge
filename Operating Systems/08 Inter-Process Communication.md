@@ -28,11 +28,6 @@ On Unix-like systems, connected Unix-domain sockets support this transfer as anc
 - **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
 - **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed or before an unrelated program inherits it across `exec()`.
 
-<!-- TODO: Reassess the NGINX example's causal wording against current upstream behavior. NGINX really does distribute later-created channel descriptors with OPEN_CHANNEL/SCM_RIGHTS to keep a broader per-process channel table synchronized, but current core lifecycle messages are ordinarily master-to-child. Avoid implying that W1 needs W2's descriptor for ordinary master control or that descriptor passing is required by the current master→worker command flow. -->
-
-> [!example] NGINX Process-Channel Topology
-> A newly forked NGINX worker inherits descriptors that were already open before its [`fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). An already-running worker cannot inherit a descriptor for a socket pair created later. The [NGINX master](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Channels%20and%20Topology%20Updates) therefore passes the new process-channel descriptor to existing workers with `SCM_RIGHTS`, combining descriptor inheritance with explicit passing as its process topology changes.
-
 ## Shared-Memory IPC
 
 `mmap()` creates a mapping in a process's virtual address space; a shared mapping gives multiple processes virtual addresses that ultimately refer to the same physical pages. For compatible `MAP_SHARED` mappings, a process can observe changes made through another process's mapping without transferring those bytes through a pipe or socket. [Memory visibility and IPC](02%20The%20Anatomy%20of%20a%20Process.md#Memory%20Visibility%20%26%20Inter-Process%20Communication%20%28IPC%29) explains the mapping, backing, lifetime, and copy-on-write distinctions.
@@ -202,7 +197,7 @@ A socket pair therefore provides the bidirectional channel that would otherwise 
 > On Unix, [`child_process.fork()`](../Technologies/NodeJS/01%20Basics/04%20Internals.md#Child%20Processes%20and%20IPC) creates a parent-child IPC channel that libuv backs with a Unix-domain `SOCK_STREAM` socket pair. Because the parent creates the specific child and can distribute an endpoint during process creation, no stable address or listener is needed.
 <!-- -->
 > [!example] NGINX Master and Worker Control Channels
-> [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Channels%20and%20Topology%20Updates) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
+> [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Control%20Channels) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
 
 The way peers obtain their endpoints is separate from the socket's data model:
 
