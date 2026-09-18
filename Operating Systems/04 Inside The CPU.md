@@ -238,7 +238,7 @@ graph LR
 
 The absolute fastest storage in the machine, built directly into the execution core. Registers operate with zero latency (0 clock cycles) because they hold the exact values the CPU is actively using at this exact nanosecond. They have microscopic capacity (typically 32 or 64 bits per register).
 
-- **Instruction Pointer (IP) / Program Counter (PC):** Holds the virtual address of the next instruction to execute during [process state and context switching](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
+- **Instruction Pointer (IP) / Program Counter (PC):** Holds the virtual address of the next instruction to execute. [Context switching](05%20Process%20Management.md#Context%20Switching) saves and restores this register as part of a thread's execution state.
 - [**Stack Pointer (`sp`)**](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Pointer%20%28%60sp%60%29): Points to the active edge of the current stack frame.
 - [**Base Pointer (`bp`) / Frame Pointer**](02%20The%20Anatomy%20of%20a%20Process.md#Base%20Pointer%20%28%60bp%60%20%2F%20Frame%20Pointer%29): Anchors the current stack frame when one is used.
 - [**Link Register (LR)**](02%20The%20Anatomy%20of%20a%20Process.md#Nested%20Function%20Calls): On ARM, holds a function's return address until it must be saved to the stack.

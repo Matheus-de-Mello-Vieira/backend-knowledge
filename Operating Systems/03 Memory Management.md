@@ -138,6 +138,12 @@ Instead of letting a program see the actual physical hardware, the OS provides e
 
 The process's virtual address space also distinguishes ordinary application mappings from privileged kernel mappings. Page-table permissions prevent user-mode code from accessing privileged mappings even when they are present in that address-space layout. [User and kernel space](09%20Kernel%20and%20User%20Space.md#Privilege%20Boundary) explains how that memory-protection boundary combines with CPU privilege modes and system calls.
 
+### Common Address-Space Mappings
+
+An address space is a set of mappings, not a fixed universal layout. The loader and runtime commonly establish mappings for program code and static storage, while allocators and threads create dynamic regions such as heaps and stacks. Shared libraries, mapped files, and runtime-specific regions can add further mappings.
+
+Conventional single-threaded layouts often place a heap after static-storage mappings and grow it toward higher virtual addresses while the initial stack grows toward lower addresses. The locations, growth directions, and number of stack regions depend on the platform, loader, runtime, allocator, and thread model. The mappings themselves remain virtual: a region can exist without every one of its pages being resident in physical memory.
+
 ### Paging & Fragmentation Trade-offs
 
 The OS manages this memory using fixed-size blocks called **Pages** (typically 4KB). While a program sees its virtual pages as a perfect, contiguous sequence, each virtual page is mapped to physical pages (often called _Frames_) that can be scattered chaotically across the RAM. By decoupling the addresses, the OS can piece together physical memory like a mosaic, filling in random gaps.

@@ -2,26 +2,15 @@
 
 ## Program vs Process
 
-A **program** is stored code and data that an execution environment can load: it may be a [compiled executable](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#From%20Source%20Code%20to%20a%20Running%20Process), a script, bytecode, or another runtime-hosted representation. A **process** is the live execution context created to run that program, with its own identifier, virtual address space, and active state.
+A **program** is stored code and data that an execution environment can load: it may be a [compiled executable](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#From%20Source%20Code%20to%20a%20Running%20Process), a script, bytecode, or another runtime-hosted representation. A **process** is the live operating-system context created to run that program. It has an identity, a [virtual address space](03%20Memory%20Management.md#The%20Solution:%20Virtual%20Address%20Space%20%26%20MMU%20Isolation), and kernel-managed resources; its [threads](05%20Process%20Management.md#Processes%20vs.%20Threads) provide the schedulable execution contexts.
 
 One program can produce multiple independent processes. For a native executable, the operating system reads the executable format, maps the program image, initializes execution state, and transfers control to its entry point. A runtime can instead create a process and then load a script or bytecode representation into that process.
 
-## Process Execution and State
+## Process Identifiers
 
-- **Virtual Memory Layout:** When an active process lives in memory, it operates within a completely isolated, private virtual address space spanning from a minimum to a maximum address. This space is divided into distinct regions:
-    - **Text/Code:** The region starting near the minimum address where the actual compiled machine instructions are loaded.
-    - **Data/Static:** Stores initialized and uninitialized global variables.
-    - **Heap:** Starts just after the data segment and grows _upwards_. It is used for dynamic memory allocation (e.g., when a program requests more memory at runtime).
-    - **Stack:** Starts at the maximum address and grows _downwards_ (towards the heap). It stores local variables, function calls, and execution context.
-- **Process Identification (PID) & Namespaces:**
-    - **PID allocation and reuse:** A PID identifies a live process within one PID namespace. After that process terminates and the operating system releases its process state, the numeric PID becomes available for a future process in the same namespace. A numeric PID alone therefore does not provide an enduring identity across process lifetimes.
-    - **PID namespaces:** On Linux, PID namespaces give groups of processes distinct PID number spaces. Two live processes in different namespaces can therefore use the same numeric PID. A container's initial process is PID 1 inside its namespace, while the host observes that process through a different host PID.
-- **Instruction Pointer (Program Counter):**
-    - The Instruction Pointer (IP) tracks the exact virtual address of the next instruction to be executed from the Text/Code segment.
-    - **Hardware Register Execution:** The IP is a hardware register located inside the CPU. Updating it is part of normal instruction execution and has lower latency than accessing cache or RAM.
-- **Process Control Block (PCB):**
-    - The PCB is a vital data structure residing securely in [Kernel Space](09%20Kernel%20and%20User%20Space.md#Privilege%20Boundary) memory. It acts as the process's master metadata record, storing its PID, open file descriptors, memory limits, and state.
-    - **Context Switching Overhead:** Because the PCB lives in system memory (RAM), reading and writing to it involves latency. When the kernel performs a context switch, it must physically copy the current value of the CPU's Instruction Pointer register—and all other working registers—into the PCB in memory to save the process's state. This RAM-dependent save/load cycle is a primary reason context switching is computationally expensive.
+A **process identifier (PID)** identifies a process while that process exists within one PID namespace. After the process terminates and the operating system releases its process state, the numeric PID becomes available for a later process in the same namespace. A PID alone is therefore not an enduring identity across process lifetimes.
+
+On Linux, a **PID namespace** gives a group of processes its own PID number space. Two live processes in different namespaces can use the same numeric PID. A container commonly uses a PID namespace: its initial process is PID 1 inside that namespace, while the host observes the same process through a different PID. [Containers](10%20Virtualization%20and%20Containerization.md#Containers) combine this isolated process view with other isolation and resource-control mechanisms.
 
 ## File Descriptors (FDs)
 
@@ -231,7 +220,7 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
 ## The Stack
 
 - **LIFO Structure:** The Stack in memory operates strictly as a Last-In, First-Out (LIFO) data structure.
-- **Downward Growth:** As established in the memory layout, the stack starts at the highest memory address of its designated virtual space and grows _downwards_ toward the heap.
+- **Downward Growth:** In conventional layouts, a stack grows toward lower virtual addresses. Its exact placement and growth direction depend on the platform, runtime, and thread implementation.
 - **Function Frames:** Every time a function is called, it gets its own dedicated block of memory on the stack called a **Stack Frame**. This frame stores the function's local variables and execution context.
 - **The "Top" of the Stack:** The currently active function is always located at the active edge (conceptually called the "top" of the stack, even though it sits at the lowest physical memory address). Because functions strictly follow LIFO, no process can accidentally touch or corrupt the frames of paused, parent functions sitting higher up the stack.
 - **Contiguous Memory & Caching:** Stack space is strictly contiguous (sequential). Because the data is packed tightly together, it often has good **spatial locality**, which can increase cache-hit rates. Stack allocation does not inherently make every access faster than heap access; access latency depends primarily on cache residency and the access pattern.
@@ -360,7 +349,7 @@ Global and static storage enters a process through mappings derived from the pro
 
 - **Dynamic Allocation:** A massive, dynamic region of memory used for variables whose size or lifespan cannot be determined at compile time.
 - **Global Access:** Unlike stack frames which are isolated to specific functions, memory allocated on the heap can be accessed by any function in the program as long as it has the correct pointer.
-- **Upward Growth:** As established in the memory layout, the heap commonly appears after static-storage mappings and grows _upwards_ toward the descending Stack.
+- **Upward Growth:** In conventional layouts, the heap grows toward higher virtual addresses. Its exact placement and growth direction depend on the platform, runtime, and allocator.
 - **Manual Lifespans:** Data on the heap remains there indefinitely until it is explicitly deallocated by the programmer (or a garbage collector).
 - **The Allocator (`malloc` & `free`):** In languages like C/C++, you allocate heap memory using standard library functions like `malloc` and `free`.
        - **User-Space Management:** `malloc` is not a system call. It is a User Space manager. It asks the kernel for a giant pool of memory (using actual system calls like `brk` or `mmap`) and then slices that pool into smaller allocations for your program.

@@ -175,7 +175,7 @@ The result is that modern Go combines **blocked, synchronous, and asynchronous s
 
 ## Memory Management
 
-Go applications rely on the [classic virtual memory layout established by the operating system](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
+Go applications run in a [virtual address space](../../../Operating%20Systems/03%20Memory%20Management.md#Common%20Address-Space%20Mappings) whose mappings provide the regions used for code, static storage, heaps, stacks, and runtime state.
 
 ### Stack vs. Heap Allocation
 

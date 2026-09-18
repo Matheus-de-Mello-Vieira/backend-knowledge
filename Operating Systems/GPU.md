@@ -352,7 +352,7 @@ This resembles CPU process isolation, although the GPU maintains its own executi
 
 ### GPU Virtual Memory
 
-A CPU process operates within an isolated [virtual address space](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State). Modern GPUs apply a similar principle to device-accessible memory.
+A CPU process operates within an isolated [virtual address space](03%20Memory%20Management.md#The%20Solution:%20Virtual%20Address%20Space%20%26%20MMU%20Isolation). Modern GPUs apply a similar principle to device-accessible memory.
 
 GPU instructions generally use virtual addresses that GPU memory-management hardware translates into physical VRAM or other accessible memory. The driver establishes the mappings associated with each GPU context, allowing different processes to have independent GPU address spaces while sharing the same physical device.
 
