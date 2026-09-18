@@ -39,9 +39,20 @@ The receiver must handle the descriptor as an acquired capability:
 
 ## Shared-Memory IPC
 
-`mmap()` creates a mapping in a process's virtual address space; a shared mapping gives multiple processes virtual addresses that ultimately refer to the same physical pages. For compatible `MAP_SHARED` mappings, a process can observe changes made through another process's mapping without transferring those bytes through a pipe or socket. [Memory visibility and IPC](02%20The%20Anatomy%20of%20a%20Process.md#Memory%20Visibility%20%26%20Inter-Process%20Communication%20%28IPC%29) explains the mapping, backing, lifetime, and copy-on-write distinctions.
+[`mmap()`](02%20The%20Anatomy%20of%20a%20Process.md#The%20mmap%20System%20Call%20%28Memory%20Mapping%29) creates a mapping in a process's virtual address space; compatible `MAP_SHARED` mappings give several processes access to the same shared backing through process-local virtual addresses.
 
-Shared storage is not synchronization. A writer and reader still need to agree on ownership, update order, and readiness; otherwise a reader can observe incomplete or conflicting state. [Synchronization mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) provide the relevant mutex, semaphore, atomic-operation, and condition-variable models.
+Processes establish that relationship in two common ways:
+
+- **Inherited mapping:** A process creates a shared mapping before `fork()`. The child inherits a mapping to the same backing, so process creation distributes access to the shared region.
+- **Shared backing object:** Independently started processes acquire access to the same shareable object and map compatible regions of it. A stable name lets them locate the object, while a passed descriptor can transfer access to it; neither defines the shared data's layout or coordination protocol.
+
+After the mappings exist, each process exchanges state through ordinary CPU loads and stores instead of `read()` and `write()` calls on a kernel-managed byte-stream channel. Their virtual addresses do not need to match. A shared layout therefore cannot treat a raw pointer value as a process-independent reference unless every participant guarantees compatible address placement; offsets or another process-independent representation avoid that assumption.
+
+The mapping supplies shared storage, not a communication protocol. The participating processes must provide the remaining semantics:
+
+- **Synchronization:** Writers and readers must agree on ownership, update ordering, readiness, and when state is safe to observe. [Synchronization mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) provide the relevant mutex, semaphore, atomic-operation, and condition-variable models.
+- **Capacity and flow control:** A mapping has a finite byte extent, but that extent does not define which records are occupied, when space may be reclaimed, or what happens when the shared data structure is full. Unlike a bounded pipe or socket buffer, shared storage does not produce backpressure without protocol rules for waiting, retrying, dropping work, or constraining producers.
+- **Failure handling:** A participant's exit does not identify whether an update was complete or make partially modified state safe to consume. The protocol must define how other participants detect and recover from abandoned or inconsistent state.
 
 ## Pipes and FIFOs
 
@@ -273,16 +284,18 @@ Loopback traffic never traverses an Ethernet or Wi-Fi link to reach another mach
 
 Select an IPC mechanism from the required communication shape rather than from the fact that all participants happen to run locally.
 
-The first selection axis is **endpoint distribution and discovery**.
+The first selection axis is **resource distribution and discovery**.
+
 - An anonymous pipe or a socket pair creates endpoints that participants must inherit or receive through descriptor passing.
+- A shared mapping reaches related processes through inheritance; independently started processes must acquire access to the same shareable backing object through a stable name, a passed descriptor, or another agreed distribution mechanism.
 - A FIFO or addressed Unix-domain socket gives independently started processes a stable local rendezvous name.
 - Loopback TCP/IP uses an Internet-domain address and port.
 - A previously anonymous endpoint can still reach an unrelated process through descriptor passing, so a name primarily solves discovery rather than determining the channel's data model.
 
-The remaining axes are independent of how participants find the endpoint:
+The remaining axes are independent of how participants acquire or find the communication resource:
 
 - **Directionality:** Pipes and FIFOs carry one byte stream in one direction; two are required for independent bidirectional streams. Socket pairs and connected sockets provide bidirectional communication.
-- **Data model:** Pipes, FIFOs, and `SOCK_STREAM` sockets carry byte streams and need framing for application messages. Record-preserving socket types retain record boundaries. Shared mappings expose the same storage instead of transferring a copied stream and therefore require synchronization.
+- **Data model:** Pipes, FIFOs, and `SOCK_STREAM` sockets carry byte streams and need framing for application messages. Record-preserving socket types retain record boundaries. Shared mappings expose the same storage for ordinary loads and stores instead of transferring a copied stream; the shared data layout and protocol determine how those bytes are interpreted.
 - **Peer topology:** A pipe or socket pair naturally connects endpoints that have already been distributed. An addressed Unix-domain socket or loopback listener lets one service accept independently established client connections.
 - **Addressing boundary:** Unix-domain addresses are host-local. Loopback TCP/IP remains local in use but follows the Internet-domain addressing and TCP model that also applies when a service binds a reachable network address.
 - **Isolation:** One framed connection can carry several message types and, when its protocol supplies identifiers and routing rules, several logical channels. They share one endpoint lifetime, kernel buffering and backpressure path, and connection-failure boundary. Separate pipes or socket pairs isolate those boundaries at the cost of more descriptors and coordination.
@@ -294,6 +307,6 @@ These axes narrow the candidate mechanisms:
 - **Socket pair:** Two known peers can receive endpoints through an existing relationship and need an unnamed bidirectional socket channel.
 - **Unix-domain socket:** Independently started local clients need to rendezvous with a local service through a Unix-domain address.
 - **Loopback TCP/IP:** Local participants need Internet-domain addressing or TCP behavior that is also usable across hosts.
-- **Shared mapping:** Participants need access to the same data rather than a copied byte stream, and the design includes an explicit synchronization protocol.
+- **Shared mapping:** Participants need direct access to the same state rather than a copied byte stream, can acquire the same backing object, and have a protocol for synchronization, logical capacity, reclamation, flow control, and failure handling.
 
 The mechanism's data model does not replace an application protocol. Streams require framing, shared memory requires synchronization, and every design must define endpoint lifetime, failure handling, and backpressure behavior.
