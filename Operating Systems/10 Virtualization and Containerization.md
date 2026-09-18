@@ -17,7 +17,7 @@ On Linux, the principal mechanisms are **namespaces** and **cgroups**:
 - **Namespaces:** Give processes isolated views of resources such as process IDs, filesystems, network interfaces, hostnames, and users.
 - **Cgroups:** Control and account for resources such as CPU time and memory.
 
-As a result, a process inside a container can believe that it is PID 1, see its own filesystem tree, and observe only its container's processes and network interfaces. From the host's perspective, it remains a normal [process](05%20Process%20Management.md#Processes%20vs.%20Threads) with a host PID that the same kernel schedules onto the CPU.
+As a result, a process inside a container can believe that it is PID 1, see its own [filesystem tree](06%20Storage%20Management.md#Mount%20Namespaces), and observe only its container's processes and network interfaces. From the host's perspective, it remains a normal [process](05%20Process%20Management.md#Processes%20vs.%20Threads) with a host PID that the same kernel schedules onto the CPU.
 
 ## Isolation Boundary and Consequences
 

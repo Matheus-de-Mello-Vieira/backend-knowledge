@@ -27,12 +27,14 @@ Because the OS kernel strictly schedules physical OS threads, the Go runtime act
 - **Execution Rules:** Each **M** (OS thread) must have exactly one **P** attached to execute Go code, and each **P** can be attached to only one **M** at a time.
 - **Run Queues:** Each **P** maintains a local run queue of ready-to-execute goroutines (**Gs**).
 - **Hardware Execution:** The **M** executes these goroutines sequentially by routing them through the physical CPU core's instruction pipeline.
+
 ### The Go Runtime
 
 The **Go runtime** is the part of the Go implementation that executes and manages your program after compilation. It sits between your Go code and the operating system, handling language-specific execution mechanics such as goroutine scheduling, stack growth, memory allocation, garbage collection, timers, and coordination with OS threads.
 
 - **What belongs to the runtime:** Goroutine creation, the **G-M-P scheduler**, heap allocation, garbage collection, stack resizing, channel parking and wake-up behavior, and many low-level interactions with the operating system.
 - **What does not belong to the runtime:** Your application logic and most standard-library APIs are not themselves the runtime, even though they may call into runtime-managed mechanisms.
+
 ## Goroutine Allocation
 
 When you execute a `go` statement, the runtime completely bypasses the OS kernel and executes a highly optimized sequence of user-space memory allocations.
@@ -81,7 +83,7 @@ Because CPU cycles are a scarce hardware resource, the Go runtime aggressively b
 ### Spinning Threads (Busy Waiting)
 
 - A spinning thread actively loops and checks for new work instead of immediately going to sleep.
-- The OS penalty for waking a sleeping thread (transitioning from Kernel Space back to User Space) is computationally expensive.
+- Letting an OS thread sleep avoids consuming a CPU, but an event must make it [runnable](../../../Operating%20Systems/05%20Process%20Management.md#Process%20Lifecycle%20and%20Thread%20Execution%20States) before the scheduler later runs it; this wakeup and scheduling path adds latency.
 - Go intentionally utilizes spinning threads as a hardware optimization to instantly capture new goroutines, prioritizing sub-millisecond execution over strict power efficiency.
 
 ### Goroutine Preemption
@@ -102,9 +104,7 @@ Before asynchronous preemption existed, the runtime could **request** that a gor
 
 The runtime reused the compiler-inserted stack-growth checks described in [Stack Growth Checks](#Stack%20Growth%20Checks) for preemption. When it wanted to preempt a goroutine, it set a preemption flag and replaced the goroutine's normal stack guard (`stackguard0`) with the special `stackPreempt` value. The next function Nested Calls would therefore make the ordinary stack check appear to fail. Execution entered the stack-growth path, where the runtime recognized that this was actually a **preemption request**, rather than a real stack overflow, and transferred control to the scheduler.
 
-Conceptually:
-
-`preemption requested → stackguard0 = stackPreempt → next function call → stack check fails → runtime detects preemption → scheduler`
+Conceptually: `preemption requested → stackguard0 = stackPreempt → next function call → stack check fails → runtime detects preemption → scheduler`.
 
 This approach was cheap because Go could reuse checks that were already necessary for stack growth instead of injecting a separate scheduler check into every instruction or loop iteration.
 
@@ -135,9 +135,7 @@ gp.stackguard0 = stackPreempt
 
 The `stackguard0` modification preserves the synchronous preemption mechanism described above. In modern Go, however, `preemptone` can additionally request **asynchronous preemption** of the M.
 
-This means `sysmon` does **not** itself rip a goroutine from the CPU. Its role is primarily:
-
-`observe long-running P → request preemption`
+This means `sysmon` does **not** itself rip a goroutine from the CPU. Its role is primarily: `observe long-running P → request preemption`.
 
 The actual interruption and transition into the scheduler are handled by the rest of the runtime and, for asynchronous preemption, platform-specific OS mechanisms.
 
@@ -157,9 +155,7 @@ If the location is not safe, the signal handler does not force the switch there.
 
 If the instruction **is** an asynchronous safe point, the runtime modifies the interrupted thread's saved execution context. Instead of returning directly to the instruction that was interrupted, it changes the context so that the thread appears to have called a runtime assembly function named **`asyncPreempt`**. The signal handler then returns normally.
 
-Conceptually:
-
-`sysmon → retake → preemptone → preemptM → OS interrupts M → check async safe point → inject asyncPreempt`
+Conceptually: `sysmon → retake → preemptone → preemptM → OS interrupts M → check async safe point → inject asyncPreempt`.
 
 `asyncPreempt` is architecture-specific assembly because the interruption may occur at essentially any safe instruction, meaning ordinary calling-convention assumptions cannot be relied upon. It saves the general-purpose registers—and, where necessary, additional register state—before transferring execution into Go runtime code.
 
@@ -169,19 +165,14 @@ One complication of asynchronous interruption is **garbage collection**. At sync
 
 Therefore, the evolution can be summarized as:
 
-**Before Go 1.14**
-
-`runtime requests preemption → G must reach a synchronous safe point → usually next function/stack check → scheduler`
+**Before Go 1.14** `runtime requests preemption → G must reach a synchronous safe point → usually next function/stack check → scheduler`.
 
 A tight loop without such a safe point could run for a very long time despite a pending preemption request.
 
-**Go 1.14+**
-
-`runtime requests preemption → try asynchronous interruption → if current instruction is safe, inject asyncPreempt → save registers → scheduler`
-
-If asynchronous interruption cannot safely happen at that moment, the existing synchronous mechanism remains available as a fallback.
+**Go 1.14+** `runtime requests preemption → try asynchronous interruption → if current instruction is safe, inject asyncPreempt → save registers → scheduler`. If asynchronous interruption cannot safely happen at that moment, the existing synchronous mechanism remains available as a fallback.
 
 The result is that modern Go combines **blocked, synchronous, and asynchronous safe points**, giving the runtime much stronger control over long-running goroutines while still preserving the invariants required for stack management and garbage collection.
+
 ## Memory Management
 
 Go applications rely on the [classic virtual memory layout established by the operating system](02%20The%20Anatomy%20of%20a%20Process.md#Process%20Execution%20and%20State).
@@ -239,7 +230,7 @@ Go prevents this hardware collision using highly localized allocation:
 
 ## Handling Network Connections
 
-When building backend servers, [the architecture](02%20Application%20Server%20Concurrency.md#Single%20Listener,%20Single%20Worker) must distribute three core roles: the **listener**, the **acceptor**, and the **worker**. 
+When building backend servers, [the architecture](02%20Application%20Server%20Concurrency.md#Single%20Listener,%20Single%20Worker) must distribute three core roles: the **listener**, the **acceptor**, and the **worker**.
 
 Traditional models face strict bottlenecks: single-threaded event loops (like Node.js) max out on CPU computation, while multi-threaded models (like Apache) require strict locking and suffer from the Thundering Herd problem when threads compete to accept connections.
 
@@ -300,8 +291,8 @@ When a channel is full (or unbuffered) and a goroutine (**G**) tries to send dat
 When a goroutine arrives at a channel and finds another goroutine sleeping in a wait queue, it executes a brilliant hardware optimization to skip redundant intermediate memory copying. The active goroutine does the memory chores for the sleeping one:
 
 - **Sleeping Sender (Full Channel):** If a receiver arrives and finds a sleeping sender, its action depends on the buffer:
-    - _Unbuffered:_ The receiver reads the data **directly out of the sleeping sender's memory stack**.
-    - _Buffered (FIFO Shuffling):_ The receiver reads the oldest data from the front of the ring buffer, and then copies the sleeping sender's data directly into the newly freed spot at the back of the buffer to maintain FIFO ordering.
+    - *Unbuffered:* The receiver reads the data **directly out of the sleeping sender's memory stack**.
+    - *Buffered (FIFO Shuffling):* The receiver reads the oldest data from the front of the ring buffer, and then copies the sleeping sender's data directly into the newly freed spot at the back of the buffer to maintain FIFO ordering.
 - **Sleeping Receiver (Empty Channel):** If a sender arrives and finds a sleeping receiver, the sender completely bypasses the ring buffer. It writes its data **directly into the sleeping receiver's frozen stack**.
 - In all scenarios, the active goroutine performs a single, direct memory copy from stack to stack, bypassing the heap-allocated ring buffer entirely.
 

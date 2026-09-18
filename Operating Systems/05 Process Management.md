@@ -31,7 +31,31 @@ Thread execution states are not a linear path. A newly created execution context
 
 - **Context Switching:** The physical act of replacing one thread's execution context on a CPU. The kernel pauses the outgoing thread, saves CPU registers such as the Instruction Pointer, Stack Pointer, and flags in thread-specific kernel state, and restores the next thread's saved state. If the next thread belongs to another process, the kernel also changes the active address-space context. Frequent switches add overhead and can reduce application performance.
 - **Blocking vs. Runnable:** If a thread needs to wait for a network packet or a slow disk read, the OS moves that thread to a blocked state and schedules another runnable thread. The blocked thread consumes no CPU time until an interrupt or kernel event makes it runnable again.
-- **System Calls:** When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it triggers a hardware trap. The CPU pauses the application, elevates its privilege level (Ring 0), and hands control to the kernel to safely execute the requested work.
+- [**System Calls**](09%20Kernel%20and%20User%20Space.md#System%20Calls): When user-space code needs a privileged action (like `read()`, `fork()`, or `exec()`), it executes a hardware trap. The CPU transfers control to the kernel at a protected entry point, where the kernel executes in kernel mode.
+
+## CPU-Time Accounting
+
+**CPU time** measures the time that a thread actually executes on a CPU. It differs from **elapsed time**, which also includes time spent waiting for a CPU or an external event. Operating systems normally account CPU time per thread and aggregate those values for the process.
+
+The process's CPU time is the sum of user and system time:
+
+$$
+T_{\mathrm{CPU}} = T_{\mathrm{user}} + T_{\mathrm{system}}
+$$
+
+where $T_{\mathrm{CPU}}$ is total CPU time, $T_{\mathrm{user}}$ is time executing application code in user mode, and $T_{\mathrm{system}}$ is time executing kernel code on behalf of the thread.
+
+- **User-mode execution:** Running application code increases user CPU time.
+- **Kernel-mode execution:** System-call or fault handling performed for the thread increases system CPU time.
+- **No execution:** A blocked thread and a runnable thread waiting for a CPU accrue neither user nor system CPU time.
+
+If a system call blocks for I/O, the calling thread stops accruing CPU time while its elapsed time continues. The scheduler can run another thread during that interval, and that thread receives the CPU-time charge for its own execution.
+
+> [!tip] Linux: Inspecting CPU Time with `top` and `htop`
+>
+> In `top`, `TIME+` reports cumulative CPU time used by a task since it started. It does not measure elapsed time. `%CPU` instead reports CPU use over the most recent display interval, so a blocked task does not add to `TIME+` while waiting and normally reports no CPU use in later intervals.
+>
+> `top`'s `us` and `sy` summary values describe system-wide user and kernel activity rather than the split for one selected process. A multithreaded process can report more than `100%` CPU on a multicore system, depending on `top`'s display mode. In `htop`, `TIME+` combines user and system CPU time; configurable `UTIME` and `STIME` columns expose the process-level split.
 
 ## POSIX Process-Control Interface
 

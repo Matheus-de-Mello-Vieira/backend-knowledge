@@ -604,7 +604,7 @@ mount --bind /srv/database /mnt/database
 > A mount namespace adds another layer by determining which mount relationships a particular process observes. It changes the process-visible filesystem hierarchy without inherently changing where the underlying data is physically stored.
 <!-- -->
 > [!example] Docker and Mount Namespaces
-> A concrete use of [mount namespaces](06%20Storage%20Management.md#Mount%20Namespaces) can be seen when Docker exposes host storage inside a container.
+> A concrete use of [mount namespaces](06%20Storage%20Management.md#Mount%20Namespaces) can be seen when Docker exposes host storage inside a [container](10%20Virtualization%20and%20Containerization.md#Containers).
 >
 > Suppose the host stores database files under `/srv/database`, while the application inside the container expects them at `/app/data`. Docker can create a bind mount inside the container's mount namespace so that the same underlying directory appears as `/app/data` to processes inside the container.
 >
@@ -795,7 +795,7 @@ mount --bind /srv/database /mnt/database
 >
 ### Opening Files
 
-Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software%2C%20Hardware%2C%20and%20POSIX) regular-file interface. `open()` resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
+Ordinary file-content I/O on Unix-like systems generally begins through the [POSIX](01%20Why%20an%20OS.md#Software%2C%20Hardware%2C%20and%20POSIX) regular-file interface. [`open()`](09%20Kernel%20and%20User%20Space.md#System%20Calls) resolves a filesystem pathname and creates an open file description, then returns a process-local [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) referring to that state.
 
 Conceptually, the interface looks like:
 

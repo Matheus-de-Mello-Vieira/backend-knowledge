@@ -24,13 +24,13 @@
     - **Heap:** Starts just after the data segment and grows _upwards_. It is used for dynamic memory allocation (e.g., when a program requests more memory at runtime).
     - **Stack:** Starts at the maximum address and grows _downwards_ (towards the heap). It stores local variables, function calls, and execution context.
 - **Process Identification (PID) & Namespaces:**
-    - **PID Wraparound:** Every process is uniquely identified by an ID. The kernel increments this sequentially. Once the OS hits its maximum PID limit (e.g., 32,768 on default Linux), it wraps around and _reuses_ available PIDs from dead processes. Security is maintained because the kernel completely destroys the old process's page tables upon termination, ensuring no residual data can be accessed.
-    - **Namespaces:** The kernel uses Namespaces to isolate PID lists. This allows multiple processes across different Docker containers and the host system to all possess the exact same PID (e.g., PID `700`) simultaneously. The kernel internally pairs the Namespace + PID to uniquely isolate and identify them, completely hiding them from one another.
+    - **PID allocation and reuse:** A PID identifies a live process within one PID namespace. After that process terminates and the operating system releases its process state, the numeric PID becomes available for a future process in the same namespace. A numeric PID alone therefore does not provide an enduring identity across process lifetimes.
+    - **PID namespaces:** On Linux, PID namespaces give groups of processes distinct PID number spaces. Two live processes in different namespaces can therefore use the same numeric PID. A container's initial process is PID 1 inside its namespace, while the host observes that process through a different host PID.
 - **Instruction Pointer (Program Counter):**
     - The Instruction Pointer (IP) tracks the exact virtual address of the next instruction to be executed from the Text/Code segment.
     - **Hardware Register Execution:** The IP is a hardware register located inside the CPU. Updating it is part of normal instruction execution and has lower latency than accessing cache or RAM.
 - **Process Control Block (PCB):**
-    - The PCB is a vital data structure residing securely in Kernel Space memory. It acts as the process's master metadata record, storing its PID, open file descriptors, memory limits, and state.
+    - The PCB is a vital data structure residing securely in [Kernel Space](09%20Kernel%20and%20User%20Space.md#Privilege%20Boundary) memory. It acts as the process's master metadata record, storing its PID, open file descriptors, memory limits, and state.
     - **Context Switching Overhead:** Because the PCB lives in system memory (RAM), reading and writing to it involves latency. When the kernel performs a context switch, it must physically copy the current value of the CPU's Instruction Pointer register—and all other working registers—into the PCB in memory to save the process's state. This RAM-dependent save/load cycle is a primary reason context switching is computationally expensive.
 
 ## File Descriptors (FDs)
@@ -605,6 +605,7 @@ When using `mmap`, several lifecycle and performance characteristics matter:
 - **Dirty Shared Pages:** Modified `MAP_SHARED` file-backed pages are eventually written back by the operating system. `msync()` can be used when an application needs greater control over when changes are synchronized with the backing file. Exact durability guarantees across crashes or power failures depend on the operating system, filesystem, storage device, and synchronization options being used.
 - **Thrashing:** Mapping a file larger than RAM is not inherently problematic. Performance degrades when the **actively accessed working set** exceeds available physical memory. The kernel may then repeatedly evict and reload pages, causing execution to become dominated by storage latency.
 - **Swap:** Anonymous pages cannot normally be reconstructed from an original file. Under memory pressure, inactive anonymous pages may therefore be written to swap so their physical frames can be reused.
+
 ### Pointers
 
 - **The Concept:** A pointer is simply a variable that stores a raw memory address instead of a standard value. They can point to data on the Stack, the Heap, or the Data section.
