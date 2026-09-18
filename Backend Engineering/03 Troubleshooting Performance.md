@@ -5,13 +5,13 @@
 Performance troubleshooting can be done at several levels:
 
 * Tier 1: client perspective only.
-  * The backend is a black box, regardless of whether there is a CDN, API gateway, load balancer, or proxy in front of it.
-  * Example: browser DevTools.
+    * The backend is a black box, regardless of whether there is a CDN, API gateway, load balancer, or proxy in front of it.
+    * Example: browser DevTools.
 * Tier 2: intercepting proxy.
-  * A debugging proxy sits between client and server.
-  * Useful for mobile apps, desktop apps, and service-to-service debugging.
+    * A debugging proxy sits between client and server.
+    * Useful for mobile apps, desktop apps, and service-to-service debugging.
 * Tier 3: packet capture.
-  * Capture traffic at lower network layers for transport-level and protocol-level analysis.
+    * Capture traffic at lower network layers for transport-level and protocol-level analysis.
 
 ## Tier 1: DevTools
 
@@ -31,12 +31,12 @@ Right-click the header row to enable additional columns.
 Important things to inspect:
 
 * `Size`.
-  * Hover to see the uncompressed size.
-  * A large compressed-vs-uncompressed gap implies more compression and decompression CPU work.
-  * Comparing size against MTU can also give hints about fragmentation or transfer cost.
+    * Hover to see the uncompressed size.
+    * A large compressed-vs-uncompressed gap implies more compression and decompression CPU work.
+    * Comparing size against MTU can also give hints about fragmentation or transfer cost.
 * Browser priorities.
 * Connection IDs.
-  * Helps you see whether the browser is reusing connections or opening new ones.
+    * Helps you see whether the browser is reusing connections or opening new ones.
 
 ### Waterfall
 
@@ -45,38 +45,38 @@ The waterfall shows how long each phase took.
 #### Resource scheduling
 
 * Queueing.
-  * Browsers limit simultaneous connections, so extra requests wait.
+    * Browsers limit simultaneous connections, so extra requests wait.
 
 #### Connection start
 
 * Stalled.
-  * No requests are ahead in line, but the browser still lacks resources to start this one.
+    * No requests are ahead in line, but the browser still lacks resources to start this one.
 * DNS lookup.
 * Initial connection.
-  * TCP or QUIC connection setup.
+    * TCP or QUIC connection setup.
 * SSL.
-  * TLS handshake time.
-  * For HTTP/3, `Initial connection` and `SSL` usually overlap entirely.
+    * TLS handshake time.
+    * For HTTP/3, `Initial connection` and `SSL` usually overlap entirely.
 
 #### Request and response
 
 * Request sent.
 * Waiting for server response.
-  * Roughly time to first byte, or at least time until the browser starts receiving the response.
+    * Roughly time to first byte, or at least time until the browser starts receiving the response.
 * Content download.
-  * Time to receive the rest of the response body.
+    * Time to receive the rest of the response body.
 
 ### How to interpret slowness
 
 * High `Waiting for server response`.
-  * The server is slow to process or upstream dependencies are slow.
+    * The server is slow to process or upstream dependencies are slow.
 * High `Content download`.
-  * The server is slow to deliver the body after starting the response, or the network throughput is poor.
+    * The server is slow to deliver the body after starting the response, or the network throughput is poor.
 * High `Initial connection`.
-  * Connection establishment is slow.
-  * This can point to slow accept handling, slow TLS, or client-side network issues.
+    * Connection establishment is slow.
+    * This can point to slow accept handling, slow TLS, or client-side network issues.
 * High `DNS lookup`, `Initial connection`, and `Waiting for server response` together.
-  * Likely client-side network trouble, such as a VPN or unstable route.
+    * Likely client-side network trouble, such as a VPN or unstable route.
 
 ## Tier 2: MITM (Man-in-the-Middle) Proxy
 
@@ -84,8 +84,8 @@ A debugging proxy intercepts and inspects network traffic flowing between a clie
 
 ### Why use a MITM proxy?
 
-- **No DevTools:** Essential for mobile apps, desktop applications, or IoT devices where standard browser developer tools are unavailable.
-- **Backend Inspection:** Ideal for analyzing service-to-service (microservice) communication.
+* **No DevTools:** Essential for mobile apps, desktop applications, or IoT devices where standard browser developer tools are unavailable.
+* **Backend Inspection:** Ideal for analyzing service-to-service (microservice) communication.
 
 > 💡 *Note: The examples below utilize the open-source **[mitmproxy](https://www.mitmproxy.org/)** suite.*
 
@@ -101,7 +101,7 @@ Starts an interactive, keyboard-driven terminal UI.
 mitmproxy -p 8181
 ```
 
-- **Tip:** If a local client bypasses the proxy due to native `NO_PROXY` environment defaults, force compliance by explicitly resetting the parameter:
+* **Tip:** If a local client bypasses the proxy due to native `NO_PROXY` environment defaults, force compliance by explicitly resetting the parameter:
 
   ```bash
   curl --proxy http://127.0.0.1:8181 --noproxy "" http://127.0.0.1:80/
@@ -115,7 +115,7 @@ Prints all intercepted traffic directly to the standard output (similar to `tcpd
 mitmdump -p 8181
 ```
 
-- **Verbose Logging:** Use `--verbose` and `--flow-detail 4` to capture full headers and bodies.
+* **Verbose Logging:** Use `--verbose` and `--flow-detail 4` to capture full headers and bodies.
 
 #### 3. Web Interface (`mitmweb`)
 
@@ -133,21 +133,19 @@ To inspect encrypted HTTPS traffic, the proxy must perform a **TLS termination h
 
 The first time you run `mitmproxy`, it automatically generates a unique, self-signed CA certificate on your machine to prevent unauthorized interception by other users.
 
-- **Location:** `~/.mitmproxy/mitmproxy-ca-cert.pem`
+* **Location:** `~/.mitmproxy/mitmproxy-ca-cert.pem`
 
-#### Installation Workflows:
+#### Installation Workflows
 
-- **For GUI Clients (Browsers, OS-level apps):**
-
+* **For GUI Clients (Browsers, OS-level apps):**
   1. Route your client's traffic through the proxy.
   2. Navigate to **`http://mitm.it/`** in a browser on the client device.
   3. Download the specific `.pem` or certificate file matching the client OS and add it to the system root store.
-
-- **For Programmatic Runtimes (NodeJS, Python, Go):**
+* **For Programmatic Runtimes (NodeJS, Python, Go):**
 
   Many application runtimes completely ignore the operating system's root certificate store. If your code throws errors like `UNABLE_TO_VERIFY_LEAF_SIGNATURE` or `certificate signed by unknown authority`, you must explicitly pass the `~/.mitmproxy/mitmproxy-ca-cert.pem` certificate into their environments.
 
-- **Certificate Pinning:** Apps enforcing strict certificate pinning (common in high-security mobile apps) will reject the proxy's signed certificate entirely and break the connection, regardless of these environment adjustments.
+* **Certificate Pinning:** Apps enforcing strict certificate pinning (common in high-security mobile apps) will reject the proxy's signed certificate entirely and break the connection, regardless of these environment adjustments.
 
 #### Runtime-Specific CA Configuration
 
@@ -178,7 +176,7 @@ python script.py
 
 #### Go (Golang)
 
-Go binaries are statically compiled and typically read from standard system paths (like `/etc/ssl/certs/ca-certificates.crt` on Linux) to build their root trust store.
+Go binaries are compiled ahead of time. Whether a particular binary is statically linked depends on its build configuration and dependencies; the Go runtime typically reads standard system certificate locations (such as `/etc/ssl/certs/ca-certificates.crt` on Linux) to build its root trust store.
 
 While you can override this globally in your terminal using `SSL_CERT_FILE="$HOME/.mitmproxy/mitmproxy-ca-cert.pem"`, the most robust and idiomatic way inside a Go program is to explicitly load the proxy's certificate, append it to a custom `x509.CertPool`, and inject it into your custom `http.Client`.
 
@@ -186,51 +184,51 @@ While you can override this globally in your terminal using `SSL_CERT_FILE="$HOM
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"path/filepath"
+ "crypto/tls"
+ "crypto/x509"
+ "fmt"
+ "log"
+ "net/http"
+ "os"
+ "path/filepath"
 )
 
 func main() {
-	// 1. Locate and read the mitmproxy CA certificate file
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatalf("Failed to get home directory: %v", err)
-	}
-	certPath := filepath.Join(homeDir, ".mitmproxy", "mitmproxy-ca-cert.pem")
+ // 1. Locate and read the mitmproxy CA certificate file
+ homeDir, err := os.UserHomeDir()
+ if err != nil {
+  log.Fatalf("Failed to get home directory: %v", err)
+ }
+ certPath := filepath.Join(homeDir, ".mitmproxy", "mitmproxy-ca-cert.pem")
 
-	pemCerts, err := os.ReadFile(certPath)
-	if err != nil {
-		log.Fatalf("Failed to read mitmproxy CA cert: %v", err)
-	}
+ pemCerts, err := os.ReadFile(certPath)
+ if err != nil {
+  log.Fatalf("Failed to read mitmproxy CA cert: %v", err)
+ }
 
-	// 2. Create a new x509 CertPool and append the proxy cert
-	certPool := x509.NewCertPool()
-	if ok := certPool.AppendCertsFromPEM(pemCerts); !ok {
-		log.Fatalf("Failed to append mitmproxy CA to cert pool")
-	}
+ // 2. Create a new x509 CertPool and append the proxy cert
+ certPool := x509.NewCertPool()
+ if ok := certPool.AppendCertsFromPEM(pemCerts); !ok {
+  log.Fatalf("Failed to append mitmproxy CA to cert pool")
+ }
 
-	// 3. Pass the cert pool to your custom http.Client via TLSClientConfig
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: certPool,
-			},
-		},
-	}
+ // 3. Pass the cert pool to your custom http.Client via TLSClientConfig
+ client := &http.Client{
+  Transport: &http.Transport{
+   TLSClientConfig: &tls.Config{
+    RootCAs: certPool,
+   },
+  },
+ }
 
-	// Now you can safely make requests through your mitmproxy setup
-	resp, err := client.Get("https://example.com")
-	if err != nil {
-		log.Fatalf("Request failed: %v", err)
-	}
-	defer resp.Body.Close()
+ // Now you can safely make requests through your mitmproxy setup
+ resp, err := client.Get("https://example.com")
+ if err != nil {
+  log.Fatalf("Request failed: %v", err)
+ }
+ defer resp.Body.Close()
 
-	fmt.Printf("Success! Status code: %d\n", resp.StatusCode)
+ fmt.Printf("Success! Status code: %d\n", resp.StatusCode)
 }
 ```
 
@@ -257,7 +255,7 @@ Bash
 mitmweb --mode reverse:http://localhost:9002 -p 9000
 ```
 
-- **How it works:** The client is configured to send requests directly to port `9000`. The proxy intercepts, logs the traffic, and transparently forwards the request to the actual backend service running on port `9002`.
+* **How it works:** The client is configured to send requests directly to port `9000`. The proxy intercepts, logs the traffic, and transparently forwards the request to the actual backend service running on port `9002`.
 
 ### Docker Container Proxying
 
@@ -267,7 +265,7 @@ When containerizing applications, routing traffic through `mitmproxy` requires c
 
 Inside a container, `localhost` refers to the container itself, not your development machine. To route traffic out to a proxy running on your host machine, use the internal host gateway string:
 
-- **Proxy Address:** `http://host.docker.internal:8181`
+* **Proxy Address:** `http://host.docker.internal:8181`
 
 #### 2. Injecting the CA Certificate
 
@@ -353,9 +351,9 @@ You can modify this behavior using these critical settings:
 
 ##### Replay Behavior Flags
 
-- `--server-replay-nopop`: **Crucial for testing.** By default, `mitmproxy` deletes a response from its memory queue once it is replayed. Use this flag to allow the same recorded endpoint to be requested multiple times.
-- `--server-replay-kill-extra`: Instantly returns a `404` to the client if a request does not exist in the replay file. This enforces strict isolation from the public internet.
-- `--server-replay-refresh`: Adjusts response header dates (like `Date`, `Expires`, and `Last-Modified`) to match the current time, keeping time-sensitive clients happy.
+* `--server-replay-nopop`: **Crucial for testing.** By default, `mitmproxy` deletes a response from its memory queue once it is replayed. Use this flag to allow the same recorded endpoint to be requested multiple times.
+* `--server-replay-kill-extra`: Instantly returns a `404` to the client if a request does not exist in the replay file. This enforces strict isolation from the public internet.
+* `--server-replay-refresh`: Adjusts response header dates (like `Date`, `Expires`, and `Last-Modified`) to match the current time, keeping time-sensitive clients happy.
 
 ##### Overriding Match Criteria
 
@@ -384,9 +382,9 @@ mitmweb -p 8181 \
 
 #### Core Use Cases
 
-- **Flake-Free CI/CD Pipelines:** Run front-end or integration tests against a completely predictable, static snapshot of backend data.
-- **Offline Sandbox:** Work on API-dependent desktop or mobile applications during network outages or flights by replaying previous sessions.
-- **Bypassing Rate Limits:** Test how your application scales under rapid-fire requests without burning through third-party paid API quotas.
+* **Flake-Free CI/CD Pipelines:** Run front-end or integration tests against a completely predictable, static snapshot of backend data.
+* **Offline Sandbox:** Work on API-dependent desktop or mobile applications during network outages or flights by replaying previous sessions.
+* **Bypassing Rate Limits:** Test how your application scales under rapid-fire requests without burning through third-party paid API quotas.
 
 ## Tier 3: Wireshark
 
@@ -469,13 +467,13 @@ Once configured, Wireshark can show decrypted HTTP/2 frames such as:
 ### How to interpret slowness in Wireshark
 
 * Large gaps between response body packets.
-  * Slow download or application pacing.
+    * Slow download or application pacing.
 * Many retransmissions during connection setup.
-  * Network issues or packet loss.
+    * Network issues or packet loss.
 * Shrinking TCP window size until zero.
-  * The receiver is not reading fast enough and its receive buffer is filling up.
+    * The receiver is not reading fast enough and its receive buffer is filling up.
 * Zero-window probes.
-  * Strong sign that the receiving side is the bottleneck.
+    * Strong sign that the receiving side is the bottleneck.
 
 ## Real-World Performance Analysis
 
@@ -568,8 +566,8 @@ LISTEN  0        4096     0.0.0.0:8080         0.0.0.0:*
 Interpretation:
 
 * For `LISTEN` sockets:
-  * `Recv-Q`: current accept queue occupancy.
-  * `Send-Q`: configured listen backlog.
+    * `Recv-Q`: current accept queue occupancy.
+    * `Send-Q`: configured listen backlog.
 * For `ESTABLISHED` sockets:
-  * `Recv-Q`: data sitting in the kernel receive buffer that the application has not read yet.
-  * `Send-Q`: data buffered for sending that the peer has not yet acknowledged.
+    * `Recv-Q`: data sitting in the kernel receive buffer that the application has not read yet.
+    * `Send-Q`: data buffered for sending that the peer has not yet acknowledged.

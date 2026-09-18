@@ -2,19 +2,9 @@
 
 ## Program vs Process
 
-- **Program:** A static, compiled executable file sitting dormant on your storage drive.
-- **Process:** An active, running instance of that program. It is a "program in motion." When the OS launches a program, it creates a process by allocating it a unique identifier (PID) and its own isolated virtual address space to store its state and active data.
-- **One-to-Many Relationship:** A single program can spawn multiple distinct processes. For example, opening three separate terminal windows launches three completely independent processes that all originate from the exact same underlying executable file.
-- **Executable Formats:** Executables are structured in strict formats dictated by the OS (such as **PE** for Windows, **ELF** for Linux, and **Mach-O** for macOS). These formats are not just raw machine code; they contain essential metadata and headers that tell the OS exactly how to load the file into memory, where execution should start, and what external libraries are required.
+A **program** is stored code and data that an execution environment can load: it may be a [compiled executable](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#From%20Source%20Code%20to%20a%20Running%20Process), a script, bytecode, or another runtime-hosted representation. A **process** is the live execution context created to run that program, with its own identifier, virtual address space, and active state.
 
-## Program
-
-- **Definition:** A program is a static, executable file containing code that has been explicitly compiled and linked for a specific CPU.
-- **Compilation:** The process of transforming human-readable programming languages into raw machine code. Because every CPU family has its own unique set of machine-level instructions, the compilation process is highly dependent on the target CPU architecture (e.g., x86 vs. ARM). Consequently, a compiled program will _only_ work on the specific architecture it was built for.
-- **Linking:** The final step of the build process that connects your compiled code with the external software libraries it relies on.
-    - **Static Linking:** Embeds a complete, physical copy of all used libraries directly into your final executable file. This makes the resulting file larger, but entirely self-contained and portable across systems with the same CPU architecture.
-    - **Dynamic Linking:** Instead of embedding the actual code, the executable only includes references (pointers) to a specific version of a library. The OS resolves these references and loads the library into memory when the program is executed. On Windows, these external files are known as **DLLs** (Dynamic Link Libraries), while Linux refers to them as Shared Objects (`.so`).
-- **Executable Formats:** The final output of the compilation and linking process is packaged into a structured executable format (such as PE for Windows or ELF for Linux). This format contains the essential headers and metadata the OS needs to correctly load the program's machine code into memory.
+One program can produce multiple independent processes. For a native executable, the operating system reads the executable format, maps the program image, initializes execution state, and transfers control to its entry point. A runtime can instead create a process and then load a script or bytecode representation into that process.
 
 ## Process Execution and State
 
@@ -78,7 +68,7 @@ Because the descriptor is only a handle, the same integer abstraction can refer 
     - **Completion-based coordination:** Linux [`io_uring`](07%20Socket%20Management.md#%60io_uring%60%20Completion%20Cycle) submits operations that identify resources such as socket descriptors, and `io_uring_setup()` returns a descriptor for the ring itself.
 
 > [!note] Inspecting File Descriptors Through `/proc`  
-> On Linux, the virtual [/proc](06%20Storage%20Management.md#proc--Process-and-Kernel-Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
+> On Linux, the virtual [/proc](06%20Storage%20Management.md#proc-process-and-kernel-information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
 >
 > This does not mean that the descriptors themselves are files stored under `/proc`. The descriptor table remains kernel-managed process state; `procfs` merely exposes a filesystem-based view through which that state can be inspected.
 
@@ -238,85 +228,6 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
 > - **Kafka:** A broker can serve the same persisted log batches to many consumers. Its shared record format, including compressed batches that remain stored in that form, favors `sendfile()` when the stored batch can be forwarded unchanged, so one page-cache copy can support repeated network transfers.
 > - **Bun:** A static-file response can use `sendfile()` when its file body is forwarded unchanged. Dynamic response bodies are less likely to qualify because the runtime must first produce their output bytes.
 
-## Producing machine code
-
-During compilation, high-level human-readable code is translated into low-level assembly language. Given this C code:
-
-```c
-#include <stdio.h>
-int main ()
-{
-    int a = 1;
-    int b = 3;
-    int c = a + b;
-    printf("a + b = %d", c);
-
-    return 0;
-}
-```
-
-This assembly represents the exact, step-by-step machine instructions the target CPU architecture will execute.
-
-```armasm
-mov r0, #1
-mov r1, #3
-add r3, r0, r1
-str r3, #0xffeeddcc
-```
-
-- **CPU Registers (`r0`, `r1`, `r3`):** Notice that the assembly code does not use variable names like `a` or `b`. Instead, it uses **registers**. These are temporary storage locations built directly into the CPU core, with lower access latency than cache or RAM. Before the CPU can do math on data, that data must be loaded into a register.
-- **Instruction Breakdown**
-       - `mov r0, #1` **and** `mov r1, #3`: The `mov` (move) instruction loads the literal, hardcoded numbers (`#1` and `#3`) directly into the CPU registers `r0` and `r1`.
-       - `add r3, r0, r1`: The CPU's computation hardware (the ALU) reads the values held inside `r0` and `r1`, adds them together, and immediately saves the resulting sum into a new register, `r3`.
-       - `str r3, #0xffeeddcc`: The `str` (store) instruction takes the computed result out of the CPU's internal register (`r3`) and writes it out to system memory. The sequence `#0xffeeddcc` is a hexadecimal virtual memory address.
-
-### Compiler Optimization
-
-- **Constant Folding:** Instead of forcing the CPU to calculate hardcoded mathematical operations (e.g., `1 + 3`) at runtime, a modern compiler evaluates and folds these constants into the final value during the compilation phase.
-- **Dead Code Elimination:** If original variables are never used again after a calculation, the compiler completely strips those steps from the final executable to avoid wasting CPU registers or stack memory.
-- **Efficiency Gains:** By performing this work at compile time, the resulting program is smaller (taking up less disk space and memory) and faster (requiring fewer execution cycles from the CPU's ALU) while producing the exact same final output.
-
-> [!note] The Side Effects of Compiler Optimization While optimizations make programs faster and smaller, altering the underlying machine code can introduce unintended consequences, particularly in low-level systems programming.
->
->
->
-> - **Debugging Nightmares:** Because the compiler fundamentally changes the code's structure—removing variables entirely or rearranging logic—the resulting assembly no longer maps 1:1 with the human-readable source code. If you try to step through a highly optimized program with a debugger, target variables may simply not exist in memory or CPU registers, making troubleshooting extremely difficult.
->
->
->
-> - **Breaking Hardware Polling:** High-speed hardware often relies on "[polling](99%20More%20OS%20Concepts.md#Device%20drivers)," where the CPU constantly checks a specific memory address for new data. If you write a loop that constantly checks a variable (e.g., `while(status == 0)`), an aggressive compiler will assume the check is redundant and optimize the read away, breaking the driver. Developers must use the `volatile` keyword in C to strictly forbid the compiler from optimizing reads and writes to that specific memory location.
->
->
->
-> - **Instruction Reordering in Concurrency:** Compilers often rearrange the order of machine instructions to maximize CPU efficiency. While perfectly safe in an isolated, single-threaded process, this reordering can cause disastrous synchronization bugs ([data races](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions)) if multiple threads running concurrently across different CPU cores depend on memory being updated in the exact sequential order written in the original source code.
->
-
-### SIMD in Code Generation
-
-- **Auto-Vectorization:** While developers rarely write [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction%2C%20Multiple%20Data%20%28SIMD)) assembly by hand, modern compilers automatically replace standard scalar instructions with vector instructions when a loop's memory layout and dependency pattern make it safe to do so.
-- **Throughput Impact:** SIMD does not split a program into multiple instruction streams; instead, it dramatically increases throughput by applying a single decoded operation across multiple packed data lanes simultaneously.
-- **Machine-Code Transformation:** Because of auto-vectorization, the compiled instruction stream often stops being purely scalar. Source code explicitly written to process a single element per iteration will regularly compile into machine code that processes chunks of data all at once.
-- **Assembly Divergence:** This fundamental shift in register usage and data throughput is a primary reason why highly optimized assembly code can look completely different from the original human-readable source structure.
-
-### Assembling into Machine Code
-
- While assembly language is incredibly low-level, it is still text designed for humans to read. The CPU hardware cannot natively execute a string of characters like `add r3, r0, r1`. A tool called an **Assembler** must translate these textual mnemonics into raw binary machine code (opcodes)—the actual sequence of 1s and 0s that trigger the CPU's physical electrical circuits.
-
-|Assembly Instruction|Binary Machine Code|Hexadecimal|
-|---|---|---|
-|`mov r0, #1`|`11100011 10100000 00000000 00000001`|`0xE3A00001`|
-|`mov r1, #3`|`11100011 10100000 00010000 00000011`|`0xE3A01003`|
-|`add r3, r0, r1`|`11100000 10000000 00110000 00000001`|`0xE0803001`|
-
-- **Direct-to-Binary (Skipping the Assembly File):** While compilation is conceptually a multi-step pipeline (Source Code -> Assembly -> Machine Code), modern compilers (like Clang or GCC) often skip generating a physical, intermediate assembly text file. To optimize the build process and reduce disk I/O, they translate the high-level code directly into binary object files in memory.
-- **Read-Only Text Segment (Security & Caching):** Once the machine code (the Text/Code segment) is loaded into virtual memory, the OS enforces strict hardware-level protection marking that region as **read-only** and **executable** (a principle known as Write XOR Execute, or W^X).
-       - **Security:** If an application could write to its own code segment, malicious actors could exploit bugs (like [buffer overflows](#Buffer%20Overflow)) to inject and execute their own rogue machine instructions.
-       - **Cache Coherency:** Because the CPU knows the instructions will never change, it can aggressively load them into the L1 cache without ever worrying about complex cache coherency issues or invalidating the data.
-- **Just-In-Time (JIT) and Interpreted Languages:** The traditional ahead-of-time (AOT) assembly step is bypassed entirely by languages like Python, JavaScript, and Java. Instead of pre-compiling a static executable bound to a specific CPU architecture, these languages rely on a runtime engine. The engine either interprets the code line-by-line or uses a JIT compiler to generate the necessary raw machine instructions on the fly, right as the program is executing.
-       - **The JIT Memory Challenge:** The runtime engine uses a JIT compiler to generate raw machine instructions on the fly. Because of the strict read-only security rule mentioned above, the JIT compiler has to constantly juggle memory permissions—requesting writable memory from the OS to generate the new machine code, and then explicitly changing that memory's permission to read-only/executable before the CPU is allowed to run it.
-- **Memory Representation (Top vs. Bottom):** The first instruction is always stored at the lowest memory address. If you are looking at an academic memory diagram where the lowest address is drawn at the bottom, the machine code is represented **bottom-to-top**. However, if you are looking at a real-world debugger or hex editor where the lowest address starts at the top, it is read **top-to-bottom**.
-- **Little-Endian Storage:** Many CPU architectures (including most x86 and ARM chips) use a format called **Little-Endian**, meaning the least significant _byte_ is stored at the lowest memory address. This means that while humans read the 32-bit instruction `0xE3A00001` left-to-right, physical RAM stores its byte-chunks in reverse order (`01 00 A0 E3`).
-
 ## The Stack
 
 - **LIFO Structure:** The Stack in memory operates strictly as a Last-In, First-Out (LIFO) data structure.
@@ -407,7 +318,7 @@ flowchart BT
 
 ### Calling Conventions (Parameters & Returns)
 
-- **The Rulebook:** A Calling Convention is a standardized set of rules (an ABI - Application Binary Interface) that dictates exactly how the compiler should pass variables into a function and how that function should send its result back.
+- **The Rulebook:** A calling convention is the ABI component that specifies how a caller and callee exchange arguments and results, preserve registers, and meet stack-related obligations. The ABI also includes other binary-interface agreements; [Compilers, Linkers, and Program Loading](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#ABI%20and%20Separate%20Compilation) gives the broader context.
 - **Passing Parameters (Registers First):** Accessing RAM has higher latency than accessing a register, so modern calling conventions pass the first arguments in CPU registers when possible and use the Stack for additional arguments.
     - _ARM Architecture:_ The first four parameters of a function are placed directly into registers `r0`, `r1`, `r2`, and `r3` before the `call` instruction is executed.
     - _x86-64 Architecture:_ Uses a similar trick, placing the first six parameters into specific registers (like `rdi`, `rsi`, `rdx`, etc.).
@@ -420,7 +331,7 @@ flowchart BT
 ### Stack Overflow
 
 - **The Cause:** Because stack memory is a fixed, contiguous block, it has a strict size limit. If a program enters an infinite loop of nested function calls (infinite recursion) or tries to allocate massively oversized local variables inside a single frame, the Stack Pointer (`sp`) will continuously move downwards until it entirely runs out of allocated space.
-- **The OS Limit:** The maximum size of the stack is primarily enforced by the Operating System (e.g., typically 8MB on Linux), though the compiler/linker can embed a requested stack size into the executable's format headers during the build process.
+- **Stack Limits:** Stack size is platform-, runtime-, and configuration-dependent. An operating system may apply a per-thread resource limit, and some executable formats or runtimes express a stack reservation or request; neither mechanism nor a particular default size is universal.
 - **The Guard Page (Protection):** To prevent the downward-growing stack from silently crashing into the upward-growing heap and corrupting application data, the kernel sets up a trap. It places a special, inaccessible memory page at the very boundary of the stack's allowed virtual memory space, known as a **Guard Page**.
 - **The Crash (Segmentation Fault):** If the Stack Pointer (`sp`) reaches the limit and attempts to write data into the Guard Page, the CPU's Memory Management Unit (MMU) instantly detects a permission violation. The hardware triggers an interrupt, and the kernel ruthlessly kills the process to protect the rest of the system memory. This fatal crash is the infamous "Stack Overflow."
 
@@ -437,23 +348,19 @@ flowchart BT
     - **ASLR (Address Space Layout Randomization):** The OS randomizes the starting virtual memory addresses of the Stack, Heap, and standard libraries every single time the process launches. Even if an attacker successfully hijacks the Instruction Pointer, they have no idea what memory address to point it to.
     - **Memory-Safe Languages:** Modern languages (like Python, Java, Go, or Rust) eliminate this entire class of vulnerabilities by enforcing strict, automatic bounds-checking at runtime. If an array is 10 bytes long and you attempt to write an 11th byte, the runtime instantly throws a safe exception instead of blindly corrupting the adjacent memory.
 
-## The Data Section
+## Static Storage in a Process
 
-- **Definition & Size:** This section of virtual memory stores global and static variables. Because the compiler knows exactly how many global variables exist in the code, the total size of the Data section is strictly fixed at compile time.
-- **Memory Placement:** It resides in memory immediately above the Text/Code segment.
-- **The Compiler Split (`.data`, `.bss`, `.rodata`):** The OS actually divides this region into optimized sub-sections:
-    - **`.data`:** Stores initialized global variables (e.g., `int x = 100;`). This section is Read/Write.
-    - **`.bss`:** Stores _uninitialized_ global variables (e.g., `int y;`). To save space in the executable file, the OS just zeroes out this memory when the program launches.
-    - **`.rodata` (Read-Only Data):** Stores constants and string literals (e.g., `"Hello World"` or `const int z = 5;`). The hardware strictly enforces this as read-only.
-- **Addressing:** Unlike local stack variables (which are found using offsets from the moving Stack/Base pointers), variables in the Data section reside at fixed, static memory addresses.
-- **Cache Coherency Penalty:** Reads of global variables can be cache hits, but writes in a modern multi-core system can be costly. If Core A updates a global variable, the hardware invalidates copies held by other cores. A later access on another core may need to obtain the updated cache line, potentially from another cache or RAM.
-- **Cache Efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [Spatial Locality](03%20Memory%20Management.md#Spatial%20Locality). Traversing arrays or adjacent variables can produce more cache hits than scattered reads, reducing average access latency.
+Global and static storage enters a process through mappings derived from the program image or shared libraries. The compiler and linker organize material such as initialized writable data, zero-initialized storage, and read-only constants into artifact sections; the loader maps the resulting segments into the process. [Executable formats and program loading](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Executable%20Formats%20and%20Program%20Loading) explains that section-to-segment transition.
+
+- **Addressing:** Unlike local stack variables, static-storage locations are addressed independently of the moving stack or frame pointer.
+- **Cache-coherency cost:** Reads of global variables can be cache hits, but a write on one core can invalidate copies held by other cores. A later access elsewhere may need the updated cache line from another cache or RAM.
+- **Cache efficiency:** When global or static variables are laid out contiguously, sequential reads can benefit from [spatial locality](03%20Memory%20Management.md#Spatial%20Locality).
 
 ## The Heap
 
 - **Dynamic Allocation:** A massive, dynamic region of memory used for variables whose size or lifespan cannot be determined at compile time.
 - **Global Access:** Unlike stack frames which are isolated to specific functions, memory allocated on the heap can be accessed by any function in the program as long as it has the correct pointer.
-- **Upward Growth:** As established in the memory layout, the heap starts immediately after the BSS/Data section and grows _upwards_ toward the descending Stack.
+- **Upward Growth:** As established in the memory layout, the heap commonly appears after static-storage mappings and grows _upwards_ toward the descending Stack.
 - **Manual Lifespans:** Data on the heap remains there indefinitely until it is explicitly deallocated by the programmer (or a garbage collector).
 - **The Allocator (`malloc` & `free`):** In languages like C/C++, you allocate heap memory using standard library functions like `malloc` and `free`.
        - **User-Space Management:** `malloc` is not a system call. It is a User Space manager. It asks the kernel for a giant pool of memory (using actual system calls like `brk` or `mmap`) and then slices that pool into smaller allocations for your program.
@@ -520,7 +427,7 @@ When the page is resident, the page table translates the virtual address to a ph
 <!-- -->
 > [!example] Lucene — Searching an Index Larger Than Available RAM
 >
-> [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20%28Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
+> [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20%28Java%29) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
 >
 > Cold clean index pages can be reclaimed and later loaded again from the index files. `mmap` therefore allows the operating system's virtual-memory and page-cache mechanisms to become part of the search engine's caching strategy without requiring the entire index to be copied into the Java heap.
 <!-- -->

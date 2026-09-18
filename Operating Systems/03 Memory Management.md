@@ -199,7 +199,7 @@ While increasing the page size can reduce the total number of required entries�
 
 #### Multi-Level Paging as a Sparse Radix Tree
 
-Multi-level paging solves the sparsity problem by splitting the VPN into smaller indexes and organizing the mappings using the same mechanism as a [[../Data Structures#Radix Tree|Radix Tree]].
+Multi-level paging solves the sparsity problem by splitting the VPN into smaller indexes and organizing the mappings using the same mechanism as a [Radix Tree](../Data%20Structures.md#Radix%20Tree).
 
 Each group of VPN bits selects an entry at one level of the hierarchy. That entry either points to the next page-table level or indicates that no mappings exist for the entire virtual-address range represented by that branch.
 
@@ -898,7 +898,7 @@ The page-table data-structure update itself is bounded by the hierarchy depth, b
 Because the OS controls the map, it can intentionally point multiple virtual pages from entirely different programs to the exact _same_ physical page. This solves the shared memory nightmare, enabling instant, secure Inter-Process Communication (IPC) without the programs ever needing to coordinate physical addresses.
 
 - **Deduplicating Executables:** If you spin up ten instances of the exact same program, the OS does not copy the binary into RAM ten times. It loads the read-only code and fixed data sections into physical memory just once, and maps the virtual pages of all ten processes to those exact same physical frames.
-- **Shared Libraries (`.so` / `.dll`):** This is even more critical for standard libraries (like C's `libc`). The OS loads the library code into physical RAM once, and every single program on your machine dynamically maps its virtual addresses to that shared physical space.
+- **[Shared Libraries](Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Dynamic%20Linking) (`.so` / `.dll`):** Standard libraries such as C's `libc` can be mapped into multiple processes. Each process retains a separate virtual address space, while compatible read-only library mappings can refer to the same physical frames.
 - **Threads vs. Processes:** This highlights the core difference in concurrency: while separate processes have independent Page Tables (isolated memory), multi-threading works by spawning execution threads that utilize the _exact same Page Table_, giving them native, shared access to the entire virtual address space.
 - **Process Forking & Copy-on-Write (CoW):** When a program spawns a child process using the `fork()` system call, the OS does not waste time copying the gigabytes of physical RAM. Instead, it instantly duplicates the _Page Table_, pointing the child to the exact same physical pages as the parent, and temporarily marks them as Read-Only. The exact millisecond either process attempts to modify a variable, the MMU triggers a fault, and the OS creates a private, independent 4KB copy of _just that specific page_.
     - **Backend Architecture:** Modern infrastructure relies entirely on these OS tricks. Databases like PostgreSQL allocate massive shared memory buffers so all isolated worker processes can read the exact same database cache. Proxies like NGINX use `fork()` to spawn worker processes, relying entirely on Copy-on-Write to instantly boot new workers without duplicating the massive master configuration data in physical RAM.
@@ -906,7 +906,7 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 > [!tip] Inspecting the Map in Linux
 > You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at [`/proc/[pid]/maps`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information). It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
 > [!example] Python’s `None` and the Copy-on-Write Penalty
-> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [[../Technologies/Python/Python Internals#The Fix: Immortal Objects|immortal objects]].
+> An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
 > [!example] Architecture Story: Redis & The Persistence
 > Because Redis is fundamentally an in-memory database, it faces a massive existential threat: if the physical server loses power or crashes, every single piece of data is permanently wiped from RAM. To handle crashes, Redis engineers needed a way to periodically persist (save) this in-memory data to the physical hard drive.
 > Because Redis is famously single-threaded, saving this data presented a massive architectural bottleneck:
@@ -959,7 +959,7 @@ To understand why this matters, think of the CPU and RAM as a frontend and backe
 
 - **The Concept:** If a program accesses a specific memory address, there is a very high probability it will access the immediately adjacent memory addresses next.
 - **The Benefit:** Because CPUs fetch data in cache lines, sequential accesses can reuse a line that was fetched for a previous access. These cache hits have lower latency than fetching the same data from RAM.
-- **Where it Applies:** Arrays (on the [Heap](02%20The%20Anatomy%20of%20a%20Process.md#The%20Heap) and [Data Section](02%20The%20Anatomy%20of%20a%20Process.md#The%20Data%20Section)) and sequential local variables (packed tightly on the [Stack](02%20The%20Anatomy%20of%20a%20Process.md#The%20Stack)) can be processed with fewer cache misses than scattered data.
+- **Where it Applies:** Arrays (on the [Heap](02%20The%20Anatomy%20of%20a%20Process.md#The%20Heap) and [static storage](02%20The%20Anatomy%20of%20a%20Process.md#Static%20Storage%20in%20a%20Process)) and sequential local variables (packed tightly on the [Stack](02%20The%20Anatomy%20of%20a%20Process.md#The%20Stack)) can be processed with fewer cache misses than scattered data.
 
 > [!example] Sequential Reads
 >
@@ -1104,7 +1104,7 @@ Because traditional Direct Memory Access (DMA) operates purely on physical addre
 - **Bypassing the Operating System:** Because the malicious device talks directly to the physical RAM via the DMA controller, the Operating System is completely blind to the attack. The OS cannot log the event, antivirus software cannot scan it, and lock screens cannot block it.
 - **The Impact (Total System Compromise):**
        - **Key Extraction:** The attacker can instruct the device to silently read the physical memory to find full-disk encryption keys (like BitLocker or FileVault) or plain-text passwords stored in RAM.
-    - **Code Injection:** The device can overwrite kernel memory space to inject a malicious [[../Security/01 Foundations and Risk/03 Common Threats and Attacks#Rootkits|rootkits]] or instantly disable the operating system's lock screen password check.
+    - **Code Injection:** The device can overwrite kernel memory space to inject a malicious [rootkits](../Security/01%20Foundations%20and%20Risk/03%20Common%20Threats%20and%20Attacks.md#Rootkits) or instantly disable the operating system's lock screen password check.
 
 To prevent someone from completely compromising a locked laptop just by plugging a rogue device into a Thunderbolt port, hardware and software engineers had to combine forces:
 - **The Hardware Sandbox (IOMMU):** As mentioned earlier, the IOMMU (Input/Output Memory Management Unit) acts as a bouncer for hardware devices. Instead of letting a Thunderbolt device see raw physical RAM, the IOMMU forces the device to use virtual addresses. If the malicious device tries to read memory outside its strictly assigned sandbox, the IOMMU blocks the request at the hardware level.
