@@ -11,23 +11,13 @@ NGINX can proxy at Layer 4 or Layer 7:
 * Use the `stream` context for TCP or UDP proxying, including protocols NGINX does not interpret, such as a database protocol.
 * Use the `http` context for HTTP-aware proxying, including request routing, response caching, and TLS termination.
 
+NGINX's [master-and-worker architecture](02%20NGINX%20Internals.md#Architecture%20and%20Startup) separates process control from event-driven client-connection handling.
 
-## NGINX Internal Architecture
+## Scaling an NGINX Fleet
 
-_See also: [Backend Execution Patterns](02%20Application%20Server%20Concurrency.md) for broader context on connection handling._
+Every connection consumes resources in an NGINX instance. When traffic exceeds an instance's connection, CPU, or memory capacity, additional NGINX instances increase total capacity. Each instance is a separate network endpoint, so a distribution mechanism must select an instance before it handles a client connection.
 
-### The Worker Process Model
+* **[Client-side selection](../../Networking/99%20Proxying%20and%20Load%20Balancing.md#Client-Side%20Selection):** Clients discover the available NGINX addresses through a service registry or multi-address DNS and select an endpoint before connecting.
+* **[Anycast routing](../../Networking/02%20Protocols/03%20Internet%20Protocol.md#Anycast%20Routing):** Multiple NGINX deployments are reachable through the same public IP address, and Internet routing selects a destination.
 
-- **Multi-Process Architecture:** NGINX relies on a multi-process model rather than spawning new threads per connection.
-- **Hardware Thread Mapping:** By default (when set to auto-mode), NGINX spins up exactly one worker process per available hardware thread (CPU core).
-- **High Concurrency:** Because of its non-blocking, event-driven nature, a single NGINX worker process can simultaneously handle thousands of active client connections.
-- **CPU Efficiency:** Workers are designed to stay active on the CPU for the maximum time possible to process requests efficiently.
-- **Context Switching:** A worker only exits the CPU (yields) when it is forced to wait on a blocking I/O operation, such as reading content from a physical disk or waiting for a response from an upstream backend server.
-
-### Connection Acceptance and Socket Management
-
-- **Kernel Handoff:** The operating system kernel sits directly behind the worker processes, maintaining the queues for incoming network traffic.
-- **Rapid Acceptance:** NGINX aims to accept incoming connections as quickly as possible. Once a connection is accepted, a specific worker becomes the dedicated reader for that connection's lifecycle.
-- **Pre-1.9.1 (Single Shared Socket / Multiple Acceptors):** In older versions, NGINX used a shared socket approach where multiple worker processes actively competed to call `accept()` on a single listening socket. This required strict locking and often caused the "Thundering Herd" problem, wasting CPU cycles.
-- **Post-1.9.1 (Socket Sharding / Multiple Listeners):** Modern NGINX uses socket sharding by leveraging the `SO_REUSEPORT` kernel feature. Multiple independent worker processes bind to the exact same port.
-- **Kernel Load Balancing:** With socket sharding enabled, the OS kernel creates separate accept queues for each worker process and handles the distribution of incoming connections, completely eliminating the Thundering Herd problem and the need for internal locking.
+These mechanisms distribute client connections among NGINX deployments. They operate before NGINX applies its own reverse-proxy or upstream load-balancing configuration.

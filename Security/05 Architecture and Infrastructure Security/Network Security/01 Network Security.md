@@ -4,7 +4,7 @@ Network security encompasses a comprehensive set of technologies and practices d
 
 ## Service Listening Scope and Network Reachability
 
-Socket binding establishes a service's local acceptance scope; [a wildcard listener](../../../Operating%20Systems/07%20Socket%20Management.md#Binding%20and%20Local%20Endpoints) can make an unintended network-facing or management interface part of that scope. It is not, however, an access-control policy and does not itself make the service reachable from a remote network.
+Socket binding establishes a service's local acceptance scope; [a wildcard listener](../../../Operating%20Systems/07%20Socket%20Management.md#Binding) can make an unintended network-facing or management interface part of that scope. It is not, however, an access-control policy and does not itself make the service reachable from a remote network.
 
 Network reachability requires both a path to the host and permission for traffic to traverse it. Routing, NAT or other ingress controls, and [firewall rules](Firewall%20Technologies.md#Firewalls%20Across%20the%20OSI%20Model%20Layers) determine which sources can reach a service; segmentation constrains which network paths exist. Binding to loopback or an intended internal address is therefore a defense-in-depth control that limits the service's local exposure, while network policy protects the permitted service path.
 

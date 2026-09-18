@@ -23,9 +23,25 @@ Network sockets are one important kind of resource referenced through a [file de
 > [!example] Forked Server Workers
 > A server can create and bind a listening socket before calling `fork()`. The child processes inherit descriptors referring to the same underlying listening resource, so several workers can call `accept()` on that listener. Closing the listener in one child does not remove the other inherited references.
 
-## Socket Types
+## Socket Families and Types
 
-The socket API separates the application's I/O semantics from the transport protocol implementation. For Internet sockets, two important types are stream sockets and datagram sockets.
+A socket belongs to an **address family**, which defines the addressing namespace in which its endpoints exist and constrains which protocols can operate through it. This is separate from the socket's **type**, which defines data-transfer semantics such as byte-stream or datagram behavior.
+
+The `socket()` interface exposes these dimensions separately:
+
+```c
+socket(domain, type, protocol);
+```
+
+- **Domain / Address Family:** Selects the addressing model. `AF_INET` uses IPv4 addresses and ports, `AF_INET6` uses IPv6 addresses and ports, and `AF_UNIX` uses [local Unix-domain addresses](08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) for communication within one host.
+- **Socket Type:** Selects communication semantics such as `SOCK_STREAM`, `SOCK_DGRAM`, or, where supported for the chosen family, `SOCK_SEQPACKET`.
+- **Protocol:** Selects a compatible concrete protocol when the family and type do not already determine it.
+
+The dimensions are related but not interchangeable. `SOCK_STREAM` does not mean TCP: an `AF_INET` stream socket commonly uses [TCP](../Networking/02%20Protocols/05%20TCP.md), while an `AF_UNIX` stream socket provides an ordered local byte stream without using TCP or IP.
+
+After the address family establishes how endpoints are addressed, the socket type establishes the data model exposed to the application. Internet-domain and Unix-domain sockets, for example, can both expose stream semantics.
+
+The resulting concrete protocol must be compatible with the selected family and socket type. The protocol argument may be `0` when that combination determines the normal protocol; an explicit value is needed only to select among compatible protocols. With Internet sockets, `SOCK_STREAM` is commonly paired with TCP and `SOCK_DGRAM` with UDP; those pairings are examples rather than definitions of the socket types themselves.
 
 ### Stream Sockets
 
@@ -67,23 +83,50 @@ POSIX exposes socket-specific operations on top of the general file-descriptor m
 
 ### Creating a Socket
 
-- **`socket()` — Create Kernel State:** `socket()` asks the kernel to create a socket object and returns a descriptor referring to it.
-- **Address Family:** The call specifies an address family such as IPv4 or IPv6.
-- **Socket Type:** It specifies a type such as `SOCK_STREAM` or `SOCK_DGRAM`.
-- **Protocol Selection:** A protocol can be supplied when the family/type pair does not already imply one.
-- **Initial State:** Creating the socket establishes the kernel object but does not by itself choose a local endpoint or establish a remote connection.
+`socket()` asks the kernel to create a socket object and returns a descriptor referring to it. Its arguments combine the family, type, and protocol dimensions established above:
 
-### Binding and Local Endpoints
+```c
+int fd = socket(domain, type, protocol);
+```
 
-- **`bind()` — Associate Local Endpoint:** `bind()` associates a socket with a local address.
-- **Server Use:** A server commonly binds explicitly because clients need a stable destination.
-- **Client Use:** A client can often let the kernel choose an ephemeral local port automatically when communication begins.
-- **Specific Address:** Binding to a specific local IP restricts the socket to traffic addressed to that interface or address.
-- **Wildcard Address:** A wildcard such as `0.0.0.0` on IPv4 asks the kernel to accept traffic for the chosen port on all suitable local IPv4 interfaces. This expands the local addresses through which the process can receive traffic; it does not by itself make the service reachable from another network or from the Internet.
-    - Actual reachability also depends on address assignment and routing, network address translation or other ingress controls, and [firewall policy](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability).
-    - A wildcard listener can nevertheless expose a service through an interface that was not intended to serve it, such as an internal or management network. Binding to a specific address, including a loopback address when only local clients should connect, narrows that local acceptance scope as defense in depth.
-    - `0.0.0.0` is an IPv4 wildcard. IPv6 uses a separate wildcard address, `::`; whether an IPv6 listener also accepts IPv4 traffic is platform- and socket-option-dependent.
-- **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket type, current state, operating system, and socket options.
+For example:
+
+```c
+socket(AF_INET, SOCK_STREAM, 0);
+socket(AF_UNIX, SOCK_STREAM, 0);
+```
+
+Both calls request stream semantics, but they create sockets in different address families. The first participates in the IPv4 Internet-domain model; the second participates in the local Unix-domain model.
+
+Creating the socket establishes the kernel object and its communication semantics. It does not by itself assign a local address, establish a peer relationship, or make the socket a listening endpoint.
+
+### Binding
+
+`bind()` associates a socket with a local address in the addressing namespace defined by its socket family. The meaning and representation of that address therefore depend on the family.
+
+- **Internet-Domain Address:** `AF_INET` and `AF_INET6` local addresses combine an IP address with a transport port.
+    - **Interface Selection:** Binding to a specific local IP restricts the socket to traffic addressed to that interface or address.
+        - **Security Exposure:** The selected local address establishes the service's local listening scope and therefore affects its [security exposure](../Security/05%20Architecture%20and%20Infrastructure%20Security/Network%20Security/01%20Network%20Security.md#Service%20Listening%20Scope%20and%20Network%20Reachability).
+    - **Wildcard Addresses:** The IPv4 wildcard `0.0.0.0` accepts traffic for the chosen port on all suitable local IPv4 interfaces. IPv6 uses the separate wildcard `::`; whether an IPv6 listener also accepts IPv4 traffic is platform- and socket-option-dependent.
+- **Unix-Domain Address:** `AF_UNIX` uses a local Unix-domain address. A common form is a filesystem pathname such as `/run/my-service.sock`.
+- **Server Use:** A server commonly binds explicitly because other participants need a stable local address through which to reach it.
+- **Internet Client Use:** An Internet-domain client can often let the kernel select a suitable local IP address and ephemeral port automatically when communication begins.
+- **Binding Conflicts:** Whether multiple sockets may bind overlapping addresses depends on the socket family, socket type, current state, operating system, and socket options.
+
+#### Unix-Domain Pathname Addresses
+
+For a pathname-based `AF_UNIX` socket, the local address is a filesystem pathname such as `/run/my-service.sock`. Binding associates the socket with that name and creates a filesystem entry whose type represents a socket.
+
+The pathname is a rendezvous name, not storage for transmitted data. Processes use the pathname to identify the local socket, while the kernel maintains the socket's communication state, queues, and connected endpoints.
+
+Filesystem rules therefore participate in pathname-based rendezvous:
+
+- The parent directory must exist and permit creation of the socket entry.
+- Pathname and directory permissions can affect which processes may reach the socket; the exact permission checks are operating-system-specific.
+- The filesystem entry and the live socket have distinct lifetimes. Closing the socket does not generally remove the pathname entry, so a service normally removes the entry when it no longer owns that address.
+
+> [!note] Linux Abstract Unix-Domain Addresses
+> Linux also supports an abstract Unix-domain namespace that is independent of filesystem pathnames. Abstract addresses do not create filesystem entries, so their naming and lifetime rules differ from pathname-based Unix-domain addresses.
 
 ### Establishing Outbound Connections
 

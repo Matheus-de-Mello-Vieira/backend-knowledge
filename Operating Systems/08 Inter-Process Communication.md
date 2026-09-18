@@ -1,0 +1,320 @@
+# Inter-Process Communication (IPC)
+
+Processes isolate their ordinary virtual-memory mappings, so they need an explicit mechanism to exchange data or coordinate work. IPC combines channel-based mechanisms, which transfer data through kernel-managed objects, with shared-memory mechanisms, which intentionally expose the same storage to several processes. [Process isolation](03%20Memory%20Management.md#Virtual%20Memory) and [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) establish the prerequisite models.
+
+## Process Boundaries and Communication
+
+A process cannot directly read or write another process's ordinary address space. IPC creates a controlled relationship across that boundary, but the mechanism determines whether it transfers bytes, exposes shared storage, preserves message boundaries, or only signals an event.
+
+- **Channel-based IPC:** Pipes and sockets carry data through kernel-managed endpoints and buffers. Their finite buffering produces backpressure when one participant outpaces another.
+- **Shared-memory IPC:** Compatible mappings can make the same physical pages visible in several processes. This avoids copying payload through a separate pipe or socket, but it does not establish when a reader may consume data or when a writer may modify it.
+- **Coordination:** Shared mutable state needs a protocol that protects its invariants and establishes when state is ready to observe. Signals and channel readiness can notify a process, but notification alone does not make concurrent access safe.
+
+## Descriptor-Based Channels
+
+On Unix-like systems, a process ordinarily accesses a pipe or socket endpoint through a file descriptor. The descriptor is a process-local handle, not the channel or its buffer; its number is chosen from an available slot in that process's descriptor table. Code must therefore not assume that a newly created endpoint has a particular number.
+
+Descriptor lifetime controls whether an endpoint remains usable. `fork()` gives a child descriptors referring to the parent's open resources, `dup()` creates another descriptor referring to the same resource, and `close()` removes one such reference. An endpoint reaches its end-of-file or shutdown state only according to the resource's own rules after the relevant references are gone.
+
+### Explicit Descriptor Passing
+
+Explicit descriptor passing gives an already-running process access to an already-open resource. It transfers a reference to the same open-resource state, not the sender's descriptor number: the receiving process receives a newly allocated entry in its own descriptor table. The two descriptor numbers therefore need not match, even though both entries refer to the same pipe end, socket, or open file description. This differs from opening the same underlying resource independently, which creates separate open-resource state.
+
+On Unix-like systems, Unix-domain sockets carry this transfer as ancillary (control) data. Connection-oriented socket types transfer descriptors between connected peers; a Unix-domain datagram socket can instead send ancillary data to a specified address. The sender supplies an `SCM_RIGHTS` control message to `sendmsg()`, and the receiver obtains the new descriptors through `recvmsg()`.
+
+An accompanying ordinary-data payload can identify the resource and its intended use. Passing a descriptor neither discovers a peer nor creates a new channel. A stream socket does not preserve individual `sendmsg()` payload boundaries, so the receiving protocol must frame any such metadata.
+
+> [!note] Ordinary Data with `SCM_RIGHTS`
+> On Linux, `SCM_RIGHTS` over a Unix-domain stream socket requires at least one ordinary-data byte; portable applications should also send one with a datagram transfer.
+
+The transferred reference has shared state and an independent descriptor lifetime:
+
+- **Shared resource state:** The received descriptor refers to the same underlying open resource rather than reopening it. Resource-specific shared state, such as a regular file's current offset or a socket endpoint's connection state, remains shared.
+- **Independent descriptor lifetime:** Each process closes its own descriptor. Closing the sender's descriptor does not invalidate the receiver's reference, and closing the receiver's descriptor does not release the resource while other references remain.
+
+The receiver must handle the descriptor as an acquired capability:
+
+- **Authority transfer:** A received descriptor lets the receiver operate on the resource with the access represented by that already-open handle. The receiver must treat it as a capability: validate the protocol that supplied it and close it when it is no longer needed. A descriptor normally survives `exec()` unless it is marked close-on-exec; on Linux, `recvmsg()` with `MSG_CMSG_CLOEXEC` sets that flag atomically for descriptors received through `SCM_RIGHTS`.
+- **Receive integrity:** The receiver must provide enough control-buffer space and reject truncated ancillary data rather than use a partial descriptor set. If it rejects a truncated message, it closes every descriptor it did receive. On Linux, `recvmsg()` marks discarded control data with `MSG_CTRUNC` and closes descriptors that do not fit in the supplied buffer.
+
+## Shared-Memory IPC
+
+[`mmap()`](02%20The%20Anatomy%20of%20a%20Process.md#The%20mmap%20System%20Call%20%28Memory%20Mapping%29) creates a mapping in a process's virtual address space; compatible `MAP_SHARED` mappings give several processes access to the same shared backing through process-local virtual addresses.
+
+Processes establish that relationship in two common ways:
+
+- **Inherited mapping:** A process creates a shared mapping before `fork()`. The child inherits a mapping to the same backing, so process creation distributes access to the shared region. An anonymous `MAP_ANONYMOUS | MAP_SHARED` mapping uses this route without an underlying file or filesystem pathname.
+- **Shared backing object:** Independently started processes acquire access to the same shareable object and map compatible regions of it. A stable name lets them locate the object, while a passed descriptor can transfer access to it; neither defines the shared data's layout or coordination protocol.
+
+A shared mapping is not inherently limited to two participants. The exact set of processes that can access it depends on how the operating system creates and distributes access to the shared backing.
+
+After the mappings exist, each process exchanges state through ordinary CPU loads and stores instead of copying the payload through a separate pipe or socket with `read()` and `write()`. Their virtual addresses do not need to match. A shared layout therefore cannot treat a raw pointer value as a process-independent reference unless every participant guarantees compatible address placement; offsets or another process-independent representation avoid that assumption.
+
+The mapping supplies shared storage, not a communication protocol. The participating processes must provide the remaining semantics:
+
+- **Synchronization:** Writers and readers must agree on ownership, update ordering, readiness, and when state is safe to observe. [Synchronization mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) provide the relevant mutex, semaphore, atomic-operation, and condition-variable models.
+- **Capacity and flow control:** A mapping has a finite byte extent, but that extent does not define which records are occupied, when space may be reclaimed, or what happens when the shared data structure is full. Unlike a bounded pipe or socket buffer, shared storage does not produce backpressure without protocol rules for waiting, retrying, dropping work, or constraining producers.
+- **Failure handling:** A participant's exit does not identify whether an update was complete or make partially modified state safe to consume. The protocol must define how other participants detect and recover from abandoned or inconsistent state.
+
+> [!example] PostgreSQL — Shared Memory Across Backend Processes
+>
+> [PostgreSQL](../Databases/PostgreSQL.md#Process%20Architecture) uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
+>
+> Each backend keeps its own virtual address space, but selected mappings can ultimately refer to the same physical pages. `mmap` provides the shared memory itself; PostgreSQL still requires locks, atomics, and other synchronization mechanisms to coordinate access safely.
+
+## Pipes and FIFOs
+
+Pipes and FIFOs are kernel-managed inter-process communication (IPC) resources that carry bounded, unidirectional byte streams. A producer writes bytes at one end and a consumer reads them at the other. The kernel buffer absorbs temporary differences in their execution rates, but its finite capacity eventually makes each side's progress depend on the other.
+
+An anonymous pipe gives its creator descriptor endpoints immediately, whereas a FIFO uses a filesystem pathname so independently started processes can rendezvous before opening endpoints. Once the endpoints are open, both mechanisms share the stream, buffering, readiness, and end-of-file behavior described below.
+
+### Anonymous-Pipe Endpoints and Kernel State
+
+Calling `pipe(p)` creates a pipe and stores two process-local [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) in `p`: `p[0]` is the read end, and `p[1]` is the write end.
+
+- **Descriptor handles:** The descriptors refer to the pipe; they are not the pipe buffer itself.
+- **Kernel pipe state:** The kernel maintains the buffered byte stream and the references to its read and write ends.
+- **Anonymous pipe:** An anonymous pipe has no filesystem pathname. Related processes commonly share its endpoints when descriptors created before `fork()` are inherited.
+
+### Stream and File Semantics
+
+Once open, pipes and FIFOs expose an ordered byte stream rather than discrete messages. A `read()` consumes whichever bytes are currently available, so one read result does not reveal application-message or `write()` boundaries.
+
+Pipes and FIFOs are non-seekable: consuming bytes advances through the stream, but `lseek()` does not supply the position semantics of a regular file. This is one example of how [resource-specific operations](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations) remain different beneath the common descriptor interface.
+
+On Linux, [`splice()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20Descriptor%20Transfers%20and%20Zero-Copy) transfers bytes between a pipe and another compatible file-descriptor-backed resource without copying the payload through an application buffer. At least one descriptor must refer to a pipe; paths such as regular file → pipe and pipe → socket depend on endpoint support.
+
+> [!note] Pipes and Go Channels
+> [Go channels](../Technologies/Golang/01%20Essentials/09%20Concurrency.md#Channel) transfer typed values and preserve value boundaries; pipes transfer untyped stream bytes. Both can use bounded buffering and impose blocking or backpressure when producer and consumer rates differ.
+
+### Blocking and Backpressure
+
+A pipe or FIFO buffer decouples producer and consumer only while it holds unread bytes or has usable capacity. Once the buffer is empty or full, a blocking operation waits for the other side to change that state.
+
+- **Empty channel:** A `read()` blocks while the channel is empty and at least one write-end reference remains open. When a writer adds bytes, the reader can resume and consume them.
+- **Full channel:** A `write()` blocks when the channel lacks enough capacity for the operation to make progress. Reading frees capacity and allows the writer to resume.
+- **Backpressure:** A consumer that reads too slowly eventually fills the bounded channel buffer and constrains producer progress instead of allowing queued data to grow without bound.
+
+While an operation waits, its calling thread is in the operating system's [blocked state](05%20Process%20Management.md#Core%20Mechanics), allowing another runnable thread to use the CPU.
+
+### Readiness and Completion
+
+Pipes and FIFOs work with readiness interfaces such as `poll()` and `epoll()`. Readiness answers whether an operation can make progress without blocking; it does not perform that operation or deliver its result. This lets one thread coordinate many pipes, sockets, and other event sources instead of blocking on one empty stream.
+
+- **Readable read end:** The read end is readable when the channel holds bytes or when an end condition is observable. A subsequent `read()` therefore either consumes available bytes or returns EOF after the buffer is empty and no write-end references remain.
+- **Writable write end:** The write end is writable when the channel has capacity for a write to make progress. A writer still performs the `write()` after receiving the notification.
+
+A readiness-driven consumer follows this sequence:
+
+1. The consumer waits for the channel read end to become readable.
+2. A producer writes bytes, or the last write-end reference closes.
+3. The readiness interface reports the state change.
+4. The consumer calls `read()` and handles bytes or EOF.
+
+Completion-based I/O instead submits a concrete operation, including its destination buffer, before data is available. A submitted read remains pending until the system can perform the transfer, then reports a completion for that particular operation. The application therefore tracks outstanding operations and keeps each operation's buffer valid until its completion is processed.
+
+The two models differ in when the application supplies the I/O operation: readiness reports permission to attempt a read or write, while completion reports the result of work already submitted. An implementation can expose completion semantics while using readiness or polling internally. The same distinction applies to [readiness- and completion-based socket I/O](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared), where transport semantics add networking-specific concerns.
+
+#### Buffering and Backpressure Boundary
+
+Pending reads do not increase the channel's kernel buffer capacity. When a submitted read completes, it drains bytes from that buffer into its user-space destination buffer. Pre-submitting reads can therefore drain the channel earlier and queue additional data in user-space memory; it moves the effective backpressure boundary downstream rather than increasing the channel's bounded kernel buffer.
+
+### EOF and Pipe/FIFO Lifetime
+
+A reader observes EOF only after a pipe or FIFO has no more buffered data and no process retains a write-end reference:
+
+1. The reader consumes every buffered byte.
+2. Every write end is closed.
+
+An open write end means the kernel must still allow for a future write. An empty channel with any write-end reference is therefore a waitable stream rather than EOF. Every process must close endpoints it no longer needs; inherited endpoints commonly cause a process that only reads to keep its own later read waiting by retaining its write end. These rules follow the same [descriptor lifetime](02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime) model as other FD-backed resources.
+
+### Anonymous Pipes
+
+An anonymous pipe is reached through descriptors that a process already holds. It is commonly created before `fork()` so related processes inherit references to the same kernel pipe state; [explicit descriptor passing](#Explicit%20Descriptor%20Passing) can also transfer an endpoint to another process.
+
+### FIFOs: Pathname Rendezvous and Opening
+
+A **FIFO** (named pipe) gives a pipe a filesystem pathname that independently started processes can use as a rendezvous point. After processes open its ends, it carries the same bounded unidirectional byte stream as an anonymous pipe. The pathname identifies the channel; it does not make transferred bytes persistent regular-file content.
+
+Unlike an anonymous pipe, whose endpoints must be inherited or explicitly passed, opening a FIFO coordinates its participants:
+
+- **Blocking open:** A read-only open waits for a writer, and a write-only open waits for a reader.
+- **Nonblocking open:** A read-only open returns immediately. A write-only open fails when no process currently has the FIFO open for reading.
+- **Endpoint lifetime:** An empty FIFO produces EOF only after every write-end reference is closed, following the same [EOF and pipe/FIFO lifetime](#EOF%20and%20Pipe%2FFIFO%20Lifetime) rules as an anonymous pipe.
+
+Several readers or writers share one byte stream rather than receive separate connections. A write no larger than `PIPE_BUF` is not interleaved with another writer's data, but a FIFO still does not preserve application-message boundaries; applications that need messages must use [stream framing](#Stream%20Framing) or a record-preserving transport.
+
+A FIFO is unidirectional. Bidirectional communication requires two FIFOs and a protocol that assigns each pathname to one direction.
+
+### Anonymous-Pipe Shell Pipeline Construction
+
+Shell pipelines combine pipe endpoint configuration with the [POSIX process-control interface](05%20Process%20Management.md#POSIX%20Process-Control%20Interface). For `cat file | grep foo`, the pipe-specific result is that `cat` receives the write end as FD `1` and `grep` receives the read end as FD `0`.
+
+The following fragments show the pipe-specific descriptor setup. They omit argument construction and error handling so that each fragment exposes one change to endpoint references.
+
+1. **Create the pipe:** The shell starts with FDs `0`, `1`, and `2` connected to terminal input, output, and error. It must create the kernel communication resource before either child exists:
+
+    ```c
+    int p[2];
+    pipe(p);
+    ```
+
+    `p[0]` now refers to the read end and `p[1]` to the write end. Assume they are FDs `3` and `4`; the actual numbers depend on which descriptors are available. The shell holds both endpoint references, so each later `fork()` gives its child access to the same kernel pipe state.
+
+2. **Connect `cat` to the write end:** The first child inherits references to both pipe endpoints. Its setup path makes the write-end construction handle become standard output and discards every pipe reference it will not use:
+
+    ```c
+    dup2(p[1], 1);
+    close(p[0]);
+    close(p[1]);
+    ```
+
+    FD `1` retains the write-end reference after `p[1]` is closed; the child no longer retains a read-end reference. When that child executes `cat`, its prepared FD `1` determines where `cat` writes.
+
+3. **Connect `grep` to the read end:** The parent still holds both construction handles when it creates the second child, so this child also receives both endpoints. Its setup path makes the read-end handle become standard input and discards the write-end reference:
+
+    ```c
+    dup2(p[0], 0);
+    close(p[0]);
+    close(p[1]);
+    ```
+
+    FD `0` retains the read-end reference after `p[0]` is closed; the child no longer retains a write-end reference. When that child executes `grep`, its prepared FD `0` determines where `grep` reads.
+
+4. **Release the shell's construction handles:** Once both children have inherited the endpoints, the shell no longer needs either reference:
+
+    ```c
+    close(p[0]);
+    close(p[1]);
+    ```
+
+    Closing the shell's write-end reference allows `grep` to observe EOF once `cat` closes its write end and the pipe's buffered bytes are consumed.
+
+Temporary descriptors are construction handles, not final stream assignments. Closing them prevents a process that does not need an endpoint from extending that endpoint's lifetime. The resulting stream connection is `cat` FD `1` → pipe → `grep` FD `0`.
+
+After the children execute their commands, `cat` opens `file` and transfers its bytes approximately as follows:
+
+```c
+read(file_fd, buffer, n);
+write(1, buffer, n);
+```
+
+FD `1` refers to the pipe write end, so that `write()` supplies bytes to the pipe. `grep` reads from FD `0`, which refers to the pipe read end, and writes matching output to its unchanged FD `1`, the terminal:
+
+```c
+read(0, buffer, n);
+```
+
+When `cat` reaches file EOF and exits, its write descriptor closes. After `grep` consumes the remaining pipe bytes and no write-end references remain, a later `read(0, ...)` returns `0` to signal EOF.
+
+## Unix-Domain Sockets and Socket Pairs
+
+Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families%20and%20Types) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
+
+An **addressed Unix-domain socket** provides a rendezvous mechanism. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
+
+With a pathname-based address, the pathname identifies where the peers meet; after connection establishment, application data flows through the resulting socket endpoints rather than through the pathname itself.
+
+`socketpair()` solves a different problem. It creates two unnamed, already-connected socket endpoints in one operation. No `bind()`, `listen()`, `connect()`, or `accept()` rendezvous is required. The processes must instead receive those endpoint descriptors through an existing relationship, commonly [descriptor inheritance across `fork()`](05%20Process%20Management.md#POSIX%20Process-Control%20Interface) or [explicit descriptor passing](#Explicit%20Descriptor%20Passing).
+
+A socket pair therefore provides the bidirectional channel that would otherwise require two oppositely directed pipes when each peer needs an independent byte stream. The mechanisms differ in how peers obtain their endpoints:
+
+| Property | Addressed Unix-domain socket | `socketpair()` |
+| --- | --- | --- |
+| Peer rendezvous | Through a Unix-domain address | Not required |
+| Independently started peers | Natural fit | Requires endpoint distribution |
+| Connection setup | Address-based connection lifecycle | Endpoints created already connected |
+| Filesystem pathname required | Only for pathname-based addressing | No |
+
+> [!example] Docker Daemon and `/var/run/docker.sock`
+> On Linux, Docker Engine uses `unix:///var/run/docker.sock` as its default local daemon endpoint. The pathname gives independently started clients such as the Docker CLI and other Engine API clients a stable address through which they can reach the same listener without receiving a descriptor in advance.
+>
+> This naturally supports a **one-listener-to-many-clients** service model. The listening socket remains the shared rendezvous point, while each successful `accept()` creates a separate connected socket for one client.
+>
+> A `socketpair()` would instead create one already-connected pair of endpoints. The daemon could create many socket pairs, but every future client would still need another mechanism to receive its endpoint descriptor. The addressed Unix-domain socket solves that discovery and distribution problem directly: clients know one stable address, connect when needed, and receive an independent connection to the daemon.
+<!-- -->
+> [!example] Node.js `child_process.fork()` IPC
+> On Unix, [`child_process.fork()`](../Technologies/NodeJS/01%20Basics/04%20Internals.md#Child%20Processes%20and%20IPC) creates a parent-child IPC channel that libuv backs with a Unix-domain `SOCK_STREAM` socket pair. Because the parent creates the specific child and can distribute an endpoint during process creation, no stable address or listener is needed.
+<!-- -->
+> [!example] NGINX Master and Worker Control Channels
+> [NGINX](../Technologies/NGINX/02%20NGINX%20Internals.md#Process%20Control%20Channels) creates a Unix-domain `SOCK_STREAM` socket pair for each worker or helper process it spawns on Unix and uses the channel for internal process-control messages. The master manages many children by maintaining separate private pairs rather than exposing a rendezvous address for those relationships.
+
+The way peers obtain their endpoints is separate from the socket's data model:
+
+- **`SOCK_STREAM`:** Transfers an ordered byte stream and does not preserve individual write boundaries.
+- **`SOCK_SEQPACKET`:** Transfers ordered records while preserving message boundaries, where the address family and operating system support it.
+
+Both addressed Unix-domain sockets and socket pairs can use socket types supported by the platform. Addressability, directionality, and message-boundary semantics therefore describe separate properties of the channel.
+
+[Socket management](07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) provides the common descriptor-backed socket model; the address family and binding rules determine how an addressed local socket becomes discoverable.
+
+## Stream Framing
+
+A byte stream from a pipe or `SOCK_STREAM` socket delivers bytes, not application messages. A receiver can obtain a partial message, several messages together, or data ending in the middle of an application-level field. The application protocol must therefore define how the receiver identifies each message's beginning and end.
+
+### Frame Format
+
+A common length-prefixed format has a fixed-size header containing a message type and payload length, followed by the payload. The type selects how the payload is interpreted, while the length lets the receiver determine how many bytes belong to that message before processing the next frame. A record-preserving transport such as `SOCK_SEQPACKET` supplies record boundaries, but the application still defines the meaning of each record.
+
+### Incremental Frame Decoding
+
+The receiver retains unread bytes across reads and advances its parser only when the next required part of a frame is complete. For a fixed-size header, decoding proceeds in order:
+
+1. Accumulate bytes until a complete header is available.
+2. Parse and validate the header's message type and declared payload length.
+3. Accumulate bytes until the buffer contains the declared payload.
+4. Emit the complete frame and retain any following bytes as the start of the next frame.
+
+Partial input is an ordinary state of a stream: the receiver needs more bytes before it can continue. A complete header with an invalid type or length is instead a completed protocol violation, not a reason to keep waiting for a payload.
+
+### Invalid Frames and Resource Bounds
+
+The receiver validates a declared length before allocating storage or committing to wait for that payload. The protocol also needs explicit resource bounds:
+
+- **Frame size:** A maximum declared payload prevents one header from requiring an unbounded allocation.
+- **Buffered input:** A limit on unread bytes bounds the memory retained while frames are incomplete or the application is slower than the peer.
+- **Progress:** A deadline or equivalent progress policy bounds the resources held by a peer that starts a frame but never completes it.
+
+Malformed input violates the protocol. After a malformed header, a simple length-prefixed stream normally closes the connection: without a trustworthy resynchronization rule, the receiver cannot determine where the next frame begins. `SOCK_SEQPACKET` removes the need to recover record boundaries, but it does not validate a record's meaning or impose frame-size, buffering, or progress limits.
+
+## Unix-Domain Sockets and Loopback TCP/IP
+
+Unix-domain sockets and loopback Internet sockets both let local processes exchange data through kernel socket objects, but they use different addressing namespaces and protocol models. `AF_UNIX` selects local Unix-domain addressing. `AF_INET` and `AF_INET6` select IPv4 and IPv6 Internet-domain addressing, respectively; the socket type and protocol then determine whether the endpoint uses TCP, UDP, or another compatible transport.
+
+An addressed Unix-domain socket uses a local Unix-domain address, commonly a pathname. Only processes on the same host can connect through that address, and the communication does not use IP or a transport protocol such as TCP. An Internet-domain listener instead uses an IP address and port. Binding it to the IPv4 loopback address `127.0.0.1` or the IPv6 loopback address `::1` restricts it to local traffic. `localhost` is commonly configured to resolve to one or both of those addresses.
+
+Loopback traffic never traverses an Ethernet or Wi-Fi link to reach another machine, but it still follows the IP and selected transport-stack model. This makes a loopback TCP endpoint behave like a local instance of the same address, port, and transport model that a service can use for remote clients when it binds a non-loopback address.
+
+- **Unix-domain socket:** Use when the communication is inherently host-local and a Unix-domain address is suitable for peer rendezvous.
+- **Loopback TCP/IP:** Use when local participants need Internet-domain addressing or transport behavior that also applies to a networked deployment.
+
+## Mechanism Selection
+
+Select an IPC mechanism from the required communication shape rather than from the fact that all participants happen to run locally.
+
+The first selection axis is **resource distribution and discovery**.
+
+- An anonymous pipe or a socket pair creates endpoints that participants must inherit or receive through descriptor passing.
+- A shared mapping reaches related processes through inheritance; independently started processes must acquire access to the same shareable backing object through a stable name, a passed descriptor, or another agreed distribution mechanism.
+- A FIFO or addressed Unix-domain socket gives independently started processes a stable local rendezvous name.
+- Loopback TCP/IP uses an Internet-domain address and port.
+- A previously anonymous endpoint can still reach an unrelated process through descriptor passing, so a name primarily solves discovery rather than determining the channel's data model.
+
+The remaining axes are independent of how participants acquire or find the communication resource:
+
+- **Directionality:** Pipes and FIFOs carry one byte stream in one direction; two are required for independent bidirectional streams. Socket pairs and connected sockets provide bidirectional communication.
+- **Data model:** Pipes, FIFOs, and `SOCK_STREAM` sockets carry byte streams and need framing for application messages. Record-preserving socket types retain record boundaries. Shared mappings expose the same storage for ordinary loads and stores instead of transferring a copied stream; the shared data layout and protocol determine how those bytes are interpreted.
+- **Peer topology:** A pipe or socket pair naturally connects endpoints that have already been distributed. An addressed Unix-domain socket or loopback listener lets one service accept independently established client connections.
+- **Addressing boundary:** Unix-domain addresses are host-local. Loopback TCP/IP remains local in use but follows the Internet-domain addressing and TCP model that also applies when a service binds a reachable network address.
+- **Isolation:** One framed connection can carry several message types and, when its protocol supplies identifiers and routing rules, several logical channels. They share one endpoint lifetime, kernel buffering and backpressure path, and connection-failure boundary. Separate pipes or socket pairs isolate those boundaries at the cost of more descriptors and coordination.
+
+These axes narrow the candidate mechanisms:
+
+- **Pipe:** Participants already have a relationship through which they can receive the endpoints, and one bounded, unidirectional byte stream is sufficient. Use two pipes when both directions need independent byte streams.
+- **FIFO:** Independently started local processes need a pathname rendezvous and a bounded, unidirectional byte stream is sufficient. Use two FIFOs when both directions need independent byte streams.
+- **Socket pair:** Two known peers can receive endpoints through an existing relationship and need an unnamed bidirectional socket channel.
+- **Unix-domain socket:** Independently started local clients need to rendezvous with a local service through a Unix-domain address.
+- **Loopback TCP/IP:** Local participants need Internet-domain addressing or TCP behavior that is also usable across hosts.
+- **Shared mapping:** Participants need direct access to the same state rather than a copied byte stream, can acquire the same backing object, and have a protocol for synchronization, logical capacity, reclamation, flow control, and failure handling.
+
+The mechanism's data model does not replace an application protocol. Streams require framing, shared memory requires synchronization, and every design must define endpoint lifetime, failure handling, and backpressure behavior.

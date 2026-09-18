@@ -35,6 +35,40 @@ These backends span both [readiness and completion](../../../Operating%20Systems
 > [!note] `io_uring` and libuv Networking
 > `io_uring` is not libuv's general Linux network backend. Libuv documents an optional `io_uring` loop configuration for filesystem operations; its ordinary Linux socket path remains based on non-blocking sockets and `epoll`.
 
+### Child Processes and IPC
+
+`child_process.fork()` starts a specific Node.js program and gives the parent and child an IPC channel by default. Cluster uses this parent-child relationship for [process-based server scaling](07%20Process%20and%20Thread%20Parallelism.md#Cluster%20Module).
+
+```javascript
+// parent.js
+const { fork } = require('node:child_process');
+
+const child = fork('./child.js');
+child.on('message', (message) => {
+  console.log('Result:', message);
+});
+child.send({ limit: 10 });
+```
+
+```javascript
+// child.js
+process.on('message', ({ limit }) => {
+  process.send({ total: limit * 2 });
+});
+```
+
+The parent sends through `subprocess.send()` and receives the child's replies through `'message'`; the child receives through its own `'message'` event and replies through `process.send()`. The channel transfers messages between separate processes, not shared JavaScript objects.
+
+#### Process Boundary
+
+`child_process.fork()` starts a new Node.js process rather than cloning the current one with the POSIX `fork()` system call. The child has its own address space, V8 instance, and event loop. Node prepares the child configuration and delegates process creation to libuv, so starting many child processes has a memory and startup cost.
+
+#### IPC Channel Implementation
+
+Node adds an `ipc` entry to the child's stdio configuration. On Unix, libuv turns that entry into an IPC pipe backed by a [Unix-domain socket pair](../../../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs): it creates `socketpair(AF_UNIX, SOCK_STREAM, ...)` before the child starts, retains one endpoint in the parent, and makes the other endpoint available to the child as a file descriptor. The child learns which descriptor carries the channel during startup, and Node wraps both endpoints in its higher-level process IPC implementation.
+
+A socket pair fits this parent-child relationship because the parent creates one specific peer and distributes an endpoint while starting it. No stable pathname, listener, `connect()`, or `accept()` rendezvous is necessary.
+
 ### Thread Pool
 
 [Regular-file readiness](../../../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) does not reveal whether a read or write will wait for storage. Libuv therefore uses worker-thread offload for operations that cannot be integrated with the loop through non-blocking socket readiness.
