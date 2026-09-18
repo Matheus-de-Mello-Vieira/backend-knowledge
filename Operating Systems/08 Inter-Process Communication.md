@@ -43,16 +43,24 @@ The receiver must handle the descriptor as an acquired capability:
 
 Processes establish that relationship in two common ways:
 
-- **Inherited mapping:** A process creates a shared mapping before `fork()`. The child inherits a mapping to the same backing, so process creation distributes access to the shared region.
+- **Inherited mapping:** A process creates a shared mapping before `fork()`. The child inherits a mapping to the same backing, so process creation distributes access to the shared region. An anonymous `MAP_ANONYMOUS | MAP_SHARED` mapping uses this route without an underlying file or filesystem pathname.
 - **Shared backing object:** Independently started processes acquire access to the same shareable object and map compatible regions of it. A stable name lets them locate the object, while a passed descriptor can transfer access to it; neither defines the shared data's layout or coordination protocol.
 
-After the mappings exist, each process exchanges state through ordinary CPU loads and stores instead of `read()` and `write()` calls on a kernel-managed byte-stream channel. Their virtual addresses do not need to match. A shared layout therefore cannot treat a raw pointer value as a process-independent reference unless every participant guarantees compatible address placement; offsets or another process-independent representation avoid that assumption.
+A shared mapping is not inherently limited to two participants. The exact set of processes that can access it depends on how the operating system creates and distributes access to the shared backing.
+
+After the mappings exist, each process exchanges state through ordinary CPU loads and stores instead of copying the payload through a separate pipe or socket with `read()` and `write()`. Their virtual addresses do not need to match. A shared layout therefore cannot treat a raw pointer value as a process-independent reference unless every participant guarantees compatible address placement; offsets or another process-independent representation avoid that assumption.
 
 The mapping supplies shared storage, not a communication protocol. The participating processes must provide the remaining semantics:
 
 - **Synchronization:** Writers and readers must agree on ownership, update ordering, readiness, and when state is safe to observe. [Synchronization mechanisms](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms) provide the relevant mutex, semaphore, atomic-operation, and condition-variable models.
 - **Capacity and flow control:** A mapping has a finite byte extent, but that extent does not define which records are occupied, when space may be reclaimed, or what happens when the shared data structure is full. Unlike a bounded pipe or socket buffer, shared storage does not produce backpressure without protocol rules for waiting, retrying, dropping work, or constraining producers.
 - **Failure handling:** A participant's exit does not identify whether an update was complete or make partially modified state safe to consume. The protocol must define how other participants detect and recover from abandoned or inconsistent state.
+
+> [!example] PostgreSQL — Shared Memory Across Backend Processes
+>
+> [PostgreSQL](../Databases/PostgreSQL.md#Process%20Architecture) uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
+>
+> Each backend keeps its own virtual address space, but selected mappings can ultimately refer to the same physical pages. `mmap` provides the shared memory itself; PostgreSQL still requires locks, atomics, and other synchronization mechanisms to coordinate access safely.
 
 ## Pipes and FIFOs
 

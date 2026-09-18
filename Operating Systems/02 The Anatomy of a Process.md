@@ -499,25 +499,11 @@ flowchart LR
     AnonRAM -. under memory pressure .-> Swap
 ```
 
-#### The OS Page Cache
-
-The **page cache** is a kernel-managed cache of file data stored in physical RAM. It reduces storage I/O by keeping recently or frequently accessed portions of files in memory.
-
-- **Opportunistic Use of RAM:** Operating systems generally use otherwise idle physical memory for caches because cached pages can often be reclaimed later if applications need more RAM.
-- **Shared File Cache:** Buffered `read()` / `write()` operations and file-backed mappings can operate on the same cached file pages. The page cache is therefore a system-wide cache of file contents rather than a separate cache for each process.
-- **Page Granularity:** File-backed memory is managed in page-sized units. On many systems the base page size is commonly 4 KiB, although the exact size depends on the architecture and operating system.
-
-> [!example] LMDB — Delegating Working-Set Management to the Operating System
->
-> [LMDB](../Databases/LMDB.md#Storage%20Model) stores its ordered key-value data in a file-backed B+ tree and memory-maps the database into the process's virtual address space. Once the necessary tree pages are resident in RAM, reads can operate directly on those mapped pages rather than first copying them into a separate database buffer pool.
->
-> The operating system therefore participates directly in managing the database's resident working set. Frequently accessed pages tend to remain in memory, while colder clean pages can be reclaimed because their contents can be loaded again from the database file.
-
 #### File-Backed Mapping
 
 `mmap` is not primarily about creating the illusion that storage is RAM; the broader **virtual-memory system** already provides mechanisms for keeping only part of a process's address space resident.
 
-The important distinction is that a file-backed mapping connects a virtual-memory region directly to an **existing file**. The file itself becomes the recoverable backing store for clean mapped pages.
+The important distinction is that a file-backed mapping connects a virtual-memory region directly to an **existing file**. The file itself becomes the recoverable backing store for clean mapped pages. The mapped physical pages can come from the kernel-managed [page cache](06%20Storage%20Management.md#Caching), which retains file contents in RAM and is also used by buffered I/O.
 
 When the page is resident, the page table translates the virtual address to a physical page. If it is not resident, a page fault transfers control to the kernel, which uses the mapping metadata to determine which file and offset must be loaded.
 
@@ -526,6 +512,12 @@ When the page is resident, the page table translates the virtual address to a ph
 - **Lazy Loading:** Mapping a 1 GiB file does not immediately consume 1 GiB of physical RAM. The mapping reserves virtual address space, and individual file pages can be loaded only when they are accessed.
 - **Cheap Eviction of Clean Pages:** If a clean file-backed page becomes cold, the kernel can simply discard it from RAM. Its contents do not need to be copied to swap because the original file already contains the data. A later access can load that page from the file again.
 
+> [!example] LMDB — Delegating Working-Set Management to the Operating System
+>
+> [LMDB](../Databases/LMDB.md#Storage%20Model) stores its ordered key-value data in a file-backed B+ tree and memory-maps the database into the process's virtual address space. Once the necessary tree pages are resident in RAM, reads can operate directly on those mapped pages rather than first copying them into a separate database buffer pool.
+>
+> The operating system therefore participates directly in managing the database's resident working set. Frequently accessed pages tend to remain in memory, while colder clean pages can be reclaimed because their contents can be loaded again from the database file.
+<!-- -->
 > [!example] Lucene — Searching an Index Larger Than Available RAM
 >
 > [Lucene](../AI%20Engineering/Lexical%20Information%20Retrieval.md#Apache%20Lucene%20%28Java)) can memory-map large search-index files. A query generally touches only portions of the complete index, so the process can address the entire index while physical RAM is concentrated on the pages forming the current working set.
@@ -564,7 +556,7 @@ This is the major distinction from a clean file-backed page:
     - **Physical Allocation:** The kernel allocates a physical page, ensures it is zero-initialized, updates the page table, and resumes execution.
     - **Shared Zero-Page Optimization:** Some operating systems, including Linux, can optimize reads from untouched anonymous memory by mapping many virtual pages to a shared read-only zero page. The first write then causes a private physical page to be allocated.
 
-#### Memory Visibility & Inter-Process Communication (IPC)
+#### Shared and Private Mapping Visibility
 
 Mappings can also be used to make the same underlying physical pages accessible from multiple processes.
 
@@ -572,9 +564,9 @@ Mappings can also be used to make the same underlying physical pages accessible 
 
 When multiple processes create compatible `MAP_SHARED` mappings of the same file region, their different virtual addresses can ultimately refer to the same underlying file-backed physical pages.
 
-Changes to shared mapped memory can therefore be observed by other processes without copying the data through a separate IPC channel such as a pipe or socket.
+Changes to shared mapped memory can therefore be observed through the other compatible mappings.
 
-`MAP_SHARED` provides the **shared storage**, but not synchronization. Processes still need mechanisms such as locks, atomic operations, or other concurrency protocols to determine when data is safe to read or modify.
+When processes use this visibility for [shared-memory IPC](08%20Inter-Process%20Communication.md#Shared-Memory%20IPC), `MAP_SHARED` provides the shared storage but not synchronization. Processes still need mechanisms such as locks, atomic operations, or other concurrency protocols to determine when data is safe to read or modify.
 
 For file-backed shared mappings, write permissions also depend on how the file was opened and the protection requested for the mapping.
 
@@ -588,7 +580,7 @@ MAP_ANONYMOUS | MAP_SHARED
 
 to create shared memory without an underlying file.
 
-If such a mapping exists before `fork()`, the child inherits the mapping and both processes can access the same underlying anonymous pages. The mapping has no filesystem pathname, but access is not inherently limited to exactly those two processes; the exact sharing possibilities depend on how the mapping is created and distributed by the operating system.
+If such a mapping exists before `fork()`, the child inherits the mapping and both processes can access the same underlying anonymous pages. The mapping has no filesystem pathname.
 
 ##### Copy-on-Write (`MAP_PRIVATE`)
 
@@ -604,12 +596,6 @@ The modification is therefore:
 
 The mapping may still be writable from the process's perspective when created with `PROT_WRITE`; `MAP_PRIVATE` does not mean read-only.
 
-> [!example] PostgreSQL — Shared Memory Across Backend Processes
->
-> [PostgreSQL](../Databases/PostgreSQL.md#Process%20Architecture) uses separate backend processes that still need common access to shared buffers and other server-wide state. On supported Unix-like systems, PostgreSQL can use anonymous shared memory based on `mmap` for its main shared-memory region.
->
-> Each backend keeps its own virtual address space, but selected mappings can ultimately refer to the same physical pages. `mmap` provides the shared memory itself; PostgreSQL still requires locks, atomics, and other synchronization mechanisms to coordinate access safely.
-
 #### Best Practices & Edge Cases
 
 When using `mmap`, several lifecycle and performance characteristics matter:
@@ -619,12 +605,6 @@ When using `mmap`, several lifecycle and performance characteristics matter:
 - **Dirty Shared Pages:** Modified `MAP_SHARED` file-backed pages are eventually written back by the operating system. `msync()` can be used when an application needs greater control over when changes are synchronized with the backing file. Exact durability guarantees across crashes or power failures depend on the operating system, filesystem, storage device, and synchronization options being used.
 - **Thrashing:** Mapping a file larger than RAM is not inherently problematic. Performance degrades when the **actively accessed working set** exceeds available physical memory. The kernel may then repeatedly evict and reload pages, causing execution to become dominated by storage latency.
 - **Swap:** Anonymous pages cannot normally be reconstructed from an original file. Under memory pressure, inactive anonymous pages may therefore be written to swap so their physical frames can be reused.
-
-The central distinction is therefore not simply **RAM versus disk**. Both anonymous memory and file-backed mappings participate in the virtual-memory system. The difference is **where an evicted page can be reconstructed from**:
-
-- file-backed mapping → the original file;
-- anonymous memory → RAM or a temporary backing mechanism such as swap.
-
 ### Pointers
 
 - **The Concept:** A pointer is simply a variable that stores a raw memory address instead of a standard value. They can point to data on the Stack, the Heap, or the Data section.

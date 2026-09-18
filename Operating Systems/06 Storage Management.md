@@ -1081,12 +1081,15 @@ Because filenames are stored separately from inodes, Unix-like filesystems can s
 
 ### Caching
 
-- **Page Cache Integration**: Filesystems integrate closely with the operating system's **page cache**, which uses available RAM to retain file contents.
+The **page cache** is a kernel-managed cache of file data stored in physical RAM. Filesystems integrate closely with this cache to reduce storage I/O by keeping recently or frequently accessed portions of files in memory.
+
+- **Opportunistic Use of RAM:** Operating systems generally use otherwise idle physical memory for caches because cached pages can often be reclaimed later if applications need more RAM.
+- **Page Granularity:** File-backed memory is managed in page-sized units. On many systems the base page size is commonly 4 KiB, although the exact size depends on the architecture and operating system.
 - **Buffered I/O**: Normal buffered reads and writes generally pass through this cache rather than interacting synchronously with the storage device for every operation.
 - **Read Mechanism**: When an application reads part of a file, the kernel first looks for the corresponding file region in the page cache.
     - **Cache Hit**: On a **cache hit**, the data can be returned directly from RAM.
     - **Cache Miss**: On a **cache miss**, the filesystem reads the data from storage and normally keeps it in the page cache so later accesses can reuse it.
-- **System-Wide Scope**: The page cache is system-wide rather than private to one application.
+- **System-Wide Scope**: The page cache is system-wide rather than private to one application. Buffered `read()` / `write()` operations and file-backed mappings can operate on the same cached file pages.
     - **Shared Access**: If two processes read the same region of the same file, the second process can generally reuse the pages already cached by the first instead of causing another storage read.
 
 > [!note] Caching Optimization Strategies
