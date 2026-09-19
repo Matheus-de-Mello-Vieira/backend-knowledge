@@ -4,11 +4,11 @@
 
 * Client sends a request.
 * Server parses the request.
-  * Parsing is not cheap.
-  * Data arrives as a stream, so the server must identify where each request begins and ends.
+    * Parsing is not cheap.
+    * Data arrives as a stream, so the server must identify where each request begins and ends.
 * Server processes the request.
-  * Serialization belongs here.
-  * XML is usually more expensive to parse than JSON, which is usually more expensive than Protocol Buffers.
+    * Serialization belongs here.
+    * XML is usually more expensive to parse than JSON, which is usually more expensive than Protocol Buffers.
 * Server sends a response.
 * Client parses and consumes the response.
 
@@ -16,14 +16,14 @@
 
 * Web and HTTP.
 * DNS.
-  * DNS commonly uses UDP.
-  * The client sends a request with a query ID and matches the response by that ID.
+    * DNS commonly uses UDP.
+    * The client sends a request with a query ID and matches the response by that ID.
 * SSH.
 * RPC.
-  * RPC made remote calls feel like local calls, but that abstraction can hide latency and failure costs.
+    * RPC made remote calls feel like local calls, but that abstraction can hide latency and failure costs.
 * SQL and database protocols.
 * APIs such as REST, SOAP, and GraphQL.
-  * GraphQL bundles multiple data requirements into one client-facing request, even if the backend still fans out internally.
+    * GraphQL bundles multiple data requirements into one client-facing request, even if the backend still fans out internally.
 
 ### Anatomy of a request and response
 
@@ -56,20 +56,20 @@ User-Agent: curl/7.64.1\r\n
 There are two common approaches:
 
 * Simple upload.
-  * Send the whole payload in one request.
-  * Easier, but harder to resume after failure.
+    * Send the whole payload in one request.
+    * Easier, but harder to resume after failure.
 * Resumable upload.
-  * Chunk the payload and send it in pieces.
-  * More complex, but more robust.
+    * Chunk the payload and send it in pieces.
+    * More complex, but more robust.
 
 ### Where request-response is a bad fit
 
 * Notification systems.
-  * The server knows when the event happens, not the client.
+    * The server knows when the event happens, not the client.
 * Chat systems.
-  * Polling creates too much traffic.
+    * Polling creates too much traffic.
 * Very long-running requests.
-  * Keeping the connection open for too long wastes resources and complicates failure handling.
+    * Keeping the connection open for too long wastes resources and complicates failure handling.
 
 ## Synchronous vs Asynchronous Workloads
 
@@ -139,12 +139,12 @@ Examples:
 * Chat.
 * Brokers such as RabbitMQ.
 
-### Pros
+### Push Benefits
 
 * Real time.
 * Server can send data immediately when events happen.
 
-### Cons
+### Push Costs
 
 * Clients must stay online.
 * Slow clients can be overrun.
@@ -161,13 +161,13 @@ Short polling is useful when work takes time and the client checks back repeated
 * Server keeps processing.
 * Client sends repeated status requests.
 
-### Pros
+### Short-Polling Benefits
 
 * Simple.
 * Good for long-running tasks.
 * Client can disconnect between polls.
 
-### Cons
+### Short-Polling Costs
 
 * Too chatty.
 * Most polls do not bring useful information.
@@ -187,13 +187,13 @@ Kafka-style consumers are a common example:
 * Client asks for messages.
 * Broker holds the request open until a message arrives or a timeout expires.
 
-### Pros
+### Long-Polling Benefits
 
 * Less chatty than short polling.
 * More backend-friendly.
 * Client can still disconnect and retry.
 
-### Cons
+### Long-Polling Costs
 
 * Not guaranteed real time.
 * It only feels real time if a poll is already open when the event arrives.
@@ -209,12 +209,12 @@ Server-Sent Events keep one request open and stream multiple logical events back
 
 This stays inside the HTTP request-response model.
 
-### Pros
+### Server-Sent Event Benefits
 
 * Real time for server-to-client delivery.
 * HTTP-compatible.
 
-### Cons
+### Server-Sent Event Costs
 
 * Client must remain connected.
 * Slow clients can still be a problem.
@@ -317,9 +317,9 @@ If yes, the backend tier is likely stateless.
 ### Protocols can also be stateful or stateless
 
 * TCP is stateful.
-  * It tracks sequence numbers, acknowledgments, and connection state.
+    * It tracks sequence numbers, acknowledgments, and connection state.
 * UDP is stateless.
-  * The application must match requests and responses itself, such as DNS with query IDs.
+    * The application must match requests and responses itself, such as DNS with query IDs.
 
 You can still build:
 
@@ -342,40 +342,43 @@ Examples:
 
 ## Sidecar Pattern
 
-The sidecar pattern solves protocol and client-library complexity by moving advanced communication behavior into a colocated proxy.
+A sidecar proxy is a separate process deployed alongside an application. The application delegates communication work to the local proxy instead of embedding every transport client, policy, and operational integration in its own code. This reduces duplicated communication concerns across polyglot services while leaving the application responsible for its business behavior.
 
-### What it solves
+### Communication Path
 
-* Every protocol needs libraries on both sides.
-* Application code becomes dependent on those libraries.
-* Library upgrades are costly to retest.
-* Polyglot microservices suffer from duplicated transport concerns.
+For an outbound request, the application first sends data to its local proxy. The proxy applies shared behavior and forwards the request to its destination. In a service mesh, the destination commonly has another proxy that receives the request and passes it to the destination application.
 
-### What it is
+This turns one application-to-application interaction into a local application-to-proxy hop plus the proxy-mediated service-to-service path. The local hop does not make the proxy part of the application process: it crosses a process boundary and therefore uses IPC.
 
-* A proxy sits beside the application.
-* The application uses a thin, simple interface.
-* The sidecar handles richer transport concerns.
-* Client and server sidecars talk to each other using the advanced protocol.
+### Local Proxy Connection
 
-This lets you upgrade the transport without changing application code on both sides.
+A local proxy needs an endpoint through which the application can reach it. A [loopback TCP endpoint](../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Loopback%20TCP%2FIP) is a common choice because it keeps the same Internet-domain address, port, and TCP model used for remote communication. Loopback traffic stays local, but it still uses the IP and TCP stacks. A [Unix-domain socket](../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) is an alternative when the connection is inherently host-local and does not need IP or TCP semantics.
 
-### Examples
+`localhost` refers to loopback within a network namespace, not automatically to every process or container on the host. A deployment that uses loopback must make the proxy endpoint available in the application's network namespace; otherwise, it needs another reachable endpoint.
 
-* Service mesh proxies.
-* Sidecar containers.
+### Behavior Centralized in the Proxy
+
+* **Transport integration:** The proxy can implement the richer client protocol while the application uses a narrower local interface. Changing that transport does not require application-code changes when the local interface remains compatible.
+* **Security policy:** Encryption, authentication, and other communication controls can be applied consistently in the proxy layer.
+* **Observability:** The proxy can produce shared tracing and monitoring data for traffic that passes through it.
+* **Service discovery:** The proxy can resolve and connect to service instances without duplicating discovery logic in every application.
+* **Caching:** A proxy can cache responses when that behavior is valid for the traffic it handles.
+
+### Benefits and Costs
+
+* **Language independence:** Services in different languages avoid each implementing the same advanced transport-client concerns.
+* **Independent evolution:** Transport libraries and proxy configuration can evolve separately from application code, although changes still require compatibility testing of the local interface and service path.
+* **Operational consistency:** Shared policies and instrumentation apply at a common communication boundary.
+* **Additional failure and resource boundary:** The proxy has its own configuration, lifecycle, capacity, and failures that the service must operate alongside the application.
+* **Additional hop:** Processing and communication through the local proxy add latency and resource overhead, even when the local connection uses loopback.
+
+> [!example] Linkerd and Tail Latency in Sidecar Proxies
+> Linkerd illustrates why latency behavior matters at a per-workload proxy boundary. Linkerd 1.x's proxy was written in Scala and ran on the JVM. A [garbage-collection pass](../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Memory%20Leaks%20%26%20Garbage%20Collection) could delay proxy code that reads, routes, or writes a request. The [kernel's TCP stack](../Operating%20Systems/07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) continues to receive traffic while the proxy is paused, but requests waiting for the proxy's CPU time acquire additional latency.
+>
+> Linkerd 2's data-plane proxy is written in Rust. Rust has no built-in garbage collector, so this removes garbage-collection pauses from proxy request processing; it does not eliminate other sources of latency. The choice is particularly valuable because a service mesh places a proxy alongside every workload and sends the workload's network traffic through it.
+
+### Common Uses
+
+* Service-mesh proxies.
+* Sidecar-container deployments.
 * Envoy, Linkerd, and Istio-style deployments.
-
-### Pros
-
-* Language agnostic.
-* Easier protocol upgrades.
-* Security improvements can happen in the proxy layer.
-* Better tracing and monitoring.
-* Shared service discovery.
-* Optional caching.
-
-### Cons
-
-* More complexity.
-* Extra latency due to additional hops.
