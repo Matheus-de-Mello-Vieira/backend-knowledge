@@ -128,6 +128,9 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGHUP`              | Hang up                   | The controlling terminal disconnects                              | Terminate                                                          |
 | `SIGINT`              | Interrupt                 | An interactive interrupt, commonly `Ctrl-C`                       | Terminate                                                          |
 | `SIGQUIT`             | Quit                      | An interactive quit request                                       | Terminate and produce a core dump                                  |
+| `SIGILL`              | Illegal instruction       | Execution reaches an invalid machine instruction                  | Terminate and produce a core dump                                  |
+| `SIGABRT`             | Abort                     | A process deliberately aborts itself                              | Terminate and produce a core dump                                  |
+| `SIGFPE`              | Floating-point exception  | An arithmetic exception, including integer division by zero       | Terminate and produce a core dump                                  |
 | `SIGTERM`             | Terminate                 | A request to terminate                                            | Terminate                                                          |
 | `SIGKILL`             | Kill                      | A request for immediate termination                               | Terminate; cannot be caught, blocked, or ignored                   |
 | `SIGSTOP`             | Stop                      | A request to suspend execution                                    | Stop; cannot be caught, blocked, or ignored                        |
@@ -139,8 +142,22 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGALRM`             | Alarm                     | An alarm timer expires                                            | Terminate                                                          |
 | `SIGUSR1` / `SIGUSR2` | User-defined signal 1 / 2 | Application-defined notification                                  | Terminate                                                          |
 | `SIGSEGV`             | Segmentation violation    | Invalid memory reference                                          | Terminate and produce a core dump                                  |
+| `SIGTTIN`             | Terminal input            | A background job attempts to read its controlling terminal        | Stop                                                               |
+| `SIGTTOU`             | Terminal output           | A background job performs terminal output or control operations   | Stop                                                               |
 
 `SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
+
+The terminal driver generates interactive signals from configured control characters: `Ctrl-C`, `Ctrl-\\`, and `Ctrl-Z` commonly produce `SIGINT`, `SIGQUIT`, and `SIGTSTP`. Those bindings are terminal configuration rather than inherent properties of the keys, so tools such as `stty` can change them.
+
+`yes | head -n 1` illustrates `SIGPIPE`: after `head` reads one line and exits, a later write by `yes` targets a pipe with no reader.
+
+### Alarm Timers
+
+`alarm()` asks the kernel to arrange delivery of `SIGALRM` after a whole-second interval. Kernel timekeeping and its timer subsystem ultimately use hardware clocks or timers to maintain that countdown while the process sleeps, blocks in I/O, or is not scheduled; the process does not busy-wait by repeatedly checking the clock.
+
+Timer expiration and handler execution are distinct events. If the timer expires while the process is not running, `SIGALRM` becomes pending. The handler runs only when delivery occurs, so an alarm does not guarantee execution at an exact wall-clock instant.
+
+`alarm()` provides one simple process alarm: a later call replaces the previous one. POSIX also provides more capable timer APIs such as `timer_create()`, but an event loop commonly integrates deadlines through [timer sources in its readiness cycle](07%20Socket%20Management.md#Timer%20Sources%20for%20Event%20Loops) rather than by introducing `SIGALRM` as a separate control path.
 
 ### SIGCHLD, Child Status, and Reaping
 
@@ -165,6 +182,14 @@ These interfaces establish a handler and its signal-mask policy without losing a
     - **Wake-up and return:** A signal unblocked by the temporary mask whose action invokes a handler ends the suspension. After the handler returns, the original mask is restored and `sigsuspend()` returns `-1` with `errno` set to `EINTR`. If the signal terminates the process, `sigsuspend()` does not return.
     - **Condition waits:** `sigsuspend()` does not report which signal woke it; any unblocked signal that invokes a handler produces the same return. Code that waits for an application condition rechecks its predicate after every return and suspends again when the condition remains false.
     - **Race avoidance:** A program blocks a signal while it tests its predicate, then passes `sigsuspend()` a mask that unblocks that signal. Replacing the mask and suspending as one operation leaves no gap between the test and the wait.
+
+### Signals in Readiness-Based Event Loops
+
+Signals are not descriptors, so a readiness loop cannot register a signal itself as though it were a socket. A program that needs one loop to react to I/O and signals must coordinate the two mechanisms explicitly.
+
+- **Dedicated signal thread:** Block a selected signal with `pthread_sigmask()` before creating the other threads, which inherit the mask. One thread then calls `sigwait()` for that signal and writes a notification to a pipe that the event loop monitors. This avoids running an asynchronous handler for the signal; it is also necessary to avoid assuming that a process-directed `SIGALRM` will arrive in one particular thread.
+- **Self-pipe:** A minimal signal handler writes a byte to a nonblocking pipe, whose read end wakes the readiness loop. `write()` is permitted in an async-signal context, but most handler work is not. If the write end is already full, treating `EAGAIN` as harmless is valid when one unread byte already means that the loop has notification work to process.
+- **Linux descriptor interface:** `signalfd` represents selected blocked signals through a descriptor, allowing a Linux event loop to receive them through its normal readiness mechanism.
 
 ### Receiving `SIGTERM` in C
 

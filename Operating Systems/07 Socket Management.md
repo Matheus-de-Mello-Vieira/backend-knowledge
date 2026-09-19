@@ -710,6 +710,37 @@ These controls can support both condition-oriented and transition-oriented handl
 - **Transition-Oriented Complexity:** Flags such as `EV_CLEAR` can reduce repeated delivery of continuing conditions, but applications must correctly drain non-blocking I/O and retain enough state to resume later.
 - **Platform-Specific Interface:** `kqueue` is associated with BSD-derived operating systems rather than portable POSIX. Linux provides `epoll` for a similar scalable readiness role, but the APIs and event models are not identical.
 
+#### Timer Sources for Event Loops
+
+Timer expiration is not socket readiness, but an event loop must coordinate deadlines with socket work. A timer source fits naturally when the loop can receive both timer and socket events through one wait-and-dispatch cycle. `SIGALRM` remains a portable POSIX notification, but it is an out-of-band signal path whose standard-signal instances can coalesce rather than an event source represented by a descriptor.
+
+On Linux, `timerfd_create()` creates a timer descriptor and `timerfd_settime()` configures its expiration. The descriptor becomes readable when the timer expires. The loop can monitor it with `select()`, `poll()`, or `epoll`, then read an unsigned 64-bit expiration count. For a repeating timer, that count reports expirations since the previous read, so delayed dispatch does not reduce several elapsed intervals to an indistinguishable single readiness event. `timerfd` is Linux-specific, not POSIX.
+
+BSD-derived systems can instead register `EVFILT_TIMER` in `kqueue`; the timer is represented directly as a queue event rather than necessarily as its own descriptor. These interfaces share the goal of routing timer work through the loop, but their event models are not interchangeable.
+
+##### Deadline Heap with a Bounded Readiness Wait
+
+A portable loop need not use `alarm()` or a timer descriptor. It can store logical timer deadlines in a min-heap, pass the nearest deadline as the timeout of `poll()` or `select()`, then process both ready descriptors and every expired timer after the wait returns.
+
+```c
+for (;;) {
+    timeout = time_until_next_timer();
+
+    poll(fds, nfds, timeout);
+
+    handle_ready_fds();
+    handle_expired_timers();
+}
+```
+
+The application maintains timer ordering, but the kernel performs the blocking wait; this is not busy-waiting. A min-heap makes the earliest deadline available without scanning every timer.
+
+##### Descriptor-Only Compatibility Backend
+
+When an abstraction requires every event source to be represented by a descriptor, a timer-management thread can wait for the next deadline and write to a pipe monitored by the event loop. The thread should wait directly using a monotonic-clock-based mechanism rather than create an `alarm()` only to receive `SIGALRM` and translate it into a pipe write.
+
+The same pipe bridge can translate a signal into readiness, but it inherits signal-handling constraints. [Signals in readiness-based event loops](05%20Process%20Management.md#Signals%20in%20Readiness-Based%20Event%20Loops) distinguishes a dedicated `sigwait()` thread from a self-pipe handler.
+
 #### Other Readiness Interfaces
 
 `select()`, `epoll`, and `kqueue` are not the only readiness interfaces. Some systems provide alternatives that retain the repeated interest-set model; others retain registrations in kernel state and return only events that occurred.
