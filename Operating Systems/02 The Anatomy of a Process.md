@@ -210,8 +210,14 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
 - **Meaning of Zero-Copy:** In this context, **zero-copy** means zero unnecessary CPU-mediated payload copies through application memory. Bytes still move between storage, memory, and the network device, often via DMA.
 - **Unchanged-Body Requirement:** The output body must already exist in a form that can be forwarded unchanged.
     - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.
-    - **Headers:** Adding HTTP headers does not alter the file body and therefore does not, by itself, prevent zero-copy.
+    - **Headers:** An HTTP response puts its status line and headers before its body. A server can write that small prefix to the socket through its normal output path, then call `sendfile()` to transfer the unchanged file body. It must finish writing the headers before starting the file transfer and handle partial writes or partial `sendfile()` transfers, preserving the response's byte order.
 
+> [!note] Linux kTLS and `SSL_sendfile()`
+>
+> Linux Kernel TLS (kTLS) can accept `sendfile()` on a TCP socket after TLS negotiation establishes the socket's transmit cryptographic state. The kernel then frames and encrypts the file data as TLS records before TCP sends it. Conventional user-space TLS must still read and encrypt the file body before writing it.
+> - **OpenSSL interface:** OpenSSL 3.0 exposes this path as `SSL_sendfile(ssl, file_fd, offset, size, 0)`. The function is available only when the established connection uses kTLS: an application enables kTLS before the handshake and verifies the write BIO with `BIO_get_ktls_send()`.
+> - **Copy limits:** kTLS still avoids copies through the application buffer, but its software path allocates a buffer for encrypted output. Sending file pages directly to a compatible network interface requires TLS device offload and Linux's opt-in `TLS_TX_ZEROCOPY_RO` mode; the source data must remain unchanged until transmission completes.
+<!-- -->
 > [!example] Kafka and Bun — Zero-Copy Eligibility
 >
 > - **Kafka:** A broker can serve the same persisted log batches to many consumers. Its shared record format, including compressed batches that remain stored in that form, favors `sendfile()` when the stored batch can be forwarded unchanged, so one page-cache copy can support repeated network transfers.
