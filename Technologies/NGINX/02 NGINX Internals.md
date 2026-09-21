@@ -27,6 +27,13 @@ Startup constructs the state that workers later use to process traffic:
 
 A managed child uses a control channel created by the master; its Unix socket-pair mechanics and lifecycle are described in [Process Control Channels](#Process%20Control%20Channels). The detached child used for a binary upgrade follows a different creation path.
 
+### Reverse-Proxy Cache Helper Processes
+
+When reverse-proxy caching is configured, NGINX creates two helpers that maintain cache state outside the request path.
+
+- **Cache loader:** Starts after NGINX and incrementally scans existing cache files to rebuild shared-memory metadata. It loads the index, not every response body into RAM.
+- **Cache manager:** Removes inactive entries and applies [`max_size` or `min_free` pressure](03%20Nginx%20Configuration.md#Reverse-Proxy%20Caching) through bounded iterations.
+
 ## Worker Data Plane
 
 ### Listener Ownership and Connection Acceptance
@@ -59,11 +66,44 @@ Connection handlers change state incrementally instead of completing one connect
 
 Each handler returns when its connection must wait for a later event, allowing the worker to advance other ready connections. This produces high I/O concurrency within a worker; separate worker processes provide CPU parallelism.
 
+### Reverse-Proxy Cache Execution
+
+For a [cache-enabled proxy request](03%20Nginx%20Configuration.md#Reverse-Proxy%20Caching), the worker evaluates the configured cache key, hashes it with MD5, and derives the cache-file path from that digest and the configured directory levels. The shared zone provides a mutex-protected, slab-allocated metadata index: the upstream implementation uses a red-black tree for lookup and an ordered queue for expiration and LRU-oriented work. Response bodies remain in cache files rather than in the shared zone.
+
+1. **Lookup:** The worker consults shared metadata and opens the corresponding file when an entry is eligible. The file begins with an NGINX cache header containing validity times, body offset, ETag and `Vary` data, and key-verification fields. NGINX verifies the header version and original key rather than trusting the MD5 filename alone.
+2. **Hit:** A valid entry is served from the cache file without creating an upstream request.
+3. **Miss:** The worker follows the normal reverse-proxy path to obtain the upstream response. With proxy buffering enabled, it can stream data toward the client while writing a temporary cache file.
+4. **Publication:** After the response completes, NGINX renames the temporary file to its final MD5-derived path. Keeping temporary files and the cache directory on the same filesystem makes this a rename rather than a cross-filesystem copy; `use_temp_path=off` places temporary files in the cache directory.
+
+During a coordinated cache fill, a worker briefly locks shared metadata, marks one node as updating, then releases the mutex. Equivalent requests wait through event timers instead of blocking the event-loop thread while a conventional mutex is held.
+
+The response cache and the [page cache](../../Operating%20Systems/06%20Storage%20Management.md#Caching) operate in sequence but answer different questions. NGINX first decides whether an HTTP response is usable from its key, freshness, `Vary`, authorization policy, and upstream state. If it is usable, NGINX reads the response body from its cache file. The kernel then decides whether the required file pages are already in RAM or must be read from storage. A valid NGINX cache hit therefore does not guarantee a RAM-only read: the response can remain fresh in NGINX after the kernel has evicted its file pages.
+
+During a cache fill, NGINX normally writes the temporary cache file through buffered I/O. The kernel first holds those bytes as dirty page-cache pages and persists them later through writeback. After NGINX receives the complete upstream response, `rename()` publishes the file under its final cache pathname, making it available to later cache lookups. That publication does not force dirty bytes to storage, because the cache is reconstructible performance state rather than a database recovery protocol with an [`fsync()`-style durability boundary](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization).
+
 ### Blocking Work and Thread-Pool Offload
 
 While a network operation awaits readiness, the worker can progress other ready connections. A blocking system call or long CPU-bound handler instead occupies the event-loop thread, preventing it from advancing other connections until the operation returns. Modules must avoid blocking event handlers or arrange an appropriate offload mechanism.
 
 NGINX thread pools provide bounded offload for selected operations, including supported file I/O. A worker submits a task, continues processing events, and later handles its completion. Thread pools are not a threaded request model: offloaded work must not use NGINX objects that are confined to the event-loop thread.
+
+Cache files are regular files, so a cold file read can occupy a worker unless an applicable asynchronous-I/O or thread-pool path is configured. `aio threads` offloads supported file reads.
+
+### Direct I/O for Large Static Files
+
+The static-file handler normally uses buffered I/O, allowing the kernel [page cache](../../Operating%20Systems/06%20Storage%20Management.md#Caching) to retain reusable file pages. With `directio` configured, NGINX uses a platform-specific direct-I/O mechanism for static files at or above the configured threshold—`O_DIRECT` on Linux, for example. This bypasses or minimizes page-cache use for that transfer, which prevents a large, low-reuse file from evicting more useful cached pages. The trade-off is that repeated reads of the same file no longer benefit from ordinary page-cache reuse.
+
+- **Suitable workload:** A large download or media file that a client reads once is unlikely to be reused soon. Keeping its pages in RAM after the transfer offers little benefit, while it can displace hot pages belonging to more frequently requested files. Direct I/O avoids that cache-pollution trade-off.
+- **Poor fit:** A frequently requested static file benefits when its first buffered read leaves file pages in the page cache for later requests. Direct I/O removes that ordinary reuse path, so repeated requests must use the direct-I/O path again instead of reusing hot kernel pages.
+
+Direct I/O applies to static-file serving rather than to the reverse-proxy response cache. It changes the file-data path, not durability: [direct-I/O semantics](../../Operating%20Systems/06%20Storage%20Management.md#Direct%20I%2FO%20%28%60O_DIRECT%60%29) do not make writes persistent or replace `fsync()`.
+
+On Linux, native AIO and NGINX's thread-pool I/O follow different paths.
+
+- **Native AIO:** `aio on` requires `directio` for nonblocking file reads.
+- **Selection with `sendfile`:** When `aio on`, `sendfile on`, and `directio` are configured together, NGINX uses AIO for files at or above the direct-I/O threshold and `sendfile` for smaller files. Direct I/O disables `sendfile` for an affected request.
+- **Alignment:** Direct-I/O reads must meet alignment requirements. NGINX documents 512-byte alignment in general and 4 KiB on XFS; unaligned file ends and byte ranges are read in blocking mode.
+- **Thread-pool I/O:** `aio threads` is a separate path for supported file reads and sends, and does not require Direct I/O.
 
 ## Master Control Plane
 

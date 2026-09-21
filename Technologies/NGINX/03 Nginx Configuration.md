@@ -24,7 +24,7 @@ Within `events`, commonly used directives include:
 
 - **`worker_connections`:** Sets the maximum simultaneous connections opened by each worker. The count includes client connections, upstream connections, and other connections rather than clients alone.
 - **`multi_accept`:** Controls whether a worker accepts multiple [pending connections](../../Operating%20Systems/07%20Socket%20Management.md#Pending%20and%20Established%20Connection%20Queues) after receiving an acceptance event.
-- **`use`:** Selects the operating system's [readiness-based event method](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I/O), such as `epoll` or `kqueue`. NGINX normally selects the most efficient available method automatically.
+- **`use`:** Selects the operating system's [readiness-based event method](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO), such as `epoll` or `kqueue`. NGINX normally selects the most efficient available method automatically.
 
 ## HTTP Request Handling
 
@@ -61,6 +61,19 @@ Several locations may match one URI, so NGINX selects one in a defined order:
 4. If no regular expression matches, NGINX uses the remembered prefix location.
 
 The `~` modifier makes a regular expression case-sensitive, while `~*` makes it case-insensitive. In the example, the regular-expression location rejects a request ending in `.jpg`, even if `/images/` was the longest prefix match.
+
+### Large-File Direct I/O
+
+`directio` selects [Direct I/O](02%20NGINX%20Internals.md#Direct%20I%2FO%20for%20Large%20Static%20Files) for static files at or above a configured size.
+
+```nginx
+location /downloads/ {
+    root /srv/files;
+    directio 8m;
+}
+```
+
+`directio 8m` applies the setting to files at least 8 MiB in this location. Use it for large static files that are streamed infrequently or have little reuse; avoid it for frequently reused static files and reverse-proxy response caching.
 
 ## HTTP Reverse Proxying
 
@@ -159,6 +172,87 @@ A request for `/api/users` reaches the upstream as `/users` because the matching
 - **URI in `proxy_pass`:** Replace the prefix matched by the `location` with the URI written after the upstream address.
 
 This prefix-replacement form should not be used in regular-expression or named locations because NGINX cannot determine a stable location prefix to replace. In those locations, specify `proxy_pass` without a URI.
+
+## Reverse-Proxy Caching
+
+Reverse-proxy caching stores an upstream HTTP response so later requests with the same cache identity can be served without contacting the upstream. `proxy_cache_path` declares the filesystem directory and shared metadata zone in the `http` context; `proxy_cache` selects that zone in an `http`, `server`, or `location` context. Enable it only on routes whose responses are safe to share.
+
+```nginx
+http {
+    proxy_cache_path /var/cache/nginx/node-responses
+        levels=1:2
+        use_temp_path=off
+        keys_zone=node_responses:50m
+        max_size=20g
+        min_free=2g
+        inactive=60m;
+
+    upstream app_backend {
+        server node_app_1:8080;
+        server node_app_2:8080;
+    }
+
+    server {
+        listen 8080;
+
+        location /public/ {
+            proxy_pass http://app_backend;
+
+            proxy_cache node_responses;
+            proxy_cache_methods GET HEAD;
+            proxy_cache_key "$scheme|$host|$proxy_host|$request_uri";
+            proxy_cache_valid 200 10m;
+            proxy_cache_valid 404 30s;
+
+            proxy_cache_lock on;
+            proxy_cache_lock_timeout 5s;
+            proxy_cache_background_update on;
+            proxy_cache_use_stale
+                updating
+                error
+                timeout
+                http_500
+                http_502
+                http_503
+                http_504;
+            proxy_cache_revalidate on;
+
+            proxy_cache_bypass $http_authorization;
+            proxy_no_cache $http_authorization;
+            add_header X-Cache-Status $upstream_cache_status always;
+        }
+    }
+}
+
+events {}
+```
+
+The cache key and eligibility rules must keep responses for different users, tenants, hosts, representations, or authorization states from sharing an entry.
+
+- **`keys_zone`:** Holds active keys and cache metadata in shared memory. It does not hold response bodies.
+- **`levels`:** Splits MD5-derived cache filenames into directory components. `levels=1:2` is a filesystem layout, not a hierarchy of cache tiers.
+- **`max_size` and `min_free`:** Bound disk-space pressure. The cache manager applies those limits asynchronously, so `max_size` is an approximate capacity limit rather than a reservation.
+- **`inactive`:** Removes an entry that has not been accessed for the configured interval, regardless of whether it is still fresh. It is not the response freshness lifetime.
+- **`proxy_cache_valid`:** Supplies a fallback freshness lifetime by status code. Upstream `X-Accel-Expires`, `Expires`, and `Cache-Control` response headers take precedence.
+- **`proxy_cache_bypass` and `proxy_no_cache`:** The first prevents this request from reading a cached response; the second prevents the upstream response from being stored. Use both for a private request. Add cookie- or application-specific conditions only when their isolation semantics are known.
+
+NGINX does not cache an upstream response containing `Set-Cookie` or [`Vary: *`](../../Cache/Caching%20Headers.md#Vary) by default. It respects other `Vary` values when constructing the cache representation. Disabling processing of `Set-Cookie`, [response cache headers](../../Cache/Caching%20Headers.md#Cache%20control), or `Vary` changes the application-level isolation contract and requires an explicit replacement policy.
+
+### Cache Keys and Freshness Policy
+
+`proxy_cache_key` identifies the client-facing representation, not necessarily the URI sent upstream. When a key includes `$request_uri`, changing `proxy_pass` to its URI-replacement form does not merge distinct client URIs that happen to reach the same upstream resource; they remain separate cache entries unless the key is deliberately normalized.
+
+An expired entry is not necessarily unusable. `proxy_cache_revalidate on` sends conditional upstream requests using [If-Modified-Since](../../Cache/Caching%20Headers.md#Last-modified) and [If-None-Match](../../Cache/Caching%20Headers.md#If-None-Match), allowing an unchanged response to regain freshness without transferring its body again.
+
+- **Request coalescing:** `proxy_cache_lock on` permits one request to populate a missing key while equivalent requests wait. After `proxy_cache_lock_timeout`, a waiting request proceeds to the upstream, but its response is not cached. This reduces the [cache stampede](../../Cache/Caching.md#Cache%20Stampede) caused by concurrent empty-key requests.
+- **Stale while updating:** `proxy_cache_use_stale updating` serves an old response while another request refreshes it. `proxy_cache_background_update on` performs that refresh as a background subrequest; it requires stale use during updating to be allowed.
+- **Stale on upstream failure:** `proxy_cache_use_stale` defines which upstream errors or timeouts may return a stale response. This trades strict freshness for availability only in the listed conditions.
+
+The cache status in `$upstream_cache_status`, exposed by the example header, lets a client or operator distinguish values such as a hit, miss, stale response, or bypass without inferring them from application latency alone.
+
+### `open_file_cache`
+
+`open_file_cache` is separate from reverse-proxy response caching. It retains open descriptors, sizes, modification times, directory-existence results, and optionally lookup errors; it does not store upstream response bodies, HTTP cache keys, or freshness policy.
 
 ## TCP and UDP Stream Proxying
 
