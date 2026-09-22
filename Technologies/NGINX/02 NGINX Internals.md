@@ -68,7 +68,13 @@ Each handler returns when its connection must wait for a later event, allowing t
 
 ### Reverse-Proxy Cache Execution
 
-For a [cache-enabled proxy request](03%20Nginx%20Configuration.md#Reverse-Proxy%20Caching), the worker evaluates the configured cache key, hashes it with MD5, and derives the cache-file path from that digest and the configured directory levels. The shared zone provides a mutex-protected, slab-allocated metadata index: the upstream implementation uses a red-black tree for lookup and an ordered queue for expiration and LRU-oriented work. Response bodies remain in cache files rather than in the shared zone.
+For a [cache-enabled proxy request](03%20Nginx%20Configuration.md#Reverse-Proxy%20Caching), the worker evaluates the configured cache key, hashes it with MD5, and derives the cache-file path from that digest and the configured directory levels. The shared zone provides a mutex-protected, [slab-allocated](../../Operating%20Systems/03%20Memory%20Management.md#Slab%20Allocation) metadata index.
+
+- **Red-black tree:** The upstream implementation uses a red-black tree to find cache entries from their MD5 digests. Each node represents one known entry: its tree key stores part of the digest, and the node retains the remainder together with file-existence, validity, error, active-use, update, body-offset, and file-size metadata.
+- **Maintenance queue:** An ordered queue connects nodes for expiration and least-recently-used (LRU)-oriented work. It keeps recently used nodes near its front, so cleanup can consider the least recently used nodes first when reclaiming cache space.
+- **Cache file:** The node and cache file divide the entry's state: the file holds the response body and the header that verifies the original configured key; neither is stored in the shared-memory node.
+
+With that metadata and file layout, a request follows this path:
 
 1. **Lookup:** The worker consults shared metadata and opens the corresponding file when an entry is eligible. The file begins with an NGINX cache header containing validity times, body offset, ETag and `Vary` data, and key-verification fields. NGINX verifies the header version and original key rather than trusting the MD5 filename alone.
 2. **Hit:** A valid entry is served from the cache file without creating an upstream request.

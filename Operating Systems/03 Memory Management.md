@@ -152,6 +152,15 @@ The OS manages this memory using fixed-size blocks called **Pages** (typically 4
 - **Accepts Internal Fragmentation:** The system intentionally sacrifices a tiny amount of memory to achieve this. If a program needs 5KB of memory, the OS must give it two 4KB pages (8KB total). The remaining 3KB inside that second page is permanently wasted (internal fragmentation), but engineers accept this minor loss to gain system-wide stability.
 - **Breaking Spatial Locality:** While an array appears perfectly contiguous in virtual memory, crossing a 4KB page boundary often means jumping to a completely different physical location in RAM. If the array spans two physical pages that happen to live in two different physical DRAM rows, reading sequentially will suddenly cause a **Row Buffer Miss**. The memory controller must unexpectedly close the current row (Precharge) and open the new one (RAS), temporarily destroying the hardware's spatial locality optimizations.
 
+### Slab Allocation
+
+A page allocator supplies page-sized backing memory, but allocating every small, repeated object at page granularity would waste space. A slab allocator obtains backing regions—often one or more pages—and divides each into equal-sized, aligned slots. The allocator tracks the free and occupied slots for each object size or type.
+
+- **Allocation and reuse:** An allocation takes a free slot from the appropriate size or type pool; freeing the object returns that slot to the same pool. This avoids a page-level allocation for every small object.
+- **Object-cache use case:** For frequently allocated objects, implementations often organize slabs into an object cache: a reusable pool dedicated to one object size or type. Reuse avoids lower-level allocations and, when safe, may retain initialized object state. This allocator use of "cache" is distinct from CPU, page, and response caches.
+- **Alignment constraint:** Slot layout must satisfy each object's [alignment requirement](#Memory%20Alignment). Alignment constrains valid start addresses; slab allocation chooses a suitable slot stride and reuses those slots.
+- **Fragmentation trade-off:** Every slot in one pool has one size. Requests are rounded to a suitable size class, so unused bytes inside an oversized slot are internal fragmentation; the fixed layout avoids mixing arbitrary variable-sized objects in the same backing region.
+
 ### The Page Table & Hardware Translation
 
 A **Page Table** describes how pages in a process's virtual address space correspond to physical memory. Conceptually, a mapping associates a **Virtual Page Number (VPN)** with a **Physical Frame Number (PFN)**.
@@ -1028,9 +1037,6 @@ block-beta
   p2["padding (18–19)"]:2
   i["i int (20–23)"]:4
 
-  classDef field fill:#1f2937,stroke:#9ca3af,color:#ffffff
-  classDef padding fill:#7f1d1d,stroke:#fca5a5,color:#ffffff
-
   class c,d,s,i field
   class p1,p2 padding
 ```
@@ -1049,6 +1055,10 @@ struct Optimized {
 uses a total of 16 bytes:
 
 ```mermaid
+---
+config:
+  useWidth: 100%
+---
 block-beta
   columns 8
 
@@ -1058,9 +1068,6 @@ block-beta
   s["s short (12–13)"]:2
   c["c char (14)"]:1
   p1["padding (15)"]:1
-
-  classDef field fill:#1f2937,stroke:#9ca3af,color:#ffffff
-  classDef padding fill:#7f1d1d,stroke:#fca5a5,color:#ffffff
 
   class d,i,s,c field
   class p1 padding

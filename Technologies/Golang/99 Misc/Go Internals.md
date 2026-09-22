@@ -218,8 +218,8 @@ Go prevents this hardware collision using highly localized allocation:
 
 ### Size Classes (Slabs)
 
-- To prevent the OS-level [External Fragmentation that plagues raw physical memory](03%20Memory%20Management.md#Limitations%20of%20physical%20memory), Go categorizes small objects (≤ 32 KB) into strict size classes (e.g., 8 bytes, 16 bytes).
-- If you allocate a 20-byte struct, Go immediately assigns it an optimized 32-byte memory block from the correct bucket.
+- For small objects (up to 32 KiB), Go applies [size classes](../../../Operating%20Systems/03%20Memory%20Management.md#Slab%20Allocation) to group allocations into fixed-size buckets, such as 8 or 16 bytes.
+- A 20-byte struct is rounded to a 32-byte size class and allocated from that class's pool.
 
 ### The Full Allocation Path (e.g., `new(MyStruct)`)
 
