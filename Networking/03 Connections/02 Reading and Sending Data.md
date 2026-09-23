@@ -1,6 +1,8 @@
 # Reading and Sending Data
 
-After a TCP connection is established, the application exchanges a byte stream through a [connected socket](../../Operating%20Systems/07%20Socket%20Management.md#Receiving%20Data). Kernel send and receive buffers, blocking and non-blocking I/O, backpressure, and readiness determine when application I/O can make progress, while TCP provides the ordered-stream, reliability, flow-control, retransmission, and congestion-control behavior applied to those bytes.
+After a TCP connection is established, the application exchanges a byte stream through a [connected socket](../../Operating%20Systems/07%20Socket%20Management.md#Receiving%20Data). [Kernel send and receive buffering](../../Operating%20Systems/07%20Socket%20Management.md#Socket%20Buffers%20and%20Backpressure), blocking and non-blocking I/O, backpressure, and readiness determine when application I/O can make progress, while TCP provides the ordered-stream, reliability, flow-control, retransmission, and congestion-control behavior applied to those bytes.
+
+Buffer capacity applies to finite queued networking state rather than necessarily to one contiguous byte array. On Linux, that queued data is represented with [`sk_buff`](../../Operating%20Systems/07%20Socket%20Management.md#Linux%20sk_buff%20Objects) (`skb`) objects; the representation does not change the TCP semantics described here.
 
 ## Receiving Data over TCP
 

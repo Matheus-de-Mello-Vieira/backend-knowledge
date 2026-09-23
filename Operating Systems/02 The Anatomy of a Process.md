@@ -197,7 +197,7 @@ Both operations avoid application-buffer copies rather than every physical movem
 
 With a conventional `read()` followed by `write()`, data typically moves through these stages:
 
-1. **Storage to Page Cache:** The storage device transfers data into the page cache, usually using DMA.
+1. **Storage to Page Cache:** The storage device transfers data into the [page cache](06%20Storage%20Management.md#Caching), usually using DMA.
 2. **Page Cache to User Buffer:** `read()` copies the data into an application buffer.
 3. **User Buffer to Kernel Networking Path:** `write()` copies the data back into the kernel's networking path.
 4. **Kernel Memory to NIC:** The network interface reads the data from memory for transmission, usually using DMA.
@@ -206,7 +206,7 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
 
 ##### Zero-Copy with `sendfile()`
 
-- **Avoided Copies:** `sendfile()` avoids the two intermediate application-buffer copies. The file data can remain in the page cache while the networking stack refers to those pages for transmission, so the application does not copy the payload into user space and back into the kernel.
+- **Avoided Copies:** `sendfile()` avoids the two intermediate application-buffer copies. On Linux, the networking stack can queue [`sk_buff`](07%20Socket%20Management.md#Linux%20sk_buff%20Objects) objects whose page-backed, non-linear payload fragments reference the existing page-cache-backed file data. The application therefore does not copy the payload into user space and back into the kernel, and the networking stack does not need to copy those fragments into separate socket-owned payload backing before transmission.
 - **Meaning of Zero-Copy:** In this context, **zero-copy** means zero unnecessary CPU-mediated payload copies through application memory. Bytes still move between storage, memory, and the network device, often via DMA.
 - **Unchanged-Body Requirement:** The output body must already exist in a form that can be forwarded unchanged.
     - **Transformations:** An ordinary `sendfile()` path cannot itself produce dynamically compressed, serialized, templated, or TLS-encrypted bytes; those transformations require processing the payload before it is sent. For example, a compressed response can use this path only when the selected file already contains the compressed representation.

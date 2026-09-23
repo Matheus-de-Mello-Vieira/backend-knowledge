@@ -215,39 +215,48 @@ These are conceptual roles, not requirements for separate threads or processes. 
 
 ## User–Kernel Data Transfer
 
-Socket I/O normally invokes the kernel through `read()`/`recv()` or `write()`/`send()`. The kernel copies payload bytes between application memory and kernel-managed socket buffers. Frequent small I/O operations add system-call overhead, while copying larger payloads also consumes CPU time and memory bandwidth. The direction of the copy depends on whether the application is receiving or sending.
+Socket I/O normally invokes the kernel through `read()`/`recv()` or `write()`/`send()`. A socket's send and receive buffers are finite kernel-managed queued networking state: they include protocol metadata and the memory or memory references that back queued payload data. They are useful transport abstractions, not necessarily one contiguous byte array for each direction.
+
+Conventional socket I/O copies payload bytes between application memory and that queued kernel state. Frequent small I/O operations add system-call overhead, while copying larger payloads also consumes CPU time and memory bandwidth. The direction of the copy depends on whether the application is receiving or sending.
+
+### Linux `sk_buff` Objects
+
+Linux commonly represents queued or processed network data with `struct sk_buff` objects, usually called **skbs** (`/ˌɛs keɪ ˈbiːz/`). An skb represents a unit of networking data and its state; it is not simply the packet bytes.
+
+An skb has two conceptual parts:
+
+- **Metadata:** Network and transport protocol state, lengths, checksum state, TCP-related bookkeeping, and queue-related state.
+- **Payload representation:** The skb describes where its payload resides; it can use either representation or both.
+    - **Linear data:** Bytes in kernel-managed networking memory associated with the skb.
+    - **Page-backed fragments:** References to externally backed page fragments rather than payload bytes contained in the skb's linear area.
 
 ## Receiving Data
 
-Once incoming network data is associated with a socket, the kernel processes the relevant transport protocol and makes application data available in the socket's receive state.
+Incoming data reaches kernel-managed packet or page-backed memory, often through [NIC DMA](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29). The kernel processes the relevant transport protocol and makes the resulting application data available in the socket's receive state. On Linux, skbs represent the queued networking data while TCP processes, orders, and retains the appropriate bytes.
 
 - **Kernel Receive State:** The kernel retains application data until user space consumes it.
-- **Application Operation:** `read()`, `recv()`, or `recvfrom()` moves available data into user-space memory.
-- **Stream Semantics:** For a stream socket, one read is not tied to one packet or one peer write.
-    - `recv()` may return fewer bytes than requested even though the connection remains open.
-    - Applications must treat TCP as a stream and continue reading until their own application-level framing says that a complete message has arrived.
-- **Blocking Behavior:** On a blocking socket, a read that cannot currently return useful data sleeps the calling thread until the operation can make progress.
-    - It does not inherently pause every thread in the process.
-- **Non-Blocking Behavior:** On a non-blocking socket, the call returns immediately instead of sleeping for data.
+- **Application Operation:** A conventional `read()`, `recv()`, or `recvfrom()` copies available data into user-space memory.
+- **Stream Semantics:** A stream-socket read exposes ordered bytes rather than application message boundaries; [application-level framing](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Receiving%20Data%20over%20TCP) determines when a complete message has arrived.
+- **Unavailable Data:** When no bytes are available, `recv()` follows the socket's configured blocking mode.
 - **TCP End-of-Stream:** An orderly peer shutdown eventually appears as end-of-stream.
     - After already-buffered bytes have been consumed, a read returns zero bytes.
     - The socket API surfaces [TCP](../Networking/02%20Protocols/05%20TCP.md) closure transitions such as `FIN` and `RST` as application-visible end-of-stream or error conditions.
 
 ## Sending Data
 
-- **Application Submission:** `write()` or `send()` asks the kernel to accept application bytes for transmission through a socket.
-- **Kernel Ownership:** The data generally moves from user-space memory into kernel-managed networking state, after which the transport protocol and network stack decide how and when it is transmitted.
+`write()` or `send()` asks the kernel to accept application bytes for transmission through a socket. For the conventional path, the kernel generally copies accepted bytes into payload backing described by queued networking objects. After the call returns, the application is free to modify, reuse, unmap, or free its original buffer according to the API's semantics, while TCP may still need the accepted bytes for queueing, pacing, or retransmission. The copy gives the kernel a stable representation of those bytes.
+
 - **Success Semantics:** A successful `send()` does **not** mean that the remote application has received or processed the bytes.
     - It normally means that the local kernel accepted some amount of data from the application.
 - **Partial Writes:** Stream-socket writes can be partial, so code must use the returned byte count rather than assuming the whole requested buffer was accepted.
-- **Cross-Resource Transfer:** Some operating systems provide specialized operations such as Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Resource-Specific%20Operations), which can move regular-file data toward a socket without first routing the payload through an application buffer.
-    - The socket remains the network destination.
-    - The [avoided user-space copy](03%20Memory%20Management.md#Direct%20Memory%20Access%20%28DMA%29) reduces data movement through application memory.
+- **Cross-Resource Transfer:** Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20Descriptor%20Transfers%20and%20Zero-Copy) can transfer regular-file data toward a socket without first routing the payload through an application buffer.
+    - On Linux, queued skbs can reference page-cache-backed file fragments instead of requiring a separate kernel-owned payload copy for those fragments.
+    - The socket remains the network destination, and the avoided user-space copy reduces data movement through application memory.
 - **TCP Processing:** Once bytes enter a TCP socket, [TCP](../Networking/02%20Protocols/05%20TCP.md) handles segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm).
 
 ## Socket Buffers and Backpressure
 
-Sockets separate application execution from network timing with finite kernel-managed buffering and queueing.
+Sockets separate application execution from network timing with finite kernel-managed buffering and queueing. A send- or receive-buffer setting or metric limits and accounts for queued socket and networking state; it does not demonstrate that the kernel allocated one equally sized contiguous byte array. The physical representation can span multiple networking objects and backing-memory fragments.
 
 - **Receive Buffer:** Retains data that has arrived from the network but has not yet been consumed by the application.
 - **Send-Side State:** Retains data the application has submitted but that has not yet progressed far enough through the transport stack to be discarded.
