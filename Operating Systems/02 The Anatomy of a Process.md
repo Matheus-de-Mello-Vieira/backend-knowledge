@@ -8,7 +8,7 @@ One program can produce multiple independent processes. For a native executable,
 
 ## Process Identifiers
 
-A **process identifier (PID)** identifies a process while that process exists within one PID namespace. After the process terminates and the operating system releases its process state, the numeric PID becomes available for a later process in the same namespace. A PID alone is therefore not an enduring identity across process lifetimes.
+A **process identifier (PID)** identifies a process while that process exists within one PID namespace. After the process terminates and the operating system releases its process state, the numeric PID becomes available for a later process in the same namespace. A PID alone is therefore not an enduring identity across process lifetimes. On Linux, a process's PID is its thread-group ID (TGID); each native thread has its own kernel TID, and the [thread-group leader](05%20Process%20Management.md#Linux%20Thread%20Groups) has `TID == TGID`.
 
 On Linux, a **PID namespace** gives a group of processes its own PID number space. Two live processes in different namespaces can use the same numeric PID. A container commonly uses a PID namespace: its initial process is PID 1 inside that namespace, while the host observes the same process through a different PID. [Containers](10%20Virtualization%20and%20Containerization.md#Containers) combine this isolated process view with other isolation and resource-control mechanisms.
 

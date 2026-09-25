@@ -110,7 +110,7 @@ A process participates in several relationships at once. They answer different q
 
 Every POSIX process belongs to one **process group**, identified by a **process group ID (PGID)**. A group can contain one process or many unrelated processes; it is not a parent/child subtree. The kernel uses the group as a direct target for signalling and terminal job control.
 
-A process whose PID equals its PGID is the **process-group leader**. Leadership supplies the group's identifying process and constrains some state changes; it does not make the leader a supervisor, the parent of every member, or a signal relay. Group-directed operations reach the members from the kernel. A process group persists while it still has members, even after its original leader exits.
+A process whose PID equals its PGID is the **process-group leader**. This POSIX job-control role is unrelated to the [Linux thread-group leader](#Linux%20Thread%20Groups), which identifies the initial native thread of a process. Leadership supplies the group's identifying process and constrains some state changes; it does not make the leader a supervisor, the parent of every member, or a signal relay. Group-directed operations reach the members from the kernel. A process group persists while it still has members, even after its original leader exits.
 
 A **session** is one or more process groups. Each group belongs to exactly one session, so all of its members share the same SID. A session leader initially has `PID == SID`, but session leadership likewise does not create a supervisory relationship. A session and a process group survive the exit of their original leaders while members remain.
 
@@ -480,7 +480,7 @@ int main(void) {
 
 ## Processes vs. Threads
 
-To understand how the kernel manages work, separate *resources* from *execution*. A process establishes an isolated resource environment, while a thread executes instructions within that environment. A newly created process includes an initial thread, and that thread can create additional threads in the same process.
+To understand how the kernel manages work, separate *resources* from *execution*. A process establishes an isolated resource environment, while a thread executes instructions within that environment. A newly created process begins with an **initial thread**, commonly called the **main thread**. The program's initial execution path runs in that thread, which can create additional threads in the same process. The name does not give the thread special scheduling priority.
 
 | Dimension                    | Process                                                                                                                                                                 | Thread                                                                                                                                                                                                 |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -491,6 +491,15 @@ To understand how the kernel manages work, separate *resources* from *execution*
 | **Kernel representation**    | Is represented by a [Process Control Block (PCB)](#The%20Process%20Control%20Block%20%28PCB%29) that records process-level identity, resource, and address-space state. | Is represented by a [Thread Control Block (TCB)](#The%20Thread%20Control%20Block%20%28TCB%29) that records thread-specific scheduling and execution state, including the context needed for switching. |
 
 Consequently, while the descriptor table remains unchanged, FD `4` indexes the same table entry and reaches the same open file description for every thread in the process.
+
+### Linux Thread Groups
+
+Linux represents a process's native threads as a **thread group**. The initial thread of a newly created thread group is its **thread-group leader**. This Linux concept is distinct from a POSIX process group, which organizes processes for job control.
+
+- **Thread-group ID (TGID):** The group has a process-level identifier. `getpid()` returns this value for every thread in the group; it is the PID by which Linux ordinarily identifies the process.
+- **Thread ID (TID):** Every native thread has its own system-wide kernel thread ID, returned by `gettid()`.
+- **Leader relationship:** The thread-group leader's `TID` equals the group's `TGID`, and therefore its process PID. Other threads in the group have distinct TIDs while sharing the same TGID.
+- **POSIX thread ID:** A `pthread_t` identifies a POSIX thread in the threading library. It is an opaque library value, not the Linux kernel TID.
 
 ### The Process Control Block (PCB)
 
@@ -636,7 +645,7 @@ Threads therefore provide a useful middle ground between a single execution path
 
 ### Multi-Threaded Memory Layout
 
-Threads share one virtual address space, but each requires a private stack for its call frames and local variables. A conventional layout diagram with one stack growing down toward the heap depicts the initial thread; sibling threads cannot use that same stack without colliding frames.
+Threads share one virtual address space, but each requires a private stack for its call frames and local variables. A conventional layout diagram with one stack growing down toward the heap depicts the initial (**main**) thread; sibling threads cannot use that same stack without colliding frames.
 
 Additional threads receive separate stack regions in the same address space. Their placement and reservation depend on the platform, runtime, and thread implementation; Unix-like implementations commonly create such mappings with `mmap`, often reserving fixed-size regions in otherwise unused parts of the address space. A [guard page](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Overflow) at a stack boundary turns an out-of-bounds stack access into a fault instead of allowing it to overwrite an adjacent mapping. It detects stack growth beyond that region, but it does not add bounds checking to arbitrary [buffers](02%20The%20Anatomy%20of%20a%20Process.md#Buffer%20Overflow).
 

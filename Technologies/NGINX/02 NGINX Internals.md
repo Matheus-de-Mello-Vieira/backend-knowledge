@@ -16,6 +16,8 @@ An NGINX instance normally consists of one master process and one or more worker
 
 The worker count sets the available worker-level CPU parallelism. The default is one worker process; `worker_processes auto` attempts to detect the available processors. Matching workers to processors is a starting point, not an invariant, because workload and surrounding resources also affect the appropriate count.
 
+NGINX request-processing workers are primarily single-threaded, not because [threads cannot execute in parallel on different CPU cores](../../Operating%20Systems/05%20Process%20Management.md#Threads), but because separate worker processes provide both parallelism and isolation. Each worker owns private request state, so concurrent request handlers within that worker do not need to coordinate ordinary mutable state. If a worker exits unexpectedly, its failure does not directly overwrite sibling workers' private state, and the master can create a replacement. In contrast, threads share one address space: shared mutable state requires synchronization, memory corruption can affect other threads, and a process-fatal fault in one thread normally terminates the entire process. This isolation costs duplicated per-process state and explicit coordination for state that workers must share.
+
 ### Configuration Cycle, Runtime Resources, and Child Creation
 
 Startup constructs the state that workers later use to process traffic:
