@@ -129,7 +129,7 @@ Features:
 - **Main Trade-off:** The acceptor can become a bottleneck if the connection arrival rate becomes high enough.
 
 > [!example] Go `net/http` Goroutines
-> A Go [`net/http` server](../../Technologies/Golang/99%20Misc/Go%20Internals.md#The%20Goroutine-Per-Connection%20Model%20%28Single%20Listener,%20Multiple%20Workers%29) accepts connections in one goroutine and starts a separate goroutine to handle each accepted connection. The acceptor remains available for later arrivals while the Go runtime schedules the connection-handling goroutines as application workers.
+> A Go [`net/http` server](../../Technologies/Golang/99%20Misc/Go%20Internals.md#net%2Fhttp%20Connection%20Handling) accepts connections in one goroutine and starts a separate goroutine to handle each accepted connection. The acceptor remains available for later arrivals while the Go runtime schedules the connection-handling goroutines as application workers.
 
 ### Multiple Workers, Single Shared Listening Socket
 

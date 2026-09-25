@@ -4,7 +4,7 @@ Socket management is how an operating system exposes network communication to us
 
 Socket management is fundamental to backend engineering because backend software exists behind an interface consumed by another component rather than being the user-facing interface itself. In distributed systems, those consumers are commonly remote clients, frontends, or other services, so communication crosses a network and reaches the application through the operating system's socket abstraction. Some backend components instead communicate through queues, files, pipes, shared memory, or standard input/output, but for networked backends socket behavior underlies concerns such as connection concurrency, buffering, backpressure, readiness, timeouts, and server scaling.
 
-Unix-like systems commonly expose sockets through the [POSIX](01%20Why%20an%20OS.md#Software,%20Hardware,%20and%20POSIX) interface. Stream sockets commonly use [TCP](../Networking/02%20Protocols/05%20TCP.md) for ordered reliable transport, while datagram sockets commonly use [UDP](../Networking/02%20Protocols/04%20UDP.md) for message-orieblnted transport. Application servers compose listening sockets, connected sockets, descriptor sharing, and readiness mechanisms into [connection-distribution architectures](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
+Unix-like systems commonly expose sockets through the [POSIX](01%20Why%20an%20OS.md#Software%2C%20Hardware%2C%20and%20POSIX) interface. Stream sockets commonly use [TCP](../Networking/02%20Protocols/05%20TCP.md) for ordered reliable transport, while datagram sockets commonly use [UDP](../Networking/02%20Protocols/04%20UDP.md) for message-orieblnted transport. Application servers compose listening sockets, connected sockets, descriptor sharing, and readiness mechanisms into [connection-distribution architectures](../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models).
 
 ## Sockets as Kernel Objects
 
@@ -252,7 +252,7 @@ Incoming data reaches kernel-managed packet or page-backed memory, often through
 - **Cross-Resource Transfer:** Linux [`sendfile()`](02%20The%20Anatomy%20of%20a%20Process.md#Specialized%20Descriptor%20Transfers%20and%20Zero-Copy) can transfer regular-file data toward a socket without first routing the payload through an application buffer.
     - On Linux, queued skbs can reference page-cache-backed file fragments instead of requiring a separate kernel-owned payload copy for those fragments.
     - The socket remains the network destination, and the avoided user-space copy reduces data movement through application memory.
-- **TCP Processing:** Once bytes enter a TCP socket, [TCP](../Networking/02%20Protocols/05%20TCP.md) handles segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle's%20Algorithm).
+- **TCP Processing:** Once bytes enter a TCP socket, [TCP](../Networking/02%20Protocols/05%20TCP.md) handles segmentation, acknowledgments, retransmissions, flow control, congestion control, and algorithms such as [Nagle's algorithm](../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md#Nagle%27s%20Algorithm).
 
 ## Socket Buffers and Backpressure
 
@@ -829,7 +829,7 @@ One event-loop thread can coordinate many connections, but the Reactor pattern d
 >
 > The main difference is the **dispatch target**. Redis dispatches a ready descriptor to an application callback. Go instead associates readiness with a goroutine that was parked because its network operation could not progress; when the descriptor becomes ready, the runtime marks that goroutine runnable and lets the scheduler resume it on an available OS thread.
 >
-> This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Handling%20I/O%20Blocking%20%28The%20Netpoller%29) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
+> This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Network%20Polling%20and%20I%2FO) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
 >
 ### Completion-Based I/O
 

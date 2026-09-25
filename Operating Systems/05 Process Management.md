@@ -61,6 +61,10 @@ If a system call blocks for I/O, the calling thread stops accruing CPU time whil
 
 On POSIX systems, process control provides separate operations for creating a child, replacing a process's program, ending a process, and collecting child state. A program can compose them to let a parent retain control while a child becomes another program; it can also use a spawn operation for common create-and-execute cases.
 
+### Process Lifecycle APIs
+
+These APIs establish process identity, program replacement, termination, and direct-child state observation. Process groups and sessions later compose those process relationships into terminal-managed jobs.
+
 - **Create a child — `fork()`:**
     - **Starting state:** `fork()` creates a child process as a copy of the calling process. The child initially executes the same program image at the instruction after `fork()`, but it has a separate address space.
     - **Return values:** The parent and child choose different paths because `fork()` returns the child's PID in the parent and `0` in the child.
@@ -78,12 +82,6 @@ On POSIX systems, process control provides separate operations for creating a ch
     - **`exit()`:** Performs normal C-library termination work, including registered termination handlers and standard-I/O cleanup.
     - **`_exit()`:** Terminates the calling process directly, without returning.
     - **After `fork()`:** A child that cannot execute its intended program normally reports the error and uses `_exit()` so it does not repeat cleanup for runtime state inherited from the parent.
-- **Send a signal — `kill()`:**
-    - **Target:** `kill()` sends a signal to a process or process group, subject to permission checks.
-    - **Effect:** Sending a signal does not inherently terminate its target; the signal's disposition determines whether it terminates, stops, continues, or notifies the receiving process.
-- **Organize jobs — `setpgid()` and `setsid()`:**
-    - **`setpgid()`:** Assigns a process to a process group, which lets a shell signal and manage a job as a unit.
-    - **`setsid()`:** Creates a new session and process group and detaches the caller from its controlling terminal; traditional daemonization uses it to become independent of the launching terminal.
 - **Collect child state — `wait()`, `waitpid()`, and `waitid()`:** These functions observe state transitions that a direct child has already reached; they do not cause the child to finish. A blocking call waits only when no selected child has a qualifying state to report. If the state is already available, it returns immediately.
     - **`wait()`:** Waits for the termination of an eligible child.
     - **`waitpid()`:** Selects a child, a process group, or any eligible child according to its process-ID argument. By default, it waits for termination; its options can also request reports for stopped or continued children.
@@ -94,6 +92,242 @@ On POSIX systems, process control provides separate operations for creating a ch
 > [!example] Shell command execution
 >
 > A shell uses `fork()`-then-`execve()` to remain a shell in the parent while each child becomes a command. For command launches whose setup fits its defined attributes and file actions, a shell can instead use `posix_spawn()` or `posix_spawnp()`. A [shell pipeline](08%20Inter-Process%20Communication.md#Anonymous-Pipe%20Shell%20Pipeline%20Construction) creates its pipe before forking, prepares one child's standard output and another's standard input, then executes the commands in those children. The parent later collects the command statuses with `wait()`, `waitpid()`, or `waitid()`.
+
+### Process Groups, Sessions, and Job Control
+
+A parent/child tree identifies who created a process, but it does not describe which processes form one interactive job or which jobs share a terminal environment. POSIX process groups and sessions supply those independent relationships so that the kernel, terminal driver, and shell can manage a pipeline or command as a unit.
+
+#### Identity hierarchy and job-control membership
+
+A process participates in several relationships at once. They answer different questions and none follows directly from the others.
+
+| Identifier | Relationship             | Meaning                                                                                                            |
+| ---------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| PID        | Process identity         | Identifies one process. Threads execute within that process but have separate thread identities.                   |
+| PPID       | Process ancestry         | Identifies the parent that created the process. It supports parent/child observation and reaping, not job control. |
+| PGID       | Process-group membership | Identifies the job-control and group-signalling unit containing the process.                                       |
+| SID        | Session membership       | Identifies the collection of process groups that share one job-control environment.                                |
+
+Every POSIX process belongs to one **process group**, identified by a **process group ID (PGID)**. A group can contain one process or many unrelated processes; it is not a parent/child subtree. The kernel uses the group as a direct target for signalling and terminal job control.
+
+A process whose PID equals its PGID is the **process-group leader**. Leadership supplies the group's identifying process and constrains some state changes; it does not make the leader a supervisor, the parent of every member, or a signal relay. Group-directed operations reach the members from the kernel. A process group persists while it still has members, even after its original leader exits.
+
+A **session** is one or more process groups. Each group belongs to exactly one session, so all of its members share the same SID. A session leader initially has `PID == SID`, but session leadership likewise does not create a supervisory relationship. A session and a process group survive the exit of their original leaders while members remain.
+
+A process group answers *which processes make up one job?* A session answers *which collection of jobs participates in one terminal/job-control environment?* A session is therefore neither a terminal, a login account, nor necessarily the shell process itself.
+
+#### Controlling terminals and foreground jobs
+
+A session may have one **controlling terminal**, and a terminal is the controlling terminal of at most one session. This is a session relationship, not a file-descriptor property: members can independently close or redirect descriptors while remaining in the same terminal-bearing session. Conversely, FD 0 referring to a TTY does not by itself establish a controlling-terminal relationship.
+
+A session leader that has no controlling terminal can establish one under the platform's terminal rules. On Linux and many Unix-like systems, opening an eligible terminal establishes it unless `O_NOCTTY` suppresses that effect. `setsid()` therefore detaches a process from its former terminal domain but does not close or redirect inherited terminal descriptors.
+
+The terminal records one **foreground process group ID**. At most one group in the terminal's session is foreground at a time; when one is designated, every other group in that session is background relative to that terminal.
+
+To be **foreground** means that a process group is the terminal's designated interactive job. The terminal directs terminal-generated control signals to that group and permits it to read terminal input. This role is not a CPU-scheduling priority, nor does it merely mean that a process is producing visible output.
+
+- **`tcgetpgrp(fd)`:** Returns the terminal's foreground PGID.
+- **`tcsetpgrp(fd, pgid)`:** Sets the foreground PGID through the caller's controlling-terminal descriptor. The target group must belong to the caller's session, which prevents one session from foregrounding another session's job.
+
+An interactive shell transfers the foreground role as a state transition:
+
+1. It creates the command or pipeline, establishes its shared PGID, and configures its descriptors.
+2. For a foreground job, it calls `tcsetpgrp()` to make that PGID the terminal foreground group, then waits for child state changes.
+3. When the job exits or stops, the shell restores its own PGID with `tcsetpgrp()` before reading the next command.
+
+#### Creating groups and sessions
+
+`setpgid(pid, pgid)` controls process-group membership, but only within the caller's session:
+
+- **New group:** `setpgid(0, 0)` makes the caller's PID its PGID, making it the leader of a new group.
+- **Existing group:** The call joins an eligible process to an existing group in the same session.
+- **Session and leadership constraints:** A process cannot move a group across sessions or change a session leader's process group.
+- **Parent/child timing:** A parent changing a child's group must do so before the child has executed a new program image.
+
+`posix_spawn()` can establish related job-control state at creation time. Unless `POSIX_SPAWN_SETPGROUP` or `POSIX_SPAWN_SETSID` is selected, the child inherits the parent's process group; `POSIX_SPAWN_SETPGROUP` selects its group. POSIX.1-2024's `POSIX_SPAWN_SETSID`, when supported, creates a new session and process group without a controlling terminal. Specifying both flags has unspecified behavior.
+
+A job-controlling shell establishes group membership promptly after `fork()`. Parent and child may both participate in that setup so that a child cannot reach `execve()` or receive terminal control before the intended group exists. For `cat file | grep foo | sort`, the shell creates three children and places all three in one new group rather than making one group per command:
+
+```text
+shell PGID 1000
+
+job PGID 1100
+├── cat   PID 1100
+├── grep  PID 1101
+└── sort  PID 1102
+```
+
+The shared PGID lets stop, continue, foreground, and signal operations apply to the whole pipeline. The pipeline's pipes carry data; group membership supplies its control identity. The shell deliberately constructs both mechanisms.
+
+`fork()` creates a new PID, but the child initially inherits the parent's PGID and SID. `execve()` replaces the program image without creating a process, so PID, PGID, SID, and controlling-terminal membership remain unchanged. The resulting `fork()` → `setpgid()` → `execve()` sequence lets a shell choose a job's control identity before the child begins its command.
+
+`setsid()` creates a new session only when its caller is not already a process-group leader. On success, the caller becomes the sole initial member and leader of both a new process group and a new session:
+
+```text
+PID = PGID = SID = caller PID
+```
+
+The new session initially has no controlling terminal. A process-group leader cannot call `setsid()` because its PID already identifies an existing group; moving that leader into a new session while other members remained would break the rule that a group belongs to one session. The traditional `fork()` followed by parent exit gives the child a new PID, allowing it to call `setsid()`.
+
+#### Terminal-mediated job control
+
+The terminal driver delivers configured interrupt, quit, and suspend signals to every member of the foreground process group. Thus `Ctrl-C`, `Ctrl-\\`, and `Ctrl-Z` commonly generate `SIGINT`, `SIGQUIT`, and `SIGTSTP` for the job, not merely for whichever process is reading standard input. Signal dispositions and their default actions remain the subject of [POSIX signals](#POSIX%20Signals).
+
+Foreground/background status is checked when a process accesses its controlling terminal, not merely because it uses `stdin`, `stdout`, or `stderr`. An interactive shell normally makes those standard streams terminal-backed, but each descriptor can instead refer to another I/O resource. The [file descriptor](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) identifies the resource; the process group relative to the terminal determines whether terminal job-control rules apply. Keystrokes are not assigned to one process simply because it holds `stdin`: a process receives terminal input only by reading a terminal-backed descriptor.
+
+- **`stdin` (FD 0):** A read through a terminal-backed standard-input descriptor is a terminal read. A background group that tries to read its controlling terminal receives `SIGTTIN`; its default disposition stops the group. This is why an interactive background command commonly stops.
+- **`stdout` and `stderr` (FDs 1 and 2):** Both descriptors can independently refer to the terminal. Background output is normally permitted. When the terminal's `TOSTOP` flag is set, a background group that writes to its controlling terminal receives `SIGTTOU`; terminal-control operations have related `SIGTTOU` rules.
+- **Redirection:** Redirecting a standard stream to a file, pipe, or other resource bypasses the terminal driver for operations through that stream. It does not change the process's PID, PGID, SID, or foreground/background status; another terminal-backed descriptor remains subject to the same job-control rules.
+
+Shell job builtins apply the same group and terminal relationships:
+
+- **`jobs`:** Reports shell-maintained job state.
+- **`bg`:** Sends `SIGCONT` to a stopped job while the shell remains foreground.
+- **`fg`:** Moves the job's PGID to the foreground, continues it when needed, waits for it, and later restores the shell's foreground PGID.
+
+#### Group and session lifecycle
+
+A process group does not become **orphaned** merely because its leader exits or because one member loses its parent. It is orphaned only when none of its members has a parent in a *different* process group of the same session. At that point, no process in the session remains outside the group to perform shell-style job control over it.
+
+When a group becomes orphaned while it has a stopped member, POSIX job-control behavior sends `SIGHUP` and then `SIGCONT` to every member of the newly orphaned group. The sequence resumes the stopped job so it cannot remain stranded after its shell or other controlling parent disappears.
+
+Terminal hangup and session-leader exit are separate Linux-specific transitions:
+
+- **Terminal hangup:** When terminal configuration permits it, a hangup sends `SIGHUP` to the controlling session leader.
+- **Session-leader exit:** When a controlling session leader terminates, Linux sends `SIGHUP` to the controlling terminal's foreground process group and disassociates the terminal from the session.
+
+Neither transition means that killing a process-group leader kills the rest of its group, and losing a parent does not by itself trigger the orphaned-group sequence.
+
+#### Detachment and daemonization
+
+Background execution, hangup handling, shell job tracking, session creation, and daemonization solve different lifecycle problems. Leaving a terminal's job-control domain and managing inherited terminal-backed descriptors are separate steps; running in the background or ignoring `SIGHUP` alone does not provide terminal detachment.
+
+- **`command &`:** Starts the command as a shell background job.
+    - **Changes:** The shell returns to its prompt instead of waiting for the job to finish.
+    - **Does not change:** The job normally remains in the shell's session and retains that session's controlling-terminal relationship. It can still inherit terminal-backed standard descriptors, and terminal job-control rules still apply when it accesses the controlling terminal. Backgrounding does not create a new session or detach the job from the terminal.
+- **`nohup command`:** Changes the invoked command's hangup-signal disposition.
+    - **Changes:** The command ignores `SIGHUP`, so that signal does not use its default terminating action. Implementations typically redirect terminal-oriented standard streams when necessary.
+    - **Does not change:** `nohup` does not create a new session or change the command's PGID. It addresses one signal-disposition concern; it does not remove the command from the terminal's job-control domain.
+- **`disown`:** Changes a shell's tracking or hangup handling for one of its jobs.
+    - **Changes:** It can prevent the shell from treating the job as a managed job when the shell exits, although the exact behavior depends on the shell.
+    - **Does not change:** It changes shell policy rather than kernel session state, so it does not detach the process from its session or controlling terminal.
+- **`setsid()`:** Creates a new session and a new process group whose caller is initially the only member and leader.
+    - **Changes:** The new session initially has no controlling terminal, which removes the caller from the launching terminal's job-control domain.
+    - **Does not change:** `setsid()` does not close, redirect, or otherwise clean up inherited descriptors. A terminal-backed descriptor remains usable until the process closes or replaces it.
+    - **Precondition:** The caller must not already be a process-group leader, so traditional code commonly forks first.
+- **Daemonization:** Applies a broader lifecycle pattern for a process intended to operate independently of an interactive session.
+    - **Typical composition:** It commonly combines `setsid()` with deliberate cleanup of inherited descriptors, working directory, file-creation mask, and signal configuration.
+    - **Optional second fork:** [Traditional daemonization](#Traditional%20Daemonization) optionally forks a second time so the final process is not a session leader, preventing accidental controlling-terminal acquisition on Unix-like systems with that behavior. The second fork is a historical portability precaution, not a universal POSIX requirement.
+    - **Does not provide:** Daemonization does not itself provide service supervision.
+
+#### Composition with process control and IPC
+
+Job control composes independent control, observation, and data-flow mechanisms:
+
+- **Job control and child status:** A process group is a collective control unit, not a collective child-status record. A shell uses a PGID to stop, continue, signal, foreground, and background a job, but it uses `wait()`, `waitpid()`, or `waitid()` to observe each direct child's stopped, continued, or exited state. A process group has no kernel-provided aggregate exit status.
+- **Individual and group signals:** `kill()` can target either one process or a group: a positive argument selects a PID, `0` selects the caller's group, and a value less than `-1` selects the group whose PGID is the absolute value. `killpg()` is the named group-targeting interface; on Linux it is implemented through the negative-PGID form of `kill()`. Neither mechanism selects an entire session, and neither makes a signal inherently terminating.
+- **Pipes and descriptors:** Pipes and [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) are independent of this hierarchy. A [shell pipeline](08%20Inter-Process%20Communication.md#Anonymous-Pipe%20Shell%20Pipeline%20Construction) uses descriptors and pipes for data flow, while its process group supplies job-control identity.
+
+#### Observing and integrating the hierarchy
+
+On Linux systems with a compatible `ps`, inspect the relationships with:
+
+```sh
+ps -o pid,ppid,pgid,sid,tpgid,tty,stat,cmd
+```
+
+- **PID / PPID:** Process identity and ancestry.
+- **PGID / SID:** Job membership and job-control environment.
+- **TPGID:** The foreground process group of the listed process's terminal.
+- **TTY:** The terminal device, when one is associated with the process.
+- **STAT:** The process state and status flags as reported by `ps`; their symbols vary by implementation.
+- **CMD:** The command and arguments displayed by `ps`.
+
+> [!note] `STAT` symbols on macOS and BSD `ps`
+>
+> `STAT` begins with one primary run-state symbol. Any later characters are modifiers, so the position of a symbol matters: the first `S` means *sleeping*, while a later `S` has a different meaning.
+>
+> | Initial symbol | Meaning |
+> | --- | --- |
+> | `I` | Idle: sleeping for longer than about 20 seconds. |
+> | `R` | Runnable. |
+> | `S` | Sleeping for less than about 20 seconds. |
+> | `T` | Stopped. |
+> | `U` | In an uninterruptible wait. |
+> | `Z` | Dead but not yet reaped: a zombie. |
+>
+> The following modifiers add status information:
+>
+> | Modifier | Meaning |
+> | --- | --- |
+> | `+` | Member of its controlling terminal's foreground process group. |
+> | `<` | Raised CPU scheduling priority. |
+> | `>` | Exceeds its requested soft memory limit and is not swapped. |
+> | `A` | Requested random page replacement. |
+> | `E` | Trying to exit. |
+> | `L` | Has pages locked in physical memory. |
+> | `N` | Reduced CPU scheduling priority. |
+> | `S` | Requested FIFO page replacement. |
+> | `s` | Session leader. |
+> | `V` | Suspended during `vfork()`. |
+> | `W` | Swapped out. |
+> | `X` | Being traced or debugged. |
+>
+> For example, `Ss` means *sleeping session leader*, `SN` means *sleeping with reduced CPU scheduling priority*, and `R+` means *runnable in the foreground process group*.
+
+The following exercise applies these fields to background and foreground jobs.
+
+> [!example] Inspecting background and foreground jobs
+>
+> An interactive shell assigns a **job number** separately from the kernel's PIDs and PGIDs. Start one background command and one background pipeline, then ask the shell for its jobs:
+>
+> ```sh
+> sleep 200 &
+> sleep 300 | cat &
+> jobs
+> ```
+>
+> A captured `zsh` run reported:
+>
+> ```text
+> [1] 23722
+> [2] 23723 23724
+> [1]  - running    sleep 200
+> [2]  + running    sleep 300 | cat
+> ```
+>
+> The number in brackets is the shell job number: the pipeline is job `2`, so `%2` is its **job specification**. Its processes have PIDs `23723` and `23724`, but both belong to the process group whose PGID is `23723`. The standalone `sleep 200` process has its own PID and PGID, `23722`.
+>
+> Inspect the processes on the current terminal:
+>
+> ```sh
+> # Linux systems with a compatible ps
+> ps -t "$(tty | sed 's#^/dev/##')" -o pid,ppid,pgid,sid,tpgid,tty,stat,cmd
+>
+> # macOS and BSD ps
+> ps -t "$(tty | sed 's#^/dev/##')" -o pid,ppid,pgid,sess,tpgid,tty,stat,command
+> ```
+>
+> Before foregrounding either job, the shell owns the terminal's foreground PGID. The two background jobs have distinct PGIDs, while the pipeline members share one PGID; they normally share the shell's session and controlling terminal.
+>
+> ```sh
+> fg %2
+> # Press Ctrl-Z while the pipeline is foreground.
+> ```
+>
+> `fg %2` tells the shell to select job `2`, not PID or PGID `2`. The shell gives the job's process group the terminal and waits instead of printing a prompt. If the selected job was stopped, `fg` also continues it; this already-running pipeline only changes from background to foreground. `Ctrl-Z` sends `SIGTSTP` to the foreground group, stopping both pipeline members. The shell then regains the terminal and reports that the job is suspended.
+>
+> After this interaction, one captured macOS/BSD `ps` output contained:
+>
+> ```text
+> PID    PGID   TPGID  TTY      STAT
+> 23722  23722  23741  ttys002  SN
+> 23723  23723  23741  ttys002  TN
+> 23724  23723  23741  ttys002  TN
+> 23741  23741  23741  ttys002  R+
+> ```
+>
+> The `TN` rows show that both pipeline members remain in PGID `23723` but are stopped (`T`); `N` reports their reduced CPU scheduling priority. PID `23741` is the `ps` command itself. Because the shell runs that command in its own foreground group, it temporarily becomes the terminal's `TPGID` and appears as `R+`. When `ps` exits, the shell regains the foreground role. To observe the pipeline's `TPGID` while `fg` blocks the first shell, run `ps -e -o pid,ppid,pgid,sid,tpgid,tty,stat,cmd` from a second terminal and locate the processes by PID or TTY.
 
 ## POSIX Signals
 
@@ -143,7 +377,7 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGUSR1` / `SIGUSR2` | User-defined signal 1 / 2 | Application-defined notification                                  | Terminate                                                          |
 | `SIGSEGV`             | Segmentation violation    | Invalid memory reference                                          | Terminate and produce a core dump                                  |
 | `SIGTTIN`             | Terminal input            | A background job attempts to read its controlling terminal        | Stop                                                               |
-| `SIGTTOU`             | Terminal output           | A background job performs terminal output or control operations   | Stop                                                               |
+| `SIGTTOU`             | Terminal output           | Background write with `TOSTOP`, or terminal-control operation     | Stop                                                               |
 
 `SIGTERM` is the normal signal for a cooperative shutdown: a process can catch it, stop accepting work, and release resources. `SIGKILL` gives the process no such opportunity because the kernel terminates it without running a handler. `SIGHUP`, `SIGUSR1`, and `SIGUSR2` have fixed signal identities but no universal application-level protocol; long-running programs often assign them roles such as configuration reload or log reopening by convention.
 
@@ -246,15 +480,17 @@ int main(void) {
 
 ## Processes vs. Threads
 
-To understand how the kernel manages work, you must separate the concept of _resources_ from the concept of _execution_.
+To understand how the kernel manages work, separate *resources* from *execution*. A process establishes an isolated resource environment, while a thread executes instructions within that environment. A newly created process includes an initial thread, and that thread can create additional threads in the same process.
 
-- **The Process (The Container)**: A process is the ultimate resource container.
-       - By itself, a process doesn't actually "do" anything; it is simply the bounded, isolated environment in which code runs.
-              - It holds the isolated virtual memory space—which is strictly divided into its own dedicated **code, data, heap, and stack sections**—along with the Per-Process File Descriptor Table and the [Process Control Block](#The%20Process%20Control%20Block%20(PCB)).  
-- **The Thread (The Execution)** A thread is the actual active unit of execution.
-       - Every process starts with exactly one main thread, but it can spawn dozens of child threads.
-       - The OS scheduler does not actually schedule processes; it schedules _threads_ onto physical CPU cores.
-       - All threads within a single process share [exact same memory](#Multi-Threaded%20Memory%20Layout) and open files, but each thread is given its own isolated Stack and CPU Registers (like the Program Counter).
+| Dimension                    | Process                                                                                                                                                                 | Thread                                                                                                                                                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Primary role**             | Provides the resource and isolation context for execution.                                                                                                              | Provides an execution context that runs instructions.                                                                                                                                                  |
+| **Memory and I/O resources** | Owns a virtual address space, whose mapped regions include code, data, heap, and stack memory, and a process-wide file-descriptor table.                                | Shares that address space and descriptor table with its sibling threads.                                                                                                                               |
+| **Private execution state**  | Groups the threads that execute within its resource environment.                                                                                                        | Has its own stack and saved CPU register state, including the program counter.                                                                                                                         |
+| **Scheduling**               | Is not the unit placed on a CPU by the scheduler.                                                                                                                       | Is the schedulable unit; the scheduler runs threads on CPU cores.                                                                                                                                      |
+| **Kernel representation**    | Is represented by a [Process Control Block (PCB)](#The%20Process%20Control%20Block%20%28PCB%29) that records process-level identity, resource, and address-space state. | Is represented by a [Thread Control Block (TCB)](#The%20Thread%20Control%20Block%20%28TCB%29) that records thread-specific scheduling and execution state, including the context needed for switching. |
+
+Consequently, while the descriptor table remains unchanged, FD `4` indexes the same table entry and reaches the same open file description for every thread in the process.
 
 ### The Process Control Block (PCB)
 
@@ -268,7 +504,7 @@ When a Context Switch occurs, this is exactly where the kernel saves the CPU reg
 - **Execution State:** The current state of the process (Runnable, Blocked, Stopped, Zombie), the saved Program Counter (PC), and the saved CPU registers from the last time it was evicted from the CPU.
 - **Scheduling & Accounting:** CPU priority levels, total CPU time consumed, and memory usage limits.
 - **Memory Management:** Pointers defining the boundaries of the process's specific Code, Data, Heap, and Stack sections. Crucially, it holds the pointer to the process's **Page Table**, which the MMU uses to translate its virtual memory into physical RAM.
-- **I/O and Resources:** The Per-Process [File Descriptors (FDs)](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs)) table, tracking all open files, network sockets, and pipes.
+- **I/O and Resources:** The Per-Process [File Descriptors (FDs)](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29) table, tracking all open files, network sockets, and pipes.
 - **Inter-Process Communication (IPC):** Metadata tracking any semaphores, mutexes, shared memory segments, or message queues the process is currently using to talk to other processes.
 
 ### The Kernel Process Table
@@ -287,7 +523,7 @@ What makes a process a daemon is how it is used: it is typically long-lived, ope
 
 > [!note] Where the name "daemon" comes from
 >
-> The word **daemon** comes from the Ancient Greek _daímōn_, which referred to a spirit or supernatural being. Unlike the modern word **demon**, a _daímōn_ was not necessarily evil; it could simply represent an unseen force or agent acting in the world.
+> The word **daemon** comes from the Ancient Greek *daímōn*, which referred to a spirit or supernatural being. Unlike the modern word **demon**, a *daímōn* was not necessarily evil; it could simply represent an unseen force or agent acting in the world.
 >
 > Computing adopted **daemon** as a fitting name for programs that operate without direct user interaction, quietly performing work on behalf of the system. The term is also commonly associated with **Maxwell's demon**, the hypothetical agent from a physics thought experiment that continuously observes and acts on a system in the background.
 
@@ -344,18 +580,23 @@ The defining property of a daemon is instead its independence from an interactiv
 
 Historically, Unix programs often had to make themselves independent of the interactive session that launched them. This procedure is commonly called **daemonization**.
 
-Traditional daemonization could involve:
+Traditional daemonization commonly follows this sequence:
 
-- calling `fork()` and allowing the original process to exit;
-- calling `setsid()` to create a new session and detach from the controlling terminal;
-- sometimes performing another `fork()`;
-- changing the working directory;
-- configuring the process's file-creation mask;
-- closing inherited [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20(FDs));
-- redirecting standard input, output, and error;
-- configuring signal handling.
+1. **Fork and exit the original parent:** The child inherits its parent's process group but receives a new PID, so it is not a process-group leader. The original parent exits, leaving the child able to call `setsid()`.
+2. **Create a terminal-less session:** The child calls `setsid()`, becoming the leader of a new session and process group with no controlling terminal. This detaches the session from the launching terminal, but it does not close or redirect file descriptors that the process already inherited; a descriptor connected to that terminal remains usable until the process closes or replaces it.
+3. **Optionally fork again:** The session leader forks and the intermediate parent exits, so the final daemon is not a session leader. On Unix semantics that allow a session leader without a controlling terminal to acquire one by opening a terminal device, this prevents the final daemon from doing so accidentally. POSIX does not require a particular mechanism for acquiring a controlling terminal, so the second fork is a portability-oriented historical precaution rather than a universal requirement.
+4. **Clean up the inherited execution environment:** The final process chooses an appropriate working directory and file-creation mask, closes unneeded inherited [file descriptors](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29), redirects standard input, output, and error to deliberate destinations, and establishes the signal dispositions and masks required by its lifecycle. Closing or redirecting standard streams is separate from the terminal detachment performed by `setsid()`.
 
-These steps made the process independent of the terminal and login session that originally launched it. They were conventions used to achieve the daemon's desired lifecycle rather than requirements imposed by the kernel.
+These steps were conventions used to achieve the daemon's desired lifecycle rather than requirements imposed by the kernel.
+
+### Lifecycle Control Before Service Managers
+
+Terminal detachment made a daemon independent of its launcher, but it did not provide an interface for operating the service afterward. Before service managers centralized that work, an init script or other service-specific control tool commonly started the daemon, used a PID file to identify it, and requested lifecycle actions by sending it signals. The daemon and its control tool therefore had to agree on the PID-file location and on the meaning of the signals they used.
+
+- **Stopping and restarting:** A control tool could send `SIGTERM` to request a graceful shutdown, then start a replacement process for a restart. Graceful shutdown depended on the daemon implementing the necessary cleanup behavior; signal delivery alone did not supply it.
+- **Reloading configuration:** A daemon could treat `SIGHUP` as a reload request by convention. The signal has no universal reload semantics, so a tool could not assume that every daemon supported it.
+- **Suspending and resuming:** An authorized operator could stop execution with `SIGSTOP` and resume it with `SIGCONT`. This changes the process's execution state but does not coordinate application-level work, so it is distinct from a graceful service operation.
+- **Failure recovery and status:** Scripts could inspect a PID file or process state, but they had to handle stale files, PID reuse, logging, and restart policy themselves.
 
 ### PID Files
 
@@ -370,7 +611,7 @@ Service managers can track the processes they start directly. Applications manag
 
 Modern Unix-like systems often delegate lifecycle management to a **service manager**. On many Linux distributions, for example, `systemd` starts and supervises services.
 
-A service manager can start and stop processes, track them, capture their output, manage dependencies, restart them after failures, configure privileges, and coordinate system startup and shutdown.
+A service manager centralizes operations that previously depended on application-specific scripts and conventions: it can start and stop processes, track them, capture their output, manage dependencies, restart them after failures, configure privileges, and coordinate system startup and shutdown.
 
 Because the service manager provides this surrounding lifecycle management, the application usually does not need to perform traditional daemonization. It can remain in the foreground from its own perspective while the service manager ensures that it operates independently as a long-lived service.
 
@@ -378,30 +619,29 @@ Because the service manager provides this surrounding lifecycle management, the 
 
 ### Why We Use Threads
 
-Threads let a process create multiple independent execution paths while continuing to share the process's resources and virtual address space. They are useful when an application benefits from **parallel CPU execution**, needs to continue making progress while some work is blocked, or has many independent tasks that should execute concurrently.
+Threads let a process create multiple independent execution paths while continuing to share the process's resources and [virtual address space](03%20Memory%20Management.md#The%20Solution:%20Virtual%20Address%20Space%20%26%20MMU%20Isolation). They are useful when an application benefits from **parallel CPU execution**, needs to continue making progress while some work is blocked, or has many independent tasks that should execute concurrently.
 
 - **Multi-Core Parallelism:** A single thread can execute on only one CPU core at a time. If a workload can be divided into independent CPU-bound tasks, multiple runnable threads allow the operating-system scheduler to place those tasks on different cores so they execute simultaneously. This can increase throughput for workloads such as compression, parsing, numerical computation, or processing independent requests.
-    This benefit is limited by the available hardware parallelism. Once an application has more runnable CPU-bound threads than the machine can execute simultaneously, additional threads mostly compete for CPU time. The scheduler must switch between them, increasing scheduling and  [context switching overhead](#Context%20Switching%20Overhead) rather than continuing to increase parallelism.
+    - **Limit:** This benefit is limited by the available hardware parallelism. Once an application has more runnable CPU-bound threads than the machine can execute simultaneously, additional threads mostly compete for CPU time. The scheduler must switch between them, increasing scheduling and [context switching overhead](#Context%20Switching%20Overhead) rather than continuing to increase parallelism.
 - **Hiding Blocking I/O Latency:** When a thread performs a blocking operation, such as waiting for disk, a database, or another external resource, that thread cannot perform useful application work until the operation completes. Other threads in the same process can continue executing during that time, allowing the application to remain productive while one execution path waits.
-    - Threads are not required for every form of I/O concurrency. With blocking APIs, moving slow operations to another thread can prevent the main execution path from stalling. With asynchronous or readiness-based interfaces such as `epoll`, `kqueue`, or `io_uring`, however, a smaller number of threads can coordinate many outstanding I/O operations without dedicating one blocked thread to every operation.
-- **Efficient Shared-Memory Communication:** Threads in the same process share the same virtual address space, including the Data/BSS segments and Heap. One thread can therefore produce data and another can consume it without copying the data through an Inter-Process Communication mechanism.
-    - The trade-off is synchronization. Because multiple threads can access the same mutable memory, concurrent access may require mutexes, atomics, semaphores, or other synchronization mechanisms to prevent race conditions.
-- **Lower Per-Worker Resource Cost:** Creating another thread usually requires fewer independent resources than creating another process because the new thread reuses the process's address space, file descriptor table, and other process-level resources. Each thread still requires its own execution state, including registers, scheduling metadata, and stack, but much of the surrounding process state remains shared.
-    - Switching between threads belonging to the same process is also usually cheaper than switching between threads belonging to different processes because the active virtual address space does not need to change.
-- **Processing Many Independent Tasks:** Applications often receive large numbers of independent units of work, such as requests, jobs, or background tasks. Instead of creating a new OS thread for every task, an application can maintain a bounded **worker pool**. Incoming tasks are placed into a queue, and the existing worker threads repeatedly take tasks from that queue.
-    - A worker pool allows several tasks to execute concurrently while limiting the number of native threads, stacks, and schedulable execution contexts. The worker count can then be chosen according to the workload rather than growing without bound as new work arrives.
+    - **Alternative:** Threads are not required for every form of I/O concurrency. With blocking APIs, moving slow operations to another thread can prevent the main execution path from stalling. [Readiness- and completion-based I/O](07%20Socket%20Management.md#Readiness%20and%20Completion%20Compared) lets a smaller number of threads coordinate many outstanding socket operations without dedicating one blocked thread to each operation.
+- **Efficient Shared-Memory Communication:** Threads in the same process share the same virtual address space, including the Data/BSS segments and Heap. One thread can therefore produce data and another can consume it without copying the data through an [Inter-Process Communication](08%20Inter-Process%20Communication.md#Process%20Boundaries%20and%20Communication) mechanism.
+    - **Trade-off:** Because multiple threads can access the same mutable memory, concurrent access can create [race conditions](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions); correct access requires appropriate [synchronization](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Synchronization%20Mechanisms).
+- **Lower Per-Worker Resource Cost:** Creating another thread usually requires fewer independent resources than creating another process because the new thread reuses the process's address space, [file descriptor table](02%20The%20Anatomy%20of%20a%20Process.md#File%20Descriptors%20%28FDs%29), and other process-level resources. Each thread still requires its own execution state, including registers, scheduling metadata, and [stack](02%20The%20Anatomy%20of%20a%20Process.md#The%20Stack), but much of the surrounding process state remains shared.
+    - **Switching cost:** Switching between threads belonging to the same process is also usually cheaper than switching between threads belonging to different processes because the active virtual address space does not need to change.
+- **Bounded Concurrency with Worker Pools:** Applications often receive large numbers of independent units of work, such as requests, jobs, or background tasks. Instead of creating a new OS thread for every task, an application can maintain a bounded **worker pool**. Incoming tasks are placed into a queue, and the existing worker threads repeatedly take tasks from that queue.
+    - **Benefit:** A worker pool allows several tasks to execute concurrently while limiting the number of native threads, stacks, and schedulable execution contexts. The worker count can then be chosen according to the workload rather than growing without bound as new work arrives.
 
 Threads therefore provide a useful middle ground between a single execution path and multiple isolated processes. They make parallel execution and inexpensive resource sharing possible, but those advantages come with additional synchronization and scheduling complexity.
 
 ### Multi-Threaded Memory Layout
 
-- **The Single-Thread Illusion:** The classic memory layout—where the Stack starts at the absolute maximum address and grows downwards toward the Heap—technically represents a purely single-threaded process.
-- **The Collision Problem:** Because threads within the same process share the exact same virtual memory space, they cannot all share the Main Thread's top-level Stack. If they did, their independent Last-In, First-Out (LIFO) function frames would instantly collide and corrupt one another.
-- **Parachuting Stacks via `mmap`:** To provide each newly spawned thread with its own isolated execution state, the kernel utilizes the `mmap` system call. It allocates new, fixed-size blocks of memory and parachutes them directly into the massive gulf of empty virtual addresses residing in the "middle space" between the upward-growing Heap and the Main Thread's Stack.
-- **Guard Pages (Preventing Silent Corruption):** While any `mmap` allocation can suffer from a software [buffer overflows](02%20The%20Anatomy%20of%20a%20Process.md#Buffer%20Overflow), stacks are uniquely dangerous because their growth is implicit. The CPU hardware blindly decrements the Stack Pointer (`sp`) as functions are called, never checking if memory limits have been reached. Because these mapped thread stacks float dangerously close to one another in virtual memory, the OS places a Read/Write-protected [**Guard Page**](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Overflow) at the absolute bottom of each thread's block. Just like the Main Thread's boundary, if a runaway thread's `sp` hits this hardware tripwire, the MMU triggers an instant Segmentation Fault, killing the process before it can silently overwrite an adjacent thread's function frames.
-- **Resource Sharing:** Because threads exist _within_ the same parent process, they inherently share almost all system resources, completely bypassing the need for complex Inter-Process Communication (IPC) like pipes or shared `mmap` files.
-    - **Shared:** All threads within a process read from the exact same Text/Code segment, the Data/BSS segments (global variables), the Heap (dynamic memory), and the File Descriptor array.
-    - **Isolated:** Each thread must maintain its own independent execution state. Therefore, the OS allocates every thread its own private **Stack** memory (to track its own function calls and local variables) and saves its own dedicated copy of the CPU registers (including its own Instruction Pointer, Base Pointer, and Stack Pointer).
+Threads share one virtual address space, but each requires a private stack for its call frames and local variables. A conventional layout diagram with one stack growing down toward the heap depicts the initial thread; sibling threads cannot use that same stack without colliding frames.
+
+Additional threads receive separate stack regions in the same address space. Their placement and reservation depend on the platform, runtime, and thread implementation; Unix-like implementations commonly create such mappings with `mmap`, often reserving fixed-size regions in otherwise unused parts of the address space. A [guard page](02%20The%20Anatomy%20of%20a%20Process.md#Stack%20Overflow) at a stack boundary turns an out-of-bounds stack access into a fault instead of allowing it to overwrite an adjacent mapping. It detects stack growth beyond that region, but it does not add bounds checking to arbitrary [buffers](02%20The%20Anatomy%20of%20a%20Process.md#Buffer%20Overflow).
+
+- **Shared memory:** All threads access the same Text/Code segment, Data/BSS segments, and heap.
+- **Private execution state:** Each thread has its own stack and saved CPU registers, including its Instruction Pointer, Base Pointer, and Stack Pointer.
 
 ### User-Space Threads (Green Threads & Coroutines)
 
@@ -415,7 +655,7 @@ Besides **OS threads**, also commonly called **native threads**, **kernel thread
 
 ### The Thread Control Block (TCB)
 
-Just as the kernel uses a PCB to track an entire process, it uses a **Thread Control Block (TCB)** to track the individual threads executing inside that process. Because the OS scheduler actually dispatches _threads_ to the CPU cores, the TCB holds the precise metadata needed to pause, resume, and prioritize that specific thread.
+Just as the kernel uses a PCB to track an entire process, it uses a **Thread Control Block (TCB)** to track the individual threads executing inside that process. Because the OS scheduler actually dispatches *threads* to the CPU cores, the TCB holds the precise metadata needed to pause, resume, and prioritize that specific thread.
 
 **What the TCB Contains:**
 

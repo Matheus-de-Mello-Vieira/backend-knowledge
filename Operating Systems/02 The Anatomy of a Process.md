@@ -57,7 +57,7 @@ Because the descriptor is only a handle, the same integer abstraction can refer 
     - **Completion-based coordination:** Linux [`io_uring`](07%20Socket%20Management.md#%60io_uring%60%20Completion%20Cycle) submits operations that identify resources such as socket descriptors, and `io_uring_setup()` returns a descriptor for the ring itself.
 
 > [!note] Inspecting File Descriptors Through `/proc`  
-> On Linux, the virtual [/proc](06%20Storage%20Management.md#proc-process-and-kernel-information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
+> On Linux, the virtual [/proc](06%20Storage%20Management.md#%2Fproc%20%E2%80%94%20Process%20and%20Kernel%20Information) filesystem exposes a process's currently open descriptors under `/proc/<pid>/fd`.
 >
 > This does not mean that the descriptors themselves are files stored under `/proc`. The descriptor table remains kernel-managed process state; `procfs` merely exposes a filesystem-based view through which that state can be inspected.
 
@@ -252,7 +252,7 @@ The two middle copies consume CPU time and memory bandwidth even when the applic
     - **Preserving Registers:** It saves registers whose current values must survive the function call.
     - **Reserving Stack Space:** It moves the Stack Pointer (`sp`) to allocate space for local variables and temporary data.
     - **Establishing a Frame Pointer:** It optionally saves the previous Frame Pointer and makes `bp` / `fp` point to the new stack frame.
-    - **Runtime-Specific Checks:** It performs additional runtime work, such as the [stack-growth checks](../Technologies/Golang/99%20Misc/Go%20Internals.md#Stack%20Growth%20Checks) that Go places in the prologue of many functions.
+    - **Runtime-Specific Checks:** It performs additional runtime work, such as the [stack-growth checks](../Technologies/Golang/99%20Misc/Go%20Internals.md#Goroutine%20Stacks) that Go places in the prologue of many functions.
 - **The Epilogue:** After the function body finishes, the compiler generates a corresponding **function epilogue** that reverses the setup performed by the prologue.
     - **Releasing Stack Space:** It releases the current function's stack space by restoring the Stack Pointer.
     - **Restoring Registers:** It restores the registers that were saved by the function.
@@ -364,7 +364,7 @@ Global and static storage enters a process through mappings derived from the pro
 - **The Program Break (`brk`):** The absolute "top" boundary of the heap's available memory is called the Program Break.
        - To request more raw memory from the kernel, the allocator uses the `brk` or `sbrk` system calls to push the Program Break upwards.
        - Unlike the Stack Pointer, we cannot simply lower the Program Break to deallocate memory, because heap allocations are completely out of order (fragmented).
-- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [Escape Analysis](../Technologies/Golang/99%20Misc/Go%20Internals.md#Escape%20Analysis)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
+- **Escape Analysis:** Some modern languages (like Go) attempt to keep eligible variables on the Stack. The compiler performs [Escape Analysis](../Technologies/Golang/99%20Misc/Go%20Internals.md#Escape%20Analysis%20and%20Object%20Placement)—if it detects that a variable's reference "escapes" the function's scope (meaning it needs to outlive the function), the compiler automatically moves that allocation to the Heap.
 
 ### The `mmap` System Call (Memory Mapping)
 
