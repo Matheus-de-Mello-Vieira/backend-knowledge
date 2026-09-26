@@ -6,7 +6,7 @@ The Go runtime is implementation-provided code and state linked into a Go execut
 
 The runtime operates inside an operating-system process; it is neither the operating system nor an interpreter or virtual machine. Go code is compiled to native instructions, while the runtime coordinates those instructions with [operating-system threads](../../../Operating%20Systems/05%20Process%20Management.md#Processes%20vs.%20Threads), memory, timers, signals, and I/O. In particular, it schedules [goroutines](../../../Operating%20Systems/05%20Process%20Management.md#User-Space%20Threads%20%28Green%20Threads%20%26%20Coroutines%29), manages their movable stacks and heap allocation, performs garbage collection, parks and readies blocked work, and integrates pollable network I/O with scheduling. These mechanisms make lightweight concurrency and automatic memory management practical without changing Go's language-level semantics.
 
-This note describes the upstream `gc` compiler and runtime in Go 1.26.6, at commit `1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e`. Internal layouts, scheduling policies, and performance heuristics are implementation details. Programs rely on the Go specification and documented APIs; language-level guarantees are identified separately where they matter.
+The implementation details below are pinned to the upstream `gc` compiler and runtime in Go 1.26.6, at commit `1ea5a71ad8ceb7b9f16b4b6f8ea4739a4327dd6e`. Internal layouts, scheduling policies, and performance heuristics are implementation details. Programs rely on the Go specification and documented APIs; language-level guarantees are identified separately where they matter.
 
 ## Compiler contracts consumed by the runtime
 
