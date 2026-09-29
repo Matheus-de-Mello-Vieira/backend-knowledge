@@ -374,6 +374,7 @@ The following signals are common in POSIX and Unix-like process control. Their *
 | `SIGCHLD`             | Child                     | An eligible child changes state                                   | Ignore; child status normally remains available to a wait function |
 | `SIGPIPE`             | Pipe                      | A write targets a pipe or stream socket whose read side is closed | Terminate                                                          |
 | `SIGALRM`             | Alarm                     | An alarm timer expires                                            | Terminate                                                          |
+| `SIGURG`              | Urgent                    | An urgent condition occurs on a socket                            | Ignore                                                             |
 | `SIGUSR1` / `SIGUSR2` | User-defined signal 1 / 2 | Application-defined notification                                  | Terminate                                                          |
 | `SIGSEGV`             | Segmentation violation    | Invalid memory reference                                          | Terminate and produce a core dump                                  |
 | `SIGTTIN`             | Terminal input            | A background job attempts to read its controlling terminal        | Stop                                                               |

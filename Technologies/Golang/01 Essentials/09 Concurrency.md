@@ -401,15 +401,16 @@ g.Do("key", slow)
 
 ### Closing channels
 
--   Close a channel when no one will send to it anymore:
+- Close a channel when no one will send to it anymore:
 
     ```go
     close(c)
     ```
 
--   Important to avoid **blocked goroutines**.
-
--   When iterating with `for range`, the loop ends when the channel is closed.
+- Important to avoid **blocked goroutines**.
+- After buffered values are exhausted, receiving from a closed channel returns the element type's zero value; the comma-ok form returns `ok == false`.
+- Sending to a closed channel panics.
+- When iterating with `for range`, the loop ends after the channel is closed and buffered values are drained.
 
 ### Trick: Using Channel as a Semaphore
 
