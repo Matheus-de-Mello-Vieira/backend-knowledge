@@ -248,6 +248,8 @@ Stacks can also shrink, commonly during GC-related stack processing. Stack copyi
 - **Coordination:** Arbitrary concurrent access to another G's stack would break this invariant, so channel handoff and stack copying coordinate through channel locks and `sudog` metadata.
 - **`//go:nosplit`:** Marks runtime paths that cannot safely start ordinary stack growth.
 
+Goroutine stacks therefore provide dynamically resizable backing for function frames. They do not decide which values belong in those frames: the compiler separately determines whether each value can remain in a stack frame or requires heap storage.
+
 ### Defer implementation
 
 The compiler does not universally implement [`defer`](../01%20Essentials/09%20Concurrency.md#Defer) as a heap list of [closures](../01%20Essentials/08%20Functions%20Deep%20Dive.md#Closure).
@@ -274,48 +276,44 @@ The following constraints determine where recovery applies and how termination d
 - **Recovery effect:** Successful recovery stops unwinding and follows the language's return semantics; it does not jump back to the panicking statement.
 - **Non-panic termination:** A runtime fatal error or `throw` is an unrecoverable process fault, and `os.Exit` terminates without running defers.
 
-## Object placement and heap allocation
+## Object placement and memory allocation
 
 ### Escape analysis and object placement
 
-Escape analysis is compile-time dataflow analysis over aliases, assignments, calls, closures, [interfaces](../01%20Essentials/06%20Interfaces%20and%20Generic%20Code.md#Interface), and lifetimes. It places a value on a goroutine's movable stack only when the compiler proves that its lifetime fits there safely. Taking an address alone does not force a heap allocation; returned or stored references, captured variables, interface conversions, indirect calls, dynamically sized values, inlining, and interprocedural analysis can all affect the result. Inlining substitutes a call's body at a call site; interprocedural analysis follows facts across call boundaries.
+Escape analysis is compile-time dataflow analysis over aliases, assignments, calls, closures, [interfaces](../01%20Essentials/06%20Interfaces%20and%20Generic%20Code.md#Interface), and lifetimes. It makes a placement decision: a value can reside in a goroutine's movable stack frame only when the compiler proves that its lifetime and references fit there safely. Stack-resident locals occupy space described by the compiled frame layout; ordinary locals do not make a general runtime allocation call analogous to a heap allocation.
+
+When that proof fails or heap storage is otherwise required, generated code requests storage from the runtime allocator. Taking an address alone does not force a heap allocation; returned or stored references, captured variables, interface conversions, indirect calls, dynamically sized values, inlining, and interprocedural analysis can all affect the result. Inlining substitutes a call's body at a call site; interprocedural analysis follows facts across call boundaries.
 
 Escape decisions are compiler- and version-dependent. `go build -gcflags=-m` reports decisions for a build, but it is a diagnostic rather than a language contract.
 
-### Allocator vocabulary: spans, size classes, and scan classes
+### Heap allocator and storage hierarchy
 
-An arena is a runtime-managed partition of the Go heap address space. The runtime's heap manager, `mheap`, uses the platform-memory abstraction to reserve address space and obtain or release physical backing. The runtime can reserve virtual address space without immediately obtaining physical backing; committed or otherwise physically backed pages are usable for allocations.
+The runtime allocator supplies heap storage dynamically. Its layers cooperate to move from a P-local fast path toward runtime-wide page management; they are allocator state and coordination layers, not separate kinds of memory.
+
+- **`mcache`:** Per-P fast-path allocation state that supplies small-object slots from current spans. It is not per-thread or per-core state: it reduces allocator contention but cannot promise [L1/L2 residency](../../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy), because Ms and Ps move across CPUs.
+- **`mcentral`:** Shared span supply for a size class. It refills an `mcache` when its current span cannot satisfy another small allocation.
+- **`mheap`:** The runtime-wide heap manager. It manages heap pages and spans, supplies and reclaims spans, and tracks their allocation and mark metadata.
+
+Heap storage has a nested physical-and-logical relationship: an object occupies a slot; a slot belongs to a span; a span consists of heap pages; and the runtime manages those pages through virtual-memory operations ultimately implemented by the OS. An arena is a runtime-managed partition of the Go heap address space. `mheap` uses the platform-memory abstraction to reserve address space and obtain or release physical backing, so reserved virtual address space does not necessarily have physical backing yet; committed or otherwise physically backed pages are usable for allocations.
 
 > [!note] Go Heap Arenas and the Arena Pattern
 > An [arena pattern](../../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#The%20Arena%20Pattern) is an application allocation strategy: a program reserves a region, allocates from it—often by advancing a bump pointer—and reuses or discards the region as one lifetime unit. A Go heap arena instead partitions the runtime-managed heap. Although `mheap` acquires and releases physical backing through [mapping and unmapping pages](../../../Operating%20Systems/03%20Memory%20Management.md#Mapping%20and%20Unmapping%20Pages), the application neither resets a Go heap arena nor frees its objects as a unit; the runtime allocates through spans and reclaims unreachable objects through garbage collection.
 
-Within an arena, `mheap` manages pages and spans:
-
-- **Span:** A contiguous allocator unit that holds objects of a size class or backs a large object.
-- **Size class:** Rounds small allocations to reusable object slots.
-- **Scan class:** Scan spans contain objects that must be scanned for pointers; noscan spans hold objects with no heap pointers.
-
-For small objects, Go's span-and-size-class allocator is [slab-like](../../../Operating%20Systems/03%20Memory%20Management.md#Slab%20Allocation): a span supplies reusable equal-sized slots for one size and scan class. Unlike a classical type-specific slab cache, Go classifies slots primarily by allocation size and pointer-scanning requirements.
+For small objects, a size class rounds a request to a reusable slot size, and a scan class distinguishes spans whose objects contain heap pointers from noscan spans whose objects do not. A span is a contiguous allocator unit: it provides equal-sized slots for one size and scan class, or it backs a large object. This span-and-size-class design is [slab-like](../../../Operating%20Systems/03%20Memory%20Management.md#Slab%20Allocation), but unlike a classical type-specific slab cache, Go classifies slots primarily by allocation size and pointer-scanning requirements.
 
 ### Tiny, small, and large allocation paths
 
-The runtime separates allocation paths so common small allocations avoid shared-heap coordination.
+The runtime chooses an allocation path from the request's size and pointer properties. Common small allocations remain on the `mcache` fast path; refills move through `mcentral` to `mheap` only when necessary.
 
 - **Tiny objects:** Pointer-free objects below the tiny threshold can share a tiny allocation block. This path advances a bump offset within that block, reducing fragmentation and metadata overhead.
 - **Small objects:** A request maps to a scan or noscan size class. A P's `mcache` uses allocation bits, an allocation cache, and a free index to consume a free slot from the current span. When that span has no free slot, the cache refills from `mcentral`, which obtains spans from `mheap`.
 - **Large objects:** These bypass the normal small-object `mcache`/`mcentral` path and obtain a suitably sized span from `mheap`. `mheap` can reuse reserved and committed free heap pages, so a large allocation does not inherently issue a new OS mapping.
 
-### `mcache`, `mcentral`, and `mheap`
-
-`mcache` is per-P state, not per-thread or per-core state. It reduces allocator contention but cannot promise [L1/L2 residency](../../../Operating%20Systems/04%20Inside%20The%20CPU.md#The%20Cache%20Hierarchy), because Ms and Ps move across CPUs.
-
-- **`mcache`:** P-local state that supplies allocation from current spans.
-- **`mcentral`:** Coordinates spans for a size class.
-- **`mheap`:** Supplies and reclaims spans and tracks their allocation and mark metadata.
-
-Zeroing and pointer metadata preserve correctness. Sweeping later returns slots and spans to allocator reuse.
+The allocator zeroes storage as required and maintains pointer metadata so the collector can trace the heap correctly. A heap allocation therefore consumes reusable runtime-managed storage; it does not by itself imply a fresh OS mapping. When the object later becomes unreachable, garbage collection returns its slots or spans to this allocator before scavenging separately considers unused pages for release toward the OS.
 
 ## Garbage collection and object lifetime
+
+Heap allocation occupies a slot until the object becomes unreachable. Marking establishes which objects remain live, then sweeping makes dead slots and spans reusable by the allocator. This reclamation path is distinct from scavenging: scavenging releases physical backing of unused heap pages toward the OS.
 
 ### Object graph, roots, and reachability
 
