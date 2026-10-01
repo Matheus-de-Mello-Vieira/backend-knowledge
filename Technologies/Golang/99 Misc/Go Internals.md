@@ -284,13 +284,18 @@ Escape decisions are compiler- and version-dependent. `go build -gcflags=-m` rep
 
 ### Allocator vocabulary: spans, size classes, and scan classes
 
-An arena is a runtime-managed partition of the Go heap address space. `mheap` uses the runtime's platform-memory abstraction to reserve address space and obtain or release physical backing. This differs from the underlying [mapping and unmapping of pages](../../../Operating%20Systems/03%20Memory%20Management.md#Mapping%20and%20Unmapping%20Pages): a Go heap arena is a runtime allocator partition, not an OS virtual-memory arena. The runtime can reserve virtual address space without immediately obtaining physical backing; committed or otherwise physically backed pages are usable for allocations.
+An arena is a runtime-managed partition of the Go heap address space. The runtime's heap manager, `mheap`, uses the platform-memory abstraction to reserve address space and obtain or release physical backing. The runtime can reserve virtual address space without immediately obtaining physical backing; committed or otherwise physically backed pages are usable for allocations.
+
+> [!note] Go Heap Arenas and the Arena Pattern
+> An [arena pattern](../../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#The%20Arena%20Pattern) is an application allocation strategy: a program reserves a region, allocates from it—often by advancing a bump pointer—and reuses or discards the region as one lifetime unit. A Go heap arena instead partitions the runtime-managed heap. Although `mheap` acquires and releases physical backing through [mapping and unmapping pages](../../../Operating%20Systems/03%20Memory%20Management.md#Mapping%20and%20Unmapping%20Pages), the application neither resets a Go heap arena nor frees its objects as a unit; the runtime allocates through spans and reclaims unreachable objects through garbage collection.
 
 Within an arena, `mheap` manages pages and spans:
 
 - **Span:** A contiguous allocator unit that holds objects of a size class or backs a large object.
 - **Size class:** Rounds small allocations to reusable object slots.
 - **Scan class:** Scan spans contain objects that must be scanned for pointers; noscan spans hold objects with no heap pointers.
+
+For small objects, Go's span-and-size-class allocator is [slab-like](../../../Operating%20Systems/03%20Memory%20Management.md#Slab%20Allocation): a span supplies reusable equal-sized slots for one size and scan class. Unlike a classical type-specific slab cache, Go classifies slots primarily by allocation size and pointer-scanning requirements.
 
 ### Tiny, small, and large allocation paths
 
@@ -394,7 +399,7 @@ A finalizer becomes eligible only after the runtime determines that its object i
 
 `unsafe.Pointer` is a pointer representation subject to Go's pointer rules; an ordinary [Go pointer](../01%20Essentials/04%20Understanding%20Pointers.md#Creating%20a%20pointer) keeps its reachable object alive. By contrast, `uintptr` is an integer and not a GC-visible reference. Converting a pointer to `uintptr`, retaining it, and later converting it back can lose liveness and violate pointer rules. Some conversions are valid only within one expression because the compiler and runtime recognize that pattern.
 
-Pointers into goroutine stacks require additional care because stack copying changes their addresses. The current heap is non-moving, but that implementation detail does not grant unrestricted pointer use as a language guarantee. `checkptr` detects selected invalid pointer arithmetic and conversions but cannot prove arbitrary unsafe code correct.
+Pointers into goroutine stacks require additional care because [stack copying](#Stack%20growth%2C%20copying%2C%20pointer%20adjustment%2C%20and%20shrinking) changes their addresses. The current heap is non-moving, but that implementation detail does not grant unrestricted pointer use as a language guarantee. `checkptr` detects selected invalid pointer arithmetic and conversions but cannot prove arbitrary unsafe code correct.
 
 The required liveness boundary for a foreign call is:
 

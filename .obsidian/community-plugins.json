@@ -3,5 +3,6 @@
   "terminal",
   "obsidian-languagetool-plugin",
   "slurp",
-  "recent-files-obsidian"
+  "recent-files-obsidian",
+  "obsidian-pandoc"
 ]

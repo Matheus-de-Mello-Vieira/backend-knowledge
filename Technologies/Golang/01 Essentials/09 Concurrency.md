@@ -603,6 +603,28 @@ go func() {
 
 Too many deferred calls increase cleanup work at return; redesign if necessary.
 
+## `runtime` controls
+
+Most Go code should use explicit control flow, `defer`, `context`, channels, and `sync` to manage resources and coordinate goroutines. The `runtime` APIs below address exceptional lifetime, scheduling, and operating-system integration requirements; they do not replace those ordinary mechanisms.
+
+### Object-lifetime hooks
+
+`defer` releases a resource at a known control-flow boundary. By contrast, [the runtime's cleanup mechanisms](../99%20Misc/Go%20Internals.md#Finalizers%20and%20cleanups) depend on garbage-collector reachability, so they are fallback mechanisms rather than deterministic resource management.
+
+- **`runtime.AddCleanup` (Go 1.24+):** Attaches `cleanup(arg)` to an object. After the object becomes unreachable, the runtime may run the cleanup in a separate goroutine. The cleanup is not guaranteed to run before program exit, so resource-owning types still need an explicit, appropriately scoped `Close`.
+- **`runtime.Cleanup.Stop`:** Cancels a cleanup that has not already been queued. Keep the original object reachable through the call when cancellation must take effect.
+- **[`runtime.KeepAlive`](../99%20Misc/Go%20Internals.md#Pointer%20liveness%20and%20%60runtime.KeepAlive%60):** Marks an object reachable through a specific point. Call it after the last low-level operation that still needs the object's underlying resource, preventing a cleanup or finalizer from running prematurely.
+- **`runtime.SetFinalizer`:** Attaches the older finalizer mechanism. A finalizer may run much later after its object becomes unreachable and is not guaranteed before program exit; new code should prefer `AddCleanup` when a GC-triggered fallback is genuinely appropriate.
+
+### Scheduler and OS-thread controls
+
+These functions influence execution placement or termination. They do not establish synchronization or cancellation protocols between goroutines.
+
+- **`runtime.Gosched`:** Yields the processor so other goroutines can run, then resumes the current goroutine automatically. A yield does not establish ordering or replace channel or `sync` coordination.
+- **`runtime.Goexit`:** Terminates only the calling goroutine after running its deferred calls. It is not a panic, and it does not cancel other goroutines.
+- **`runtime.GOMAXPROCS`:** Sets the maximum number of CPUs that execute Go code simultaneously and returns the previous setting. It controls available Go-level parallelism, not the number of goroutines.
+- **[`runtime.LockOSThread`](../99%20Misc/Go%20Internals.md#OS-thread%20affinity) and `runtime.UnlockOSThread`:** Pin and unpin a goroutine to its operating-system thread. Use them only when a foreign or operating-system API requires per-thread state; matching unlocks restore scheduler flexibility.
+
 ## `recover` and `panic`
 
 ### `panic`
