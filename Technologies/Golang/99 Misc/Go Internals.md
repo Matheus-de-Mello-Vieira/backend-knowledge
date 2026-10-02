@@ -124,7 +124,7 @@ Preemption then proceeds as follows:
 
 1. **Request:** When a P's scheduling tick does not advance for a time slice, `sysmon` requests preemption of its running G. The current `forcePreemptNS` value is 10 ms, but it is a best-effort scheduling target, not a latency SLA.
 2. **Synchronous path:** The request marks the G, and a later stack check takes the preemption path.
-3. **Asynchronous path:** Go 1.14 added asynchronous preemption, so a tight loop need not wait for a [function-prologue](../../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Function%20Prologue%20and%20Epilogue) check. On Unix-like platforms, this may use a [delivered signal](../../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals) such as `SIGURG`; the runtime uses it as an internal interruption mechanism rather than for socket urgent-data handling by the Go program. The exact interruption mechanism is platform-specific and not a language contract.
+3. **Asynchronous path:** Go 1.14 added asynchronous preemption, so a tight loop need not wait for a [function-prologue](../../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Function%20Prologue%20and%20Epilogue) check. On Unix-like platforms, this may use a [delivered signal](../../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals) such as `SIGURG`; the runtime consumes it through its [signal machinery](#Signal%20handling) as an internal interruption mechanism rather than for socket urgent-data handling by the Go program. The exact interruption mechanism is platform-specific and not a language contract.
 4. **Fallback and pointer handling:** An asynchronous interruption succeeds only at an asynchronous safe point. The runtime preserves the interrupted context and may conservatively treat register or stack contents as possible pointers when precise compiler-map positions are unavailable. Otherwise, the pending synchronous request remains effective.
 
 ## Synchronization and wait records
@@ -195,7 +195,7 @@ The waiter count makes release and park compose correctly: once an acquirer has 
 
 ### Close and `select` queue resolution
 
-[Closing a channel](09%20Concurrency.md#Closing%20channels) takes its lock, rejects an already closed channel, and marks the channel closed. Buffered elements remain in `buf`, so later receives drain them before observing closure. The runtime then removes every waiting receiver and sender from the respective queues while still holding the channel lock.
+[Closing a channel](../01%20Essentials/09%20Concurrency.md#Closing%20channels) takes its lock, rejects an already closed channel, and marks the channel closed. Buffered elements remain in `buf`, so later receives drain them before observing closure. The runtime then removes every waiting receiver and sender from the respective queues while still holding the channel lock.
 
 - **Waiting receivers:** Their destinations are cleared to the element type's zero value, and they resume with an unsuccessful communication result.
 - **Waiting senders:** Their values are not inserted; they resume and the send path panics because the channel is closed.
@@ -494,76 +494,92 @@ cgo crosses Go and platform ABIs and stacks. A blocking C call blocks an M rathe
 
 ### Signal handling
 
-The kernel delivers [POSIX signals](../../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals). The runtime owns in-process handling machinery: it installs or cooperates with handlers, classifies a delivered signal, and consumes, translates, forwards, or mediates it. It may use signals for asynchronous preemption, CPU profiling, synchronous-fault conversion, process-control behavior, diagnostics, or platform-specific coordination.
+The kernel delivers [POSIX signals](../../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals). The runtime owns the in-process machinery that installs or cooperates with handlers, classifies a delivered signal, and chooses its low-level disposition.
 
-Each M has signal-related state, and `gsignal` supplies a runtime-controlled stack for signal handling. A handler must preserve interrupted register state and determine whether interruption occurred in Go, runtime, or foreign code; it cannot run arbitrary normal Go code. Synchronous faults such as invalid memory access can become Go panics when they correspond to recoverable Go behavior. Faults in runtime-critical or foreign code can instead be fatal or delegated.
+- **Runtime control:** The runtime consumes signals for asynchronous preemption, CPU profiling, diagnostics, and platform-specific coordination.
+- **Synchronous faults:** A fault such as an invalid memory access becomes a Go panic when it corresponds to recoverable Go behavior. A fault in runtime-critical or foreign code can instead be fatal or delegated.
+- **Application notification:** [`os/signal`](../02%20Built-in%20libraries/Signals.md) asks the runtime to mediate eligible asynchronous signals to normal Go control flow; it does not replace handlers that the runtime requires. Some signals remain special, synchronous, or uncatchable.
+- **Foreign-code coordination:** cgo handler installation, callbacks on foreign threads, and per-thread signal state must cooperate with the runtime.
 
-`os/signal.Notify` requests mediated notification; it does not replace handlers the runtime needs, and some signals remain special, synchronous, or uncatchable. With cgo, handler installation, callbacks on foreign threads, and per-thread signal state must cooperate: the alternate signal stack is where a handler runs, and an inherited signal mask controls which signals the thread blocks.
+Each M has signal-related state, and `gsignal` supplies a runtime-controlled stack while that M handles a delivered signal. The handler preserves interrupted register state and determines whether interruption occurred in Go, runtime, or foreign code; it cannot run arbitrary normal Go code. After the runtime has classified an eligible application signal, its mediated notification becomes observable through the channel or context registered with `os/signal`; application cleanup then runs in ordinary Go execution.
+
+With cgo, the alternate signal stack is where a handler runs, and an inherited signal mask controls which signals the thread blocks.
 
 ### Network polling and I/O
 
-#### Netpoll abstraction
+Go’s runtime network poller (`netpoll`) lets goroutines wait for network progress without dedicating an operating-system thread to every blocked socket operation. It abstracts over platform-specific mechanisms: readiness pollers such as [`epoll`](../../../Operating%20Systems/07%20Socket%20Management.md#epoll%20Readiness%20Cycle) on Linux, [kqueue](../../../Operating%20Systems/07%20Socket%20Management.md#kqueue%20Readiness%20Cycle) on BSD-derived systems, event ports, and AIX polling; Windows uses completion machinery.
 
-Netpoll is a runtime abstraction, not a synonym for [`epoll`](../../../Operating%20Systems/07%20Socket%20Management.md#epoll%20Readiness%20Cycle) or a dedicated thread. Its implementations use OS facilities such as epoll, [kqueue](../../../Operating%20Systems/07%20Socket%20Management.md#kqueue%20Readiness%20Cycle), event ports, AIX polling, and Windows mechanisms. Scheduler paths and `sysmon` participate in polling and injecting ready work.
+The operating system remains responsible for socket state and reporting readiness or completion. The runtime is responsible for associating that signal with a goroutine, parking that goroutine when progress is unavailable, and making it runnable when progress becomes possible. This builds on [non-blocking socket and readiness semantics](../../../Operating%20Systems/07%20Socket%20Management.md#Blocking%20and%20Non-Blocking%20Sockets) rather than replacing them.
 
-A `pollDesc` is runtime state associated with a pollable [file descriptor](../../../Operating%20Systems/07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects). It maintains independent read and write waiter state, plus state used to arbitrate readiness, deadlines, and closure; it is not the kernel descriptor itself. Descriptor closure, deadlines, timeout timers, and readiness race to resolve the corresponding waiter state.
+#### Poll descriptors and waiting state
 
-#### Unix readiness-based read path
+A runtime `pollDesc` associates a pollable [file descriptor](../../../Operating%20Systems/07%20Socket%20Management.md#Sockets%20as%20Kernel%20Objects) with poller state. It tracks read and write progress independently because a connected socket can be blocked waiting for input while remaining writable, or vice versa.
 
-On Unix readiness-based ports, a pollable `net.Conn.Read` follows this path:
+- **Read and write waiters:** The descriptor records state for one waiting read-side goroutine and one waiting write-side goroutine. Internal file-descriptor synchronization serializes conflicting operations before they reach this waiting state.
+- **Readiness token:** A readiness notification that arrives before a goroutine commits to sleeping is retained as ready state. The later wait observes that state and continues instead of sleeping.
+- **Deadlines:** Read and write deadlines are independent runtime timers. When a deadline expires, the runtime wakes the relevant waiter; the I/O path then reports a timeout rather than treating the wake-up as successful I/O.
+- **Close:** Closing marks the descriptor unavailable and wakes goroutines waiting in either direction. A subsequent operation observes closure rather than remaining parked.
+- **Stale notifications:** Poll events can remain queued after a descriptor closes. The runtime uses descriptor-lifetime or generation state so an event for an old descriptor cannot incorrectly wake work associated with a reused descriptor number.
 
-1. `net.Conn.Read` reaches `internal/poll`; the runtime prepares the read waiter state and attempts a nonblocking read syscall.
-2. A successful read returns directly. `EAGAIN` means that this Unix read would block; it is not a cross-platform completion result.
-3. On Linux, epoll interest is registered when the descriptor is opened. After `EAGAIN`, `pollDesc` installs and commits the read waiter unless readiness, timeout, or close has already won the race.
-4. The OS poller reports readiness, and the runtime transitions the read-waiter state and readies the G.
-5. The G retries the syscall because readiness is neither completion nor a durable promise that data remains available.
+These transitions resolve the race between “the goroutine is about to sleep” and “the kernel has already reported an event.” They do not make readiness a guarantee that a later system call will complete.
 
-Linux currently uses edge-triggered epoll and an internal wake-up descriptor, but those are platform-specific implementation details.
+#### Readiness-based flow on Unix
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant G as Handler G
-    participant Poll as internal/poll and pollDesc
-    participant S as Scheduler
-    participant OS as OS poller
-    participant D as Deadline or close
+On Unix readiness-based ports, `net.Conn` reaches `internal/poll`, which attempts the relevant system call in nonblocking mode. A read, write, or accept operation then follows this pattern:
 
-    G->>Poll: net.Conn.Read
-    Poll->>Poll: Attempt nonblocking read syscall
-    alt Read succeeds
-        Poll-->>G: Return bytes
-    else EAGAIN
-        Poll->>Poll: Install and commit read waiter
-        Poll->>S: Park G
-        S->>S: Run other work while P is available
-        alt Readiness wins
-            OS-->>Poll: Report readiness
-            Poll->>S: Ready G
-            S->>G: Run on an available M/P
-            G->>Poll: Retry nonblocking read syscall
-        else Deadline or close wins
-            D-->>Poll: Resolve read waiter
-            Poll->>S: Ready G
-            S->>G: Run G with timeout or close result
-        end
-    end
-```
+1. The goroutine attempts the nonblocking system call.
+2. If the call succeeds, returns an error, or makes partial progress, the operation handles that result directly.
+3. If the kernel returns `EAGAIN` or `EWOULDBLOCK`, the operation cannot currently proceed.
+4. The runtime records the goroutine as waiting for read or write readiness and parks it.
+5. A poller receives a matching event, marks the direction ready, and puts the goroutine on the scheduler’s runnable work.
+6. The goroutine runs again and retries the system call.
 
-#### Windows completion-based boundary
+`EAGAIN` is therefore a normal control-flow result for runtime-managed Unix network I/O, not proof that the connection has failed or a cross-platform completion result. Readiness means that an attempt may make progress; another goroutine, a close, a deadline, or changed socket state can invalidate that expectation before the retry. The retry is required.
 
-Windows networking uses overlapped I/O and completion machinery rather than the Unix `EAGAIN` readiness loop. The scheduler-level consequence remains the same: a G can park while its P executes other Go work and become runnable when the I/O operation's completion machinery resolves it.
+This is the same distinction between readiness and completed work described in [readiness-based I/O](../../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO).
 
-#### Regular files, DNS, and TLS boundaries
+#### Linux `epoll`
 
-- **Regular files:** A readiness facility does not make regular-file I/O asynchronously complete, so blocking filesystem operations can block an M.
-- **DNS:** DNS can use pure-Go or cgo/system-resolver paths with different blocking behavior.
-- **TLS:** TLS is primarily userspace computation over pollable network I/O.
+On Linux, the runtime keeps an `epoll` instance and registers each managed network descriptor with read, write, hangup, and error interests. The registration is edge-triggered, so the runtime must continue attempting the relevant operation until it reaches `EAGAIN`; otherwise, it could leave already-available work unread without receiving another edge.
 
-#### HTTP connections and listener topology
+An `epoll` event can make either or both directions ready:
 
-- **Connection goroutines:** When a [`net/http`](../02%20Built-in%20libraries/HTTP%20Server.md) connection goroutine waits on pollable I/O, netpoll parks it and later makes it runnable for the scheduler. Its [shared listening socket topology](../../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Multiple%20Workers%2C%20Single%20Shared%20Listening%20Socket) and HTTP-specific connection and request handling are application and protocol concerns.
-- **Listener topology:** Multiple goroutines may call `Accept` on one `net.Listener`. `SO_REUSEPORT` instead distributes incoming connections among separately bound sockets.
+- Read-related events wake a goroutine blocked in `Accept` or a read operation.
+- Write-related events wake a goroutine blocked because a send buffer could not accept more data.
+- Error, hangup, and read-half-close signals wake relevant waiters so their retried operations can observe the actual socket result.
+
+The runtime also registers an internal `eventfd` with `epoll`. When the scheduler needs to interrupt a blocking poll—for example, because new runnable work changes whether a polling thread should remain asleep—it writes to that descriptor. This wake-up mechanism is scheduler coordination, not network traffic.
+
+#### Polling and the Go scheduler
+
+An **M** is an operating-system thread, while a **P** supplies the scheduler resources needed for an M to execute Go code. `netpoll` participates in scheduling rather than acting as an application-owned event loop.
+
+- **Non-blocking poll:** An M already executing scheduler work can poll with a zero timeout while it has a P. If events are immediately available, their goroutines are added to runnable work.
+- **Blocking poll:** A scheduler M can become the poller that waits for an event or timer. Before entering that blocking kernel wait, it releases its P so another M can use it to execute runnable goroutines.
+- **Returned work:** When polling returns ready goroutines, the scheduler arranges for them to run through normal runnable queues and M/P assignment. Polling does not execute application handlers itself.
+- **`sysmon`:** The runtime’s system-monitor thread also performs non-blocking polling when necessary. This prevents network-ready goroutines from being stranded merely because scheduler activity is otherwise sparse.
+
+A goroutine blocked on network I/O is parked; its M is free to run another goroutine while retaining its P. This differs from an M that enters an ordinary blocking system call: the runtime must detach its P so other M instances can continue executing Go code.
+
+#### Windows completion boundary
+
+Windows uses I/O completion ports (IOCP) rather than Unix-style readiness notifications. The runtime associates a socket handle with a completion port and receives completion records for submitted overlapped operations.
+
+The distinction matters:
+
+- **Unix readiness:** The poller says a descriptor may now make progress; the I/O path retries the operation.
+- **Windows completion:** The completion record represents the result of an operation already submitted to the kernel.
+
+Go preserves the higher-level goroutine model across both systems: a goroutine waits without requiring an OS thread per pending network operation, and the runtime schedules it after the platform mechanism reports progress. The platform-specific operation lifecycle remains an implementation concern of the runtime and `internal/poll`. See [completion-based I/O](../../../Operating%20Systems/07%20Socket%20Management.md#Completion-Based%20I%2FO) for the kernel-side model.
+
+#### Listeners and connection I/O
+
+A TCP listener waits for read-side readiness because a completed connection is available for `accept()`. The kernel returns a new connected socket for each accepted connection; that socket receives its own runtime polling state for subsequent reads and writes.
+
+- **`Accept`:** A listener first attempts a nonblocking accept. On `EAGAIN`, its goroutine waits for listener read readiness and retries when awakened. The listener’s readiness refers to its [pending connection queues](../../../Operating%20Systems/07%20Socket%20Management.md#Pending%20and%20Established%20Connection%20Queues), not to request data from an already accepted client.
+- **Connection reads and writes:** Each connected TCP socket independently enters the read/write wait-and-retry cycle. A successful read exposes bytes from TCP’s ordered stream, whose framing and buffering consequences are described in [reading and sending data](../../../Networking/03%20Connections/02%20Reading%20and%20Sending%20Data.md).
+- **Shared listener:** Goroutines or related processes can share one listening socket. They contend for connections from the same kernel listener and accept queue; the runtime’s poller coordinates waits inside a Go process but does not define an application-level distribution policy.
+- **`SO_REUSEPORT`:** A reuse-port design creates several independent listeners bound compatibly to one address and port. Each listener has its own descriptor and poll state, while the operating system distributes new connections across the listener group according to platform policy. This differs from several workers sharing one listener, as described in [shared listeners and `SO_REUSEPORT`](../../../Operating%20Systems/07%20Socket%20Management.md#Sharing%20and%20Distributing%20Listening%20Sockets).
 
 ## Diagnostics and failure detection
 

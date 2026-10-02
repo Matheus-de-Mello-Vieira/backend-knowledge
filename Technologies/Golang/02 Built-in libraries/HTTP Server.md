@@ -26,8 +26,8 @@ mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 - `HandleFunc` connects the path `/` to the given handler function.
 - Every handler function receives:
-  - `w` — used to **write the response** back to the client.
-  - `r` — the **incoming request**, containing details like headers and URL.
+    - `w` — used to **write the response** back to the client.
+    - `r` — the **incoming request**, containing details like headers and URL.
 - The handler sets the response header (to say it’s plain text), sends a 200 OK status, and writes `"hello from net/http"` as the response body.
 
 ## Returning JSON data
@@ -117,7 +117,7 @@ mux.HandleFunc("/api/submit", func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
-#### How it works:
+#### How it works
 
 - The `r.Body` stream contains the JSON sent by the client.
 - `json.NewDecoder(r.Body).Decode(&data)` reads and parses it into a Go struct.
@@ -382,12 +382,9 @@ ctx := r.Context()
 Then, you can:
 
 - Listen for cancellation: `<-ctx.Done()`
-
-  - The client disconnects.
-
-  - The server times out the request.
-
-  - The context is explicitly canceled.
+    - The client disconnects.
+    - The server times out the request.
+    - The context is explicitly canceled.
 
     ```go
     ctx, cancel := context.WithCancel(r.Context())
@@ -395,30 +392,30 @@ Then, you can:
     ```
 
 - Check for errors: `ctx.Err()`
-
 - Derive new contexts with timeout or values.
 
 ### Example
 
 ```go
 func handler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	log.Println("Request started")
-	defer log.Println("Request finished")
+ ctx := r.Context()
+ log.Println("Request started")
+ defer log.Println("Request finished")
 
-	select {
-	case <-time.After(5 * time.Second):
-		// Simulate a long-running operation
-		log.Println("Request processed successfully")
-		fmt.Fprintln(w, "Request processed successfully")
+ select {
+ case <-time.After(5 * time.Second):
+  // Simulate a long-running operation
+  log.Println("Request processed successfully")
+  fmt.Fprintln(w, "Request processed successfully")
 
-	case <-ctx.Done():
-		// The client canceled the request
-		log.Println("Request canceled by the client:", ctx.Err())
-		http.Error(w, "Request canceled by the client", http.StatusRequestTimeout)
-	}
+ case <-ctx.Done():
+  // The client canceled the request
+  log.Println("Request canceled by the client:", ctx.Err())
+  http.Error(w, "Request canceled by the client", http.StatusRequestTimeout)
+ }
 }
 ```
+
 ## Starting the web server
 
 Once you’ve defined your routes and middleware, you can create an `http.Server`:
@@ -452,35 +449,40 @@ This starts the server in a **background goroutine**, allowing the main program 
 
 ## Graceful shutdown
 
-When the user stops the server (for example, pressing `Ctrl+C`), it’s good practice to let existing requests finish before exiting.
+When a [signal-triggered cancellation](Signals.md#Signal-triggered%20cancellation) requests shutdown, the server should stop accepting new connections while existing requests receive time to finish. On Unix-like deployments, `SIGINT` from `Ctrl-C` and `SIGTERM` from a process manager are typical shutdown requests.
 
-That’s what this code does:
+Register the signals before serving requests, then wait for the derived context to be canceled:
 
 ```go
-stop := make(chan os.Signal, 1)
-signal.Notify(stop, os.Interrupt)
-<-stop
+signalCtx, stop := signal.NotifyContext(
+    context.Background(),
+    os.Interrupt,
+    syscall.SIGTERM,
+)
+defer stop()
+
+<-signalCtx.Done()
+stop() // restore default behavior; a second Ctrl-C exits immediately
 ```
 
-It waits until a stop signal (SIGINT) is received, then:
+`Shutdown` then closes listeners, waits for active requests to become idle, and returns when that work completes or its context expires:
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
+
 log.Println("shutting down...")
-if err := srv.Shutdown(ctx); err != nil {
+if err := srv.Shutdown(shutdownCtx); err != nil {
     log.Fatalf("server shutdown: %v", err)
 }
 log.Println("bye")
 ```
 
-- The shutdown is given 5 seconds to finish any active requests.
-- After that, the program exits cleanly.
+The timeout bounds how long the server waits for active requests; a service must decide how to handle a timeout or other shutdown error.
 
 ## Running the server
 
 1. Open a terminal in your project folder.
-
 2. Initialize a Go module:
 
    ```bash
@@ -494,7 +496,6 @@ log.Println("bye")
    ```
 
 4. Visit:
-
    - [http://localhost:8080](http://localhost:8080/) → plain text
-   - http://localhost:8080/api/hello → JSON response
-   - http://localhost:8080/static/ → static files
+   - <http://localhost:8080/api/hello> → JSON response
+   - <http://localhost:8080/static/> → static files
