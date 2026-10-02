@@ -92,11 +92,9 @@ Do not mechanically apply one form to an entire section. A section may move from
 
 ## Code demonstration gate
 
-When code primarily serves to expose a technical mechanism, decide whether the mechanism remains clear when the code is presented as one block.
+When writing or materially revising a code demo, load `references/mechanism-code-walkthrough.md` by default when the demo teaches an interaction, lifecycle, state transition, or system-managed behavior. This includes demonstrations with multiple actors, setup or teardown, connection or request lifecycles, protocol exchanges, or API calls that change kernel, runtime, database, filesystem, or network state.
 
-Load `references/mechanism-code-walkthrough.md` when understanding requires tracking several meaningful state transitions, external or system-managed state, or API operations whose conceptual meaning would otherwise need to be reconstructed after the code block.
-
-Do not trigger the pattern from code length. Keep a complete block when the code itself is the artifact being studied, a final assembled reference, or already exposes its important structure clearly enough that splitting would make the implementation harder to inspect.
+Skip the reference only when the code is primarily a final copyable artifact or a cohesive implementation whose own structure already makes the mechanism clear. Do not use code length as the decision criterion.
 
 ## Rewrite discipline
 

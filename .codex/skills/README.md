@@ -69,7 +69,7 @@ Use these gates:
 4. Load boundary analysis only when the edit can cross subjects, abstraction levels, or duplicate existing explanations.
 5. Load content movement only when durable content must actually move.
 6. When durable prose will be substantively created or changed, load `$note-writer`; the calling workflow supplies accepted semantic decisions but does not perform the writing itself.
-7. When `$note-writer` encounters code whose primary purpose is to expose a multi-stage technical mechanism and a monolithic presentation would require substantial retrospective explanation, load `references/mechanism-code-walkthrough.md`. Do not load it based on code length alone.
+7. When `$note-writer` writes or materially revises a code demo that teaches an interaction, lifecycle, state transition, or system-managed behavior, load `references/mechanism-code-walkthrough.md` by default. Skip it only for a final copyable artifact or a cohesive implementation that already makes the mechanism clear; do not use code length as the criterion.
 8. Load semantic link planning only when useful cross-links are part of the task or naturally emerge from a substantial edit. `$note-link-planner` alone selects semantic destinations; writers only apply approved link plans.
 9. Load mechanical link normalization only when links or anchors changed.
 10. After `$note-writer` mutates one or more Markdown files, `$markdownlint-fix` is a required downstream stage on every Markdown file changed by the writer before it returns control.

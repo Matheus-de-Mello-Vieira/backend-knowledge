@@ -179,6 +179,94 @@ The kernel needs somewhere to keep connection state while handshakes and applica
 - **Blocking Listener:** If no completed connection is available, `accept()` waits. The kernel marks the calling thread as sleeping and can wake it when a connection becomes ready.
 - **Non-Blocking Listener:** `accept()` returns immediately when there is nothing to accept, typically with `EAGAIN` or `EWOULDBLOCK` on Unix-like systems.
 
+#### Example: Pathname-Based Unix-Domain Stream Server and Client
+
+This C-like pseudocode applies a [pathname-based `AF_UNIX` address](#Unix-Domain%20Pathname%20Addresses) to two independently started processes. The pathname names the server's listener; it does not store application data. The snippets omit error branches so that the kernel-visible state transitions remain explicit.
+
+The server first creates a socket, removes a stale socket entry that it owns, and binds the pathname. `bind()` creates the filesystem entry; `listen()` changes the bound socket into a passive listener that can receive connection attempts.
+
+```c
+// server.c
+const char *SOCKET_PATH = "/tmp/example.sock";
+
+int listener = socket(AF_UNIX, SOCK_STREAM, 0);
+struct sockaddr_un address = unix_path_address(SOCKET_PATH);
+
+unlink(SOCKET_PATH);             // Only if this service owns any stale entry.
+bind(listener, &address, sizeof(address));
+listen(listener, BACKLOG);
+```
+
+The client creates an independent socket and addresses its `connect()` call to that same pathname.
+
+```c
+// client.c
+int client = socket(AF_UNIX, SOCK_STREAM, 0);
+struct sockaddr_un server = unix_path_address(SOCKET_PATH);
+
+connect(client, &server, sizeof(server));
+```
+
+After the connection attempt completes, the kernel makes the connection available to the listener. `accept()` leaves `listener` usable for later clients and returns `connection`, a distinct descriptor for this client's byte stream.
+
+```c
+// server.c
+int connection = accept(listener, NULL, NULL);
+```
+
+The two connected descriptors now carry the stream. In this one-request exchange, the client writes first:
+
+```c
+// client.c
+send(client, "ping", 4, 0);
+```
+
+The server receives those bytes and responds:
+
+```c
+// server.c
+char request[REQUEST_CAPACITY];
+ssize_t request_size = recv(connection, request, sizeof(request), 0);
+
+if (request_size > 0) {
+    printf("server received: %.*s\n", (int) request_size, request);
+    send(connection, "pong", 4, 0);
+}
+```
+
+The client then receives the response:
+
+```c
+// client.c
+char reply[REPLY_CAPACITY];
+ssize_t reply_size = recv(client, reply, sizeof(reply), 0);
+
+if (reply_size > 0) {
+    printf("client received: %.*s\n", (int) reply_size, reply);
+}
+```
+
+Closing a descriptor releases that process's reference to its socket; it does not remove the pathname. The client releases its connected descriptor:
+
+```c
+// client.c
+close(client);
+```
+
+Once the service has stopped accepting work, the server releases its descriptors and removes the filesystem entry that supplied the rendezvous address:
+
+```c
+// server.c
+close(connection);
+close(listener);
+unlink(SOCKET_PATH);
+```
+
+- **Listener lifetime:** The pathname remains associated with the listener while the server is available. Each `accept()` creates another connected descriptor without consuming the pathname or transforming the listener.
+- **Connection lifetime:** After `accept()`, application data flows between `client` and `connection`, not through the pathname. Closing one connected descriptor affects that connection, while the listener can continue accepting others.
+- **Stream semantics:** One `send()` is not necessarily one `recv()`. A production protocol frames messages and loops to handle partial reads and writes.
+- **Operational safeguards:** Production code checks every return value, handles interrupted calls, defines concurrency and shutdown behavior, and removes a pathname only when the service knows it owns that address.
+
 ### Data Transfer
 
 Sockets participate in the common descriptor interface, but socket-specific calls expose networking-specific behavior.
@@ -829,7 +917,7 @@ One event-loop thread can coordinate many connections, but the Reactor pattern d
 >
 > The main difference is the **dispatch target**. Redis dispatches a ready descriptor to an application callback. Go instead associates readiness with a goroutine that was parked because its network operation could not progress; when the descriptor becomes ready, the runtime marks that goroutine runnable and lets the scheduler resume it on an available OS thread.
 >
-> This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Network%20Polling%20and%20I%2FO) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
+> This [runtime abstraction](../Technologies/Golang/99%20Misc/Go%20Internals.md#Network%20polling%20and%20I%2FO) lets Go expose apparently blocking network operations while internally using the same readiness-driven coordination that an explicit event loop such as Redis's `ae` performs.
 >
 ### Completion-Based I/O
 
