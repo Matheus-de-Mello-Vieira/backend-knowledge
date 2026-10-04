@@ -697,7 +697,8 @@ mount --bind /srv/database /mnt/database
 - **Device Interface**: `/dev` exposes **device nodes**, which give filesystem names to devices and kernel-provided device abstractions.
 - **Examples**:
     - `/dev/nvme0n1`: may represent an NVMe block device.
-    - `/dev/tty`: represents a terminal interface.
+    - [`/dev/tty`](05%20Process%20Management.md#Controlling%20terminals%20and%20foreground%20jobs): represents a terminal interface.
+    - [Solaris `/dev/poll`](07%20Socket%20Management.md#Solaris%20%60/dev/poll%60): exposes a readiness-polling interface.
     - `/dev/null`: discards data written to it.
     - `/dev/zero`: provides zero-filled data when read.
     - `/dev/random` and `/dev/urandom`: expose kernel random-number facilities.

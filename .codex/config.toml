@@ -23,3 +23,6 @@ statusMessage = "Validating Python environment"
 type = "command"
 command = "uv run .codex/hooks/obsidian_active_file.py"
 timeout = 5
+
+[shell_environment_policy.set]
+QMD_LLAMA_GPU="metal"

@@ -120,6 +120,8 @@ A process group answers *which processes make up one job?* A session answers *wh
 
 A session may have one **controlling terminal**, and a terminal is the controlling terminal of at most one session. This is a session relationship, not a file-descriptor property: members can independently close or redirect descriptors while remaining in the same terminal-bearing session. Conversely, FD 0 referring to a TTY does not by itself establish a controlling-terminal relationship.
 
+`/dev/tty` is a special device path that opens the calling process's controlling terminal. Unlike a concrete terminal device path such as `/dev/pts/3`, it is process-relative: redirecting standard input, output, or error does not change which terminal `/dev/tty` denotes. A process without a controlling terminal cannot open it.
+
 A session leader that has no controlling terminal can establish one under the platform's terminal rules. On Linux and many Unix-like systems, opening an eligible terminal establishes it unless `O_NOCTTY` suppresses that effect. `setsid()` therefore detaches a process from its former terminal domain but does not close or redirect inherited terminal descriptors.
 
 The terminal records one **foreground process group ID**. At most one group in the terminal's session is foreground at a time; when one is designated, every other group in that session is background relative to that terminal.
