@@ -412,29 +412,70 @@ These restrictions make syscall argument liveness, finalizers and cleanups, fore
 
 Representation affects copying, aliasing, scanning, and escape decisions. It does not alter language-level behavior promised by the specification.
 
+### Arrays
+
+An [array](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Arrays) stores its elements within the array value rather than in storage reached through a slice descriptor. Its fixed length and element type determine its storage size and layout. Copying the array copies its element representations; pointers contained in those elements still refer to the same objects.
+
+Array storage follows the same placement and scanning rules as other typed values:
+
+- **Placement:** A local array remains in a stack frame when compiler analysis permits; escaping storage requires an appropriate longer-lived allocation. Array syntax alone does not decide stack versus heap placement.
+- **Pointer metadata:** The element type determines where pointers occur in the array. The collector scans those pointers in live storage; pointer-free heap arrays use noscan storage.
+
 ### Strings
 
-A string is conceptually a descriptor containing a pointer to immutable bytes and a length. Assignment copies that descriptor, not the bytes, and slicing normally creates another descriptor into the same backing storage. A small substring can therefore retain a much larger allocation. String bytes contain no heap pointers, so their storage is noscan memory.
+A [string value](../01%20Essentials/02%20Essentials.md#Strings) is represented by a **descriptor** containing a pointer to its backing bytes and a length in bytes. The immutable data lives separately from the descriptor; the layout does not require UTF-8 validation or code point metadata.
 
-Converting between `string` and `[]byte` normally needs distinct immutable or mutable storage, though the compiler can eliminate copies in selected contexts. Unsynchronized concurrent assignment to or access of a string is a [data race](../../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions). Because the descriptor has multiple words, an ordinary concurrent assignment can also be observed inconsistently.
+That separation determines copying and storage lifetime:
+
+- **Assignment:** Copies the descriptor, not the backing bytes. The resulting values refer to the same immutable storage.
+- **Slicing:** Normally creates another descriptor pointing into the existing storage. A small substring can therefore keep a much larger allocation reachable.
+- **Garbage collection:** Heap storage for the bytes is **noscan** memory, because the bytes contain no heap pointers. The descriptor itself still contains a pointer to that storage.
+
+Conversions between `string` and `[]byte` normally use distinct backing storage to preserve string immutability while allowing slice mutation. The compiler eliminates copies in selected contexts where aliasing cannot change observable behavior. Semantic independence does not require a physical copy in every generated-code path.
+
+> [!warning] Concurrent descriptor access
+> Immutable bytes do not make assignment to a shared string variable synchronized. Reading or writing that variable concurrently with an unsynchronized assignment is a [data race](../../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions). The descriptor spans multiple words, so a reader can observe an inconsistent pointer-and-length pair rather than one complete string value.
 
 ### Slices
 
-A [slice](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Slices) descriptor has a backing-array pointer, length, and capacity. Passing it copies the descriptor rather than its elements, so two slices can alias one array. A zero-length slice can still retain a large backing array.
+A [slice](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Slices) separates the value copied by assignment from the array holding its elements. The descriptor has three fields:
 
-`append` follows this sequence:
+- **Pointer:** The start of the view in the backing array.
+- **Length:** The number of elements in the view.
+- **Capacity:** The number of elements available from that starting position before growth needs another array.
 
-1. If capacity remains, it extends the view and writes into the existing array.
-2. Otherwise, it chooses a new capacity with an implementation growth heuristic.
-3. It allocates an appropriately rounded backing array, copies the live prefix, and returns a new descriptor.
+Assignment, argument passing, and reslicing operate on this descriptor rather than copying the backing elements. That separation permits aliases and also affects object lifetime: a zero-length slice that still refers to a large backing array can keep that allocation reachable.
 
-An append that reallocates breaks that particular backing-array relationship. Pointer-containing arrays require write barriers and GC scanning, while pointer-free arrays can use noscan spans. Capacity growth is not a guaranteed doubling rule.
+When `append` needs new backing storage, the implementation chooses capacity with a growth heuristic, rounds the allocation for the element size and allocator requirements, and copies the existing elements. The returned descriptor identifies the new array; existing descriptors are not rewritten. If capacity already suffices, the existing array is reused. The language does not guarantee a doubling rule or an exact capacity sequence.
+
+Heap backing arrays have different GC requirements according to their element type:
+
+- **Pointer-containing elements:** Their pointers require scanning, and copying or updating them requires write barriers when the collector's barrier is active.
+- **Pointer-free elements:** Their storage uses noscan spans; the collector does not search the element bytes for pointers. The descriptor still contains a pointer to the array.
 
 ### Interfaces, boxing, and type metadata
 
-An empty interface records a dynamic type and data. A non-empty interface associates the dynamic type with method-dispatch metadata, commonly an `itab`. Depending on representation, an interface assignment may store a value indirectly. Boxing is the representation or allocation of a concrete value so it can be carried through an interface; converting a concrete value to an interface does not inherently require allocation because escape analysis and boxing requirements decide.
+An [interface value](../01%20Essentials/06%20Interfaces%20and%20Generic%20Code.md#Interface) carries a concrete dynamic type and its payload. In the standard Go runtime, two representations provide that information:
 
-Interface equality first compares dynamic types and then uses type-specific equality; comparison panics when the dynamic value is not comparable. Compiler- and runtime-generated type metadata and caches support method dispatch and type assertions. These descriptors also connect ABI metadata, pointer maps, reflection, and dynamic dispatch.
+- **Empty interface (`eface`):** A type-descriptor pointer and a data word. `any` and `interface{}` use the same representation.
+- **Non-empty interface (`iface`):** An `itab` pointer and a data word. The `itab` describes a particular interface/concrete-type pair and provides method-dispatch entries; its concrete-type descriptor identifies the dynamic type. Changing the static interface type does not change the concrete dynamic type. [Runtime representation](https://raw.githubusercontent.com/golang/go/go1.26.6/src/runtime/runtime2.go)
+
+The data word's interpretation depends on the concrete type:
+
+- **Direct storage:** Types designated for direct interface storage carry their pointer-like payload directly. Size alone does not make an arbitrary scalar eligible.
+- **Indirect storage:** The data word points to storage containing a copy of the concrete value.
+
+**Boxing** packages the value for this representation; it is not synonymous with heap allocation. Indirect storage can be stack-resident, reused, or eliminated when optimization and [object lifetime](#Escape%20analysis%20and%20object%20placement) permit it; escaping storage requires a lifetime beyond the current stack frame. [Type representation](https://go.dev/src/internal/abi/type.go), [interface conversion machinery](https://go.dev/src/runtime/iface.go)
+
+The metadata participates in several operations:
+
+- **Method dispatch:** The interface's dispatch entries select the concrete method implementation, unless compiler optimization replaces the interface call with a direct call.
+- **Type assertions:** A concrete target tests dynamic type identity; an interface target checks the concrete type's method relationship to that target. Conversion or assertion to a non-empty interface obtains the appropriate pair-specific dispatch metadata. Runtime lookup and, on supported paths and architectures, caches avoid repeating that work.
+- **Equality:** A dynamic-type check precedes type-specific equality. Different types compare unequal without comparing payloads. A shared non-comparable dynamic type causes a panic; equality for a comparable aggregate can also panic when it reaches a non-comparable value inside an interface field or element.
+
+A nil interface has no type/dispatch metadata and no payload. An interface containing a typed nil pointer still has metadata, so it is non-nil even though its pointer payload is nil. Testing against nil does not invoke payload equality.
+
+Compiler- and runtime-generated descriptors connect dynamic dispatch with reflection, type-specific equality, and GC pointer-layout information. The compiler's ABI contracts determine how these values and metadata are passed; the two-word representation is an implementation detail, not a language-level layout guarantee.
 
 ### Reflection and runtime type metadata
 
@@ -453,34 +494,38 @@ Dynamic inspection and calls can inhibit compiler optimization, interface conver
 
 ### Maps
 
-The language-level behavior of [maps](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Maps) does not depend on their layout. The following Swiss-table design is an upstream `gc` Go 1.26.6 implementation detail, replacing the older bucket-and-overflow-bucket representation, and is documented by the pinned [`internal/runtime/maps/map.go`](https://github.com/golang/go/blob/go1.26.6/src/internal/runtime/maps/map.go).
+A [map value](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Maps) refers to runtime-managed lookup state; copying it does not duplicate that state. Its language behavior does not depend on the storage layout below. The upstream `gc` Go 1.26.6 implementation uses Swiss tables rather than the older bucket-and-overflow-bucket design, as documented by the pinned [`internal/runtime/maps/map.go`](https://github.com/golang/go/blob/go1.26.6/src/internal/runtime/maps/map.go).
 
 #### Swiss-table groups and lookup
 
-A group has eight key/value slots and an eight-byte control word. A hash divides into H1 and H2: H1 chooses a starting group and probe sequence, while H2 occupies control bytes that filter a group with word-level operations before full key comparison. Quadratic probing searches later groups with increasing offsets.
+A **group** contains eight key/value slots and an eight-byte control word. Lookup uses hash fragments to narrow the search before comparing full keys:
+
+1. **H1** selects the starting group and probe sequence.
+2. **H2** is stored in control bytes. Word-level comparisons filter the group's slots for candidate matches.
+3. Full key comparisons resolve candidates; quadratic probing searches later groups with increasing offsets when lookup must continue.
+
+The table hierarchy changes with map size:
+
+- **Small maps:** Fit in one group.
+- **Larger maps:** Use multiple tables selected through a directory resembling extendible hashing. Hash-prefix partitions index the tables.
 
 #### Deletion and growth
 
-Deleted entries can remain tombstones because turning them into empty slots could incorrectly terminate a later probe.
+A deleted slot can remain a **tombstone**, a marker that preserves the probe chain. Marking it empty instead could incorrectly terminate a lookup before a later matching key is reached.
 
-- **Small maps:** A small map fits in one group.
-- **Larger maps:** Multiple tables are selected through a directory resembling extendible hashing, in which hash-prefix partitions index tables.
-- **Growth:** Can replace a table or split it in two, bounding the size of an individual growth operation.
+Growth replaces a table or splits it into two tables, bounding the size of an individual table-growth operation. The directory routes lookups to the resulting tables. The size hint supplied to `make` informs initial sizing; it is not a language guarantee about allocation-free insertions.
 
 #### Iteration semantics
 
-Iteration order is deliberately unspecified and randomized.
+The implementation randomizes iteration order. Map [iteration rules](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Map%20iteration) must still hold when growth replaces the tables beneath an active iterator.
 
-- **Unseen deletion:** Deleting an unseen entry prevents its return.
-- **Insertion:** A new entry may or may not be observed.
-- **Modification:** A returned modified entry exposes its latest value.
-- **Growth:** The iterator avoids duplicate entries while consulting replacement tables for current values.
+An iterator retains the original table to select keys without returning entries twice. It consults replacement tables for current values and deletion status, so table replacement does not expose stale values or already-deleted entries. Entries added only to replacement tables are skipped by that traversal, which is permitted by the language's insertion rule.
 
 #### Stack placement and concurrent access
 
-A map and its backing storage can remain stack-resident when escape analysis proves that safe; stack copying adjusts the contained safe stack pointers. If a map may outlive a frame, escape analysis moves its storage or required referents to the heap.
+A map's runtime state or backing storage can remain stack-resident when compiler analysis proves that placement safe; copying a stack adjusts the safe stack pointers it contains. When the map or its referents outlive a frame, the required storage escapes to the heap.
 
-Unsynchronized concurrent map writes are invalid; runtime detection of some such operations is diagnostic behavior, not synchronization.
+Runtime checks detect some unsynchronized concurrent map accesses and terminate execution. This is diagnostic behavior, not synchronization: the absence of a detected failure does not make concurrent writes or reads racing with writes valid.
 
 ## Operating-system and foreign-code integration
 
