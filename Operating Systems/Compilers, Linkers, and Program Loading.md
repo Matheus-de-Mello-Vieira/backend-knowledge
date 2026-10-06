@@ -27,7 +27,7 @@ An ahead-of-time native program can have a relatively small runtime, such as sta
 
 The word **runtime** is also used more broadly. ["*At runtime*"](#Runtime%20Compilation) means during execution rather than during compilation; ["*runtime binding*"](#Dynamic%20Linking) refers to work that a dynamic linker performs after loading or while the process executes. Neither phrase necessarily denotes a language runtime environment.
 
-Concrete implementations expose different parts of this machinery: the [Go runtime](../Technologies/Golang/99%20Misc/Go%20Internals.md#Runtime%20Execution%20Model) manages goroutines and language-specific memory behavior; [Node.js](../Technologies/NodeJS/01%20Basics/02%20Terms%20and%20concepts.md#Node.JS) provides a JavaScript execution environment around V8 and platform APIs; and a [Python implementation](../Technologies/Python/Python%20Internals.md#The%20Execution%20Model:%20Interpreted%20at%20Runtime) loads and executes Python representations using an implementation-dependent strategy.
+Concrete implementations expose different parts of this machinery: the [Go runtime](../Technologies/Golang/99%20Misc/Go%20Internals.md#Runtime%20Execution%20Model) manages goroutines and language-specific memory behavior; [Node.js](../Technologies/NodeJS/01%20Basics/02%20Terms%20and%20concepts.md#Node.JS) provides a JavaScript execution environment around V8 and platform APIs; and a [Python implementation](../Technologies/Python/Python%20Internals.md#Source%20to%20code%20object) loads and executes Python representations using an implementation-dependent strategy.
 
 ## Compilation and Assembly
 

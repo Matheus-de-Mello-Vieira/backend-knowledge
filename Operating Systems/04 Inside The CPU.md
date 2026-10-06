@@ -232,7 +232,7 @@ graph LR
     - Instead of fighting over a single central memory bus, the database effectively operates as multiple independent, high-speed computers communicating inside a single chassis.
 
 > [!example] Python’s `None` and the Cache Invalidation Storm
-> An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. Python 3.12 fixed it with [immortal objects](../Technologies/Python/Python%20Internals.md#The%20Fix:%20Immortal%20Objects).
+> An interesting case related to it is the massive performance bottleneck caused by refcount churn on Python singletons (`None`, `True`, `False`), which created cache-line contention and CoW memory bloat. Python 3.12 fixed it with [immortal objects](../Technologies/Python/Python%20Internals.md#Interning%20and%20immortality).
 
 ## Registers
 
