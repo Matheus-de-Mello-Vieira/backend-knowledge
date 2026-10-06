@@ -82,6 +82,28 @@ fmt.Println(s == nil) // false: dynamic type is *Dog
 
 A non-nil interface therefore does not guarantee a usable underlying object. A call with a nil pointer depends on the concrete method: a pointer-receiver method can explicitly handle nil, while a method that dereferences it panics. In this example, invoking the value-receiver `Dog.Speak` through the nil `*Dog` panics because it needs a `Dog` value.
 
+When absence should be represented by a nil interface, check the concrete pointer before converting it to the interface and return an explicit `nil` for absence:
+
+```go
+func asSpeaker(d *Dog) Speaker {
+    if d == nil {
+        return nil // no dynamic type or value
+    }
+    return d // dynamic type *Dog with a non-nil pointer
+}
+
+// Inside a function:
+s := asSpeaker(nil)
+if s != nil {
+    fmt.Println(s.Speak())
+}
+```
+
+Returning `d` without the check would retain `*Dog` as the dynamic type even when the pointer is nil. With this function's return convention, `s != nil` also guarantees that the underlying `*Dog` is non-nil; that guarantee comes from the function, not from interface semantics.
+
+> [!tip] Error returns
+> The same rule applies to `error`, which is an interface: return an explicit `nil` on success, not a nil pointer of a concrete error type. Check a concrete error pointer before returning it as `error` if nil represents success.
+
 ### Type assertion
 
 A type assertion `value.(T)` checks the dynamic value of an interface:
@@ -89,7 +111,7 @@ A type assertion `value.(T)` checks the dynamic value of an interface:
 - **Concrete target:** The dynamic type must be exactly `T`; an assertion does not perform a numeric conversion or match merely by underlying type.
 - **Interface target:** The dynamic type must implement `T`. Success produces a value of the target interface type while retaining the same concrete dynamic type and value.
 
-The single-result form panics on failure. The comma-ok form returns the zero value of `T` and `false` instead; a nil interface also fails an assertion. [Go specification](https://go.dev/ref/spec#Type_assertions)
+The single-result form panics on failure. The comma-ok form returns the zero value of `T` and `false` instead; a nil interface also fails an assertion. 
 
 ```go
 var s Speaker = Dog{}
@@ -185,7 +207,7 @@ var b any = int64(1)
 fmt.Println(a == b) // false
 ```
 
-Comparing interfaces with the same non-comparable dynamic type, such as a slice, panics. Comparing with `nil` does not compare the payload and is safe; different dynamic types also compare unequal without comparing their payloads. A comparable struct or array can still panic during equality if an interface field or element contains a non-comparable dynamic value. [Go specification](https://go.dev/ref/spec#Comparison_operators)
+Comparing interfaces with the same non-comparable dynamic type, such as a slice, panics. Comparing with `nil` does not compare the payload and is safe; different dynamic types also compare unequal without comparing their payloads. A comparable struct or array can still panic during equality if an interface field or element contains a non-comparable dynamic value.
 
 ## Generics
 
@@ -266,7 +288,7 @@ p := Pair[int, string]{1, "hello"}
 swapped := p.Swap() // Pair[string, int]
 ```
 
-Instantiated types retain concrete type identity and [runtime type metadata](../99%20Misc/Go%20Internals.md#Reflection%20and%20runtime%20type%20metadata) for reflection. This is not type erasure. Nor does the language require one separate machine-code body per type argument: the standard compiler shares code for some instantiations with the same shape, and other compilers may choose differently. [Go FAQ](https://go.dev/doc/faq#generics_implementation)
+Instantiated types retain concrete type identity and [runtime type metadata](../99%20Misc/Go%20Internals.md#Reflection%20and%20runtime%20type%20metadata) for reflection. This is not type erasure. Nor does the language require one separate machine-code body per type argument: the standard compiler shares code for some instantiations with the same shape, and other compilers may choose differently.
 
 ### Type Inference
 

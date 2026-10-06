@@ -494,20 +494,34 @@ Dynamic inspection and calls can inhibit compiler optimization, interface conver
 
 ### Maps
 
-A [map value](../01%20Essentials/07%20Arrays%2C%20Slices%20and%20Maps.md#Maps) refers to runtime-managed lookup state; copying it does not duplicate that state. Its language behavior does not depend on the storage layout below. The upstream `gc` Go 1.26.6 implementation uses Swiss tables rather than the older bucket-and-overflow-bucket design, as documented by the pinned [`internal/runtime/maps/map.go`](https://github.com/golang/go/blob/go1.26.6/src/internal/runtime/maps/map.go).
+A [map value](07%20Arrays,%20Slices%20and%20Maps.md#Maps) refers to runtime-managed lookup state; copying it does not duplicate that state. Its language behavior does not depend on the storage layout below. Swiss tables became the default upstream `gc` map implementation in [Go 1.24](https://go.dev/blog/swisstable), replacing the older bucket-and-overflow-bucket design. The Go 1.26.6 layout is documented by the pinned [`internal/runtime/maps/map.go`](https://github.com/golang/go/blob/go1.26.6/src/internal/runtime/maps/map.go).
+
+#### Earlier bucket-and-overflow-bucket implementation
+
+In [Go 1.23.0's `runtime/map.go`](https://github.com/golang/go/blob/go1.23.0/src/runtime/map.go), a map uses one bucket array rather than a directory of Swiss tables:
+
+- **Layout:** The `hmap` header tracks entry count, a per-map hash seed, current and old bucket arrays, and evacuation progress. Its primary array contains `2^B` buckets, where `B` is the bucket-count exponent; each bucket holds up to eight key/value entries.
+- **Lookup:** Low hash bits select a bucket; its `tophash` bytes filter candidates using high hash bits before full key comparisons. Full buckets link to overflow buckets, so collisions extend lookup through a chain.
+- **Growth:** Excessive load doubles the bucket count; excessive sparse overflow buckets trigger a same-size rebuild. Mutations incrementally evacuate entries from the affected old bucket and advance evacuation elsewhere. Reads consult the old bucket until it is evacuated. This spreads migration across operations, but overflow-chain length makes evacuation work variable rather than strictly bounded per operation.
+- **Iteration:** Iterators retain old buckets during growth and consult new storage for moved entries, preserving current values and deletion status without returning entries twice.
+
+Swiss tables replace overflow-chain traversal with group probing and grow or split individual tables rather than incrementally evacuating one map-wide bucket array.
 
 #### Swiss-table groups and lookup
 
-A **group** contains eight key/value slots and an eight-byte control word. Lookup uses hash fragments to narrow the search before comparing full keys:
+A Swiss table stores entries in **groups** rather than linked overflow buckets. Each group contains eight **slots**, each holding one key/value pair, and an eight-byte **control word**. One control byte describes each slot: empty, deleted, or occupied. For an occupied slot, it also stores a short fragment of the key's hash, allowing lookup to reject most nonmatching slots without comparing their full keys.
 
-1. **H1** selects the starting group and probe sequence.
-2. **H2** is stored in control bytes. Word-level comparisons filter the group's slots for candidate matches.
-3. Full key comparisons resolve candidates; quadratic probing searches later groups with increasing offsets when lookup must continue.
+The storage hierarchy depends on map size:
 
-The table hierarchy changes with map size:
+- **Small maps:** Store their entries directly in one group, without a table directory.
+- **Larger maps:** Use a directory pointing to one or more tables. Each table contains one or more groups. Leading hash bits select a directory entry and therefore a table; this is **extendible hashing**, which partitions the hash space among tables.
 
-- **Small maps:** Fit in one group.
-- **Larger maps:** Use multiple tables selected through a directory resembling extendible hashing. Hash-prefix partitions index the tables.
+Within the selected table, lookup splits the key's hash into **H1** (all but the lowest seven bits) and **H2** (the lowest seven bits):
+
+1. **Select a group:** H1 determines the starting group and the probe sequence—the order in which groups are searched.
+2. **Filter slots:** Compare H2 against the occupied slots' control bytes using word-level operations that examine all eight bytes together.
+3. **Verify candidates:** Compare the full key only in candidate slots. Matching H2 values do not prove key equality because different keys can share that hash fragment. A full-key match returns the associated value.
+4. **Stop or continue:** If no key matches and the group has an empty slot, the key is absent. Otherwise, quadratic probing advances through groups with increasing offsets and repeats the search. A deleted slot does not terminate probing.
 
 #### Deletion and growth
 
