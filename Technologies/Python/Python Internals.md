@@ -1,599 +1,823 @@
 # Python Internals
 
-## Scope and implementation baseline
+CPython is a native program that compiles Python source into code objects and executes their bytecode. Its evaluator runs inside [operating-system threads](../../Operating%20Systems/05%20Process%20Management.md#Threads), manipulates Python objects, and cooperates with allocators, garbage collection, native extensions, and I/O libraries. An asynchronous HTTP request still uses this machinery: the server schedules application execution, a coroutine preserves its state while waiting, and an I/O completion makes that execution runnable again.
 
-Python defines a language; CPython implements it using a compiler, runtime, object model, and standard library. Compilation and interpretation are stages, not mutually exclusive identities: CPython compiles source to code objects, executes bytecode, specializes suitable operations, and optionally compiles selected execution traces to native code.
+The implementation baseline is **CPython 3.15.0**, released on October 9, 2026, at commit `d220409a13b77de7a6c30abe16ea90db01528edc`. The normal **GIL-enabled build** is the starting model; free threading and other optional execution paths are distinguished where they change it. Private structures, bytecode, allocation policies, and scheduling heuristics are implementation details, not Python language guarantees. [Release baseline](https://www.python.org/downloads/release/python-3150/), [pinned source](https://github.com/python/cpython/tree/v3.15.0).
 
-The implementation baseline is **CPython 3.14.7**. Source links use the `v3.14.7` tag; rolling Python 3.14 documentation can describe a later patch. Scope labels apply to the following paragraphs, lists, and tables until another label or heading changes the scope:
+The server mechanisms use Gunicorn 26.2.2 and Uvicorn 0.54.0; framework dispatch examples use Flask 3.1.3, FastAPI 0.143.2, Starlette 1.8.0, and Django 6.1.2. These identify the implementations being explained, not a runtime-tested compatibility matrix.
 
-- **Language guarantee:** Python semantics, independent of CPython representation.
-- **Standard-library contract:** Documented API behavior, with platform/build conditions stated separately.
-- **CPython 3.14.7:** Private runtime structures and implementation mechanisms.
-- **CPython experimental/optional:** Features requiring a particular build or runtime configuration.
-- **OS-specific:** Integration that depends on the operating system.
-- **Other implementation:** Explicit portability differences.
+## Runtime state and program startup
 
-**CPython 3.14.7:** Bytecode, private frame layouts, allocator internals, and underscore-prefixed C interfaces are not stable interfaces. Framework deployment, numerical-library internals, and general FFI design are outside this scope. [API stability](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/stable.rst).
+### Process, interpreter, thread, and frame
 
-## Process startup and runtime topology
+The CPU executes CPython's machine instructions. Python bytecode is data consumed by those instructions; calling a native extension transfers into other machine code rather than another bytecode body.
 
-**CPython 3.14.7 / public C API:** After OS [program loading](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Executable%20Formats%20and%20Program%20Loading), initialization establishes the runtime before executing an entry point.
+Several kinds of state coexist inside that native process:
 
-1. Preconfiguration establishes early allocator, locale, and encoding choices. Embedders can call `Py_PreInitialize`; configuration operations also preinitialize implicitly where required.
-2. Full configuration uses `PyConfig`, or the 3.14 `PyInitConfig` interface, to control interpreter initialization. `PyInitConfig_Create()` starts with isolated defaults.
-3. Initialization creates the main interpreter and its `sys`, `builtins`, import state, module dictionary, search path, and `__main__` environment.
-4. The launcher executes a script, `-c` command, `-m` module, stdin, or embedded code. These entry modes differ in how source and globals are selected.
+- **Runtime state:** `_PyRuntimeState` holds process-wide coordination, the interpreter list, initialization/finalization state, allocator infrastructure, signals, and selected shared objects.
+- **Interpreter state:** `PyInterpreterState` holds an interpreter's module/import state, `sys` and builtins namespaces, execution configuration, thread-state list, GC state, and GIL association. Normal startup creates the main interpreter; another interpreter does not create another process.
+- **Thread state:** `PyThreadState` connects a native thread to an interpreter and records its current Python frame, exception state, recursion accounting, context, and tracing state. A thread needs the appropriate **attached** thread state to execute Python or use attachment-requiring C APIs. In the normal build, attached execution also requires that interpreter's GIL.
+- **Evaluation frame:** `_PyInterpreterFrame` is one activation of compiled code: instruction position, local/closure bindings, and temporary operands. Repeated or recursive calls to one function have distinct frames.
+- **Suspendable execution object:** A generator or coroutine retains a frame that survives suspension. It is not an OS thread and does not require a dedicated native stack while waiting.
 
-Normal configuration permits command-line and environment configuration. Isolated defaults ignore environment variables and argument parsing, disable the user site directory, and avoid installing signal handlers or changing the locale. Embedders can override configuration fields; isolation is not a security sandbox or a separate process. [Initialization configuration](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/init_config.rst).
+The implementation follows `thread state → interpreter state → runtime state`; the active frame chain hangs off thread state. Objects and frames live in the [process's address space](../../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory), but interpreter association constrains how Python state is used. This distinction later separates thread sharing, subinterpreter isolation, process isolation, and coroutine scheduling. [Runtime structures](https://github.com/python/cpython/blob/v3.15.0/Include/internal/pycore_runtime_structs.h), [interpreter structures](https://github.com/python/cpython/blob/v3.15.0/Include/internal/pycore_interp_structs.h), [thread state](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/pystate.h).
 
-**CPython 3.14.7:** Execution state is partitioned by lifetime and association:
+### Initialization and entry execution
 
-- **Runtime state (`_PyRuntimeState`):** Process-global coordination and interpreter management.
-- **Interpreter state (`PyInterpreterState`):** An interpreter's modules, builtins, import machinery, and execution configuration.
-- **Thread state (`PyThreadState`):** Interpreter association, exception state, and execution bookkeeping for a native thread using Python.
+After the operating system [loads CPython and its native dependencies](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Executable%20Formats%20and%20Program%20Loading), startup progressively creates the services needed to execute Python:
 
-A native thread must have an **attached thread state** to execute Python or use APIs requiring attachment. In the ordinary build, attaching generally requires the associated GIL. Attachment remains necessary in a free-threaded build for interpreter association and GC coordination even when there is no GIL to acquire. [Runtime structures](https://github.com/python/cpython/blob/v3.14.7/Include/internal/pycore_runtime_structs.h), [thread-state rules](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/threads.rst).
+1. **Enter the launcher.** Platform entry code reaches `Py_Main` or `Py_BytesMain`. An embedding application instead owns native startup and initializes CPython through its C API.
+2. **Preconfigure.** Early allocator, locale, and encoding decisions precede configuration work that depends on them. Normal configuration incorporates relevant arguments and environment; isolated configuration limits those inputs but is not a security sandbox.
+3. **Configure and create the interpreter.** `Py_InitializeFromConfig` establishes the main interpreter, its allocation state, the initial thread state, and the normal build's GIL.
+4. **Bootstrap Python services.** Core types, exceptions, builtins, `sys`, and initial import machinery become usable. Full initialization adds external import paths, codecs, standard streams, signal handling, `__main__`, and `site` when enabled. Some of this bootstrap executes Python code; initialization is not merely reserving a VM structure.
+5. **Select entry code.** The launcher chooses a script, `-c` command, `-m` module, stdin, or interactive execution. Module execution uses `runpy`; entry modes differ in discovery and namespace setup, not in needing compiled code and evaluation state.
+6. **Run and finalize.** `Py_RunMain` executes the entry point and finalizes the interpreter before returning an exit status. Embedders can use a different lifetime under host control.
 
-**Public C API / CPython 3.14.7:** `Py_FinalizeEx` performs best-effort shutdown, not orderly application resource management. Module/global clearing and destruction order are not dependable; extension libraries are not generally unloaded, and finalizers can encounter partially torn-down globals. During late finalization only the finalization thread may attach normally; other attachment attempts can block until exit, with some API paths documented as unsafe. Stop workers and close resources before teardown; daemon threads and foreign callbacks must not assume that Python remains available. [Lifecycle](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/interp-lifecycle.rst), [shutdown implementation](https://github.com/python/cpython/blob/v3.14.7/Python/pylifecycle.c).
+Startup imports, extension initialization, and configured startup hooks can perform filesystem access, allocate objects, start threads, or fail before application code begins. A server's application-loading phase therefore has real execution and resource consequences. [Launcher](https://github.com/python/cpython/blob/v3.15.0/Modules/main.c), [interpreter lifecycle](https://github.com/python/cpython/blob/v3.15.0/Python/pylifecycle.c).
 
-## Source to code object
+## Compilation and evaluation
 
-**CPython 3.14.7:** The concrete [compiler pipeline](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#From%20Source%20Code%20to%20a%20Running%20Process) produces executable metadata before evaluation:
+### Source to code object
 
-1. Decode source bytes using the declared or default encoding; tokenize names, literals, operators, and indentation.
-2. The PEG parser generated from `Grammar/python.gram` consumes tokens and builds the AST defined by `Parser/Python.asdl`.
-3. Validate/preprocess the AST and analyze symbols for each scope before emitting bytecode.
-4. Generate an instruction sequence from the AST; build basic blocks and a control-flow graph, optimize it, and compute stack requirements.
-5. Assemble bytecode, constants, names, local/cell/free-variable metadata, source locations, and exception tables into a code object.
+CPython compiles a source unit before evaluating it. Compilation transforms representations because syntax, bindings, control flow, and final instruction layout require different information:
 
-Whole-scope symbol analysis distinguishes local, global, nonlocal, cell, and free names. A captured local binding from an enclosing function scope, resolved as a free variable in the nested function, requires an enclosing cell and an inner free-variable reference; module globals and ordinary class-namespace bindings do not follow this rule. Whole-scope analysis matters because the compiler cannot decide that solely when an individual name executes. [Compiler design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/compiler.md), [symbol analysis](https://github.com/python/cpython/blob/v3.14.7/Python/symtable.c).
+1. **Decode and tokenize:** Source bytes become text and tokens representing names, literals, operators, indentation, and other syntax.
+2. **Parse:** The generated PEG parser consumes tokens according to the grammar and builds an abstract syntax tree, or **AST**. The AST represents program structure, not live values or calls.
+3. **Preprocess:** AST preprocessing performs syntax-related checks and transformations, including supported constant folding, under compiler/future flags and optimization settings.
+4. **Analyze symbols:** Whole-scope analysis classifies local, global, nonlocal, cell, and free bindings. An enclosing function's captured binding becomes a cell; nested code refers to that cell as a free variable. Ordinary module globals and class-namespace entries do not all become closure cells.
+5. **Generate an instruction sequence:** Code-generation visitors emit bytecode-like operations, labels, locations, and pseudo-instructions. Nested executable units produce separate code objects.
+6. **Optimize control flow:** The sequence becomes a control-flow graph of basic blocks. Optimizations simplify applicable operations and branches; subsequent processing determines stack depth and local-slot layout.
+7. **Assemble:** Labels become instruction offsets, pseudo-instructions become executable instructions or metadata, and assembly produces bytecode, inline-cache space, constants, names, source locations, and exception tables inside a `PyCodeObject`.
 
-**Language/API distinction, with CPython representation:** These objects answer different questions:
+Symbol analysis explains why an ordinary function-local access uses an indexed slot rather than searching dictionaries. It also explains why a binding decision applies to the entire function scope, even before an assignment executes. `-O` and `-OO` alter selected compilation behavior; they do not turn arbitrary Python into ahead-of-time optimized native code. [Compiler coordination](https://github.com/python/cpython/blob/v3.15.0/Python/compile.c), [AST preprocessing](https://github.com/python/cpython/blob/v3.15.0/Python/ast_preprocess.c), [symbol analysis](https://github.com/python/cpython/blob/v3.15.0/Python/symtable.c), [CFG and assembly design](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/compiler.md).
 
-- **Code object:** What compiled instructions and metadata describe the computation? Its Python-visible attributes are immutable, but CPython's private adaptive instructions, caches, instrumentation, and executors change during execution.
-- **Function object:** In which environment should that code run? It associates code with globals/builtins, defaults, closure cells, names, and annotation/call machinery. In 3.14, ordinary annotations are deferred through annotate functions rather than necessarily evaluated when the function is defined.
-- **Frame:** What is the state of one invocation? It contains the current instruction position, bindings, and evaluation state.
+### Code, function, and activation
 
-Imports can obtain a serialized code object from a valid `.pyc` instead of compiling source again. That skips compilation, not module execution. [Code layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/code.h), [function layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/funcobject.h), [3.14 deferred annotations](https://github.com/python/cpython/blob/v3.14.7/Doc/whatsnew/3.14.rst).
+Compilation does not create the complete state of every future call. Three entities separate reusable instructions from environment and execution:
 
-## Bytecode evaluation, frames, and calls
+- **Code object:** Compiled instructions and metadata: constants, names, argument/slot information, stack requirements, source locations, and exception tables. Its Python-facing attributes are immutable, while private adaptive instructions, caches, and optimizer executors change during execution.
+- **Function object:** Code bound to globals, builtins, defaults, closure cells, names, annotation machinery, and a calling entry point. Executing `def` creates the function; it does not execute its body.
+- **Frame:** The state of one invocation, including its current instruction, bindings, and evaluation stack. A call creates an activation; a generator/coroutine call creates suspendable execution whose frame is retained by its execution object.
 
-**CPython 3.14.7:** Bytecode uses 16-bit code units containing an opcode and argument byte. `EXTENDED_ARG` extends operands; inline-cache units belong to their instruction and are not independent ordinary opcodes. `_PyEval_EvalFrameDefault` executes generated evaluator code derived from `Python/bytecodes.c`; dispatch technique depends on build/platform. [Interpreter design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/interpreter.md).
+A factory that executes the same nested `def` repeatedly produces different function objects sharing compiled code. Each returned function captures its own relevant cells. A cell stores a shared binding, so rebinding is visible to closures that reference that cell; it is not a frozen copy of all outer locals. [Code layout](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/code.h), [function and closure layout](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/funcobject.h).
 
-An `_PyInterpreterFrame` combines execution references with locals/cells/free-variable slots and a contiguous evaluation stack. The frame records instruction position; the stack pointer identifies occupied evaluation slots; `co_stacksize` contributes to the required frame storage. This stack is not the native C stack.
+### Frames, operands, and calls
 
-- **Ordinary calls:** Most frames use per-thread data-stack chunks.
-- **Suspended execution:** Generators and coroutines embed a frame that survives suspension.
-- **Introspection:** A Python-visible `PyFrameObject` is materialized when needed for inspection/tracing. If it outlives execution, frame storage ownership can transfer to it.
+The evaluator is a stack machine: instructions consume temporary operands and produce results on a frame's **evaluation stack**. This is different from the Python frame chain and from the native C call stack.
 
-Thus a logical Python call stack need not contain one native C stack frame per Python call. Ordinary Python-to-Python fast paths push an interpreter frame and continue within the evaluator loop; native callbacks and other paths still use the C stack. This is not Python tail-call elimination. [Frame design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/frames.md).
+In this baseline, internal local and operand slots use `_PyStackRef`, a private reference representation supporting ownership optimizations. They still represent Python values, not a universal array of unboxed machine integers. Frame storage follows its required lifetime:
 
-**CPython 3.14.7 / C API:** A call binds arguments before its body executes. Generic binding matches positional/keyword arguments, installs defaults and variadic collections, and rejects invalid combinations. The resulting local slots belong to the callee frame. On return, the caller receives the result and callee-owned references are cleaned up; suspension retains state instead, while an exception transfers to handler/unwinding logic.
+- **Ordinary activation:** Most frames occupy contiguous space in per-thread, heap-backed data-stack chunks, amortizing allocation and [improving locality](../../Operating%20Systems/03%20Memory%20Management.md#Spatial%20Locality).
+- **Suspended activation:** Generators, coroutines, and asynchronous generators embed their interpreter frame, keeping locals and operands alive without preserving a dedicated native stack.
+- **Exposed frame:** Introspection and tracebacks materialize a `PyFrameObject` when needed. If it outlives the activation's original storage, surviving frame state transfers into frame-object-owned storage.
 
-**Vectorcall** passes argument references in an array and keyword names separately for supporting callable types, avoiding mandatory temporary positional tuples and keyword dictionaries. It changes the C calling convention, not Python argument semantics. Specialized calls can bypass generic work only after their guards establish the required conditions. [Call API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/call.rst), [binding and evaluation](https://github.com/python/cpython/blob/v3.14.7/Python/ceval.c).
+Most Python-to-Python calls stay inside the evaluator rather than recursively entering it through a fresh native call chain:
 
-**CPython 3.14.7:** Eval-breaker checks rendezvous with pending work: signals, pending calls, GIL-drop requests, asynchronous exceptions, GC, and build-specific stop-the-world/reference-count/reclamation coordination. They are not a guaranteed preemption point after every opcode. Long native execution can delay servicing pending work. [Pending-work implementation](https://github.com/python/cpython/blob/v3.14.7/Python/ceval_gil.c).
+1. Resolve the callable and prepare arguments, including receiver binding where applicable.
+2. Bind positional/keyword arguments, defaults, and variadic parameters; reject invalid combinations. Specialized paths skip generic work only after validating their assumptions.
+3. Initialize a callee frame and argument/local slots; save the caller's stack position and return offset.
+4. Link the callee as current frame and dispatch its instructions.
+5. On return, clear/pop the callee, restore the caller, and place the result on the caller's evaluation stack. Releasing callee references can destroy objects.
 
-## Adaptive specialization and optional JIT
+Native functions take another path: **vectorcall**-compatible callables receive an argument array and keyword-name information without mandatory temporary argument tuples/dictionaries. The native function then runs on the calling OS thread. It can reenter Python through a callback, adding native stack depth as well as Python frames. Avoiding recursive C evaluation for ordinary Python calls is not Python tail-call elimination. [Actual frame structures](https://github.com/python/cpython/blob/v3.15.0/Include/internal/pycore_interpframe_structs.h), [frame lifetime](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/frames.md), [call and return instructions](https://github.com/python/cpython/blob/v3.15.0/Python/bytecodes.c).
 
-### Guarded bytecode specialization
+Name access uses the environment appropriate to its compiled binding:
 
-**CPython 3.14.7:** Repeated execution provides feedback at bytecode sites. Suitable operations specialize into narrower fast paths guarded by assumptions; failures return to generic behavior, back off, or cause reconsideration. Python semantics remain unchanged.
+- **Fast locals:** Direct indices into frame slots, with unbound checks where required.
+- **Closure variables:** Cell/free-variable slots provide shared binding indirection.
+- **Globals:** The function's globals namespace, then builtins when the global name is absent.
+- **Mapping-based scopes:** Module, class, and dynamic execution use relevant namespace mappings and specialized lookup rules.
 
-- **`LOAD_ATTR`:** Caches applicable type/layout/descriptor assumptions so repeated attribute access avoids general lookup.
-- **`LOAD_GLOBAL`:** Uses namespace/key information and cached locations rather than repeating the complete global/builtins search.
-- **`BINARY_OP`:** Selects guarded operand-specific implementations.
-- **`CALL`:** Uses callable/version/argument-shape assumptions for a faster call path.
+Ordinary local access therefore does not require a locals dictionary lookup. Conversely, a frame's optimized slots do not eliminate dynamic global/attribute lookup or user-defined behavior.
 
-Inline caches hold family-specific counters and lookup information. Type versions, dictionary-key versions, function versions, and watchers participate where applicable; not every specialization uses every mechanism, and not every mutation invalidates every cache. Failed assumptions must never change the observable result. Tracing/instrumentation affects execution forms; `dis` can expose original/adaptive instructions and caches with its documented options. [Specialization source](https://github.com/python/cpython/blob/v3.14.7/Python/specialize.c), [bytecode definitions](https://github.com/python/cpython/blob/v3.14.7/Python/bytecodes.c), [`dis`](https://github.com/python/cpython/blob/v3.14.7/Doc/library/dis.rst).
+### Dispatch, exceptions, and runtime checkpoints
 
-### Experimental trace compilation
+Bytecode uses 16-bit code units containing opcode and argument bytes. Extended arguments and inline caches occupy additional units; cache words are not independent ordinary instructions. Generated evaluator code implements the operations defined in `Python/bytecodes.c`. Dispatch uses computed gotos, a switch fallback, or an optional tail-calling interpreter according to build/compiler support. Tail calls between native opcode handlers do not remove Python frames or change Python recursion semantics.
 
-**CPython experimental/optional — 3.14.7:** JIT availability and enablement are separate. Source builds using `configure` default to `--enable-experimental-jit=no`; official macOS/Windows release binaries include the experimental JIT for opt-in testing with `PYTHON_JIT=1`. Redistributors/build options differ. Free-threaded 3.14 builds do not support JIT compilation. [Build configuration](https://github.com/python/cpython/blob/v3.14.7/Doc/using/configure.rst), [binary-release conditions](https://github.com/python/cpython/blob/v3.14.7/Doc/whatsnew/3.14.rst#binary-releases-for-the-experimental-just-in-time-compiler).
+An operation that raises records exception state and enters evaluator error handling. The code object's **exception table** maps protected instruction ranges to handler targets and required stack depths:
 
-When available and enabled, the optimization path is:
+1. Find a handler covering the failing instruction.
+2. Release temporary operands down to the recorded depth and preserve the original instruction position when required.
+3. Transfer exception state to handler bytecode and continue there.
+4. Without a local handler, clear/unwind this activation and inspect the caller's call site. Traceback state records the unwound frames.
 
-1. A hot backward edge triggers trace construction.
-2. Instructions are translated to micro-operations and analyzed/optimized.
-3. Construct the executor and compile its native implementation by combining build-generated machine-code stencils and patching runtime values/targets.
-4. Install the compiled executor through `ENTER_EXECUTOR`.
-5. Guards, exits, and invalidation return control to appropriate interpreter/executor paths when assumptions no longer hold.
+This metadata avoids maintaining the old per-`try` runtime block stack on successful execution. “Zero-cost exceptions” describes that fast-path strategy, not free raising, traceback construction, or cleanup. `finally` and context-manager cleanup follow compiled control flow. Exception cause/context links are separate from traceback links, and all can retain object graphs. Native C APIs instead use documented error sentinels such as `NULL` with the thread-state exception set; a Python exception does not generally unwind C as a C++ throw. [Evaluator](https://github.com/python/cpython/blob/v3.15.0/Python/ceval.c), [exception-table mechanism](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/exception_handling.md).
 
-Generated instructions require [executable-memory permissions](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Runtime%20Compilation). The micro-op interpreter used for JIT development is a distinct configuration, not proof that native compilation is enabled. [JIT design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/jit.md), [optimizer](https://github.com/python/cpython/blob/v3.14.7/Python/optimizer.c).
+Evaluator checkpoints also service an **eval breaker** indicating pending runtime work: signals, GIL-drop requests, pending calls, GC, and build-specific coordination. They are not an asyncio ready queue or a guaranteed interruption after every opcode. Long native work without appropriate checks or detachment delays this servicing.
 
-The experimental observation APIs distinguish three states:
+### Specialization and optional native compilation
 
-- **Availability:** `sys._jit.is_available()` checks build capability.
-- **Enablement:** `sys._jit.is_enabled()` checks process enablement.
-- **Activity:** `sys._jit.is_active()` observes current JIT execution.
+Repeated dynamic operations often see stable operand types or namespace layouts. CPython exploits that feedback without changing their semantics:
 
-Repeated active-state queries can perturb the control flow being measured. None is a Python language guarantee, and no universal speedup follows from enabling the JIT. [JIT diagnostics](https://github.com/python/cpython/blob/v3.14.7/Doc/library/sys.rst).
+1. A specializable instruction maintains counters and family-specific inline-cache entries.
+2. Feedback selects a narrower opcode, such as a type-specific binary operation or a module-global lookup using a cached entry index.
+3. Guards check relevant operand types, dictionary-key versions, type layouts, function versions, or other assumptions.
+4. Compatible executions avoid portions of generic dispatch/lookup. Failed assumptions cause fallback, backoff, or respecialization.
 
-### Source file to running frame
+Caches are not universally cached values: a location/version guard can accelerate access while preserving a namespace's changing contents. Different instruction families use different invalidation mechanisms. Warm-up, guard work, cache storage, and polymorphic workloads affect the benefit. `dis` exposes supported adaptive/cache views; its default bytecode view need not be the warmed stream currently executed. [Specialization implementation](https://github.com/python/cpython/blob/v3.15.0/Python/specialize.c), [instruction families](https://github.com/python/cpython/blob/v3.15.0/Python/bytecodes.c).
 
-**CPython 3.14.7 walkthrough; JIT step conditional:**
+The **experimental JIT** adds optimization across sequences of operations rather than only individual sites. On a JIT-capable, enabled build:
 
-1. Initialization selects a script/module entry point.
-2. For ordinary source import, discovery creates the module and inserts it into `sys.modules` before invoking the loader's execution path. Script execution instead uses the established `__main__` environment. Globals and builtins define the execution namespace.
-3. The source loader's execution path obtains code by validating a `.pyc` or compiling source. Decoding, tokenization, PEG parsing, AST/symbol analysis, instruction generation, CFG optimization, and assembly produce the code object; a valid cache bypasses these source stages. Custom loaders need not obtain code this way.
-4. `PyEval_EvalCode` establishes the invocation and pushes an interpreter frame; its code is program metadata, while bindings, instruction position, and evaluation stack are live state.
-5. Dispatch advances that state. Calls bind arguments and push callee frames; ordinary Python-to-Python paths continue in the evaluator.
-6. Hot sites specialize with guarded caches. Failed guards preserve semantics through fallback/reconsideration.
-7. Only an available, enabled experimental-JIT configuration can turn a suitable hot edge into a micro-op executor and native code.
-8. Return pops/transfers the result; an exception selects handlers or propagates; generator/coroutine suspension retains its embedded frame. Inspection can materialize a frame object without changing these language transitions.
+1. Hot execution triggers a recording mode that follows the **actual executed path** and translates it into micro-operations.
+2. Analysis simplifies the trace, removes safe redundant work, and constructs an executor.
+3. Copy-and-patch emission combines machine-code stencils generated at build time and fills runtime values/targets. LLVM is needed for stencil generation during the build, not as an installed per-request runtime compiler.
+4. Execution enters the native executor; guards, side exits, and dependency invalidation return control to an appropriate interpreter/executor path when needed.
 
-## Object and type machinery
+A micro-operation interpreter configuration also exists for development; it is not evidence that native JIT code is active. Availability, enablement, and current execution are different states. JIT compilation is neither whole-program compilation nor removal of GIL/object semantics, and it promises no universal server speedup. [Pinned JIT design](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/jit.md), [optimizer](https://github.com/python/cpython/blob/v3.15.0/Python/optimizer.c), [code emission](https://github.com/python/cpython/blob/v3.15.0/Python/jit.c).
 
-**Language guarantee:** Every object has identity, type, and value. Mutability is a property of the type's semantics, not an instruction to use a particular allocation layout. [Data model](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/datamodel.rst).
+### Imports as executable initialization
 
-**CPython 3.14.7:** The conceptual `PyObject` header contains type and reference-count state. `PyVarObject` adds size for types using that representation; not every variable-length type interprets size identically. Debug/trace-reference/free-threaded builds alter layout; the free-threaded header includes ownership/counting, locking, and GC state. Fixed offsets are not portable.
+An ordinary eager import locates and executes a module, rather than merely making declarations visible:
 
-`PyTypeObject` is itself an object and supplies instance layout/behavior: allocation/deallocation, traversal, attributes, numeric/sequence/mapping slots, calling, hashing, rich comparison, and descriptor operations. Static types and dynamically allocated heap types differ in construction/lifetime; type readiness connects slots and inheritance. Direct structure access couples an extension to the applicable ABI. [Object structures](https://github.com/python/cpython/blob/v3.14.7/Include/object.h), [type structures](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/typeobj.rst).
+1. Check the interpreter's `sys.modules` for an initialized module.
+2. Find a module specification and loader through the import machinery.
+3. Coordinate initialization, create the module, and insert it into `sys.modules` **before** executing its body.
+4. Obtain code and execute top-level initialization. A valid `.pyc` avoids source parsing/compilation, not module execution in a new interpreter.
+5. Complete initialization and bind submodules into their parent package. On initial-load failure, remove the failing new module entry; successful side-effect imports and external side effects are not rolled back.
+
+Early insertion explains circular imports observing partially initialized modules. Module-specific locking coordinates concurrent initialization without globally serializing every module body. Reload executes in an existing namespace; it does not replace every reference previously imported elsewhere. `.pyc` validation concerns serialized code freshness/version, whereas `sys.modules` reuses live execution results within an interpreter. [Import coordination](https://github.com/python/cpython/blob/v3.15.0/Lib/importlib/_bootstrap.py), [bytecode-cache loader](https://github.com/python/cpython/blob/v3.15.0/Lib/importlib/_bootstrap_external.py).
+
+Python 3.15's explicit **lazy imports** defer actual loading through placeholders resolved when the imported binding is used. They shift initialization cost, errors, and side effects to first use; they do not load modules on a background thread. Ordinary imports remain eager under the default mode unless marked/configured lazy. A first-use import on an event-loop thread can still block it. [Lazy-import implementation](https://github.com/python/cpython/blob/v3.15.0/Objects/lazyimportobject.c), [PEP 810](https://peps.python.org/pep-0810/).
+
+Native extensions replace source evaluation with [dynamic-library loading](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Dynamic%20Linking) and an initialization/export hook. Conventional `PyInit_...` initialization remains supported; 3.15 also recognizes `PyModExport_...`. Multi-phase initialization separates module creation from execution and supports per-module state. Separate Python module dictionaries do not isolate C statics or prove no-GIL safety; interpreter compatibility and free-threading compatibility are distinct requirements. [Export resolution](https://github.com/python/cpython/blob/v3.15.0/Python/importdl.c), [module initialization contract](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/module.rst).
+
+## Objects, types, and storage representations
+
+### Dynamic behavior through type metadata
+
+A Python binding refers to an object with identity, type, and value. CPython's common `PyObject` header carries reference-count/flag bookkeeping and a pointer to its `PyTypeObject`; payload lives in type-specific fields or backing allocations. `PyVarObject` adds size metadata for types using that representation, not a universal layout for every variable-length value. Header layout differs across builds, so the familiar conceptual header is not a portable C-structure offset contract.
+
+The type is itself an object. Its metadata connects syntax to behavior:
+
+- **Representation:** Instance size, variable-size rules, allocation/deallocation, and instance storage layout.
+- **Operation dispatch:** Numeric, sequence, mapping, call, iterator, asynchronous, and buffer operations.
+- **Attribute behavior:** Type dictionary, bases/MRO, attribute lookup, and descriptor hooks.
+- **Lifetime support:** Traversal, reference clearing, finalization, and weak-reference capability.
+
+Builtins implement many slots directly in native code; user-defined special methods connect through slot machinery. Implicit special-method dispatch looks on the type rather than simply repeating an ordinary instance-dictionary lookup. Heap-created types, descriptors, and class metadata also consume memory beyond each instance's payload. [Object header](https://github.com/python/cpython/blob/v3.15.0/Include/object.h), [type metadata](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/object.h), [generic operations](https://github.com/python/cpython/blob/v3.15.0/Objects/object.c).
 
 ### Class construction and attribute lookup
 
-**Language guarantee — default class machinery:** Metaclass selection and namespace preparation precede class-body execution. The metaclass constructs the class; default `type.__new__` establishes its MRO, invokes descriptor `__set_name__`, and calls the parent `__init_subclass__` hook. Custom metaclasses/hooks change the construction path. C3 MRO preserves local base order and monotonic ordering; inconsistent hierarchies are rejected. [Class construction](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/datamodel.rst).
+A normal class statement resolves bases/selects a metaclass, prepares a namespace, executes the compiled class body in it, and calls the metaclass. Default `type` construction computes the method-resolution order and layout, installs slot descriptors, and runs applicable `__set_name__`/`__init_subclass__` hooks. Creating an instance is a different operation: normal type calling obtains it through `__new__` and initializes it through `__init__` when applicable. Custom metaclasses and hooks change these paths.
 
-Default instance `__getattribute__` composes storage and descriptors in this precedence order:
+A **descriptor** is an object whose type supplies attribute-binding behavior. Under default instance lookup:
 
-1. A **data descriptor** found in the type/MRO (`__set__` or `__delete__` in addition to descriptor access).
-2. Instance storage, when the attribute is present there.
-3. A **non-data descriptor** or ordinary attribute found in the type/MRO.
-4. Lookup failure raises `AttributeError`; the attribute-access machinery then invokes `__getattr__` if defined.
+1. Search the type's MRO for the name. A **data descriptor** with a getter and setting/deletion capability takes precedence over instance storage during reading.
+2. Otherwise check the instance's stored value.
+3. Use a class attribute or invoke its **non-data descriptor** getter when appropriate.
+4. Normal lookup failure raises `AttributeError`; the surrounding attribute machinery invokes `__getattr__` if defined.
 
-An overridden `__getattribute__` changes this path. For class attributes, default lookup instead checks metaclass data descriptors, then the class MRO, then metaclass non-data/plain attributes; class-MRO descriptors receive `__get__(None, cls)`.
+An overridden `__getattribute__` replaces the ordinary path. Class-object lookup additionally involves the metaclass, so it is not identical to instance lookup. A function is a non-data descriptor: instance access binds function plus receiver, while optimized method calls pass them separately without necessarily allocating a bound-method object.
 
-Python functions are non-data descriptors: retrieving one through an instance binds the receiver into a method. **CPython 3.14.7:** Optimized call paths can pass function and receiver separately without allocating a transient bound-method object. `__slots__`, managed dictionaries, inline instance values, and shared-key dictionaries provide different storage arrangements; type/dictionary mutation affects lookup-cache assumptions. [Instance lookup](https://github.com/python/cpython/blob/v3.14.7/Objects/object.c), [class lookup/construction](https://github.com/python/cpython/blob/v3.14.7/Objects/typeobject.c).
+Instance storage is not invariably a complete separately allocated dictionary. Managed dictionaries, inline values, and shared class keys reduce duplicated metadata. `__slots__` supplies fixed-offset descriptors for reference fields; it does not turn ordinary attributes into unboxed typed scalars, and inherited/requested dictionaries or subclasses change its storage effect. These layouts also supply assumptions for guarded attribute specialization. [Class and instance construction](https://github.com/python/cpython/blob/v3.15.0/Objects/typeobject.c), [attribute lookup](https://github.com/python/cpython/blob/v3.15.0/Objects/object.c).
 
-## Concrete built-in representations
+### Built-in representations and locality
 
-**Language guarantees versus CPython 3.14.7:** The semantic column describes the values exposed by Python; the representation column is implementation-specific. Headers, payloads, and referents have different allocation/locality costs.
+Python's uniform object interface does not imply uniform storage:
 
-| Type | Semantic contract | CPython representation and consequence |
-| --- | --- | --- |
-| `int` | Immutable arbitrary-precision integer | Sign/digit count in long metadata; configured 30-bit or 15-bit digits (bases `2**30`/`2**15`). Magnitude changes payload size/work. Cached small values do not establish arbitrary integer identity. |
-| `float` | Immutable floating-point value | Boxed C `double`; platform C floating-point behavior matters. Equality does not imply identity. |
-| `bool` | `int` subtype with `True`/`False` singletons | Singleton objects; not a model for identity of arbitrary numeric values. |
-| `str` | Immutable sequence of Unicode code points | Flexible compact/ASCII representation; 1-, 2-, or 4-byte kind based on maximum code point, stored length/hash and applicable UTF-8 cache. Code points are not grapheme clusters. |
-| `bytes` | Immutable byte sequence | Inline variable-length payload, cached hash, and trailing C null outside the logical value. |
-| `tuple` | Immutable sequence of references; referents can be mutable | Fixed-size inline pointer array. Exact tuples can be untracked when their initialized elements satisfy the conservative GC test. |
-| `list` | Mutable sequence | Separate contiguous pointer array, logical length and allocated capacity. Growth overallocates; exact policy is version-sensitive. Lists remain GC-tracked. |
-| `dict` | Mutable mapping preserving insertion order | Compact indices plus dense entries; combined/split layouts and shared Unicode keys for instance namespaces. Dictionaries remain GC-tracked in this baseline. |
-| `set` / `frozenset` | Unique hashable elements; mutable/immutable respectively; no guaranteed iteration order | Open-addressed table with cached hashes, empty/dummy slots, perturbation probing, and embedded small table; GC-tracked containers. |
+- **Integers and floats:** An integer has sign/digit-count metadata and a variable array of power-of-two digits; arithmetic cost depends on digit counts and the operation, rather than universally being one machine instruction. A float boxes a native double with object metadata. A list of numbers therefore differs from a native scalar array even when every value fits a machine word.
+- **Strings:** Flexible Unicode storage selects one-, two-, or four-byte code units for the represented range, with compact/ASCII paths and an applicable UTF-8 cache. A `str` is not universally a UTF-8 byte array.
+- **Bytes and bytearrays:** Store byte payloads rather than one separately boxed Python object per byte. Their mutability and resizing contracts differ; exported buffers constrain safe resizing/lifetime.
+- **Lists:** A list header holds length/capacity and a separately allocated contiguous reference array. Growth overallocates to amortize appends; replacing that array does not change the list's identity.
+- **Tuples:** Store a fixed array of references within the tuple allocation. Structural immutability does not make referenced objects immutable or contiguous.
+- **Dictionaries:** Compact hash-probe indices refer to entries retaining key/value references. Combined tables and shared-key split instance tables organize values differently; insertion order comes from entry/order state, not sorted hashes. Hashing/equality can invoke Python code.
+- **Sets and frozensets:** Hash tables retain element references and cached hashes, using embedded small storage or larger allocations. They do not acquire dictionary insertion-order guarantees.
 
-[Numeric headers](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/longintrepr.h), [float layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/floatobject.h), [Unicode layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/unicodeobject.h), [bytes](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/bytesobject.h), [tuple](https://github.com/python/cpython/blob/v3.14.7/Objects/tupleobject.c), [list](https://github.com/python/cpython/blob/v3.14.7/Objects/listobject.c), [set](https://github.com/python/cpython/blob/v3.14.7/Objects/setobject.c).
-
-**CPython 3.14.7:** A dictionary separates hash-probe positions from insertion-order entries. Its representation supplies several distinct mechanisms:
-
-- **Storage layouts:** Combined tables store key/value entries together; split tables share keys while keeping per-instance values separately.
-- **Probing and deletion:** Open addressing preserves the probe chain through deleted slots. Empty, active, dummy, and split-table pending states serve distinct lookup/insertion roles.
-    - Free-threaded dictionaries do not reuse dummy slots, unlike ordinary-build paths.
-- **Usable capacity:** The capacity function takes floor two-thirds of table size, not a universal live-entry resize threshold after deletions.
-- **Cache coordination:** Key versions/watchers support applicable lookup assumptions. [Dictionary layout and probing](https://github.com/python/cpython/blob/v3.14.7/Objects/dictobject.c).
-
-Other execution objects retain graphs rather than just scalar payloads:
-
-- **Functions:** Retain code, globals/builtins, defaults, keyword defaults, annotation/type-parameter machinery, names, closure cells, and vectorcall entry.
-- **Cells:** Indirect shared bindings so nested functions/frames observe rebinding of the same captured variable.
-- **Generators, native coroutines, and asynchronous generators:** Retain an embedded interpreter frame and execution state. Creating their execution object does not run the body; resumption drives it.
-- **Exceptions and tracebacks:** Retain cause/context/traceback links; traceback nodes retain frames and thereby locals/referents.
-
-These reference-carrying objects participate in cyclic-GC machinery; scalar numeric/string/byte payload objects do not require traversal of a Python-reference graph. [Function layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/funcobject.h), [generator layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/genobject.h), [exception layout](https://github.com/python/cpython/blob/v3.14.7/Include/cpython/pyerrors.h).
-
-A contiguous list/tuple pointer array does not make its referents' payloads contiguous. Boxing, metadata, indirection, and dynamic dispatch affect work and [spatial locality](../../Operating%20Systems/03%20Memory%20Management.md#Spatial%20Locality), but no pointer access guarantees a cache miss or a trip to RAM. Native homogeneous buffers reduce per-element boxing/indirection; kernel implementation, access pattern, and hardware determine any further cache/SIMD benefit.
-
-## Identity, equality, hashing, and interning
-
-**Language guarantee:** `is` compares identity; `==` invokes value-comparison semantics. Default object equality/hash are identity-based; defining `__eq__` without an appropriate hash normally makes the class unhashable through `__hash__ = None`.
-
-- Equal hashable values must have equal hashes; different values can collide.
-- Numeric cross-type equalities, such as equal integer/float values, obey that invariant.
-- A key's equality/hash must remain suitable while resident in a mapping/set; mutating the relevant state invalidates lookup assumptions.
-- Dictionary insertion order does not imply a stable hash-probe order or guaranteed set iteration order.
-
-`id()` is unique among simultaneously existing objects; reuse after an object's lifetime is permitted. **CPython 3.14.7:** It exposes an address-valued identity, not a portable location contract. String/bytes hash randomization affects values between processes; cached hashes are representation details. [Identity/hash semantics](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/datamodel.rst), [`id` contract](https://github.com/python/cpython/blob/v3.14.7/Doc/library/functions.rst).
+A contiguous list reference array only makes the **references** adjacent. Following them reaches separately represented payloads, adding headers, reference-accounting work, pointer chasing, and dynamic operations. Native homogeneous buffers reduce per-element boxing and support native loops, but conversion and ownership costs remain. Neither pointer indirection nor a compact representation alone proves a particular cache miss rate or speedup. [Numeric representation](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/longintrepr.h), [Unicode](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/unicodeobject.h), [list](https://github.com/python/cpython/blob/v3.15.0/Objects/listobject.c), [tuple](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/tupleobject.h), [dictionary](https://github.com/python/cpython/blob/v3.15.0/Objects/dictobject.c), [set](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/setobject.h).
 
 ### Interning and immortality
 
-**CPython 3.14.7:** Interning reuses selected equal strings for implementation efficiency. It is not a reason to compare strings or integers using `is`. In the ordinary build, `sys.intern()` does not itself promise immortality; interned strings include mortal and immortal cases. Free-threaded interned strings are immortal in this implementation. [String interning](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/string_interning.md).
+`is` compares identity; `==` performs value comparison. CPython's address-valued identity is stable during an object's lifetime, but freed addresses can be reused. Equal hashable values must have equal hashes, collisions remain possible, and mapping/set keys must retain suitable equality/hash behavior while stored.
 
-Immortal objects, including `None`, `True`, and `False`, skip ordinary `Py_INCREF`/`Py_DECREF` updates. Eliminating shared reference-count writes motivates reduced [cache coherence](../../Operating%20Systems/04%20Inside%20The%20CPU.md#Cache%20coherency) traffic and improved pre-fork sharing, not guaranteed cache states, timings, or RSS savings. Immortality is CPython bookkeeping, not a new Python language category. [Current refcount operations](https://github.com/python/cpython/blob/v3.14.7/Include/refcount.h), [PEP 683 rationale](https://peps.python.org/pep-0683/).
+**Interning** reuses selected equal strings. **Immortality** suppresses ordinary reference-count updates/reclamation for selected objects, including core singletons. These mechanisms intersect but are not synonyms: ordinary-build `sys.intern()` does not promise every interned string remains immortal; free-threaded interned strings and code constants receive additional immortalization in this baseline.
 
-## Object lifetime and reclamation
+Avoiding shared refcount writes reduces contention and writes to inherited pre-fork pages. It does not guarantee cache residency or RSS savings. Neither interning nor cached integer objects justifies comparing arbitrary strings/numbers with `is`; use their value semantics. [Interning design](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/string_interning.md), [reference operations](https://github.com/python/cpython/blob/v3.15.0/Include/refcount.h).
 
-### Ownership and reference counting
+## Object lifetime, allocation, and resident memory
 
-**Language guarantee:** `del` removes a binding, item, or attribute according to target semantics. It does not command object destruction; other references and implementation lifetime rules remain relevant.
+### Ownership and reference-count destruction
 
-**Public C API / CPython 3.14.7:** Ownership conventions describe responsibilities at API boundaries:
+Python variables, container entries, frames, closures, Tasks, and extension owners form a graph of references. `del` removes the specified binding/item/attribute; it is not a command to destroy the referent or release pages.
 
-- **New/strong reference:** The owner must eventually release or transfer it.
-- **Borrowed reference:** No ownership is acquired; the underlying owner must keep the object alive. Container mutation or arbitrary Python execution can invalidate it.
-- **Stolen reference:** A documented API takes ownership; its error-path rules still determine the caller's obligations.
+At C boundaries, ownership states determine obligations:
 
-`Py_INCREF` acquires a strong reference; `Py_NewRef` returns one explicitly; `Py_DECREF` releases one; `Py_XDECREF` also accepts `NULL`. In the ordinary build, terminal release of an acyclic mortal object invokes its type-specific deallocator, not necessarily libc `free()`. Decref can run arbitrary finalization/reentrant code, so restore container invariants before releasing a reference. Immortal and free-threaded counting paths differ. `sys.getrefcount()` introduces a temporary reference and is not a uniqueness/lifetime oracle. [Ownership](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/intro.rst), [reference-count contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/refcounting.rst).
+- **Strong/new reference:** Keeps the object alive and must eventually be released or transferred.
+- **Borrowed reference:** Acquires no independent lifetime; mutation or reentrant Python execution can invalidate the underlying ownership assumption.
+- **Stolen reference:** Transfers an existing obligation according to the receiving API's contract, including its error rules.
 
-### Cyclic collection
+In the normal build, acquiring/releasing strong ownership increments/decrements a mortal object's reference-count bookkeeping, expressed at C API boundaries through `Py_INCREF`/`Py_DECREF`. This changes ownership accounting, not the object's payload; obtaining another reference does not copy the object.
 
-**CPython 3.14.7:** Reference counts alone do not identify an unreachable cycle whose members retain each other. The cyclic collector operates on tracked reference-carrying containers:
+Terminal release to zero enters a mortal acyclic object's type deallocator, subject to finalization/resurrection and type-specific deferral. Destroying a container releases its elements, potentially causing cascading destruction. A trashcan mechanism bounds native recursion in supported deep deallocation paths. Immortals and optimized/internal reference handling prevent treating every pointer as one naive visible refcount increment.
 
-1. `tp_traverse` exposes graph edges without arbitrary application traversal.
-2. Subtract references originating inside the candidate graph from temporary count information.
-3. Objects with external references, and objects reachable from them, remain live.
-4. The isolated remainder proceeds through finalization/resurrection checks and cycle breaking using `tp_clear` where appropriate.
+Decrementing a reference can execute arbitrary Python through finalizers. An extension must restore data-structure invariants before a decrement that permits reentry. A traceback retained for diagnostics similarly retains frames and their objects; leaving a lexical scope does not prove those objects died. [Reference ownership](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/refcounting.rst), [type lifecycle](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/lifecycle.rst).
 
-Tracking begins only after an object's traversable fields are safe. Exact tuples can become untracked when their elements pass the conservative tracking test; lists and **3.14.7 dictionaries remain tracked**. Earlier atomic-only dictionary untracking is absent in this baseline. [Collector](https://github.com/python/cpython/blob/v3.14.7/Python/gc.c), [extension GC support](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/gcsupport.rst).
+### Cycles, tracking, and finalization
 
-**CPython 3.14.7 — ordinary GIL build:** Tracked objects use list-based generation cohorts 0, 1, and 2. Survivors are promoted; allocation/deallocation counts and thresholds schedule collections, with additional oldest-generation policy. Full collections clear applicable type free lists. Generation 1 and `threshold2` behavior were restored in 3.14.5: early-3.14 descriptions of their removal are stale for this baseline. [Pinned GC API/change record](https://github.com/python/cpython/blob/v3.14.7/Doc/library/gc.rst), [generation implementation](https://github.com/python/cpython/blob/v3.14.7/Python/gc.c).
+Reference counting cannot by itself reclaim an unreachable cycle whose members own one another. CPython supplements it with a cyclic collector over **tracked**, reference-carrying objects. Tracked does not mean “currently garbage”: acyclic tracked objects still normally die through reference counting.
 
-**CPython optional — free-threaded 3.14.7:** Collection scans allocator heaps using header state and stop-the-world coordination, rather than ordinary age-partitioned generation lists. Generation arguments/counters do not establish equivalent object cohorts. Automatic scheduling additionally considers heap scale/process-memory growth and buffered per-thread allocation accounting; manual collection is distinct. Threads resume for callbacks/finalizers, then pause again to check resurrection. [Free-threaded collector](https://github.com/python/cpython/blob/v3.14.7/Python/gc_free_threading.c).
+The normal-build collector uses three generations, 0 through 2. New tracked objects start young; survivors promote. Allocation/deallocation activity and policy schedule collections, not a background thread continuously scanning the heap. A collection of a generation includes relevant younger generations:
 
-### Finalization, weak references, and resources
+1. Select candidate containers. Their `tp_traverse` exposes cycle-relevant outgoing references.
+2. Copy candidate counts into temporary bookkeeping and subtract references originating inside that candidate set.
+3. Positive external counts identify reachable seeds; traverse from them to preserve their reachable candidates. Zero adjusted count alone does not prove garbage.
+4. The isolated remainder undergoes weak-reference processing and finalization while objects remain structurally usable.
+5. Recheck reachability because a finalizer can **resurrect** an object by publishing a new reference.
+6. For still-unreachable objects, clear appropriate links through `tp_clear`; resulting reference-count destruction releases their storage.
 
-**Standard-library contract:** A weak reference observes an object without keeping it alive. Calling it returns the referent while the weak reference remains valid, or `None` after it is cleared; a collection callback requires the weakref itself to remain alive. [Weak references](https://github.com/python/cpython/blob/v3.14.7/Doc/library/weakref.rst).
+GC-capable objects are tracked only once traversable state is safe. Integers and strings do not need container-graph traversal; exact tuples have conservative untracking optimizations. Dictionaries remain tracked in this 3.15 baseline—older atomic-only-dictionary examples are misleading here. Full collections also clear applicable type free lists, not every process allocation. [Collector implementation](https://github.com/python/cpython/blob/v3.15.0/Python/gc.c), [GC design](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/garbage_collector.md).
 
-**CPython 3.14.7:** In cyclic-isolate collection, weakrefs are cleared and eligible callbacks run, finalizers execute, resurrection is checked, and surviving unreachable cycles are broken. Reference-count deallocation instead follows the type's own ordering; there is no universal weakref-before-finalizer sequence for every destruction path. `tp_finalize`/`__del__` can resurrect an object, changing whether reclamation proceeds. [GC finalization](https://github.com/python/cpython/blob/v3.14.7/Python/gc.c), [type deallocation](https://github.com/python/cpython/blob/v3.14.7/Objects/typeobject.c), [PEP 442 rationale](https://peps.python.org/pep-0442/).
+Weak references observe without owning the referent. Calling a valid weakref obtains its referent or `None` after clearing; callbacks do not receive a usable dead object and require the weakref itself to remain alive. Finalization and weakref ordering depend on the path: cyclic-isolate cleanup clears eligible weakrefs/calls callbacks before finalizers and resurrection checks, whereas reference-count deallocation follows the type's own ordering. Do not apply one universal sequence to every death. GC-capable resurrected objects retain their finalized mark in this baseline, so later death does not promise a second finalizer invocation.
 
-Ordinary Python cycles containing `__del__` are generally collectable. Legacy extension `tp_del` types can remain uncollectable; `DEBUG_SAVEALL` deliberately retains unreachable objects in `gc.garbage` and is not evidence that all of them were inherently uncollectable.
+Modern Python cycles containing `__del__` are not automatically uncollectable. Legacy extension finalizers, incorrect traversal/clearing, or deliberate debug retention remain exceptions; `gc.DEBUG_SAVEALL` retains objects by choice. Finalizer exceptions without a caller propagation route are unraisable. Context managers and explicit `close()` establish external-resource ownership more reliably than GC or interpreter shutdown timing. [Weakref contract](https://github.com/python/cpython/blob/v3.15.0/Doc/library/weakref.rst), [finalization paths](https://github.com/python/cpython/blob/v3.15.0/Objects/typeobject.c).
 
-Retention can arise through tracebacks, closures, tasks, callbacks, module globals, or application caches. Finalizer exceptions without a propagation path are unraisable; shutdown adds partially cleared globals and arbitrary destruction order.
+### Storage allocation and reuse
 
-**Language/library resource discipline:** Context managers and explicit `close()` establish resource ownership; collection timing does not define [descriptor lifetime](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Descriptor%20Operations%20and%20Lifetime). Do not rely on `__del__` for timely release, especially across implementations, cycles, free threading, and shutdown.
+Object lifetime sits above allocator lifetime. CPython exposes three allocation domains:
 
-## Allocation and resident memory
+- **Raw:** Low-level allocation APIs usable without an attached thread state.
+- **Mem:** Python-managed non-object storage with attachment requirements.
+- **Object:** Python object storage with attachment requirements. Free-threaded builds require Python objects to use this domain and non-object storage to use another appropriate domain.
 
-**Public C API / CPython 3.14.7:** Object death and physical memory release are separate transitions. Python allocations are layered over [virtual memory](../../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory), with three allocator domains:
+Match allocation and free families even when their current backends coincide. Custom allocators, debug hooks, build options, and `PYTHONMALLOC` alter routing; “Raw” is not a universal promise of libc `malloc`.
 
-- **Raw (`PyMem_Raw*`):** Low-level storage with APIs usable without attached thread state.
-- **Mem (`PyMem_*`):** Python-managed non-object storage; attachment requirements apply.
-- **Object (`PyObject_*`):** Python object storage; in free-threaded builds this domain is exclusively for Python objects, and those objects must use it.
+In the normal default configuration, `pymalloc` organizes reusable **blocks** into **pools**, each serving one size class at a time. Pools occupy an **arena** acquired from lower memory machinery; ordinary 64-bit arenas are 1 MiB, not one OS page. This is a storage hierarchy, not a fresh OS allocation sequence for every object.
 
-Match allocation/free families. Build options, `PYTHONMALLOC`, debug hooks, and custom allocators alter routes; domain contracts remain mandatory. [Memory API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/memory.rst).
+- **Small requests:** Requests up to 512 bytes map to a size class and consume a suitable reusable block, obtaining pool/arena capacity when necessary.
+- **Large requests and fallback:** Larger requests use lower allocation machinery; small-request failures can also fall back. A small object header's large separate backing array follows the array's request size, not the header's route.
 
-**CPython 3.14.7 — normal GIL-build allocator configuration:** `pymalloc` handles positive Mem/Object requests up to 512 bytes using size-class blocks within pools within arenas. Its normal arena sizes are 1 MiB on 64-bit builds and 256 KiB on 32-bit builds; these are not OS page sizes. Arena acquisition uses platform/build-specific `mmap`, `VirtualAlloc`, or `malloc` paths. Larger requests fall through to lower allocation machinery. Type-specific free lists, including applicable tuple/list/float paths, add reuse above allocator blocks; the exact set/policy is version-sensitive. [Allocator constants](https://github.com/python/cpython/blob/v3.14.7/Include/internal/pycore_obmalloc.h), [allocator implementation](https://github.com/python/cpython/blob/v3.14.7/Objects/obmalloc.c), [free-list state](https://github.com/python/cpython/blob/v3.14.7/Include/internal/pycore_freelist_state.h).
+On reclamation, freed blocks return to pool reuse and empty pools can change size class. Entirely unused arenas become releasable under policy, with a free arena retained to avoid thrashing.
 
-**CPython optional — free-threaded 3.14.7:** Python objects use `mimalloc`, with separate allocation heaps and stricter domain rules. Quiescent-state-based reclamation (**QSBR**) delays reuse of selected backing structures until readers can no longer access them; it does not delay every object identically. `MIMALLOC_PURGE_DELAY` trades release latency against performance. [Free-threading memory behavior](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/free-threading-python.rst).
+Selected types add **free lists** above these allocators: dead object storage is cached for reinitialization, not retained as the old live object with its old elements. These lists are bounded/type-specific; ordinary-build free lists are interpreter-local, while free-threaded versions use thread-local state. [Allocator contracts](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/memory.rst), [pymalloc implementation](https://github.com/python/cpython/blob/v3.15.0/Objects/obmalloc.c), [active layout constants](https://github.com/python/cpython/blob/v3.15.0/Include/internal/pycore_obmalloc.h), [free lists](https://github.com/python/cpython/blob/v3.15.0/Include/internal/pycore_freelist.h).
 
-**CPython 3.14.7 / OS-specific measurement:** Returning storage to a free list or allocator makes it reusable without necessarily unmapping pages. A `pymalloc` arena must be wholly reclaimable for release; live blocks, fragmentation, allocator policy, native heaps, and dirty/shared pages affect retention.
+Sparse survivors keep pools/arenas partly occupied. The collector does not compact living objects to empty them, so removing most objects need not free the containing mappings. Lower allocators and native libraries also retain storage according to their own policies.
 
-- **Traced Python allocations:** `tracemalloc` records participating allocator allocations, not all process memory.
-- **Shallow object size:** `sys.getsizeof` does not recursively include the referent graph.
-- **Tracked object counts:** GC statistics count tracked objects/collections, not heap bytes.
-- **RSS:** Resident pages include runtime code/data, native allocations, stacks, mappings, and allocator slack, with shared/private accounting depending on the OS/tool.
+### One object lifecycle, five different endings
 
-Falling traced allocations do not imply falling RSS. Conversely, page eviction or mapping changes can alter RSS without a corresponding change in live Python objects. [Tracing boundaries](https://github.com/python/cpython/blob/v3.14.7/Doc/library/tracemalloc.rst).
+Consider a request-local list that temporarily contains itself:
 
-### Fresh object allocation to reclamation
+1. List creation obtains a header through a free list or object/GC allocation path, initializes it, and establishes tracking. Appending allocates/resizes its separate reference vector.
+2. A local binding and the self-edge point to the same list. Passing another reference does not copy its payload.
+3. Deleting the last external binding makes it **unreachable**, but the self-edge keeps its ordinary reference count nonzero.
+4. A collection covering it identifies the isolated cycle, performs applicable finalization/resurrection checks, and clears the edge. Deallocation ends the object's life and releases its vector/references.
+5. Header/vector storage becomes **reusable** through free-list/allocator paths. An acyclic version instead reaches this path directly on terminal release, without waiting for cycle discovery.
+6. Only suitable empty allocator units return storage **downward** to lower layers; some allocations remain retained or fragmented.
+7. Unmapping, decommit, or OS reclamation determines whether physical pages stop contributing to **resident memory**. This is not the same event as destruction or allocator reuse.
 
-**CPython 3.14.7 walkthrough; allocator/build branches explicit:** Cached singleton/value returns and free-list hits bypass parts of this fresh-allocation path.
+Thus unreachable, destroyed, reusable, returned to a lower allocator, and no longer resident are distinct states. RSS also includes native allocations, stacks, code, shared mappings, and mapped files. Falling `tracemalloc` totals with flat RSS is compatible with normal retention; flat RSS alone establishes neither a leak nor its absence. `sys.getsizeof` is shallow, GC counts tracked objects rather than bytes, and neither replaces process-memory accounting.
 
-1. A type computes required fixed/variable storage and requests the appropriate Object-domain allocation.
-2. Normal GIL-build small allocations use a `pymalloc` size class; larger requests use lower allocation machinery. Free-threaded objects use `mimalloc` and different header bookkeeping.
-3. Initialize the header/type/count state, payload, and traversable references; enable GC tracking only when traversal is safe.
-4. Ownership transfers and mutations add/remove graph edges; applicable type/dict caches are invalidated when their assumptions change.
-5. Ordinary terminal release of an acyclic mortal object enters type deallocation. A tracked isolated cycle requires GC; immortals skip ordinary counting release, while queued merges, deferred stack-reference accounting, and per-thread count reconciliation can postpone terminal deallocation.
-6. In the cyclic-isolate path, weakref callbacks/finalization/resurrection checks precede breaking the remaining isolated graph. Refcount deallocation has type-specific ordering and must also respect resurrection.
-7. Reclaimed storage enters a type free list or allocator reuse path; safe-reclamation mechanisms can delay reuse.
-8. Only reclaimable allocator structures and lower-layer policy permit page/arena release. The object is gone even if RSS is unchanged.
+## Native threads and parallel execution
 
-## Threads, GILs, free threading, and subinterpreters
+### The GIL coordinates interpreter access
 
-### Native threads and the ordinary GIL
+`threading.Thread` creates a native OS thread. Its bootstrap allocates/binds a thread state, attaches it, calls the Python callable, and eventually clears the state and records completion. The OS schedules the thread; the GIL determines whether it can execute in a protected interpreter.
 
-**CPython 3.14.7:** `threading.Thread` creates [native threads](../../Operating%20Systems/05%20Process%20Management.md#Threads), not user-space Python threads. In a GIL-enabled interpreter, attached execution is serialized by its GIL; native threads still exist and detached native work can execute concurrently.
+GIL acquisition and switching use lock/condition coordination:
 
-The GIL uses mutex/condition-variable coordination and eval-breaker drop requests. The default switch-request interval is 5 ms, configurable through `sys.setswitchinterval`; it is not a hard OS timeslice or a bound on when long-running native code yields. Interpreters can share a GIL or use separately configured GILs. [GIL implementation](https://github.com/python/cpython/blob/v3.14.7/Python/ceval_gil.c).
+1. A contender waits while another thread holds the GIL.
+2. After a switch-request interval without progress, a waiter marks a drop request in the holder's eval breaker.
+3. At an evaluator checkpoint, the holder services the request by detaching/dropping the GIL.
+4. Another waiter gets an opportunity to attach and execute; the old holder later reacquires before returning to Python execution.
 
-The GIL protects interpreter machinery while held, not arbitrary [shared invariants](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Critical%20Sections). Multi-step updates race; operations can invoke user code or detach thread state. Native code releases the GIL only when it deliberately detaches around work that does not require Python-object/API access; reattach before re-entry. Free-threaded code also detaches around blocking work so GC coordination can progress. [Thread-state API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/threads.rst).
+`sys.setswitchinterval()` influences this request interval, not a hard CPU timeslice or maximum callback duration. Native code holding the GIL can delay checkpoints. The GIL protects runtime machinery while held, not arbitrary application transactions: [multi-step reads/updates](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Critical%20Sections) still require synchronization, and operations can invoke user code or release the lock. [Thread bootstrap](https://github.com/python/cpython/blob/v3.15.0/Modules/_threadmodule.c), [GIL coordination and pending work](https://github.com/python/cpython/blob/v3.15.0/Python/ceval_gil.c).
 
-**Standard-library contract / CPython implementation:** `ThreadPoolExecutor` supplies native worker threads. It overlaps blocking or GIL-releasing native work, but submission alone does not make Python CPU work parallel within one GIL-enabled interpreter. [Thread executor implementation](https://github.com/python/cpython/blob/v3.14.7/Lib/concurrent/futures/thread.py).
+### Blocking operations and native boundaries
 
-### Free-threaded build
+Extensions deliberately detach/save thread state around work that does not require Python access, then restore/reattach before producing Python objects or invoking callbacks. In the normal build this releases/reacquires the GIL. Socket operations use such native boundaries around applicable waits/syscalls; not every system call or extension releases it automatically.
 
-**CPython optional — 3.14.7:** `--disable-gil` builds a distinct free-threaded configuration with `t` ABI suffix. Runtime `-X gil`/`PYTHON_GIL` can enable the GIL; importing an extension without the appropriate support declaration can also enable it. Build capability and current runtime GIL state are different facts.
+The resulting distinctions matter:
 
-Removing the global serialization point requires cooperating lifetime/synchronization mechanisms:
+- **Blocking I/O in another thread:** Can overlap waits while Python runs on other threads, provided the implementation releases the GIL around that wait.
+- **Native CPU kernel with GIL released:** Can execute simultaneously on multiple cores, subject to its own threading/ownership rules.
+- **Pure Python CPU work in one GIL-enabled interpreter:** Threads interleave but do not evaluate Python simultaneously on multiple cores.
+- **Blocking operation on the event-loop thread:** Still stops that loop, even if its native implementation releases the GIL. A different OS thread's ability to run does not let the blocked loop thread process callbacks.
 
-- **Biased reference counting:** Owner-local counts avoid shared atomic updates on the owning thread. Cross-thread release can queue merge work; the owner services it through eval-breaker coordination, reconciling local/shared counts before terminal deallocation. That merge can delay destruction.
-- **Deferred reference counting:** Selected Python-stack references are omitted from immediate counts. GC accounts for them before reclaiming an apparently zero-count object, so disappearance of an ordinary counted reference is not sufficient to decide its lifetime.
-- **Per-thread reference counting:** Selected shared objects aggregate thread-local contributions rather than one globally contended counter. Those contributions must be merged before deallocation at coordinated safepoints, thread exit, or collection, delaying release in some cases.
-- **Immortalization:** Selected objects omit ordinary counting updates.
-- **Object/container locks:** Protect applicable internal mutations; some reads use optimistic paths with safe reclamation.
-- **Stop-the-world GC and QSBR:** Coordinate graph/count reconciliation and safe reuse, respectively; they solve different problems.
+A thread pool amortizes thread creation and bounds active work, but queue capacity, external pools, and shared-state contention remain separate limits. Cancelling a caller does not forcibly kill an already-running native thread operation. [Native thread-state contract](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/threads.rst), [socket boundary](https://github.com/python/cpython/blob/v3.15.0/Modules/socketmodule.c).
 
-Object critical sections support deadlock avoidance by suspending/reacquiring locks around blocking/nested work. They are not uninterrupted application transactions; protecting two objects together requires the relevant two-object facility. Internal builtin locking aims for behavior similar to the GIL build but is not a language-level atomicity guarantee for compound operations.
+Foreign-created threads must attach state for the **correct interpreter** before callbacks. Detached code must keep native buffers alive and synchronized without ordinary Python-object manipulation. CPython 3.15 adds protected interpreter views/guards and attachment facilities to coordinate concurrent finalization; legacy `PyGILState_*` is soft-deprecated, not removed. Correct attachment does not itself establish ownership of arbitrary native memory, and a compatibility declaration does not synchronize extension globals. [Attachment and finalization APIs](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/threads.rst).
 
-Extension hazards include direct field access, unchecked macros, borrowed references from concurrently mutable containers, unsynchronized C globals/caches, shared iterators, and inspecting another running thread's `frame.f_locals`. Prefer documented strong-reference getters and synchronization appropriate to the invariant. [Free-threaded extension rules](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/free-threading-extensions.rst), [biased merging](https://github.com/python/cpython/blob/v3.14.7/Python/brc.c).
+### Processes and subinterpreters
 
-The pinned guide reports higher memory usage and average single-thread overhead on **pyperformance** ranging from about 1% on macOS aarch64 to 8% on x86-64 Linux in its measurements. This is benchmark/platform evidence, not a bound for every program or hardware configuration. [Measured trade-offs](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/free-threading-python.rst).
+Separate processes have separate runtimes, ordinary heaps, and GILs, enabling CPU parallelism and address-space fault isolation. Crossing that boundary costs startup, [serialization/IPC](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Process%20Boundaries%20and%20Communication), or explicit shared-memory coordination. A crash does not undo external side effects or recover the lost request.
 
-### Interpreter isolation
+Python's process start methods establish different initial state:
 
-**CPython 3.14.7 / C API:** Subinterpreters have independent interpreter/module/builtins/import state but share one process and its resources. Extension C statics and native-library state can cross that boundary. Interpreter isolation is not process fault isolation.
+- **Spawn:** Starts a fresh interpreter and reconstructs/imports required definitions. It is the default on Windows/macOS; importable entry code and serialized task boundaries matter.
+- **Fork:** Inherits a process snapshot with only the calling thread surviving. [Copy-on-write initially shares eligible physical pages](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Shared%20and%20Private%20Mapping%20Visibility), not coherent mutable Python objects. Locks/native state left by vanished threads make arbitrary multithreaded fork unsafe.
+- **Forkserver:** Requests children from a separate server's ancestry rather than the busy application's current heap. It is the default on supported non-Darwin POSIX systems in this baseline; its server must also avoid problematic thread-creating preload state.
 
-`Py_NewInterpreterFromConfig` selects shared or own-GIL operation subject to its isolation/extension settings. Own-GIL interpreters permit simultaneous Python execution on different cores; legacy `Py_NewInterpreter()` shares the main GIL. Extension support for multiple interpreters, own-GIL interpreters, and no-GIL operation are independent requirements, not one compatibility flag. [Subinterpreter API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/subinterpreters.rst).
+These are multiprocessing policies, not universal rules for HTTP servers. Process pools serialize submitted work/results; ordinary pickle commonly identifies callables by importable name rather than transporting a live closure. `Queue.put` can return before its feeder serializes the object, so it is not necessarily a completed mutable-payload snapshot. Shared memory supplies bytes/layout, not valid cross-process Python pointers/headers/refcounts. Never unpickle untrusted input. [Start methods](https://github.com/python/cpython/blob/v3.15.0/Lib/multiprocessing/context.py), [queue implementation](https://github.com/python/cpython/blob/v3.15.0/Lib/multiprocessing/queues.py), [multiprocessing contracts](https://github.com/python/cpython/blob/v3.15.0/Doc/library/multiprocessing.rst).
 
-**Standard-library contract — 3.14:** `InterpreterPoolExecutor` runs worker threads with separate interpreters and GILs. Submitted callables, arguments, and results cross a pickle boundary; mutable Python objects are not transparently shared. A native crash still affects the shared process. [Interpreter executor](https://github.com/python/cpython/blob/v3.14.7/Doc/library/concurrent.futures.rst).
+Subinterpreters occupy one process but have separate module namespaces and interpreter state. Creating one does not create an OS thread. Configured **own-GIL interpreters**, run on different threads, evaluate Python in parallel; shared-GIL configurations do not gain that property. `InterpreterPoolExecutor` combines worker threads with isolated interpreters and a serialized submission/result boundary. Native globals, descriptors/resources, and process-fatal faults still cross the interpreter isolation boundary. [Subinterpreter configurations](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/subinterpreters.rst), [interpreter executor](https://github.com/python/cpython/blob/v3.15.0/Doc/library/concurrent.futures.rst).
 
-## Processes and serialization
+### Free-threaded CPython
 
-### Start methods and fork safety
+The `--disable-gil` build permits multiple attached threads to execute Python in one interpreter simultaneously when its runtime GIL remains disabled. It is not the normal binary with one lock removed. Runtime configuration or incompatible-extension import can enable its GIL; build capability and current state must be checked separately.
 
-**Standard-library contract / OS-specific — Python 3.14:** Process startup selects how interpreter state is established:
+Replacing global exclusion changes several cooperating mechanisms:
 
-| Start method | State established in child | Default/constraint |
+- **Reference accounting:** Biased counts favor an owning thread and coordinate shared counts/merge queues. Deferred references omit selected Python-stack updates, while separate per-thread counts handle selected heavily shared objects. Reconciliation and GC must account for these before destruction, so a visible counter is not an immediate-lifetime oracle.
+- **Container synchronization:** Internal object locks and selected optimistic reads preserve runtime integrity. Critical sections suspend/reacquire appropriate locks around nested/blocking work; they do not make compound application protocols atomic. Borrowed references from concurrently mutable containers require stronger lifetime discipline.
+- **Allocation and reclamation:** Mem/Object storage uses mimalloc, with raw allocations also using it by default in this baseline. Larger headers, per-thread heaps, delayed merges, and **quiescent-state-based reclamation (QSBR)** affect retention. QSBR prevents selected replaced backing arrays from being reused while readers still access them; it is distinct from object reachability.
+- **Collection:** The non-generational free-threaded collector scans allocator heaps and stack roots with stop-the-world coordination rather than using the normal collector's generational linked lists. Attached threads reach checkpoints; detached threads cannot reattach during the pause. Detaching around blocking work remains important without a GIL.
+- **Execution caches:** Threads specialize thread-local bytecode copies rather than universally modifying one shared adaptive stream.
+
+This removes a Python execution bottleneck but adds synchronization, accounting, and memory costs; application contention and extension behavior determine scaling. Extensions need no-GIL-safe state and ownership, independently of supporting own-GIL subinterpreters. CPython 3.15's additional free-threaded Stable ABI does not turn existing binaries or unsynchronized C code into safe extensions. [Free-threading implementation guide](https://github.com/python/cpython/blob/v3.15.0/Doc/howto/free-threading-python.rst), [extension rules](https://github.com/python/cpython/blob/v3.15.0/Doc/howto/free-threading-extensions.rst), [free-threaded collector](https://github.com/python/cpython/blob/v3.15.0/Python/gc_free_threading.c), [thread-local executable code](https://github.com/python/cpython/blob/v3.15.0/Include/cpython/code.h).
+
+### Deferred signals
+
+The low-level signal handler marks pending state, rather than running arbitrary Python immediately in asynchronous native signal context. The main Python thread of the main interpreter later checks that state and calls the Python handler; only that thread installs Python signal handlers. Long native work delays handling unless it checks or returns appropriately.
+
+A configured wakeup fd receives a notification after pending state is set, interrupting an event loop's poll. Signals can coalesce and notification buffers can overflow; this is not a reliable per-occurrence message queue for Python threads. Unix loop signal integration and Windows capabilities differ. Server signal handlers impose their own graceful-shutdown policy on top of this runtime mechanism. [Signal implementation](https://github.com/python/cpython/blob/v3.15.0/Modules/signalmodule.c), [signal contract](https://github.com/python/cpython/blob/v3.15.0/Doc/library/signal.rst).
+
+## Coroutines and asyncio scheduling
+
+### Suspension before scheduling
+
+Calling an `async def` coroutine function creates a coroutine object without running its body. CPython supplies the suspendable frame and delegation protocol; it does not automatically choose an event loop, start a thread, or submit an I/O operation. An async-generator function instead creates an asynchronous generator.
+
+`await` drives an awaitable iterator. For native coroutines/generators, the evaluator links/switches their frames; for other awaitables it uses their `__await__` protocol. Execution continues down the delegation chain until a computation returns or yields outward:
+
+1. A driver resumes the coroutine by sending a value or throwing an exception.
+2. The coroutine executes normally, including ordinary Python calls and nested awaits.
+3. A yield saves instruction/operand/exception state and unlinks the suspendable frame from the active frame chain.
+4. A later resumption restores that state and continues; terminal return or an escaping exception completes execution.
+
+The coroutine progresses through **created → executing → suspended → executing → completed**; repeated suspension is normal, simultaneous reentry is rejected. Its retained locals keep their objects alive across waits. No dedicated OS thread or frozen C stack belongs to each suspended coroutine. [Coroutine/generator implementation](https://github.com/python/cpython/blob/v3.15.0/Objects/genobject.c), [await/send/yield instructions](https://github.com/python/cpython/blob/v3.15.0/Python/bytecodes.c).
+
+Awaiting another coroutine normally drives it **within the same Task**, not as a newly scheduled Task. An already-completed Future or immediately successful operation returns without outward suspension. A long chain of such awaits can monopolize the loop. `asyncio.sleep(0)` deliberately yields; an arbitrary `await` is not a preemption boundary.
+
+### Tasks drive coroutines; Futures record outcomes
+
+`asyncio` adds scheduling to the language's suspendable execution:
+
+- **Future:** A pending, finished, or cancelled result cell with completion callbacks. A finished Future stores either a value or an exception.
+- **Task:** A coroutine driver with saved execution context, cancellation state, and an optional current waiter. It becomes terminal when the coroutine returns, raises, or lets cancellation escape.
+- **Callback Handle:** Work submitted to the loop, including Task steps/wakeups and I/O/timer callbacks. A Handle is not necessarily an application coroutine.
+
+Normal CPython uses C-accelerated `_asyncio.Task` and `_asyncio.Future`; the Python implementations expose the same coordination model. Under ordinary deferred start, Task creation schedules its first step. Eager-start configuration instead runs it during construction until it blocks or completes, changing ordering and reentrancy.
+
+A pending await connects the Task and Future through a handshake:
+
+1. The Task sends `None` into its coroutine, or throws a pending exception, under its saved `contextvars.Context`.
+2. Awaiting a pending Future yields that Future outward. The Task records it and registers its wakeup callback, then returns to the loop.
+3. An operation handler calls `set_result`, `set_exception`, or cancellation on the Future. State changes now, but its registered callbacks are **scheduled**, not run inline.
+4. The loop executes Task wakeup. Failure is thrown into the coroutine; on success ordinary stepping resumes and the Future's await iterator returns its stored result.
+5. Execution continues until the next actual suspension or completion. Awaiters of the Task then observe its terminal result/error.
+
+Completion therefore means “the continuation is eligible to run,” not “the application resumed immediately.” Tasks/Futures belong to their loop and are not general cross-thread synchronization objects. Loop registration and lifetime also differ: keep a strong application reference to background Tasks whose completion matters; a weak Task registry is not ownership of a durable job. [C Task/Future machinery](https://github.com/python/cpython/blob/v3.15.0/Modules/_asynciomodule.c), [Task coordination](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/tasks.py), [Future await/completion](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/futures.py).
+
+### Cancellation and failure ownership
+
+`Task.cancel()` requests cooperative injection of `CancelledError`, first attempting to cancel a pending waiter where applicable. It does not interrupt arbitrary currently running Python/native code or roll back I/O and external side effects. Terminal cancellation occurs when the coroutine lets that exception escape; code can delay or suppress it.
+
+Cleanup belongs in `finally`, context managers, and asynchronous resource scopes. `CancelledError` derives from `BaseException`, and swallowing it can violate structured-concurrency assumptions. Task groups retain/wait for child work and coordinate cancellation/failure propagation; they do not make an uncooperative child forcibly interruptible.
+
+Failure has different reporting routes:
+
+- **Awaited Task:** Stores failure for its awaiter; grouped concurrent failures can propagate as exception groups.
+- **Unretrieved Task failure:** Reported when its failure remains unobserved under the runtime's reporting rules.
+- **Raw callback failure:** Normally passed to the event loop's exception handler, not thrown into an unrelated Task.
+
+Pending native/thread work adds a different lifetime obligation: cancellation requests cleanup through its adapter, already-running thread work continues, and an overlapped operation's storage remains valid until the backend safely finishes it. Resource cancellation is a protocol with the operation owner, not proof that a socket closed, bytes were never consumed, or a thread stopped. [Cancellation contract](https://github.com/python/cpython/blob/v3.15.0/Doc/library/asyncio-task.rst), [Future cancellation bridging](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/futures.py).
+
+## The event loop as an execution engine
+
+### Construction and lifecycle
+
+The standard loop combines runnable callbacks, timed callbacks, backend I/O state, and lifecycle control. `asyncio.run` uses a `Runner` to create/manage the loop and main Task; it does not nest another running loop in the same thread.
+
+- **Ready deque:** Callback Handles eligible for execution, including Task steps and wakeups.
+- **Timer min-heap:** Scheduled Handles ordered by monotonic-clock deadlines.
+- **I/O backend:** A selector or Windows proactor integrating pending operations with callback/Future state.
+- **Wakeup channel:** A self-pipe/socket mechanism interrupts polling for cross-thread work and applicable signals.
+- **Managed support state:** Default executor, task factory, debug settings, current-loop/thread identity, and asynchronous-generator tracking.
+
+`run_until_complete` drives `run_forever`, repeatedly processing iterations until completion/stop callbacks terminate it. Runner teardown cancels remaining Tasks and drives their cleanup, finalizes tracked asynchronous generators, awaits default-executor shutdown, and closes loop/backend resources. A Task that never yields or suppresses cancellation can obstruct this lifecycle.
+
+`loop.close()` alone is not equivalent: the loop must already be stopped, queued work is discarded, and ordinary executor completion is not awaited. Transport/writer/application resource shutdown should happen while the loop can still execute it. [Runner lifecycle](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/runners.py), [base loop](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/base_events.py).
+
+### One standard-loop iteration
+
+`BaseEventLoop._run_once` implements this ordered cycle:
+
+1. Remove cancelled timer entries, rebuilding the heap when its cancellation density warrants it.
+2. Compute the backend wait timeout: zero with ready work or stopping; otherwise time until the earliest timer, or an indefinite wait when no deadline exists.
+3. Poll `_selector.select(timeout)`. This slot invokes readiness polling on a selector loop and completion polling on a proactor loop.
+4. Process backend results. Selector events append associated read/write Handles; the proactor has already handled completions inside its poll.
+5. Move eligible timer Handles into the ready deque. Clock-resolution tolerance admits slightly early execution; loop load can make execution late. Equal-deadline order is not guaranteed.
+6. Snapshot the ready length and execute that many noncancelled Handles. Newly queued callbacks wait for a later iteration. Debug mode measures and reports slow callback/Task steps.
+
+This snapshot prevents immediate self-requeue from extending the **same batch** forever. It does not guarantee fairness or a latency bound: one callback can run arbitrarily long, and an existing batch can already be large. FIFO `call_soon` registration does not define universal ordering across I/O events, equal timers, cross-thread submissions, or eager Tasks. [Actual scheduling cycle](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/base_events.py).
+
+An event loop schedules on its own thread, not automatically on every available CPU. Native code, garbage collection, serialization, logging, or a blocking function executed in a callback all occupy that thread until return or a real scheduling handoff.
+
+### Cross-thread completion
+
+`call_soon_threadsafe` both enqueues loop work and writes the wakeup channel so a sleeping poll returns. Executor completion uses this bridge to update the loop-owned Future and schedule its waiter. Direct mutation from another thread and ordinary `call_soon` do not substitute for the thread-safe bridge.
+
+The wakeup channel is control traffic, not the application socket's payload. Likewise, the interpreter's eval breaker and GIL switching coordinate native-thread/runtime execution; neither schedules another asyncio Task while a callback remains on the loop thread. [Selector wakeups](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py), [executor-Future bridge](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/futures.py).
+
+## Asynchronous socket I/O
+
+### Readiness backends
+
+On Unix, `SelectorEventLoop` constructs `selectors.DefaultSelector`, which chooses a usable backend: normally epoll on Linux and kqueue on macOS/BSD, with devpoll, poll, and select alternatives. The Python abstraction maps descriptors to interest masks and callback Handles; it does not make the kernels' costs or capabilities identical.
+
+- **select/poll:** Receive sets/tables of requested read/write interests and return descriptors with relevant conditions.
+- **epoll:** `EpollSelector` registers read/write interests without `EPOLLET` or one-shot mode. Python's default selector path is not an edge-triggered drain algorithm borrowed from another runtime.
+- **kqueue:** Registers persistent read/write filters without requesting `EV_CLEAR`/one-shot in this path. Other uses of kqueue can choose different semantics.
+
+[A readiness event](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO) permits an **attempt** at nonblocking I/O; it does not transfer bytes. EOF, hangup, or errors also lead to operations that must inspect the actual result. State can change between notification and retry, so `EAGAIN`/`EWOULDBLOCK` remains normal control flow. A blocking socket would make a stale readiness expectation capable of stopping the loop. [Backend selection and flags](https://github.com/python/cpython/blob/v3.15.0/Lib/selectors.py), [loop registration/dispatch](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py).
+
+### A selector socket receive from coroutine to kernel and back
+
+Consider `await loop.sock_recv(sock, n)` on a nonblocking **stream** socket with positive `n`, not concurrently owned by an asyncio transport:
+
+1. The calling Task drives `sock_recv` in its existing coroutine chain; no new Task/thread is required.
+2. `sock_recv` first calls `sock.recv(n)`. Available bytes or EOF return immediately without suspension; a real error propagates.
+3. If the attempt would block, it creates a loop Future and registers a descriptor reader Handle pointing to `_sock_recv`. A completion callback will remove that registration.
+4. Awaiting the pending Future yields it outward. The Task records its waiter/wakeup and returns control to the loop, retaining coroutine state and its objects.
+5. The loop executes other callbacks/Tasks or waits for events and deadlines.
+6. The OS reports read readiness; the selector maps it to the registered reader Handle, which joins ready work.
+7. The Handle retries actual `recv`. Another would-block/interrupt leaves interest pending; bytes/EOF complete the Future, and a real error sets its exception.
+8. Future completion queues reader cleanup and Task wakeup. They do not execute inline inside `set_result`.
+9. Wakeup retrieves the outcome and resumes/throws into the await chain. Application code receives bytes, EOF, or the exception after its suspension point.
+
+In this callback path, completion occurs during the ready snapshot, so newly queued wakeup runs in a later iteration. This is not a universal number-of-turns guarantee for every backend. A receive returns **up to** `n` bytes; `b''` is stream EOF, not “try again.” A complete HTTP/message body requires higher-level framing across receives. [Socket receive implementation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py).
+
+```mermaid
+sequenceDiagram
+    participant T as Application Task
+    participant F as Pending Future
+    participant L as Event loop
+    participant K as OS socket backend
+    T->>K: Nonblocking recv
+    K-->>T: Would block
+    T->>L: Register reader callback
+    T->>F: Await and install wakeup
+    T-->>L: Suspend execution
+    L->>L: Run unrelated ready work
+    L->>K: Poll readiness
+    K-->>L: Descriptor readable
+    L->>K: Reader callback retries recv
+    K-->>L: Bytes, EOF, or error
+    L->>F: Set result or exception
+    F->>L: Queue Task wakeup
+    L->>T: Execute wakeup later
+    T->>F: Retrieve awaited outcome
+```
+
+The syscall, readiness registration, Future, and coroutine are different state holders. The Future connects them; it does not itself read from the kernel.
+
+### Windows completion and proactor operation
+
+Default Windows asyncio uses `ProactorEventLoop` with `IocpProactor`. Rather than asking when a socket is readable and then issuing a receive, it submits an **[overlapped operation](../../Operating%20Systems/07%20Socket%20Management.md#Windows%20Overlapped%20I%2FO%20and%20IOCP)** and later retrieves that operation's result:
+
+1. `sock_recv` delegates to the proactor, which associates the socket with IOCP and submits `WSARecv` with an owned buffer and `OVERLAPPED` state.
+2. Registration retains the Future, socket, operation, and finish callback keyed by operation address. These references keep native resources valid while Windows can still use them.
+3. If already complete, registration retrieves the result and completes the Future immediately; await need not suspend. Operation state still remains retained until its completion packet is consumed.
+4. For a pending receive, the Task waits on that Future while the loop executes other work or waits for IOCP packets.
+5. IOCP reports operation address, byte count, and status. The proactor retrieves/converts the result, removes completed operation tracking, and completes the Future or records its exception.
+6. The queued wakeup resumes the Task through the same Python await protocol. Here completion happens inside polling, **before** ready-snapshot capture, so its wakeup can run in that iteration.
+
+Cancelling requests native cancellation where possible; it can race successful completion and does not prove no bytes were consumed. The backend must safely process remaining completion/lifetime work. Its close path cancels/drains outstanding operations before releasing their storage and port.
+
+IOCP applies to operations exposed by this adapter, not every Python asynchronous interface or all `open().read()` calls. The Windows selector alternative has different socket capabilities; proactor does not implement the Unix `add_reader`/`add_writer` interface. [IOCP registration/poll/cancellation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/windows_events.py), [proactor loop](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/proactor_events.py), [native overlapped adapter](https://github.com/python/cpython/blob/v3.15.0/Modules/overlapped.c).
+
+| Boundary | Selector path | Proactor path |
 | --- | --- | --- |
-| `spawn` | Fresh interpreter imports the required entry/definitions; process state is transferred | Default on Windows/macOS, and fallback where forkserver prerequisites are unavailable |
-| `forkserver` | A server forks children from its own state, not the submitting parent's current heap | Default on other supported POSIX platforms with descriptor-passing support |
-| `fork` | Snapshot of the calling process via `os.fork()` | Explicit choice on supported POSIX; no platform uses it by default in 3.14 |
+| Pending state | Descriptor interest and retry callback | Submitted operation, buffer, and completion callback |
+| OS notification | Operation may now make progress | Submitted operation has a completion result |
+| Python handler | Attempts the nonblocking operation | Retrieves/converts the operation result |
+| Join point | Complete Future, schedule Task wakeup | Complete Future, schedule Task wakeup |
 
-Spawn/forkserver require safely importable entry code and suitable top-level definitions; guard process creation with `if __name__ == '__main__'`. `ProcessPoolExecutor` follows its selected context, but `max_tasks_per_child` selects spawn when no explicit context is supplied and is incompatible with explicit fork. [Start-method source](https://github.com/python/cpython/blob/v3.14.7/Lib/multiprocessing/context.py), [process executor](https://github.com/python/cpython/blob/v3.14.7/Lib/concurrent/futures/process.py).
+Both paths handle partial transfers, EOF, errors, and cancellation. Neither notification proves a complete application message, peer consumption, or durable delivery.
 
-After a multithreaded fork only the calling thread survives, while locks/library state can remain held or inconsistent. Allocator, logging, TLS, and extension state can fail before useful child work starts. Detection of multiple threads has produced the documented fork warning since 3.12. [Multiprocessing contracts and hazards](https://github.com/python/cpython/blob/v3.14.7/Doc/library/multiprocessing.rst).
+## Transports, streams, and backpressure
 
-**CPython 3.14.7 / POSIX consequence:** [Copy-on-write](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#Shared%20and%20Private%20Mapping%20Visibility) applies to inherited private pages, not arbitrary subsequently submitted objects. Reference-count writes, GC, allocator metadata, mutable caches, and application writes erode sharing. In deliberate pre-fork designs, `gc.freeze()` can reduce GC-induced writes to inherited objects; it prevents neither refcount writes nor all copying and is not universal deployment advice. Forkserver inheritance is from the server's ancestry. [Freeze behavior](https://github.com/python/cpython/blob/v3.14.7/Doc/library/gc.rst).
+### Layers of retained data
 
-### Object transfer and shared bytes
+Raw socket coroutine methods are not the only integration. A **transport** owns asynchronous connection I/O, buffering, close state, and flow-control notifications. A **protocol** consumes synchronous callbacks such as `data_received` and `connection_lost`. Streams add `StreamReader`/`StreamWriter` over this pair. Servers can use protocols directly, without constructing streams.
 
-**Standard-library contract / CPython 3.14.7:** Multiprocessing connects interpreter heaps using [IPC](../../Operating%20Systems/08%20Inter-Process%20Communication.md#Process%20Boundaries%20and%20Communication), not transparent shared-object access.
+Each buffering layer answers a different question:
 
-- **`Connection`:** `send`/`recv` pickle/unpickle objects; `send_bytes`/`recv_bytes` transfer framed bytes without automatic object pickling.
-- **`Queue`:** `put` buffers an object locally; a feeder thread later serializes and writes it. Returning from `put` does not establish a completed snapshot. `SimpleQueue` serializes synchronously instead.
-- **Pools/executors:** Submitted inputs and returned results/errors must satisfy their serialization/importability rules.
+- **Kernel socket buffers:** Hold bytes accepted from/to the network stack.
+- **Transport write queue:** Retains unsent user-space chunks until the socket can accept them.
+- **Reader/protocol buffer:** Holds received bytes not yet consumed or parsed by application logic.
+- **Application queue:** Retains work/messages/results whose production can outrun consumption.
 
-Pickle commonly resolves functions/classes by module/name rather than copying executable closure state. Unpickling reconstructs ordinary mutable values in the receiving heap, but globals, singleton values, and custom reducers prevent a universal “every node is newly allocated” rule. Never unpickle untrusted data; authentication alone does not make a payload safe. [Queue implementation](https://github.com/python/cpython/blob/v3.14.7/Lib/multiprocessing/queues.py), [connection implementation](https://github.com/python/cpython/blob/v3.14.7/Lib/multiprocessing/connection.py), [pickle contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/library/pickle.rst).
+Readiness only concerns the associated operation's progress. Buffered bytes can be available without a complete application message; conversely, a completed message can remain in a user buffer without another kernel event. Framing belongs to stream/protocol/application logic. [Transport implementation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py), [streams](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/streams.py).
 
-Queue ordering is per documented producer/channel rules, not one universal order across producers. Backpressure can stall writers/feeders; joining a producer before draining its queue can deadlock, and terminating it during writes can corrupt the channel. Resource tracking on POSIX spawn/forkserver helps reclaim named resources, not recover arbitrary application state.
+### Writing and producer pressure
 
-**Standard-library contract / OS-specific:** `SharedMemory` exposes shared bytes; `Value`/`Array` expose constrained shared representations with synchronization requirements. Process-local pointers, headers, refcounts, allocators, and interpreter ownership do not become a shared Python container graph. Close each attachment; unlink once when appropriate on POSIX. On Windows, unlink is ignored and deletion follows closing all handles. Independently launched tracked processes can have separate trackers and premature cleanup hazards. [Shared-memory lifecycle](https://github.com/python/cpython/blob/v3.14.7/Doc/library/multiprocessing.shared_memory.rst).
+On the selector transport, writing to an empty queue first attempts nonblocking send. Partial/would-block output leaves the remainder queued and installs write interest. Later callbacks retry, retain unsent data, and remove interest when drained. Supported paths use queued chunks/scatter-gather operations instead of necessarily concatenating every write into one buffer.
 
-### Queue message to receiving object
+Ordinary transport queue growth above a **high-water mark** calls `pause_writing`; falling to/below the **low-water mark** calls `resume_writing`. Streams' `await writer.drain()` waits while paused and propagates relevant close/errors. When not paused, it can return immediately.
 
-**CPython 3.14.7 walkthrough:**
+- Watermarks are cooperative notifications, not a hard allocator-enforced maximum that rejects all later writes.
+- `drain()` does not require the queue to be empty or guarantee a scheduling yield.
+- Successful drain/write means local flow-control progress, not remote receipt, parsing, application success, or persistence.
+- A producer that ignores flow control, emits giant chunks, or fills another unbounded queue can still exhaust memory.
 
-1. The parent calls `Queue.put`; the queue retains the submitted object in a local buffer. The producer must not assume that a mutable payload has already been serialized.
-2. The feeder removes it, pickles the serializable graph, and frames the bytes. A direct `Connection.send` instead serializes in its send path.
-3. The write crosses user/kernel buffers or platform equivalents and can wait for channel capacity. This is byte transfer, not shared access to the producer's object.
-4. The receiving process reads a frame and unpickles it, resolving importable definitions and reconstructing process-local state under its own allocator/lifetime rules.
-5. Result/error transfer repeats the boundary. Unpicklable values, missing definitions, closed channels, and broken workers cause failures.
+This makes backpressure an end-to-end rate/capacity relationship: application production must eventually respond to transport/downstream capacity, not merely insert `await` somewhere. [Flow-control mixin](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/transports.py), [stream drain](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/streams.py).
 
-> [!note] Shared-memory alternative
-> A shared-memory transfer exchanges a name/handle and layout information instead of reconstructing the payload through this Queue path. Data synchronization, view lifetime, close/unlink, and interpretation remain explicit.
+### Reading, framing, and cleanup
 
-## Coroutines and asyncio
+`StreamReaderProtocol` feeds received bytes into the reader buffer and wakes its waiter. As buffering grows, the reader pauses transport input; consumption resumes it. The pinned reader uses thresholds relative to its configured limit, not a universal hard HTTP-message size cap. Selector pause removes read interest; proactor can already have a receive in flight. Eventually stopped consumption fills kernel buffers and applies network pressure upstream.
 
-### Coroutine, Task, and Future
+`read` can return buffered data inline; `readexactly` or delimiter parsing combines chunks according to a framing contract. Competing coroutines cannot independently wait on the same StreamReader data waiter; arrange deliberate message routing instead of racing readers. Frameworks can impose different body-buffer policies from StreamReader.
 
-**Language guarantee:** Calling a coroutine function (`async def` without `yield` in its body) creates a coroutine without running the body. Calling an asynchronous-generator function instead creates an asynchronous generator. `await` uses the awaitable protocol; it suspends only if the awaited computation yields control. Merely declaring a function async does not make its blocking operations nonblocking.
+Orderly transport close stops new reads and allows queued output to finish before connection-lost cleanup; abort/error discards pending output. Stream shutdown uses writer close and awaited close completion. Cancellation of a Task does not automatically close every resource it referenced. TLS additionally has handshake, encrypted/plaintext buffers, and shutdown state; raw socket functions are not interchangeable with an SSL transport. [Stream buffering and close](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/streams.py), [TLS state machine](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/sslproto.py).
 
-**CPython 3.14.7:** Generators/coroutines retain instruction position, evaluation state, locals, and references in an embedded interpreter frame. `send`, `throw`, and closing/resumption protocols transition that state; suspension keeps referenced objects alive. [Generator/coroutine design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/generators.md).
+## Files, native asynchronous I/O, and data transfer
 
-**Standard-library contract:** A Task drives a coroutine; a Future represents eventual result/error and owns completion callbacks. Awaiting an incomplete Future suspends the Task and installs wakeup machinery. Awaiting an already completed Future need not yield.
+### Ordinary files still block their calling thread
 
-Callback scheduling distinguishes two categories:
+`open()` normally assembles raw `FileIO`, a buffered binary layer, and—for text—a `TextIOWrapper` handling encoding/newlines. None of these automatically registers disk operations with an event loop.
 
-- **Ready callbacks:** `call_soon` schedules loop work; thread-safe scheduling also wakes the loop.
-- **Scheduled callbacks:** Timers become eligible according to the loop clock.
+A read can consume an existing Python buffer, hit the [kernel page cache](../../Operating%20Systems/06%20Storage%20Management.md#Caching), or wait for storage/filesystem work. Even when CPython releases the GIL around an underlying syscall, the calling loop thread remains inside that synchronous call. Open, metadata, flush, close, and page faults introduce other waiting points.
 
-Tasks use that scheduling machinery, with separate creation and lifetime constraints:
+[Regular-file readiness](../../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) does not predict storage latency: POSIX readiness interfaces generally consider ordinary files ready, while Linux epoll rejects them. Setting nonblocking mode is not submission of a disk request. Standard asyncio therefore has no general selector-backed asynchronous regular-file read/write interface, and its Windows socket/pipe proactor support does not transform ordinary file methods into overlapped I/O. [FileIO implementation](https://github.com/python/cpython/blob/v3.15.0/Modules/_io/fileio.c), [I/O layers](https://github.com/python/cpython/blob/v3.15.0/Doc/library/io.rst).
 
-- **Configuration:** Factories and eager-start options can change when initial coroutine execution begins; contexts are captured/selected according to the API.
-- **Ownership:** The loop keeps weak Task references; keep a strong application reference for background work that must remain live.
+### Offloading and completion back to the loop
 
-Future completion schedules callbacks rather than executing them inline. No JavaScript-style universal microtask queue is implied. [Task contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-task.rst), [Future contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-future.rst).
+Thread offloading preserves the ordinary file API but changes which thread waits:
 
-### Event-loop iteration and I/O backends
+1. `run_in_executor` submits a callable to the selected executor, lazily creating a default thread executor when needed.
+2. An asyncio Future wraps the executor Future; awaiting it suspends the Task if incomplete.
+3. A worker thread performs the blocking operation under normal native/GIL rules.
+4. Completion crosses through thread-safe loop scheduling, updates the asyncio Future, and queues Task wakeup.
+5. The coroutine retrieves the result/error and continues on its loop.
 
-**CPython 3.14.7 — standard asyncio loop implementation:** `_run_once` performs an ordered scheduling cycle:
+`asyncio.to_thread` copies the caller's context and uses this bridge; it is itself a coroutine, so submission begins when driven. Calling `run_in_executor` submits directly. Neither makes the underlying read a kernel-native asynchronous operation.
 
-1. Remove cancelled timer entries as required.
-2. Compute the poll timeout: zero when ready work exists or the loop is stopping; otherwise derive it from the next timer, or wait without a timer deadline.
-3. Poll the backend and process its events.
-4. Append eligible timers to the ready queue, including the implementation's clock-resolution window.
-5. Capture the ready-queue length and execute that bounded snapshot; callbacks scheduled during its execution wait for a later iteration.
+Cancellation of the awaiter does not forcibly stop a running file operation. Its descriptor, buffer, and operation owner must remain valid through actual completion; closing/reusing them on outer cancellation can violate that lifetime. Offload meaningful work units, bound outstanding submissions, and distinguish active worker limits from an unbounded submission queue.
 
-This is implementation ordering, not a requirement for every custom event loop. [Loop implementation](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/base_events.py).
+The default executor also handles blocking name resolution through loop `getaddrinfo`/`getnameinfo`. A backlog of long file operations can therefore appear as network connection latency before socket polling even starts. Separate executor budgets or bounded submissions address that coupling; adding asynchronous syntax does not. [Executor bridge](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/base_events.py), [to_thread implementation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/threads.py).
 
-**OS-specific / standard asyncio defaults:** Unix `SelectorEventLoop` uses `selectors` and the best available [readiness](../../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO) backend. Windows `ProactorEventLoop` uses IOCP [completion](../../Operating%20Systems/07%20Socket%20Management.md#Completion-Based%20I%2FO). Their supported socket/pipe/handle operations differ. Neither choice specifies listener count, worker processes, or a server topology. [Platform behavior](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-platforms.rst).
+### Async file libraries and actual kernel backends
 
-### Socket read to Task resumption
+An async method name does not identify its backend:
 
-**CPython 3.14.7 / OS-specific walkthrough — pending receive path:**
+- **aiofiles:** Delegates ordinary open/file methods to executor work. Python buffering/encoding still comes from the wrapped synchronous file implementation; it is not a Linux AIO binding.
+- **aiofile:** Its low-level `AIOFile` read/write operations use a `caio` context, with explicit offsets instead of an implicit shared seek position. Other operations, including open and applicable metadata/truncate/close work, still use executor paths.
+- **caio contexts:** The inspected snapshot supports io_uring, Linux libaio, C-thread, and Python-thread backends, with configurable selection. An available module/default choice is not proof every operation or filesystem supports that backend or automatically falls back after an operation error.
 
-1. A Task advances its coroutine into an awaited socket receive. Selector `sock_recv` first tries a nonblocking receive; immediate success returns without suspension.
-2. If it would block, the selector path creates a Future and registers the fd's reader callback **before awaiting** it. The proactor path submits an overlapped receive before awaiting its completion Future.
-3. The incomplete Future yields; the Task retains suspended coroutine state, installs a wakeup callback, and returns control to the loop.
-4. The loop polls with the scheduling timeout. Readiness lets a callback attempt receive and handle partial data/errors; IOCP reports the submitted operation's completion. Neither establishes a complete application message.
-5. Completion stores the Future's result/error and schedules its callbacks. A selector receive callback that completes it during snapshot execution schedules wakeup for a later iteration; IOCP polling can complete it before snapshot capture.
-6. At wakeup, success steps the coroutine with `None`; the Future's await iterator returns the stored result. Failure is thrown into the suspended coroutine. The embedded frame continues after `await`.
-7. Cancellation instead requests exception injection and cleanup at a resumption opportunity; surrounding structured concurrency determines the eventual outcome.
+For the native Linux paths, asyncio can compose **completion I/O with readiness notification**:
 
-[Selector receive](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/selector_events.py), [Windows completion](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/windows_events.py), [Task wakeup](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/tasks.py), [Future await](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/futures.py).
+1. The library prepares the Future, completion callback, and retained buffer/operation state before submitting the file operation.
+2. A native backend records completed operations and notifies an eventfd-like descriptor.
+3. The asyncio selector watches that notification descriptor. Readiness says **completion records are available**, not that the file is readable without waiting.
+4. The adapter drains completion records, retrieves operation results, and completes the associated Futures.
+5. Tasks resume through ordinary loop scheduling; immediate completion can avoid suspension.
 
-### Cancellation, flow control, and blocking boundaries
+This does not replace asyncio's networking selector with io_uring. The library supplies the file backend and bridges it to the existing loop. Cancellation requests do not guarantee an operation was undone; safe buffer/request lifetime still extends through backend cleanup. [aiofiles delegation, pinned snapshot](https://github.com/Tinche/aiofiles/blob/eae41d5a930a6badf20dfad0852f50e2ad2e31bc/src/aiofiles/threadpool/utils.py), [aiofile operations](https://github.com/mosquito/aiofile/blob/04f06a095733e424bad71ecc45b13a2d4eb4f1f2/aiofile/aio.py), [caio selection](https://github.com/mosquito/caio/blob/97d0788fa64b58bc8fae3059fe3fc5ee86a19bdc/caio/__init__.py), [io_uring loop adapter](https://github.com/mosquito/caio/blob/97d0788fa64b58bc8fae3059fe3fc5ee86a19bdc/caio/linux_uring_asyncio.py).
 
-**Standard-library contract:** `Task.cancel()` requests `CancelledError` injection; it is not an immediate stop or proof of completed cancellation. The exception derives from `BaseException`. Use `try/finally` for cleanup; code can delay/suppress cancellation, but suppression can break structured-concurrency assumptions. `TaskGroup` cancels siblings after ordinary failures, waits for them, and groups non-cancellation failures; `KeyboardInterrupt`/`SystemExit` are reraised specially after cleanup. [Cancellation and groups](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-task.rst).
+Traditional Linux AIO is best suited to supported direct-I/O paths; buffered operation/submission has blocking caveats. io_uring supports broader file operations, but kernel version, operation, filesystem, binding, and security policy determine availability and behavior. It does not imply no kernel worker threads, zero-copy payloads, or native asynchronous execution of every library method. Special-file limitations of one binding/context must not become universal claims about all io_uring operations. These source snapshots establish backend mechanisms, not certified CPython 3.15 library compatibility. [libaio adapter](https://github.com/mosquito/caio/blob/97d0788fa64b58bc8fae3059fe3fc5ee86a19bdc/caio/linux_aio_asyncio.py), [native io_uring integration](https://github.com/mosquito/caio/blob/97d0788fa64b58bc8fae3059fe3fc5ee86a19bdc/caio/linux_uring.c).
 
-Streams layer `StreamReader`/`StreamWriter` over public transports/protocols. Write-buffer high/low watermarks drive `pause_writing`/`resume_writing`; `drain()` waits for flow-control resumption/error when paused. It is not an empty-buffer, peer-delivery, or guaranteed-yield operation. Reader buffering separately pauses/resumes transport reads, connecting application consumption to backpressure. [Streams implementation](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/streams.py), [transport contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-protocol.rst).
+### Mapping, buffered writes, and durability
 
-Blocking work stalls the loop thread unless its implementation integrates nonblocking I/O or offloads execution:
+`mmap` exposes mapped file bytes and supports buffer views. A memoryview can access existing mapped storage, while slicing the mapping into `bytes` copies payload. Cold access can fault and wait on the calling thread; mapping is neither an awaitable completion operation nor a promise that the file is resident. Parsing/decoding/scanning still executes Python/native CPU work.
 
-- Ordinary file I/O has no general asyncio async-file API; [regular-file readiness](../../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) does not reveal storage latency.
-- Loop `getaddrinfo`/`getnameinfo` use the default thread executor and can queue behind other work.
-- Synchronous logging, database drivers, compression, subprocess waiting, native callbacks, and CPU computation retain their blocking behavior unless their specific interface changes it.
+Mapping lifetime and visibility require deliberate ownership: flush relevant Python buffered writes before expecting the mapping to observe them, release exported views before closing the mapping, and distinguish copy-on-write mappings from updates to the file.
 
-`asyncio.to_thread`/`run_in_executor` move the work; they do not turn the underlying function into a nonblocking operation. Thread offload is not default-build Python CPU parallelism. **Standard-library version status:** Event-loop policy APIs are deprecated in 3.14 and scheduled for removal in 3.16; configure `asyncio.run`/`Runner` with a loop factory instead. [Blocking/debug guidance](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-dev.rst), [policy status](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-policy.rst).
+For writes, [completion and persistence](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization) are separate boundaries:
 
-## Socket wrappers and deferred signals
+- **Buffered write:** Bytes accepted into applicable user/kernel buffers, potentially awaiting later writeback.
+- **Python `flush()`:** Pushes user-space buffered output toward the underlying file, not necessarily durable media.
+- **Appropriate `fsync`/`fdatasync` operation:** Requests the OS-specific persistence boundary after ordered writes, with failures still handled.
+- **Direct I/O:** Changes the cache/data path and imposes applicable alignment/operation constraints; it is not a substitute for synchronization or a durability protocol.
 
-**Standard-library contract / CPython 3.14.7:** A `socket` object wraps an OS descriptor/handle. Blocking, nonblocking, and timeout modes affect Python operations; timeout-mode sockets use nonblocking underlying state while the wrapper can wait. `BlockingIOError` denotes an operation that cannot proceed as requested. Reads/writes can be partial; protocols must frame messages and retry/continue as appropriate. `recv` produces bytes, while buffer-taking APIs provide different allocation/copy boundaries.
+Synchronous I/O fits startup/scripts/dedicated blocking workers where waiting is acceptable. Offloading isolates an event loop from portable ordinary-file waits. Mapping fits suitable random-access/view workloads with acceptable faults and lifetime constraints. Native async I/O fits measured workloads with enough outstanding work to justify backend, cancellation, and buffer-management complexity. None is universally fastest. [Mapping contract](https://github.com/python/cpython/blob/v3.15.0/Doc/library/mmap.rst), [Python file interfaces](https://github.com/python/cpython/blob/v3.15.0/Doc/library/io.rst).
 
-TLS adds protocol/buffering state through SSL transports; raw loop socket functions are not interchangeable with SSL-socket handling. Offloading a blocking socket operation changes which thread waits, not the socket into an asyncio transport. [Socket semantics](https://github.com/python/cpython/blob/v3.14.7/Doc/library/socket.rst), [TLS integration](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/sslproto.py).
+### Buffers and file-to-socket transfer
 
-**CPython 3.14.7 / OS-specific:** The low-level OS handler for supported [signals](../../Operating%20Systems/05%20Process%20Management.md#POSIX%20Signals) marks pending state rather than executing arbitrary Python immediately. Python handlers run later in the main Python thread of the main interpreter; only that thread installs handlers. Long C execution delays delivery unless it checks signals or returns to evaluation. Signals are not Python inter-thread communication.
+The buffer protocol exports memory plus layout/access/lifetime metadata. `memoryview` avoids copying payload **at that boundary**, not every allocation/copy in the eventual pipeline. Consumers must honor shape, strides, contiguity, writability, and exporter lifetime; a logical buffer length need not describe a safe linear span for a noncontiguous view. Read-only is not synchronization. A raw foreign allocation without an exporter needs its own owner to keep it valid.
 
-`signal.set_wakeup_fd` lets low-level handling write a notification byte to a nonblocking fd/supported socket handle so a loop wakes. Pending signal state is not a queued occurrence count: signals can coalesce, and notification buffers can overflow. Consumers can interpret bytes or use the fd just for wakeup, with warning policy chosen accordingly. Installation is main-thread-only; Windows support and signal repertoire differ from POSIX. [Signal contracts](https://github.com/python/cpython/blob/v3.14.7/Doc/library/signal.rst), [pending-state implementation](https://github.com/python/cpython/blob/v3.14.7/Modules/signalmodule.c).
+`readinto` and `recv_into` fill a preallocated writable buffer rather than allocating a fresh bytes object per operation. Kernel-to-user transfer generally remains. `BufferedProtocol` lets a transport receive into an application-provided buffer, reducing another bytes-to-parser-buffer copy. A small view can retain a large backing allocation, and pending writes must not observe application mutation of retained buffers. [Buffer protocol](https://github.com/python/cpython/blob/v3.15.0/Doc/c-api/buffer.rst), [buffered transport paths](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py).
 
-## Exceptions and control transfer
+For eligible regular-file/plain-socket transfers, Unix asyncio attempts native `sendfile`:
 
-**Language guarantee:** Raising creates/uses a `BaseException` instance and attaches traceback state. Implicit `__context__`, explicit `__cause__`, and context suppression through `raise ... from None` are separate relationships. Exception groups represent multiple failures; `except*` splits matching subgroups rather than treating the group as one ordinary exception. After handlers run, unhandled portions and exceptions raised/reraised by handlers determine the combined outgoing exception/group. [Raise semantics](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/simple_stmts.rst), [exception groups](https://github.com/python/cpython/blob/v3.14.7/Doc/library/exceptions.rst), [`except*` control transfer](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/compound_stmts.rst).
+1. Track file offset and transferred bytes, then attempt the native transfer.
+2. Handle partial progress or would-block; register write readiness and continue later instead of assuming the full file was accepted.
+3. Update offset/cleanup state on completion or cancellation.
 
-**CPython 3.14.7 / C API:** A thread-state error indicator is distinct from a normal result object. Typical fallible APIs return `NULL`/`-1` with an exception set; callers propagate, translate, or clear it according to contract. Traceback nodes retain frame/offset information and thereby keep object graphs alive.
+The payload avoids a round trip through newly allocated Python read chunks, but transfer scheduling/backpressure and filesystem delays remain. “Zero-copy” describes an avoided boundary copy, not a promise about every OS/NIC stage or cold-file loop latency.
 
-On opcode failure, the evaluator consults the code object's exception table, restores the required stack depth, and transfers to handler bytecode or propagates out of the frame. `finally`/context-manager cleanup follows compiled control flow; this is not obsolete pre-3.11 block-stack handling or one universal native unwinder action. [Exception implementation](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/exception_handling.md), [evaluator](https://github.com/python/cpython/blob/v3.14.7/Python/ceval.c).
+Python TLS encryption cannot simply bypass its plaintext/encrypted-buffer processing through that plain sendfile path. Unsupported combinations use a fallback when allowed: executor `readinto` into a reusable buffer, transport write, and awaited flow control. This is distinct from in-kernel TLS offload. Finishing the transfer still proves neither client application processing nor persistence. [Unix sendfile continuation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/unix_events.py), [fallback transfer](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/base_events.py), [TLS buffering](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/sslproto.py).
 
-**Standard-library contract:** Errors without a normal propagation route, such as finalizer failures, use `sys.unraisablehook`. Scheduled asyncio callback errors instead normally use the loop's exception handler. Native faults/fatal crashes are a different category from catchable Python exceptions; `faulthandler` supplies diagnostic output, not exception recovery. [Unraisable hook](https://github.com/python/cpython/blob/v3.14.7/Doc/library/sys.rst), [asyncio callback errors](https://github.com/python/cpython/blob/v3.14.7/Lib/asyncio/events.py).
+## HTTP servers compose these mechanisms
 
-## Imports, bytecode caches, and extension loading
+### Responsibilities and application interfaces
 
-### Module initialization and import coordination
+An HTTP request crosses components that do different work:
 
-**Language/standard-library import protocol:** Initial loading separates discovery, module identity, and execution:
+- **Operating system:** Owns listening/connected socket state, pending connections, transport buffers, and readiness/completion reporting.
+- **Application server:** Creates or adopts listeners, accepts connections through its worker/backend, parses HTTP, invokes application code, frames response bytes, and manages flow control/connection lifecycle.
+- **Worker execution:** Processes provide isolation/parallelism; threads, event loops, or cooperative greenlets determine how requests progress within each process.
+- **Application interface:** WSGI or ASGI defines calls/messages between server and application, not listener ownership or process topology.
+- **Framework:** Routes requests, executes middleware/dependencies/endpoints, and constructs responses. Its dispatch can deliberately bridge synchronous/asynchronous execution without becoming the listener manager.
+- **CPython:** Executes those callbacks/calls, maintains frames/objects, and coordinates native threads. The selected event loop supplies scheduling above it.
 
-1. Check `sys.modules`; an existing initialized module normally satisfies the import.
-2. Finders on `sys.meta_path` locate a `ModuleSpec` and loader; path-based discovery uses path hooks/importer caches.
-3. Create the module and insert it into `sys.modules` before executing its body, enabling recursive imports to find its identity.
-4. Execute the module; on initial-load failure remove its failing entry, not successfully imported side-effect modules.
-5. Bind loaded submodules into their parent package: `sys.modules['pkg.sub']` and `pkg.sub` refer to the same loaded module.
+Flask is a WSGI framework, not its production application server; its bundled development server is a separate development facility. FastAPI/Starlette likewise do not need to accept raw sockets to implement their request behavior. An optional forwarding proxy does not replace the hosting server's Python execution model.
 
-Parent initialization precedes ordinary submodule loading; namespace packages can combine search locations without an ordinary package body. The filesystem cache and module cache solve different problems. [Import reference](https://github.com/python/cpython/blob/v3.14.7/Doc/reference/import.rst).
+**WSGI** is a synchronous call contract: the server calls `application(environ, start_response)`. The environment describes the request and exposes an input stream; `start_response` supplies status/headers, and the returned iterable produces body bytes. The server serializes HTTP and drives iteration, calling the iterable's `close()` when supplied, including on early failure.
 
-**CPython 3.14.7:** Per-module locks and a global coordination lock manage concurrent initialization. Module bodies are not globally serialized throughout execution. Circular imports can encounter partially initialized modules and missing attributes. Reload executes in an existing module namespace and does not generally replace all references to previously imported objects. [Import coordination](https://github.com/python/cpython/blob/v3.14.7/Lib/importlib/_bootstrap.py).
+Streaming WSGI does not make iteration asynchronous. Each input read, generator step, database call, or blocked output write occupies its executing server slot. A threaded or cooperative worker can schedule other slots, but WSGI itself does not prescribe that scheduler or provide ASGI-style WebSocket messages. [WSGI contract](https://peps.python.org/pep-3333/), [Flask deployment boundary](https://flask.palletsprojects.com/en/stable/deploying/).
 
-### Compiled caches
+**ASGI** invokes an asynchronous callable with `scope`, `receive`, and `send`:
 
-**CPython 3.14.7:** A `.pyc` contains format/version magic, flags/invalidation metadata, and a marshalled code object. `__pycache__` names include implementation/cache and applicable optimization tags.
+- **HTTP interaction:** A scope lasts one request, including body/response events, not an entire persistent TCP connection. `http.request` carries body chunks and `more_body`; response start/body messages supply status, headers, and chunks.
+- **WebSocket interaction:** A session scope exchanges connect/accept/data/disconnect messages; the server still performs transport upgrade and WebSocket framing.
+- **Lifespan interaction:** A separate startup/shutdown exchange initializes and closes process/loop-associated resources, rather than running once per request.
 
-- **Timestamp mode:** Validates source modification time and size.
-- **Checked hash mode:** Validates source content by default.
-- **Unchecked hash mode:** Normally trusts external freshness management; `--check-hash-based-pycs` overrides hash-check policy.
+`receive` and `send` are awaitable application/server operations, not necessarily one syscall each. They can return immediately from buffers or suspend on body availability/output pressure. The calling contract enables cooperative scheduling but does not make blocking application code nonblocking. [ASGI main contract](https://asgi.readthedocs.io/en/stable/specs/main.html), [HTTP/WebSocket events](https://asgi.readthedocs.io/en/stable/specs/www.html), [lifespan](https://asgi.readthedocs.io/en/stable/specs/lifespan.html).
 
-Sourceless bytecode loading does not have equivalent source freshness validation. A cache stores neither module execution results, dependency objects, open resources, nor process `sys.modules` state; it is not native machine-code persistence. Loading cached code still executes module-level bytecode unless the current interpreter already supplies the module. [Cache loading/invalidation](https://github.com/python/cpython/blob/v3.14.7/Lib/importlib/_bootstrap_external.py).
+### Gunicorn listener ownership and worker creation
 
-### Native module initialization
+In Gunicorn's default pre-fork arrangement, the **arbiter/master creates, binds, and listens on sockets before forking workers**. Supplied descriptors can instead be adopted. Children inherit references to those same kernel listeners; workers call `accept()` and process accepted connections. The master does not normally parse each HTTP request or hand every accepted client through a central dispatch queue.
 
-**CPython 3.14.7 / C API / OS-specific:** Extension suffix discovery selects platform [dynamic loading](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Dynamic%20Linking) and the applicable `PyInit_modname` entry point. Single-phase initialization returns a module; multi-phase initialization separates a module definition, creation, and execution, enabling per-module state and repeated interpreter initialization.
+Accepted connection state belongs to the accepting worker's path. Worker heaps become process-private; preloading can initially share eligible physical pages through copy-on-write but does not create coherent shared Python dictionaries. Refcount/GC/allocator/application writes can dirty those pages. In deliberate pre-fork preparation, `gc.freeze()` moves currently tracked objects into a permanent generation excluded from subsequent collections, avoiding that GC bookkeeping contribution for inherited objects. It prevents neither refcount/allocator/application writes nor all copying, and guarantees no RSS savings. [GC freeze behavior](https://github.com/python/cpython/blob/v3.15.0/Doc/library/gc.rst).
 
-Process-global C statics are not isolated merely because Python module dictionaries are. Multi-phase slots declare multiple-interpreter compatibility and GIL dependence independently; free-threaded subinterpreters reject incompatible initialization arrangements. [Extension module lifecycle](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/extension-modules.rst), [module slots](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/module.rst).
+With supported `reuse_port` configuration, Gunicorn instead creates separate worker listeners bound to the same address. That is a different topology from [inherited references to one listener](../../Operating%20Systems/07%20Socket%20Management.md#Shared%20Listening%20Socket). [Worker class selection](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Application%20Execution%20Models) independently determines how requests run **after** acceptance. [Arbiter](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/arbiter.py), [socket creation](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/sock.py), [worker initialization](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/workers/base.py).
 
-## C API, ABI, and native-memory boundaries
+### Gunicorn synchronous worker with Flask
 
-### Compatibility contracts
+A sync worker's main thread owns one active request path at a time. Its listener is nonblocking and uses waiting when no accept can progress; the accepted connection is switched to blocking mode for synchronous handling.
 
-**CPython public API contracts:** API exposure and binary compatibility are separate dimensions:
+The complete request path is:
 
-| Interface | Contract | Boundary |
+1. **Initialize listener/workers:** Master prepares listeners; forked workers inherit them and load the Flask application according to preload/loading policy.
+2. **Accept:** One worker obtains a connected socket. Listener readiness represents pending connections, not request-body bytes; the connected socket now has its own read/write state.
+3. **Parse HTTP:** Gunicorn's parser obtains request metadata. Body input remains available through the WSGI stream; the server need not preload the entire body before calling Flask.
+4. **Build WSGI state:** Gunicorn constructs `environ` and response machinery, then calls Flask's WSGI application.
+5. **Dispatch application:** Flask pushes request/application context, runs hooks/routing/error handling, executes the selected view, and converts its result into a response. Request objects and view locals are ordinary Python/native runtime work.
+6. **Wait inside the slot:** A blocking database/file call keeps this worker's request thread occupied, even when its native wait releases the GIL. Other processes can run; this sync worker does not accept a second request meanwhile.
+7. **Produce and transmit:** The framework response supplies WSGI status/headers/body iteration; Gunicorn frames/writes bytes. Slow response production or a blocked client write also occupies the worker. Eligible file wrappers use an optimized transfer path where supported.
+8. **Close and reuse the worker:** Gunicorn closes the response iterable and client connection and returns to accepting. The sync worker forces connection close; general keep-alive settings do not make this worker retain idle HTTP keep-alive sockets.
+
+Flask owns application context/request teardown; the server owns response-iterable and socket lifecycle, with streaming-context facilities affecting how long framework context is retained. Response construction is not equivalent to response transmission. [Sync worker](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/workers/sync.py), [HTTP parsing](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/http/parser.py), [WSGI response path](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/http/wsgi.py), [Flask dispatch](https://github.com/pallets/flask/blob/3.1.3/src/flask/app.py).
+
+> [!important] An async Flask view still occupies a WSGI slot
+> Flask's default async bridge runs an event-loop adaptation for the view in a thread while its synchronous WSGI caller waits. It can overlap independent asynchronous operations **within that request**, but awaits do not free a Gunicorn sync worker to accept another request. With a threaded WSGI worker, the occupied slot is a request thread, not necessarily the whole process. Per-invocation loop cleanup also makes ad-hoc background asyncio Tasks unsuitable as durable jobs. ASGI adaptation changes the integration without making Flask natively ASGI. [Flask async behavior](https://github.com/pallets/flask/blob/3.1.3/docs/async-await.rst).
+
+### Gunicorn threaded and cooperative workers
+
+`gthread` separates acceptance/idle-connection polling from active WSGI execution:
+
+1. A worker process creates its selector, thread executor, and completion-method queue.
+2. The main thread accepts from listeners and submits connection handling to the pool.
+3. A pool thread parses, calls WSGI, iterates, and writes. Other pool threads handle other requests while it waits.
+4. Completion passes actions back to the main loop. Eligible idle keep-alive connections return to selector registration, releasing their request thread until readable again.
+5. Initial no-data connections can also return to polling; connection limits and idle/pending timeouts constrain retained connections.
+
+An idle keep-alive socket therefore does not require a request thread for its entire lifetime. Active WSGI execution still consumes thread capacity, executor/connection queues remain real, and pure Python CPU work contends for one interpreter GIL. The main loop can continue heartbeating during a long request, so worker liveness timeout is not automatically a per-request deadline. [Threaded worker](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/workers/gthread.py).
+
+Other worker strategies change the mechanism, not the meaning of Python syntax:
+
+- **Gevent worker:** Uses cooperative greenlets and patched/gevent-aware I/O with the synchronous WSGI contract. Compatible operations yield to its scheduler; an uncooperative native call or CPU loop blocks that worker. Greenlets are neither native request threads nor asyncio Tasks.
+- **Native Gunicorn ASGI worker:** Current `asgi` workers run an asyncio/optional uvloop loop, lifespan, and Gunicorn protocol machinery over worker listeners. HTTP parsing/body receivers and transport flow control drive connection/application coroutines. Its HTTP/1 connection coroutine processes requests serially; ASGI does not universally mandate one top-level Task per request.
+- **Gunicorn-hosted Uvicorn worker:** Gunicorn supplies process supervision/listeners; the worker runs Uvicorn's protocols/application execution. This is not Gunicorn's own ASGI implementation and not two sequential HTTP servers. Uvicorn's old bundled worker module is deprecated in favor of the separate `uvicorn-worker` integration.
+
+These alternatives also have different protocol capabilities. Do not infer all Gunicorn modes are WSGI-only or share the sync worker's connection/protocol limitations. [Gevent worker](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/workers/ggevent.py), [native ASGI worker](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/workers/gasgi.py), [Gunicorn ASGI protocol](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/asgi/protocol.py), [deprecated Uvicorn adapter](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/workers.py).
+
+### Uvicorn startup and process topology
+
+Uvicorn connects its protocol factory and application to an event loop. In a single-process host/port startup, configuration/application loading and lifespan startup precede `loop.create_server`; the loop/backend creates the listening socket and accepts connections. An inherited/supplied-socket path adopts that socket instead of binding an independent listener.
+
+Standalone multiple-worker startup has a distinct sequence:
+
+1. The parent creates and **binds** one socket, then passes it to spawned children.
+2. Each child creates its runtime, application, loop, connection/Task tracking, and lifespan state.
+3. Child `create_server(sock=...)` establishes listening/nonblocking/start-serving state. Parent binding is not itself the `listen()` stage in this implementation.
+4. Child loops accept through the shared listener references and handle their own connected sockets.
+5. The parent supervises/replaces processes; it does not execute their ASGI applications.
+
+This uses explicit **spawn**, not Gunicorn's fork model. When Gunicorn hosts Uvicorn, Gunicorn's supervision/listener inheritance replaces this standalone manager. Uvicorn's process health response runs from a separate child native thread in the pinned version, so a health pong does not prove the event loop is advancing requests. [Startup and shutdown](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/server.py), [parent socket binding](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/config.py), [spawn integration](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/_subprocess.py), [multiprocess supervision](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/supervisors/multiprocess.py).
+
+The concrete path below uses **HTTP/1.1, h11, and standard asyncio**. Uvicorn auto-selects httptools when available or h11 otherwise; parser selection changes native/Python parsing boundaries. Auto loop selection can choose uvloop, whose implementation is not Python's `_run_once`. Current optional protocol backends also include experimental HTTP/2 support, so an old universal “Uvicorn cannot serve HTTP/2” claim is inappropriate. The fundamental server/application boundary survives these substitutions. [HTTP auto-selection](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/protocols/http/auto.py), [loop selection](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/loops/auto.py), [release capabilities](https://github.com/Kludex/uvicorn/blob/0.54.0/docs/release-notes.md).
+
+### Uvicorn HTTP parsing and per-request execution
+
+After loop acceptance, `H11Protocol` retains connection transport, parser, flow controller, addresses, timers, and worker connection tracking. Transport callbacks are synchronous loop work; they do not require an application Task for every received chunk.
+
+1. **Deliver bytes:** `data_received` feeds h11 and repeatedly obtains parser events: incomplete input, request headers, body data, end of message, or error.
+2. **Create request state:** At the request/header event, Uvicorn constructs an HTTP scope and `RequestResponseCycle`: body buffer/completion flag, response-started/completed flags, disconnect state, body event, and response-completion callback.
+3. **Schedule application:** `cycle.run_asgi(app)` becomes a tracked Task. Application execution can start **before the entire request body arrives**.
+4. **Supply input:** ASGI `receive` consumes buffered body data or waits on the cycle event. Parser body/end/disconnect events wake it. Receiving already available data need not suspend.
+5. **Accept output:** ASGI `send` waits if output flow control is paused, validates response-message sequencing, serializes through h11, and calls transport write.
+6. **Complete/reuse:** End of response permits the next h11 cycle when both sides allow it, or closes the connection. Keep-alive uses a timer; HTTP/1 pipelined requests do not become independent simultaneous writers on one connection.
+
+The connection object can outlive many request scopes. Conversely, an application Task can remain running after disconnection: pinned h11 connection-lost marks state and wakes receive/write waiters rather than universally cancelling it. A framework can implement a separate disconnect watcher. This version's disconnected send path returns without transmission; do not assume every ASGI server/version raises a send exception on disconnect. [h11 protocol and cycle](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/protocols/http/h11_impl.py).
+
+Malformed HTTP is rejected at server protocol level. Application exceptions first meet framework error handling; an escape to `run_asgi` produces an attempted 500 before response start, or connection closure after headers/output have already begun. Uvicorn also checks missing/incomplete responses and invalid application returns. Already-transmitted headers cannot be replaced with a fresh successful error response.
+
+### Framework dispatch inside the ASGI Task
+
+Starlette/FastAPI layer routing and application behavior over that Task:
+
+- **Async endpoint:** Awaited directly in the application Task. Its direct Python computation, middleware, validation, and serialization consume loop time unless their specific implementation offloads.
+- **Synchronous endpoint:** Framework dispatch invokes Starlette's thread-pool bridge and awaits its result. This bridge uses **AnyIO `to_thread.run_sync`**, not necessarily asyncio's default executor.
+- **Dependencies:** FastAPI resolves dependency order/caches, awaits coroutine dependencies, offloads ordinary synchronous dependencies, and manages generator dependencies' enter/exit lifetime. Async declarations do not automatically run every dependency concurrently.
+- **Direct helper calls:** A blocking helper called directly inside an async endpoint runs on the loop thread; framework offloading applies to callables the framework actually dispatches, not every function reachable from them.
+
+AnyIO's worker limiter is a separate capacity budget for its managed sync work. Moving CPU-heavy Python into such a thread protects direct loop occupancy but still competes for the normal build's GIL; cancellation does not arbitrarily terminate it. Loop responsiveness and CPU parallelism remain separate goals. [Starlette dispatch](https://github.com/Kludex/starlette/blob/1.8.0/starlette/routing.py), [thread bridge](https://github.com/Kludex/starlette/blob/1.8.0/starlette/concurrency.py), [FastAPI endpoint invocation](https://github.com/fastapi/fastapi/blob/0.143.2/fastapi/routing.py), [dependency execution](https://github.com/fastapi/fastapi/blob/0.143.2/fastapi/dependencies/utils.py).
+
+> [!note] Django's dual interface
+> Django exposes separate WSGI/ASGI handlers and adapts middleware/views through sync/async bridges. An async view under WSGI still occupies a synchronous server slot; sync sections under ASGI require thread-sensitive adaptation when their contracts demand it. The current ASGI handler's body spooling and disconnect watcher are framework policies, not requirements imposed on every ASGI server. Merely selecting ASGI does not remove synchronous middleware or thread-affine dependencies. [Django handler adaptation](https://github.com/django/django/blob/6.1.2/django/core/handlers/base.py), [ASGI handler](https://github.com/django/django/blob/6.1.2/django/core/handlers/asgi.py).
+
+### Uvicorn and FastAPI through an incomplete network await
+
+With the h11/asyncio path established, a complete request proceeds as follows:
+
+1. Startup supplies the listener; the worker loop accepts a connected socket and creates transport/protocol state.
+2. Incoming bytes advance HTTP parsing. Headers create scope/cycle state and a Task enters FastAPI middleware/routing.
+3. Dependency resolution precedes the selected async endpoint. A synchronous endpoint/dependency would cross the explicit AnyIO thread boundary instead.
+4. The endpoint calls an asynchronous network client. Its operation either completes immediately or registers/submits pending I/O and awaits an incomplete Future.
+5. The Task suspends with its coroutine/frame/objects retained. The worker loop continues accepting, parsing other connections, executing ready Tasks, and processing timers.
+6. The downstream OS/backend reports readiness or completion. The appropriate operation handler completes the Future and schedules Task wakeup; resumption retrieves the value or raises the error into application code.
+7. Application response values pass through framework response handling/serialization, which consumes CPU and produces ASGI messages.
+8. Uvicorn checks flow control, serializes HTTP, and writes transport buffers. Later socket progress drains them; neither send return nor application completion proves client consumption.
+9. Response completion permits connection reuse or closure. Framework/dependency cleanup and Task completion release their owned references, while remaining protocol/callback/application owners can retain request state.
+
+The request Task resumes on the same worker event-loop thread; while it is suspended, that thread executes other callbacks/Tasks. Explicit executor/AnyIO offload runs the submitted callable on another thread and returns its result to the awaiting Task, rather than moving the Task there. No per-request event loop is created for this ASGI path.
+
+### HTTP buffering and pressure boundaries
+
+Uvicorn's kernel buffers, transport queue, parser/cycle body buffer, and framework body aggregation are separate layers. Incoming body growth pauses transport reads at the server's threshold; ASGI receive consumption resumes them. This limits that stage, not an application that deliberately aggregates the full body or enqueues unbounded jobs.
+
+Output watermarks call protocol pause/resume methods, updating the flow controller's event. ASGI send awaits drain when paused. One large write can enter buffering before a later send observes pressure; this is not a strict global request-memory cap. Backpressure must connect body consumption, response production, downstream pool capacity, and application concurrency limits. [Uvicorn flow control](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/protocols/http/flow_control.py), [body and output integration](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/protocols/http/h11_impl.py).
+
+### Concurrent waiting versus CPU work
+
+These representative deployments differ through mechanisms, not a universal speed ranking:
+
+| Dimension | Gunicorn sync + Flask | Gunicorn gthread + WSGI | Uvicorn + async FastAPI path |
+| --- | --- | --- | --- |
+| Listener creation | Default master prepares shared listeners before fork | Same default pre-fork listeners | Loop creates, or spawn parent binds and children adopt |
+| Acceptance | Sync worker's main thread | Worker main selector thread | Worker event-loop backend |
+| Application execution | Main-thread WSGI call/iteration | Pool-thread WSGI call/iteration | ASGI Task; selected sync callables offloaded |
+| Incomplete request I/O | Occupies worker's request slot | Occupies active request thread | Suspends Task when using integrated async I/O |
+| Blocking mistake | Stops that worker path | Stops a request thread; pressures shared pool | Stops worker loop and unrelated Tasks |
+| I/O concurrency | Other worker processes | Other pool threads/processes | Other runnable Tasks/connections on loop |
+| Python CPU parallelism with GIL | Across processes | Across processes, not request threads | Across processes or explicit parallel offload, not Task count |
+| Memory sharing | Private worker heaps; possible initial preload COW | Threads share worker heap | Tasks/threads share worker heap; processes separate |
+| Worker crash | Loses its active request/connection | Loses worker threads/connections | Loses worker Tasks/connections |
+| Typical capacity pressure | Process slots and slow input/output | Threads, connection queues, shared resources | Loop CPU, retained Tasks/buffers, downstream limits |
+
+Suppose several clients mostly wait for database/network responses:
+
+- **Sync workers:** Each enters one request and remains occupied during its blocking wait. Requests beyond available workers wait outside those slots; GIL release does not supply another request scheduler within that worker.
+- **Threaded workers:** Other request threads execute while one waits, provided the blocking implementation releases the GIL appropriately. Thread/connection limits and downstream pools bound useful concurrency.
+- **Async endpoints:** Waiting Tasks suspend, leaving the loop to run others without one native thread per pending request. Each wait still retains frames, Python objects, buffers, sockets, and external capacity. Offloaded sync endpoints also consume worker-limiter capacity.
+
+CPU-heavy Python changes the result: sync workers occupy cores, request threads contend for one interpreter GIL, and a long async Task step blocks its loop. More awaits do not divide computation automatically. Separate processes, suitable detached native kernels, own-GIL interpreters, or compatible free-threaded execution supply different parallelism mechanisms. Increasing request concurrency without bounding work can increase latency/memory rather than useful throughput.
+
+### Worker failure and graceful shutdown
+
+Gunicorn's master supervises worker heartbeats, reaps exits, and restores desired capacity. Stale workers can be aborted/killed; boot/application-load failures can halt startup instead of producing endless successful replacements. Heartbeat meaning depends on worker architecture, so its timeout is not one universal request deadline. A crash closes that worker's sockets/state; replacement workers do not inherit active Python frames or recover the request's external transaction.
+
+Graceful shutdown separates **stop admission** from **finish existing work**:
+
+- **Gunicorn:** Master signal handling schedules lifecycle work; graceful termination closes listeners and requests bounded worker completion before escalation. Quick shutdown uses a different path. Worker strategy determines what remains drainable.
+- **Uvicorn:** Closes listening servers/supplied handles, tells connection protocols to shut down, disables reuse for active responses, and waits for connections/Tasks up to the graceful deadline. Idle connections close; active HTTP responses finish then close when possible.
+- **Application:** Lifespan/dependency cleanup closes pools/resources while their loop/runtime remains usable. At timeout Uvicorn cancels tracked Tasks, but cooperative cancellation cannot interrupt an arbitrary blocked native function. Blocking the loop delays shutdown as well as requests.
+
+Only afterward should runtime finalization dismantle Python: wait for applicable thread work, run exit callbacks, mark finalization/coordinate remaining states, flush streams, collect while useful module state remains, then clear modules/interpreter services. Finalizers can execute during this process with increasingly incomplete surroundings; daemon threads and foreign callbacks must not assume reentry remains safe. A hard kill bypasses Python cleanup entirely. [Gunicorn supervision](https://github.com/benoitc/gunicorn/blob/26.2.2/gunicorn/arbiter.py), [Uvicorn shutdown](https://github.com/Kludex/uvicorn/blob/0.54.0/uvicorn/server.py), [CPython finalization](https://github.com/python/cpython/blob/v3.15.0/Python/pylifecycle.c).
+
+## Investigating execution and retention
+
+A useful investigation separates wall-clock waiting, Python/native CPU time, loop delay, allocation growth, and RSS before selecting evidence. Each instrument observes a boundary:
+
+| Question | Evidence | What it does not establish |
 | --- | --- | --- |
-| Full public C API | Documented extension interfaces | Normal binary compatibility is tied to a minor release and compatible build/platform |
-| Limited API | Restricted source-visible subset | Avoids selected layout/version dependencies; does not freeze behavior |
-| Stable ABI | Cross-minor binary symbol contract | Includes compatibility symbols; `abi3` packaging still needs actual compliance and platform compatibility |
-| Unstable API (`PyUnstable_*`) | Explicitly unstable public interfaces | Can change across minor releases without ordinary deprecation, not ordinary bugfix releases |
-| Private API (`_Py*`) | Internal implementation | Can change even in patches; no extension compatibility promise |
+| Which instructions execute? | `dis`, adaptive/cache views, selected runtime monitoring | Timing, OS scheduling, or a stable cross-version bytecode contract |
+| Which Python activation is retained? | Tracebacks, `inspect`, `sys._getframe`, Task stacks/await relationships | Complete native history; inspection itself materializes/retains references |
+| Where are allocations growing? | Early-started `tracemalloc` snapshots and differences | All native allocations, mapped-file residency, or total RSS |
+| What keeps objects connected? | GC traversal/referrer tools and tracked-object statistics | Every native pointer or a safe production ownership protocol; results add references |
+| Where is execution time attributed? | `profiling.tracing`/`cProfile`, `sys.monitoring`, statistical sampling | Unperturbed timing or causal proof from one profile |
+| What blocks a loop? | Asyncio debug, slow callback/Task-step reports, loop-lag measurements | Whether elapsed delay was CPU, a syscall, GC, a lock, or a large ready batch without correlation |
+| What are threads/native code doing? | `sys._current_frames`, `faulthandler`, native debugger/system profiler | A snapshot is not a GIL-contention history; Python stacks omit arbitrary native internals |
+| Which allocator state is retained? | CPython allocator statistics plus OS memory accounting | A stable private-statistics schema or automatic leak diagnosis |
 
-**CPython optional — free-threaded 3.14:** Limited API/Stable ABI are not supported; extensions need separate `t`-tagged builds/wheels. `Py_mod_multiple_interpreters` and `Py_mod_gil` are separate multi-phase declarations; omitted slots default to shared-main-GIL interpreter support and GIL dependence, respectively. Single-phase modules use `PyUnstable_Module_SetGIL` for free-threading declarations, not as proof of general subinterpreter safety. Supporting no-GIL execution also requires protecting extension globals and following ownership/domain rules. [API/ABI stability](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/stable.rst), [free-threaded extension guide](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/free-threading-extensions.rst).
+CPython 3.15 organizes deterministic profiling under `profiling.tracing` (`cProfile` remains an alias) and adds external statistical `profiling.sampling`. Sampling estimates stack occupancy, including supported thread/async views; it misses short events and does not give exact call counts. Native profiling benefits from frame pointers on supported builds and JIT unwind registration where supported, but extension/native-library build flags and platform permissions still affect visibility. `perf_jit` profiling metadata and the optimizing JIT are different mechanisms. [Profiling contracts](https://github.com/python/cpython/blob/v3.15.0/Doc/library/profiling.sampling.rst), [monitoring](https://github.com/python/cpython/blob/v3.15.0/Doc/library/sys.monitoring.rst), [asyncio debug](https://github.com/python/cpython/blob/v3.15.0/Doc/library/asyncio-dev.rst), [native observability changes](https://github.com/python/cpython/blob/v3.15.0/Doc/whatsnew/3.15.rst).
 
-**C API thread/ownership contract:** A foreign-created thread needs the correct attached interpreter/thread state before callbacks into Python. `PyGILState_Ensure` targets the main-interpreter model, not arbitrary subinterpreter selection; use explicit thread-state management for those attachments. Detached work must avoid Python-object/API access except documented exceptions. Callbacks and decref can mutate graphs, raise, or finalize objects, so borrowed-pointer assumptions must be reconsidered afterward. [Thread attachment](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/threads.rst).
+For allocation questions, distinguish shallow sizes, shared referents, traced blocks, allocator reservations, and resident pages. For execution questions, verify build GIL capability versus runtime state and JIT capability versus enablement/activity. `sys.getrefcount` introduces a temporary reference and is not an exact uniqueness oracle; free-threaded/immortal bookkeeping further limits interpretation.
 
-### Python call into native code and back
+Reproduce on the relevant version/build/workload, choose the least perturbing observation, correlate Python evidence with OS/client/backend evidence, then change one mechanism and test its predicted effect. Overlapping async sleeps demonstrates cooperative waiting, not native file-AIO correctness or CPU parallelism. `faulthandler` can diagnose a fatal native fault; it does not turn that fault into a recoverable Python exception.
 
-**CPython 3.14.7 / C API walkthrough:**
+## One request across runtime, I/O, and cleanup
 
-1. `CALL` resolves the native callable and uses vectorcall or its applicable C convention; argument ownership follows that API.
-2. With thread state attached, the extension validates arguments. Failure sets the error indicator and returns the documented sentinel.
-3. If native work is blocking/long-running and does not require Python-object access, the extension deliberately saves/detaches state (`Py_BEGIN_ALLOW_THREADS`/`Py_END_ALLOW_THREADS` express this paired boundary). The ordinary build releases/reacquires the GIL; free-threaded attachment still matters for GC.
-4. Detached work operates under native-memory ownership rules. It does not gain permission to manipulate Python objects.
-5. Before producing Python objects or invoking a Python callback, reattach the correct state. A callback can invalidate cached/borrowed assumptions and requires normal error handling.
-6. Return a strong result reference or an error sentinel with an exception set. The evaluator receives the value or transfers into exception handling.
+Consider a Uvicorn h11/asyncio worker whose async endpoint reads a downstream response and creates temporary Python objects:
 
-> [!warning] CPython optional — free-threaded call safety
-> Across the entire call lifecycle, declarations alone are insufficient: extension state needs synchronization, safe strong-reference access, and correct allocator domains. An undeclared/incompatible extension can re-enable the GIL.
+1. **Connection state:** The loop accepts a connected socket; transport/protocol state joins worker tracking. Incoming bytes advance h11 until headers define a request scope/cycle.
+2. **Execution state:** A Task enters framework routing and the endpoint. CPython executes its code object in frames bound to globals/closure/default environments; specialized bytecodes still preserve the same object semantics.
+3. **Allocation state:** Request dictionaries, parsed values, temporary lists, and response data acquire references and storage through their type/allocator paths. Coroutine locals and framework/protocol state retain their own edges to these objects.
+4. **Pending operation:** A downstream receive cannot progress. Its adapter registers readiness or submits completion state and exposes a Future; the Task suspends without a dedicated waiting thread.
+5. **Other work:** The loop processes other connections and callbacks. Other processes can execute Python simultaneously; native threads in this GIL-enabled interpreter still obey its lock. A stray synchronous file call here would instead occupy the loop thread.
+6. **Resumption:** Backend notification advances the operation, Future completion queues wakeup, and the Task retrieves bytes or an exception. Parsing/serialization resumes as CPU execution rather than as kernel I/O.
+7. **Output state:** Framework ASGI messages pass through Uvicorn's HTTP serializer into the transport. Flow control slows production when output pressure requires it; response completion and client consumption remain different events.
+8. **Ownership release:** Framework cleanup and Task completion drop their references. The protocol can retain the current cycle until next request/closure; callbacks, tracebacks, caches, and application pools can retain further graphs. Only when the last relevant owners disappear do ordinary acyclic mortal objects deallocate; isolated cycles require collection.
+9. **Storage aftermath:** Dead headers/backing arrays enter reuse paths. A surviving object can keep an allocator unit occupied, and released allocator space can remain resident. The connection can meanwhile serve a later HTTP request with new scope/activation state.
 
-### Buffers and memoryview
-
-**Public buffer protocol:** A consumer negotiates access to exporter memory through `Py_buffer` and acquisition flags. The view describes logical start/length, item size/format, dimensions/shape, strides/suboffsets, read-only status, and requested contiguity. `len` is the logical contiguous-equivalent payload size, not necessarily a safe linear span from `buf`; honor strides and acquisition guarantees.
-
-Zero-copy means no payload-byte copy **at that boundary**, not no allocations or transformations anywhere. `memoryview.cast()` reinterprets a view without copying payload under its restrictions; downstream conversion or requesting a contiguous representation can copy.
-
-- **Exporter-backed lifetime:** A normal acquired buffer holds the exporter alive; release with `PyBuffer_Release`. A memoryview manages its view/export lifetime, and exporters can reject resizing while exports exist.
-- **Foreign allocation lifetime:** Views created from raw memory/buffer interfaces can lack an exporter base. The allocation owner must keep that memory valid; a memoryview does not automatically own an arbitrary native allocation.
-- **Concurrent access:** Read-only status is not synchronization. Mutating exporters, dangling pointers, use-after-release, and incorrect format/stride assumptions remain hazards.
-
-[Buffer contract](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/buffer.rst), [memoryview API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/memoryview.rst).
-
-> [!warning] FFI boundary
-> **Implementation/interface-specific:** Foreign-call interfaces differ in GIL release, callback attachment, signatures, and native ownership. A compiled call is not automatically parallel, zero-copy, or memory-safe; its documented lifetime/thread rules determine those properties.
-
-## Backend execution consequences
-
-**Application consequence:** WSGI/ASGI specify application/server interfaces, not [listener distribution](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Connection%20Distribution%20Models). The server and configuration choose sockets, acceptors, workers, and offloading. A pre-fork shared listener is not automatically a set of independent `SO_REUSEPORT` listeners.
-
-**CPython 3.14.7 / optional-build comparison:** Runtime choice determines sharing, CPU execution, and blocking scope independently of that listener topology.
-
-| Execution unit | Address space / Python objects | Python CPU parallelism | Transfer/startup and blocking scope | Fault/extension boundary |
-| --- | --- | --- | --- | --- |
-| Single event loop | One process/interpreter; objects shared among Tasks | One executing loop thread | Low local scheduling cost; blocking callback stalls that loop | Native faults affect process; suits integrated async I/O |
-| Native thread pool | One process/interpreter; ordinary objects shared | No parallel Python execution under one enabled GIL | No IPC serialization; blocking occupies worker capacity | Shared invariants/extension state need synchronization; suits blocking offload |
-| Processes | Separate ordinary heaps | Across processes | Startup/serialization or explicit shared bytes; blocked worker does not block sibling execution | Address-space isolation, not automatic job recovery; fork/import safety matters |
-| Isolated interpreters | One process, distinct interpreter heaps/state | With own GILs | Interpreter startup and serialized submissions; one interpreter's blocking need not stop others | Shared native fault domain; extensions must support interpreter isolation |
-| Free-threaded threads | One process, shared objects | When runtime GIL remains disabled | Thread startup/shared-memory access, synchronization and counting costs | Same process fault domain; no-GIL-safe extensions required |
-| Native extension kernels | Process/native buffers; ownership API-specific | When detached work executes concurrently | Conversion/copy/offload depends on API; attached long work can block Python progress | Native crash corrupts process; not every kernel releases GIL |
-
-Preloading trades startup/import duplication against inherited state and fork safety. CPython refcount/GC/allocator writes can erode sharing; `gc.freeze()` addresses only its specific GC contribution. No universal worker count follows from these mechanisms.
-
-## Diagnostics and falsifiable investigation
-
-**Standard-library tools / CPython- and OS-specific capabilities as marked:** Select a tool for a question, not as a substitute for [observability](../../Backend%20Engineering/05%20Observability.md#Foundations) or a measurement hypothesis.
-
-| Question | Tool/mechanism | Measurement boundary and perturbation |
-| --- | --- | --- |
-| Emitted/specialized instructions? | `dis`, `adaptive`, `show_caches` | CPython/version-specific; instrumentation can change executed forms |
-| Traced allocation growth? | `tracemalloc` snapshots/diffs/domains | Start before relevant allocations; hook/domain coverage is not all native memory/RSS; tracing adds overhead |
-| Shallow size or tracked graph? | `sys.getsizeof`, `gc.get_stats/get_objects/get_referrers`, callbacks/debug flags | Shallow bytes vs tracked objects; inspection adds references and debug retention changes behavior |
-| Reference count? | `sys.getrefcount` | Temporary call reference, immortal/free-threaded bookkeeping; no uniqueness/lifetime oracle |
-| Function-level timing? | `cProfile`/`profile`, profile/trace hooks | Deterministic event/timing attribution, not automatically CPU-only/native sampling; not an unbiased benchmark timer |
-| Selected execution events? | `sys.monitoring` | Configurable lower-impact instrumentation, not zero-overhead sampling |
-| Statistical native/Python CPU evidence? | Sampling tools; Linux `perf` with supported `-X perf`/`-X perf_jit` trampolines | Build/unwinding/platform dependent; `perf_jit` profiling support is not the experimental optimizing JIT |
-| Specialization/deoptimization counts? | `--enable-pystats`, `-X pystats`/`PYTHONSTATS=1`, `Tools/scripts/summarize_stats.py` | Special build; gathering starts off; internal counters/output are version-sensitive and instrument execution |
-| Allocator misuse? | Debug builds, `PYTHONMALLOC=debug`, allocator statistics | Extra checking/overhead, not proof of safety; free-threaded allocator choices are restricted |
-| Blocked/misused loop? | Asyncio debug / `PYTHONASYNCIODEBUG`, slow callbacks, never-awaited warnings | Checks/logging alter timing; not production-latency measurement |
-| Thread state or hangs? | `sys._current_frames`, explicit `faulthandler` dumps, native debugger | Snapshot races/build visibility; another running thread's `f_locals` is unsafe with free threading |
-| Crashes/native stacks? | `faulthandler`, conditional C-stack support; GDB `py-bt/py-list/py-locals` | Fault-path dumps with disabled GIL restrict to current thread; explicit dumps differ. C-stack unwinding is platform/build-dependent and can be slow |
-| Import time? | `-X importtime`/`PYTHONPROFILEIMPORTTIME`; value `2` in 3.14 | Also reports already-loaded imports as cached; multithreaded output can be unreliable |
-| Sensitive operations? | `sys.addaudithook`, early native `PySys_AddAuditHook` | Specified audit events only; hooks are not a sandbox; early native hooks see broader initialization events |
-
-[Tracing allocations](https://github.com/python/cpython/blob/v3.14.7/Doc/library/tracemalloc.rst), [profiling](https://github.com/python/cpython/blob/v3.14.7/Doc/library/profile.rst), [monitoring](https://github.com/python/cpython/blob/v3.14.7/Doc/library/sys.monitoring.rst), [perf support](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/perf_profiling.rst), [pystats/build options](https://github.com/python/cpython/blob/v3.14.7/Doc/using/configure.rst), [fault handling](https://github.com/python/cpython/blob/v3.14.7/Doc/library/faulthandler.rst), [command-line diagnostics](https://github.com/python/cpython/blob/v3.14.7/Doc/using/cmdline.rst), [audit and runtime inspection](https://github.com/python/cpython/blob/v3.14.7/Doc/library/sys.rst).
-
-**CPython 3.14.7:** `sysconfig.get_config_var('Py_GIL_DISABLED')` describes build capability; `sys._is_gil_enabled()` describes runtime state. JIT capability/enablement/activity are separate. Baseline native profilers cannot generally unwind through experimental JIT frames, so interpreter-only tooling assumptions do not transfer unchanged. [Runtime checks](https://github.com/python/cpython/blob/v3.14.7/Doc/library/sys.rst), [JIT tooling limitation](https://github.com/python/cpython/blob/v3.14.7/Doc/whatsnew/3.14.rst).
-
-A falsifiable investigation follows an ordered decision path:
-
-1. Reproduce with the relevant version/build/workload.
-2. Separate wall time, CPU attribution, allocation growth, RSS retention, and blocked-loop/worker hypotheses.
-3. Choose the least perturbing tool that observes the proposed mechanism.
-4. Correlate Python evidence with OS/backend evidence rather than equating their metrics.
-5. Change one mechanism and test the predicted effect; account for observer overhead.
-
-## Portability and upgrade-sensitive mechanisms
-
-> [!warning] Other implementation — PyPy
-> PyPy uses tracing GC rather than CPython's prompt refcount destruction and does not expose `sys.getrefcount`. Its documented implementation has a GIL, but that does not make a GIL a Python language requirement. Identity behavior and C-API compatibility/performance differ; a compatibility layer does not make CPython private layouts or binary extensions portable. Use explicit resource/view release instead of relying on destruction timing. [PyPy differences](https://doc.pypy.org/cpython_differences.html), [PyPy FAQ](https://doc.pypy.org/faq.html).
-
-**CPython 3.14.7 version ledger:** Recheck the pinned mechanisms rather than assuming a minor/patch upgrade preserves private behavior.
-
-| Subject | Baseline fact | Stability / source to recheck |
-| --- | --- | --- |
-| Bytecode | Wordcode, family-specific caches | Private/version-specific: [bytecodes](https://github.com/python/cpython/blob/v3.14.7/Python/bytecodes.c) |
-| Frames/calls | Data-stack frames, materialized frame objects, embedded suspended frames | Private/build-specific: [frame design](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/frames.md) |
-| Adaptive caches | Guarded specialization, family-specific invalidation | Private: [specialization](https://github.com/python/cpython/blob/v3.14.7/Python/specialize.c) |
-| JIT | Optional experimental; configure default absent, selected binaries include opt-in; unsupported in free-threaded 3.14 | Build/distribution-specific: [configure](https://github.com/python/cpython/blob/v3.14.7/Doc/using/configure.rst), [release notes](https://github.com/python/cpython/blob/v3.14.7/Doc/whatsnew/3.14.rst) |
-| GC | Ordinary three cohorts restored in 3.14.5; free-threaded heap scan differs; dicts always tracked | Patch/build-sensitive: [ordinary GC](https://github.com/python/cpython/blob/v3.14.7/Python/gc.c), [free-threaded GC](https://github.com/python/cpython/blob/v3.14.7/Python/gc_free_threading.c) |
-| Immortality/interning | No ordinary refcount updates for immortals; interned-string lifetime differs by build | Implementation-specific: [interning](https://github.com/python/cpython/blob/v3.14.7/InternalDocs/string_interning.md) |
-| Process defaults | Windows/macOS spawn; other eligible POSIX forkserver; executor exceptions | Stdlib/platform/version: [contexts](https://github.com/python/cpython/blob/v3.14.7/Lib/multiprocessing/context.py) |
-| Asyncio policies | Deprecated 3.14, scheduled removal 3.16 | Stdlib version: [policies](https://github.com/python/cpython/blob/v3.14.7/Doc/library/asyncio-policy.rst) |
-| Free-threaded ABI | Separate `t` build; runtime GIL can be enabled | Optional build: [extension guide](https://github.com/python/cpython/blob/v3.14.7/Doc/howto/free-threading-extensions.rst) |
-| Stable ABI | Supported contract for eligible conventional builds; unsupported for free-threaded 3.14 | Public compatibility/build scope: [stability](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/stable.rst) |
-| Subinterpreter GIL | Shared/own-GIL configurations and extension checks | C API configuration: [subinterpreters](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/subinterpreters.rst) |
-| Allocation | Normal GIL build pymalloc; free-threaded objects mimalloc | Build/runtime policy: [memory API](https://github.com/python/cpython/blob/v3.14.7/Doc/c-api/memory.rst) |
-| Import cache | Marshalled code/invalidation metadata, not executed module state | CPython cache format: [cache loader](https://github.com/python/cpython/blob/v3.14.7/Lib/importlib/_bootstrap_external.py) |
-
-**Language portability constraint:** Do not infer prompt destruction, address-valued `id`, string/small-integer identity, application atomicity from a GIL, prompt RSS reduction, opcode stability, or fixed C-structure layout. Multiprocessing does not eliminate copying; async syntax does not eliminate blocking; native extensions do not automatically release the GIL; many OS threads do not imply simultaneous Python execution in one GIL-enabled interpreter. These distinctions follow from the ownership, scheduling, and transfer boundaries above.
+The retained object graph, pending operation, runnable continuation, HTTP request, and TCP connection have related but different lifetimes. Diagnosing a slow or memory-growing worker requires locating which of those states has stopped advancing—not assuming that returning a response ended them all.
