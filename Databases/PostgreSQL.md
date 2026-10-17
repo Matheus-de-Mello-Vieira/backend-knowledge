@@ -24,12 +24,38 @@ When a backend needs a database page, PostgreSQL checks whether that page is alr
 
 Shared buffers are therefore part of PostgreSQL's own buffer-management layer. The operating system may additionally cache the same underlying files in its filesystem page cache, so PostgreSQL intentionally has both database-managed caching and OS-managed caching in the I/O path.
 
-> [!note] PostgreSQL 18 asynchronous I/O
-> A shared-buffer miss requires PostgreSQL to read a database page from its data files. Before PostgreSQL 18, the backend could spend that time waiting for a read to complete before it could submit later reads. Kernel read-ahead helped for sequential access, but the kernel does not know PostgreSQL's query plan and therefore cannot always predict which pages the operation will need.
->
-> PostgreSQL 18 addresses this gap by letting a backend queue multiple eligible reads. Sequential scans, bitmap heap scans, and vacuum can therefore keep several reads in flight and use database-specific knowledge to prefetch pages, improving throughput when storage latency would otherwise serialize progress.
->
-> The `io_method` setting selects the [asynchronous file-I/O execution model](../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files): `worker` uses PostgreSQL I/O worker processes, `io_uring` uses Linux `io_uring` when PostgreSQL was built with `liburing`, and `sync` executes eligible operations synchronously. This changes data-file read submission; shared-buffer caching and WAL durability remain separate concerns.
+## Asynchronous Data-File I/O
+
+When PostgreSQL needs a page absent from shared buffers, it reads the relevant relation file. Before PostgreSQL 18, a backend could have to wait for one uncached read before initiating later reads. Kernel read-ahead mitigates sequential access, but it does not know the query plan or every page the database will need.
+
+PostgreSQL 18 introduced an asynchronous I/O (AIO) subsystem that lets backends issue multiple eligible page reads before consuming their results. Sequential scans, bitmap heap scans, and VACUUM can use knowledge of upcoming pages to keep reads in flight instead of serializing the latency of each read. A backend still waits when execution needs a page whose read has not completed; AIO enables overlap rather than eliminating storage waits.
+
+### I/O Execution Methods
+
+The `io_method` setting selects how PostgreSQL executes asynchronous-eligible operations:
+
+- **`worker` (PostgreSQL 18 default):** The issuing backend places I/O requests in a shared queue. Dedicated PostgreSQL I/O worker processes perform ordinary blocking file operations and process their completion state. The backend can continue other work or wait for a requested result. `io_workers` controls the shared worker pool (three processes by default), so worker availability bounds how many delegated blocking operations can execute concurrently.
+- **`io_uring`:** On supported Linux installations built with `liburing`, the backend submits operations through kernel submission/completion rings and later processes their results. PostgreSQL 18 uses an `io_uring` instance per backend rather than delegating each read to a PostgreSQL I/O worker. This avoids the extra PostgreSQL process handoff, although the kernel may use its own workers for operations that cannot proceed directly.
+- **`sync`:** Asynchronous-eligible operations are executed synchronously instead. This provides a comparison and fallback path, but does not offer the same read overlap to the issuing backend.
+
+Both `worker` and `io_uring` expose **completion-oriented behavior to the query backend**: it submits a particular read and later learns its result. With `worker`, another PostgreSQL process uses a blocking system call to carry out that read; with `io_uring`, the kernel-facing interface accepts the submitted operation directly. Asynchronous application behavior therefore does not require every underlying system call to be non-blocking.
+
+### Concurrency and Trade-offs
+
+The execution method determines how reads are carried out, while separate settings control how aggressively PostgreSQL initiates them:
+
+- **`effective_io_concurrency` and `maintenance_io_concurrency`:** Influence the number of concurrent I/O requests initiated for query and maintenance workloads, respectively.
+- **`io_max_concurrency`:** Limits the outstanding I/O operations allowed for an individual PostgreSQL process.
+- **`io_workers`:** Sets the size of the shared PostgreSQL I/O worker pool; it has no effect with `io_uring`.
+- **`io_method`:** Requires a server restart when changed.
+
+`io_uring` can reduce process scheduling and coordination overhead, particularly when many reads remain outstanding, but it is not inherently faster for every query. Cache hits, storage latency, available device parallelism, worker capacity, and submission overhead determine whether the difference is material. A completed file read also does not imply physical disk access: the operating system's page cache may have satisfied it.
+
+### Network Readiness versus Storage Completion
+
+On Linux, PostgreSQL can use [socket readiness through `epoll`](../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO) to wait until a client connection can make progress. A readiness event does not perform the socket read. By contrast, the [asynchronous regular-file I/O model](../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) submits specific data-file operations and later observes their results; ordinary Linux regular files cannot be monitored through `epoll`.
+
+These are separate I/O paths inside the PostgreSQL server, not a strict frontend/backend split. Selecting `io_method` changes eligible data-file I/O execution, not PostgreSQL's shared-buffer caching or the WAL synchronization rules that establish transaction durability.
 
 ## Storage Files and OS I/O
 
