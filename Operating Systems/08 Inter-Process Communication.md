@@ -209,9 +209,9 @@ When `cat` reaches file EOF and exits, its write descriptor closes. After `grep`
 
 ## Unix-Domain Sockets and Socket Pairs
 
-Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families%20and%20Types) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets.
+Unix-domain sockets provide socket communication between processes on the same host. They use the `AF_UNIX` [socket family](07%20Socket%20Management.md#Socket%20Families%20and%20Types) while retaining the descriptor, buffering, lifetime, and I/O model shared by other sockets. Communication does not use IP or a transport protocol such as TCP.
 
-An **addressed Unix-domain socket** provides a rendezvous mechanism. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
+An **addressed Unix-domain socket** provides a rendezvous mechanism through a local Unix-domain address, commonly a pathname. For a connection-oriented socket type, a server creates a socket, binds a [local Unix-domain address](07%20Socket%20Management.md#Binding), and begins listening. Independently started clients create their own sockets and connect through that address. The listening address remains a stable rendezvous point while each accepted connection has its own endpoint state.
 
 With a pathname-based address, the pathname identifies where the peers meet; after connection establishment, application data flows through the resulting socket endpoints rather than through the pathname itself.
 
@@ -277,16 +277,28 @@ The receiver validates a declared length before allocating storage or committing
 
 Malformed input violates the protocol. After a malformed header, a simple length-prefixed stream normally closes the connection: without a trustworthy resynchronization rule, the receiver cannot determine where the next frame begins. `SOCK_SEQPACKET` removes the need to recover record boundaries, but it does not validate a record's meaning or impose frame-size, buffering, or progress limits.
 
-## Unix-Domain Sockets and Loopback TCP/IP
+## Loopback TCP/IP
 
-Unix-domain sockets and loopback Internet sockets both let local processes exchange data through kernel socket objects, but they use different addressing namespaces and protocol models. `AF_UNIX` selects local Unix-domain addressing. `AF_INET` and `AF_INET6` select IPv4 and IPv6 Internet-domain addressing, respectively; the socket type and protocol then determine whether the endpoint uses TCP, UDP, or another compatible transport.
+`AF_INET` and `AF_INET6` select IPv4 and IPv6 Internet-domain addressing, respectively; the socket type and protocol then determine whether the endpoint uses TCP, UDP, or another compatible transport.
 
-An addressed Unix-domain socket uses a local Unix-domain address, commonly a pathname. Only processes on the same host can connect through that address, and the communication does not use IP or a transport protocol such as TCP. An Internet-domain listener instead uses an IP address and port. Binding it to the IPv4 loopback address `127.0.0.1` or the IPv6 loopback address `::1` restricts it to local traffic. `localhost` is commonly configured to resolve to one or both of those addresses.
+An Internet-domain listener uses an IP address and port. Binding it to the IPv4 loopback address `127.0.0.1` or the IPv6 loopback address `::1` restricts it to local traffic. `localhost` is a hostname commonly configured to resolve to one or both of those addresses; name resolution chooses an address, while loopback routing determines how traffic to that address is delivered.
 
-Loopback traffic never traverses an Ethernet or Wi-Fi link to reach another machine, but it still follows the IP and selected transport-stack model. This makes a loopback TCP endpoint behave like a local instance of the same address, port, and transport model that a service can use for remote clients when it binds a non-loopback address.
+Loopback is kernel-local IP delivery, not a direct call between applications. Once a client has connected to a loopback TCP listener and the server has accepted the connection, data follows this conceptual path:
 
-- **Unix-domain socket:** Use when the communication is inherently host-local and a Unix-domain address is suitable for peer rendezvous.
-- **Loopback TCP/IP:** Use when local participants need Internet-domain addressing or transport behavior that also applies to a networked deployment.
+1. **Socket submission:** The sending process writes bytes to its connected socket. The kernel accepts bytes into the socket's sending machinery, subject to available buffer capacity; successful submission does not mean the peer application has read or processed them.
+2. **Local routing:** Outgoing TCP/IP processing identifies the destination as loopback. The kernel directs the traffic through its internal loopback path, commonly represented by a virtual network interface, into local IP input rather than transmitting it through a physical network adapter. No Ethernet or Wi-Fi link, external router, or link-layer address resolution such as ARP is needed for this delivery.
+3. **Socket lookup:** Incoming IP processing selects the transport protocol. TCP uses the source and destination IP addresses and ports to identify the receiving connection and its socket. Both endpoints can use the same loopback IP address because their ports distinguish them.
+4. **Receive and consumption:** TCP makes received bytes available through the receiving socket's buffer. Readable data makes a pending read eligible to proceed or a readiness notification possible; the receiving process must still run and read the bytes. Reading the bytes and processing their application-level meaning are separate steps.
+
+Bypassing the physical network does not bypass the transport model:
+
+- **TCP semantics:** The connection still provides an ordered byte stream, connection state, and flow control. If the receiver stops draining data, finite buffers and flow control exert backpressure on the sender.
+- **Kernel work:** Local delivery still requires protocol processing, socket state, buffering, and coordination with process execution. Exact packet-handling paths, copying, and optimizations vary by operating system; the sequence above is not a fixed kernel call trace.
+
+> [!note] Network namespace scope
+> On systems with network namespaces, loopback refers to the current network namespace, not every process on the physical host. Processes in separate network namespaces do not share a loopback endpoint merely because they run on the same machine.
+
+A loopback TCP endpoint therefore uses the same address, port, and transport model that a service can use for remote clients when it binds a non-loopback address, while keeping delivery local.
 
 ## Mechanism Selection
 

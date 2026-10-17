@@ -352,7 +352,7 @@ This turns one application-to-application interaction into a local application-t
 
 ### Local Proxy Connection
 
-A local proxy needs an endpoint through which the application can reach it. A [loopback TCP endpoint](../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Loopback%20TCP%2FIP) is a common choice because it keeps the same Internet-domain address, port, and TCP model used for remote communication. Loopback traffic stays local, but it still uses the IP and TCP stacks. A [Unix-domain socket](../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) is an alternative when the connection is inherently host-local and does not need IP or TCP semantics.
+A local proxy needs an endpoint through which the application can reach it. A [loopback TCP endpoint](../Operating%20Systems/08%20Inter-Process%20Communication.md#Loopback%20TCP%2FIP) is a common choice because it keeps the same Internet-domain address, port, and TCP model used for remote communication. Loopback traffic stays local, but it still uses the IP and TCP stacks. A [Unix-domain socket](../Operating%20Systems/08%20Inter-Process%20Communication.md#Unix-Domain%20Sockets%20and%20Socket%20Pairs) is an alternative when the connection is inherently host-local and does not need IP or TCP semantics.
 
 `localhost` refers to loopback within a network namespace, not automatically to every process or container on the host. A deployment that uses loopback must make the proxy endpoint available in the application's network namespace; otherwise, it needs another reachable endpoint.
 
