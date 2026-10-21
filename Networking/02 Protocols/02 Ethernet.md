@@ -1,6 +1,18 @@
 # Ethernet
 
 Ethernet is the dominant Layer 2 technology used in wired LANs. It defines how devices format frames, identify local interfaces, and deliver traffic across the same local network segment.
+
+Ethernet cable categories ("Cat") classify the performance of twisted-pair cabling, not the internet connection itself. The supported link speed also depends on the Ethernet ports at both ends, cable length, and installation quality; these common capabilities assume a properly installed channel within its standard distance limits.
+
+| Category | Typical Ethernet capability | Distance context |
+| --- | --- | --- |
+| Cat 5 | 100 Mb/s (Fast Ethernet) | Up to 100 m |
+| Cat 5e | 1 Gb/s (Gigabit Ethernet) | Up to 100 m |
+| Cat 6 | 1 Gb/s up to 100 m; 10 Gb/s on shorter runs | 10 Gb/s reach depends on installation and crosstalk; typically up to 55 m |
+| Cat 6A | 10 Gb/s (10GBASE-T) | Up to 100 m |
+
+For ordinary gigabit links, Cat 5e is sufficient; Cat 6A is the usual choice when 10 Gb/s must span the full 100 m. A higher category does not increase the speed beyond what the connected equipment supports.
+
 ## Ethernet at Layer 2
 
 Ethernet is the foundational technology of modern Local Area Networks (LANs). While it has specifications that define the physical cables and signals (Layer 1), its logical operations are defined at the [**Data Link Layer (Layer 2)** of the OSI Model](../03%20Network%20Models.md#The%20OSI%20%28Open%20Systems%20Interconnection%29%20Model).
