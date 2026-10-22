@@ -221,6 +221,10 @@ pnpm-debug.log*
 *.tgz
 *.zip
 
+# E-books and PDF documents
+*.epub
+*.pdf
+
 .obsidian/plugins/recent-files-obsidian/data.json
 .markdown-consolidator-work
 *.bkp.*
