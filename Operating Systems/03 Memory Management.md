@@ -920,24 +920,20 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 
 > [!tip] Inspecting the Map in Linux
 > You don't have to guess how the OS is routing your memory. You can physically look at the active virtual memory map for any running process in Linux by reading the file at [`/proc/[pid]/maps`](06%20Storage%20Management.md#%60/proc%60%20%E2%80%94%20Process%20and%20Kernel%20Information). It will show you the exact virtual address boundaries where your shared libraries, heap, and stack have been parachuted into your application!
+<!-- -->
 > [!example] Python’s `None` and the Copy-on-Write Penalty
 > An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [immortal objects](../Technologies/Python/Python%20Internals.md#Interning%20and%20immortality).
-> [!example] Architecture Story: Redis & The Persistence
-> Because Redis is fundamentally an in-memory database, it faces a massive existential threat: if the physical server loses power or crashes, every single piece of data is permanently wiped from RAM. To handle crashes, Redis engineers needed a way to periodically persist (save) this in-memory data to the physical hard drive.
-> Because Redis is famously single-threaded, saving this data presented a massive architectural bottleneck:
-> - **The Naive Approach (Blocking the Main Thread):** If the Redis process simply paused to copy 10GB of RAM onto a slow mechanical hard drive, the database would completely freeze for several seconds (or even minutes). This would cause massive latency spikes for every application connected to it, completely undermining Redis's core purpose of sub-millisecond speed.  
-> - **The `fork()` Dilemma:** The logical solution is to spawn a background process to do the heavy lifting. However, if Redis had to duplicate 10GB of RAM into a new memory space for the child, creation would take longer and require roughly another 10GB of available physical memory, potentially causing an Out-Of-Memory (OOM) condition.
-  >
-To solve this, Redis relies entirely on the magic of the OS's Virtual Memory map and **Copy-on-Write (CoW)**.
+<!-- -->
+> [!example] Redis snapshots: copying eagerly versus copying on write
+> Redis needs a stable dataset view for [background snapshotting](../Cache/Redis/13%20Persistence.md#RDB%20Snapshots) while continuing to process updates.
 >
-> When Redis decides it is time to save to the disk (a background save, or `BGSAVE`), it executes the `fork()` system call.
-> 1. **Instantaneous Snapshot:** Instead of copying the 10GB of physical data, the OS simply duplicates the master **Page Table**, which takes fractions of a millisecond. The child process instantly wakes up believing it has its own 10GB of memory, but it is actually pointing to the exact same physical RAM frames as the parent.
-> 2. **Read-Only Lock:** The OS marks all of these shared physical pages as Read-Only.
-> 3. **The Background Save:** The child process sequentially reads the memory and streams it to the physical hard drive. Because the child is purely reading and never modifying the data, it never triggers a memory conflict.
-> 4. **The Parent Continues Serving:** Meanwhile, the parent process (the main Redis thread) continues serving live user traffic.
-> 5. **Just-in-Time Duplication:** If a user sends a `SET` command to overwrite an existing key while the backup is running, the parent attempts to write to a Read-Only page. The hardware MMU intercepts this and triggers a Page Fault. The OS instantly steps in, creates a private 4KB copy of _just that specific page_ for the parent to modify, and leaves the original page intact for the child process to finish saving.
-> By leveraging Copy-on-Write, Redis can avoid copying all pages at `fork()` time. The additional memory and latency are deferred until either process writes to a shared page, allowing the child to observe a point-in-time view while the parent continues to mutate its data.
+> - **Naive approach—pause processing:** Serialize the live dataset while preventing changes. This preserves a stable view, but requests wait for the save to finish.
+> - **Eager-copy approach:** Copy the entire dataset for a background worker first. Saving then proceeds independently, but creating the copy requires upfront time and memory proportional to the dataset.
 >
+> **Copy-on-write avoids that upfront full copy.** After `fork()`, parent and child initially share physical pages. When the parent modifies a shared page, a CoW fault creates a private copy for the modification; the child retains the earlier contents for its snapshot.
+>
+> The parent continues serving requests while the child reads its preserved view. The trade-off is deferred rather than eliminated: creating the child still costs metadata work, and modifications to shared pages consume additional memory.
+
 ### Swapping & Extending RAM to Disk
 
 - **The RAM Bottleneck:** Virtual memory allows the OS to transparently offload inactive data to the storage drive whenever physical RAM hits its maximum capacity.

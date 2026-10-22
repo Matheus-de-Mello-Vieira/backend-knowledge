@@ -9,7 +9,7 @@ Consider an order workflow that must:
 3. charge the customer;
 4. arrange delivery.
 
-Each step may be individually transactional inside its own service, but the complete workflow cannot usually be protected by one local [transaction isolation](03%20Transaction%20Isolation.md) boundary. Between those local commits, other actors can observe and modify the same business state.
+Each step may be individually transactional inside its own service, but the complete workflow cannot usually be protected by one local [transaction isolation](../../Databases/02%20Transaction%20Isolation.md) boundary. Between those local commits, other actors can observe and modify the same business state.
 
 Distributed concurrency is therefore concerned with preserving **business invariants across independently executing and independently failing components**.
 
@@ -700,4 +700,4 @@ The central design question is therefore:
 
 > **Which business invariants must hold immediately, which may be temporarily violated, and what mechanism eventually restores or confirms them?**
 
-Local [transaction isolation](03%20Transaction%20Isolation.md) remains essential inside each transactional boundary, but distributed correctness comes from deliberately coordinating the boundaries rather than pretending they form one transaction.
+Local [transaction isolation](../../Databases/02%20Transaction%20Isolation.md) remains essential inside each transactional boundary, but distributed correctness comes from deliberately coordinating the boundaries rather than pretending they form one transaction.

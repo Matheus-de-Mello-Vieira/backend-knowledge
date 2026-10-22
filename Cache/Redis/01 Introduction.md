@@ -4,7 +4,7 @@
 - It is open source
 - Used as a database, cache and message broker
 - Redis holds its entire database in memory
-- Disk is used for persistent data store
+- Disk is used for [persistent data store](13%20Persistence.md)
 - It is a NoSQL Database and follow a key-value store concepts.
 - It supports robust data structures like strings, hashes, lists, sets, sorted sets, bitmap, hyperloglogs.
 - Redis can be connected with various clients.
@@ -35,60 +35,46 @@ volumes:
 So you can run:
 
 ```bash
-$ redis-cli
+redis-cli
 ```
 
 It will open the redis cli
 
 - you can test the connection with:
 
-  ```
-  redis> PING
-  PONG
-  ```
+    ```text
+    redis> PING
+    PONG
+    ```
 
 - you can turn the server off with:
 
-  ```
-  redis> SHUTDOWN
-  ```
-
-  - On the server:
-
+    ```text
+    redis> SHUTDOWN
     ```
-    * User requested shutdown...
-    * Calling fsync() on the AOF file.
-    * Saving the final RDB snapshot before exiting.
-    * DB saved on disk
-    # Redis is now ready to exit, bye bye...
-    ```
+
+    - On the server:
+
+        ```text
+        * User requested shutdown...
+        * Calling fsync() on the AOF file.
+        * Saving the final RDB snapshot before exiting.
+        * DB saved on disk
+        # Redis is now ready to exit, bye bye...
+        ```
 
 - you can get the info of the server with:
 
-  ```
-  redis> INFO
-  ```
+    ```text
+    redis> INFO
+    ```
 
-  - It is print a lot of information. You can print only a section with:
+    - It is print a lot of information. You can print only a section with:
 
-    - ```
-      INFO server
-      ```
-    - ```
-      INFO memory
-      ```
-    - ```
-      INFO cpu
-      ```
-    - ```
-      INFO clients
-      ```
-    - ```
-      INFO stats
-      ```
-    - ```
-      INFO replication
-      ```
-    - ```
-      INFO cluster
-      ```
+        - `INFO server`
+        - `INFO memory`
+        - `INFO cpu`
+        - `INFO clients`
+        - `INFO stats`
+        - `INFO replication`
+        - `INFO cluster`

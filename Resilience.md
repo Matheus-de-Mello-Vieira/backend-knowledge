@@ -238,11 +238,9 @@ The producer sends an event and does not track it further. Any interested consum
 
 ### Relaxed Temporal Constraints
 
-* Strict consistency requires tight coupling of the involved nodes
-  * On stateful nodes, keeping strict consistency requires their replicated state to remain perfectly aligned at all times.
-  * This eliminates temporal flexibility: stateful nodes cannot allow delayed updates, asynchronous propagation, or temporary divergence.
-  * Enforcing this strict alignment forces tight coordination between the stateful nodes.
-  * That tight coordination reduces availability because any delay or failure in one stateful node affects the others.
+* **Real-time consistency:** [Linearizability](Databases/03%20Read%20Consistency.md#Completed%20Writes%20and%20Subsequent%20Reads) constrains observable operations, not whether every replica holds identical state at every instant. A read begun after a completed write must not expose a state preceding that write.
+  * **Replica lag:** Replicas may temporarily lag, provided their older state is not exposed in violation of the guarantee. Depending on the replication protocol, reads can be routed to an authoritative copy or coordinated with other replicas.
+  * **Coordination cost:** When the required coordination cannot complete because of delays, failures, or a network partition, affected operations must wait or fail rather than return a result that violates the guarantee. A lagging or failed replica does not necessarily prevent the remaining replicas from serving operations.
 
 * Use a more relaxed consistency
   * Given the CAP theorem and the fact that partition tolerance is unavoidable in distributed systems, we must choose a trade-off between availability and consistency.

@@ -2,17 +2,36 @@
 
 PostgreSQL is a general-purpose relational database management system designed to run as a **database server**. Applications connect to that server, send SQL queries, and receive results; they do not open PostgreSQL's data files directly.
 
-## Main Point
-
-PostgreSQL is useful when many independent clients need to share structured data while the database centrally enforces transactions, constraints, concurrency control, query planning, and durability. The server owns the persistent state and coordinates access on behalf of all connected applications.
-
-This makes PostgreSQL fundamentally different from an embedded database such as [SQLite](SQLite.md#Main%20Point). With PostgreSQL, an application normally talks to another process, potentially on another machine. With SQLite, the database engine itself is part of the application process.
+The server owns the persistent state and coordinates access to shared structured data for independent clients, centrally managing transactions, constraints, concurrency control, query planning, and durability.
 
 ## Process Architecture
 
 A PostgreSQL instance uses a process-oriented architecture. A main server process accepts incoming connections and each client connection is normally handled by its own backend process. PostgreSQL also runs background processes for responsibilities such as writing dirty buffers, checkpointing, autovacuum, and WAL-related work.
 
 The backend processes have separate virtual address spaces, but they still need to cooperate over common database state. PostgreSQL therefore uses [shared memory](../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) for structures that must be visible across the instance.
+
+```mermaid
+flowchart TB
+    C1[Client 1] <-->|Queries and results| B1
+    C2[Client 2] <-->|Queries and results| B2
+
+    subgraph PG[PostgreSQL instance]
+        Main[Main server process]
+        B1[Backend process 1]
+        B2[Backend process 2]
+        BG[Background processes]
+        Shared[Shared memory]
+
+        Main -.->|Starts for a connection| B1
+        Main -.->|Starts for a connection| B2
+        Main -.->|Starts| BG
+        B1 <--> Shared
+        B2 <--> Shared
+        BG <--> Shared
+    end
+```
+
+Each backend has its own private address space as well as access to shared memory. Dashed arrows show process creation; solid arrows show client communication or access to shared state, not queries passing through the main server process.
 
 This process model has an important operational consequence: opening thousands of database connections means creating thousands of backend processes and associated per-connection state. Application-side connection pools are therefore commonly used to limit the number of active PostgreSQL sessions.
 
@@ -23,6 +42,11 @@ Database tables and indexes ultimately live in persistent files, but executing q
 When a backend needs a database page, PostgreSQL checks whether that page is already present in shared buffers. If it is, the backend can work with the in-memory copy. Otherwise PostgreSQL reads the page from the underlying file into a shared buffer. Modified pages become **dirty** and are eventually written back to persistent storage.
 
 Shared buffers are therefore part of PostgreSQL's own buffer-management layer. The operating system may additionally cache the same underlying files in its filesystem page cache, so PostgreSQL intentionally has both database-managed caching and OS-managed caching in the I/O path.
+
+> [!info] Shared memory versus memory-mapped data files
+> PostgreSQL supports allocating shared buffers through anonymous `mmap`: this creates shared memory, not a direct mapping of table or index files.
+>
+> Directly modifying database files through a writable shared mapping would let the OS write dirty pages back independently. PostgreSQL instead controls when modified pages leave shared buffers so it can enforce **write-ahead ordering**: the corresponding WAL records must be durable before the data page reaches persistent storage. Simply replacing shared buffers with file mappings would lose that control and require additional coordination. This is a constraint on a direct replacement, not a claim that databases cannot use `mmap`.
 
 ## Asynchronous Data-File I/O
 
@@ -40,8 +64,6 @@ The `io_method` setting selects how PostgreSQL executes asynchronous-eligible op
 
 Both `worker` and `io_uring` expose **completion-oriented behavior to the query backend**: it submits a particular read and later learns its result. With `worker`, another PostgreSQL process uses a blocking system call to carry out that read; with `io_uring`, the kernel-facing interface accepts the submitted operation directly. Asynchronous application behavior therefore does not require every underlying system call to be non-blocking.
 
-### Concurrency and Trade-offs
-
 The execution method determines how reads are carried out, while separate settings control how aggressively PostgreSQL initiates them:
 
 - **`effective_io_concurrency` and `maintenance_io_concurrency`:** Influence the number of concurrent I/O requests initiated for query and maintenance workloads, respectively.
@@ -49,13 +71,20 @@ The execution method determines how reads are carried out, while separate settin
 - **`io_workers`:** Sets the size of the shared PostgreSQL I/O worker pool; it has no effect with `io_uring`.
 - **`io_method`:** Requires a server restart when changed.
 
-`io_uring` can reduce process scheduling and coordination overhead, particularly when many reads remain outstanding, but it is not inherently faster for every query. Cache hits, storage latency, available device parallelism, worker capacity, and submission overhead determine whether the difference is material. A completed file read also does not imply physical disk access: the operating system's page cache may have satisfied it.
+Selecting `io_method` changes eligible data-file I/O execution, not client-socket handling, shared-buffer caching, or the WAL synchronization rules that establish transaction durability.
 
-### Network Readiness versus Storage Completion
+### Concurrency and Trade-offs
 
-On Linux, PostgreSQL can use [socket readiness through `epoll`](../Operating%20Systems/07%20Socket%20Management.md#Readiness-Based%20I%2FO) to wait until a client connection can make progress. A readiness event does not perform the socket read. By contrast, the [asynchronous regular-file I/O model](../Operating%20Systems/06%20Storage%20Management.md#Readiness%20and%20Completion%20for%20Regular%20Files) submits specific data-file operations and later observes their results; ordinary Linux regular files cannot be monitored through `epoll`.
+`io_uring` avoids the PostgreSQL worker handoff, but fewer handoffs do not guarantee a faster query. The methods also differ in where read-related CPU work happens and how many processes share that work.
 
-These are separate I/O paths inside the PostgreSQL server, not a strict frontend/backend split. Selecting `io_method` changes eligible data-file I/O execution, not PostgreSQL's shared-buffer caching or the WAL synchronization rules that establish transaction durability.
+- **CPU-work distribution:** With `worker`, I/O workers perform read-related work, including checksum verification, outside the issuing backend. With `io_uring`, the backend handles completion-side work itself. A small number of backends performing large scans can therefore benefit from workers when that CPU work limits throughput, even if `io_uring` is available.
+- **Handoff overhead:** Workers require queue coordination, wakeups, and completion notifications between PostgreSQL processes. `io_uring` avoids that extra PostgreSQL process handoff, reducing scheduling and coordination overhead when those costs are significant, including workloads with many outstanding reads.
+- **Shared capacity versus backend concurrency:** All issuing backends compete for the same PostgreSQL I/O worker pool. Too few workers create a bottleneck; increasing their number consumes additional process and CPU resources. With many active backends, `io_uring` already distributes completion-side CPU work across those backends without a shared PostgreSQL worker-pool limit. Storage and per-process concurrency limits still apply.
+
+The benefit of either method depends on cache hits, storage latency, available device parallelism, worker capacity, and submission overhead. A completed file read does not imply physical disk access: the operating system's page cache may have satisfied it. Consequently, compare the methods under representative cache conditions and backend concurrency rather than treating `io_uring` availability as evidence of superior performance.
+
+> [!example] Scan performance in PostgreSQL 18
+> Tomas Vondra's benchmarks found `worker` faster than `io_uring` for sequential scans and, with enough workers, bitmap scans. He identifies distributing read-related CPU costs as a likely explanation, not a universal performance guarantee. [Benchmark and trade-off analysis](https://vondra.me/posts/tuning-aio-in-postgresql-18/)
 
 ## Storage Files and OS I/O
 
@@ -63,24 +92,88 @@ PostgreSQL ultimately stores relations and other persistent structures in ordina
 
 ### Creating Relation Files
 
-Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object.
-
-- **Creation Requirement**: PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname.
-- **Exclusive Creation**: On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
-- **Correctness Property**: `O_CREAT` requests creation when necessary, while `O_EXCL` causes the operation to fail if the pathname already exists.
-- **Storage Lesson**: File-opening flags can encode correctness requirements in addition to selecting access and performance behavior.
+Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object. PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname. On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
 
 ## Transactions and Concurrency
 
-PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **Multi-Version Concurrency Control (MVCC)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
+PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **[Multi-Version Concurrency Control (MVCC)](02%20Transaction%20Isolation.md#Multi-Version%20Concurrency%20Control)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
 
-Transactions still require coordination. Locks protect operations and structures where concurrent access cannot safely proceed independently, while transaction isolation determines which changes a transaction is allowed to observe. MVCC reduces contention; it does not eliminate synchronization.
+**VACUUM** reclaims storage occupied by obsolete row versions that no transaction still needs. Updates and deletes leave old versions behind to preserve snapshot visibility, so cleanup is part of PostgreSQL's MVCC lifecycle rather than an immediate consequence of deleting a row.
 
-Because old row versions can remain after updates and deletes, PostgreSQL also needs **VACUUM** to eventually reclaim versions that are no longer visible to any transaction. This makes storage cleanup part of the normal lifecycle of an MVCC database rather than a simple consequence of deleting a row.
+Transactions still require coordination. Locks protect operations and structures where concurrent access cannot safely proceed independently, while [transaction isolation](02%20Transaction%20Isolation.md#Isolation%20Levels) determines which changes a transaction is allowed to observe. MVCC reduces contention; it does not eliminate synchronization.
+
+### Snapshot Visibility Across Statements
+
+For ordinary table reads, PostgreSQL 18 distinguishes these snapshot lifetimes:
+
+- **Read Committed:** Each statement obtains a new snapshot. This is the default isolation level.
+- **Repeatable Read:** The first query or data-modification statement establishes the transaction's snapshot; `BEGIN` alone does not establish it. Later reads retain that view of other transactions' changes.
+- **Serializable:** Uses the same snapshot lifetime as Repeatable Read, with additional read/write dependency checks through **Serializable Snapshot Isolation (SSI)**.
+
+All three levels expose the transaction's own earlier writes. PostgreSQL maps Read Uncommitted to Read Committed; its Repeatable Read also prevents phantom reads, but not all serialization anomalies. These are PostgreSQL-specific semantics, not guarantees inferred solely from isolation-level names. [PostgreSQL 18 isolation documentation](https://www.postgresql.org/docs/18/transaction-iso.html).
+
+> [!example] Another transaction commits between two reads
+> Use a disposable database and two independent connections, A and B, with no other writers. Run setup once outside an explicit transaction. Do not use a temporary table: both sessions need the same data.
+>
+> ```sql
+> CREATE TABLE isolation_on_call (
+>     doctor text PRIMARY KEY,
+>     on_call boolean NOT NULL
+> );
+> INSERT INTO isolation_on_call VALUES ('Alice', true), ('Bob', true);
+> ```
+>
+> Execute each numbered row in order; a dash means that session performs no operation. Leave A open while B updates and commits:
+>
+> | Step | Session A | Session B |
+> | --- | --- | --- |
+> | 1 | `BEGIN ISOLATION LEVEL READ COMMITTED;` | — |
+> | 2 | `SELECT on_call FROM isolation_on_call WHERE doctor = 'Bob';` → `true` | — |
+> | 3 | — | `BEGIN;` |
+> | 4 | — | `UPDATE isolation_on_call SET on_call = false WHERE doctor = 'Bob';` |
+> | 5 | — | `COMMIT;` |
+> | 6 | Repeat A's `SELECT` → `false` | — |
+> | 7 | `COMMIT;` | — |
+>
+> A's ordinary `SELECT` does not hold a row lock that blocks B's update. At Read Committed, A's second statement sees B's committed version. Reset both rows with `UPDATE isolation_on_call SET on_call = true;` after both transactions end, then repeat with A using `BEGIN ISOLATION LEVEL REPEATABLE READ;`: both reads return `true` because A retains its first snapshot.
+
+### Write Skew and Serializable Retries
+
+PostgreSQL Repeatable Read provides a stable snapshot but still permits [write skew](02%20Transaction%20Isolation.md#Write%20Skew); its direct write-conflict protection does not enforce every cross-row rule.
+
+Serializable Snapshot Isolation (SSI) detects incompatible read/write dependencies and rejects a transaction rather than allowing a nonserializable outcome. [PostgreSQL Serializable isolation](https://www.postgresql.org/docs/18/transaction-iso.html#XACT-SERIALIZABLE).
+
+- **Blocking behavior:** Dependency tracking does not itself block the other writer, although ordinary lock conflicts still cause waits.
+- **Failure timing and victim:** A serialization failure can occur during a statement or at commit; applications must not depend on a particular victim or failure point.
+
+A serialization failure invalidates the transaction's attempt, so recovery must repeat its decisions, not just its final write. On SQLSTATE `40001` (`serialization_failure`):
+
+1. Roll back any still-open failed transaction.
+2. Retry the **whole transaction**, including its reads and application decisions—not just the failed update or commit.
+
+Repeatable Read also requires whole-transaction retries when concurrent updates cause serialization failures. A retry is not guaranteed to succeed under continued contention. [PostgreSQL serialization failure handling](https://www.postgresql.org/docs/18/mvcc-serialization-failure-handling.html).
+
+> [!example] Concurrent departures violate the on-call rule
+> Using the `isolation_on_call` table from the preceding example, reset both rows to `true` outside any explicit transaction. The intended rule is that **at least one doctor must remain on call**; each session allows its doctor to leave only if its on-call count exceeds one:
+>
+> | Step | Session A | Session B |
+> | --- | --- | --- |
+> | 1 | `BEGIN ISOLATION LEVEL REPEATABLE READ;` | — |
+> | 2 | — | `BEGIN ISOLATION LEVEL REPEATABLE READ;` |
+> | 3 | `SELECT count(*) FROM isolation_on_call WHERE on_call;` → `2` | — |
+> | 4 | — | `SELECT count(*) FROM isolation_on_call WHERE on_call;` → `2` |
+> | 5 | `UPDATE isolation_on_call SET on_call = false WHERE doctor = 'Alice';` | — |
+> | 6 | — | `UPDATE isolation_on_call SET on_call = false WHERE doctor = 'Bob';` |
+> | 7 | `COMMIT;` | — |
+> | 8 | — | `COMMIT;` |
+>
+> Both counts return `2`, so the application issues both updates; the updates themselves do not enforce the rule. Repeatable Read allows both commits, leaving zero doctors on call. Read Committed also permits this schedule because both decisions occur before either commit.
+>
+> Reset again and repeat with **both** sessions using `BEGIN ISOLATION LEVEL SERIALIZABLE;`. SSI rejects a transaction instead of allowing both departures to commit. After the surviving transaction commits, a fresh count is `1`, so the retry must leave the remaining doctor on call.
 
 ## Durability and WAL
 
-PostgreSQL uses [Write-Ahead Logging (WAL)](00%20Overview.md#Write-Ahead%20Logging%20(WAL)) for durability. Before a change to a database page is considered safely committed, the information required to reproduce that change is written to the WAL and persisted according to the configured durability guarantees.
+PostgreSQL uses [Write-Ahead Logging (WAL)](00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29) for durability. Before a change to a database page is considered safely committed, the information required to reproduce that change is written to the WAL and persisted according to the configured durability guarantees.
 
 This avoids having to synchronously flush every modified table or index page at commit time. Dirty data pages can be written later because, after a crash, PostgreSQL can replay WAL records to reconstruct changes that had been committed but had not yet reached their final data files.
 

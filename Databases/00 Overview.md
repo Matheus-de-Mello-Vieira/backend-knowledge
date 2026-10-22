@@ -39,9 +39,20 @@ The databases in these notes provide useful examples of different ways software 
 
 ## Durability and Crash Recovery
 
-Database durability is not only about issuing writes. A database must remain internally consistent when a process crashes, the operating system fails, or power is lost at an inconvenient point during an update.
+**Durability** is the guarantee that once a database acknowledges a transaction as committed, its changes survive the failures covered by its durability contract. Recovery must preserve those committed effects even if the modified data pages had not yet reached persistent storage.
+
+Atomicity and durability protect different outcomes:
+
+- **Atomicity:** An incomplete transaction must not leave partial effects in the recovered database.
+- **Durability:** An acknowledged committed transaction must not lose its effects within the promised failure model.
 
 Storage writes can become durable at different times. A modified database page may first exist only in the database's memory, then in the operating system's dirty page cache, then in a volatile device write cache, and finally in non-volatile media. Database engines therefore need explicit durability boundaries and recovery protocols rather than assuming that an ordinary completed write means all related state is safely persistent.
+
+The durability contract has explicit limits:
+
+- **Failure scope:** Surviving a process crash, operating-system failure, or power loss is different from surviving destruction of the storage holding the database and its recovery information. Local persistence alone does not protect against that destruction.
+- **Commit configuration:** A mode that acknowledges commits before the required persistence boundary permits loss of recently acknowledged transactions after failures that erase the still-volatile state. This weakens the durability guarantee in exchange for avoiding that wait on the commit path.
+- **Storage guarantees:** The database relies on the underlying storage stack honoring the persistence operations used to establish its durability boundary. WAL alone does not establish that those operations succeeded or that the storage will honor them.
 
 ### Torn Pages
 
@@ -59,7 +70,12 @@ Database engines therefore combine logging and engine-specific recovery mechanis
 
 Before a modified database page is allowed to reach persistent storage in a state that depends on a change, the engine first records enough information about that change in an append-oriented log. The essential ordering rule is that the relevant log record must become durable **before** the corresponding data-page update can require it for recovery.
 
-This changes the write path. A transaction does not normally need to synchronously persist every modified table or index page at commit time. Instead, the database can make the required WAL records durable and allow dirty data pages to be written later in larger or more convenient batches.
+This changes the commit boundary. In a WAL-based engine configured for durable commits:
+
+1. The engine makes the log information needed to recover the transaction, including its committed status, durable before acknowledging successful commit.
+2. Once that boundary is established, the engine acknowledges the commit without requiring every modified table or index page to be persistent already.
+
+Dirty data pages are written independently, subject to the write-ahead ordering rule. Writeback can therefore occur later in larger or more convenient batches; it is not required to wait until after acknowledgment. The durable recovery information, rather than immediate persistence of every changed page, supports the committed-change guarantee.
 
 After a crash, the engine examines the durable log and replays whatever committed changes are necessary to reconstruct data pages that had not yet reached their final persistent form. Depending on the database design, the recovery process may also need to ignore, roll back, or otherwise account for changes belonging to transactions that did not commit.
 
