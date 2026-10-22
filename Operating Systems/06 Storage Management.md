@@ -1118,6 +1118,15 @@ The **page cache** is a kernel-managed cache of file data stored in physical RAM
     - **The Complete Write Path**: Furthermore, the storage device itself usually contains a volatile, controller-managed **write-back cache**.
     - **Hardware Acknowledgment**: This allows the drive to acknowledge a write before the data reaches physical flash or disk platters.
     - **Four-Stage Journey**: The complete write path therefore looks approximately like: `Application → Page Cache → Device Write Cache → Non-volatile Storage`.
+
+> [!info] Power-Loss Protection (PLP)
+> **Power-loss protection** uses hardware and firmware to protect storage data during an unexpected loss of power. In a capacitor-backed SSD, the controller detects the power failure and uses stored electrical energy to persist protected pending writes and necessary controller metadata to NAND flash before shutting down.
+>
+> - **Data at Rest:** Protection against corruption of data already stored in flash is distinct from preserving pending writes.
+> - **Data in Flight:** Preserving writes still in the device's volatile buffers requires protection that explicitly covers those writes. PLP guarantees depend on the device; the PLP label alone does not establish both protection levels.
+>
+> SSD PLP does not protect data still in application memory or the OS page cache. It complements synchronization and recovery protocols rather than replacing them, and it does not make multi-write application updates atomic.
+
 - **Explicit Synchronization (`fsync()` and `fdatasync()`)**: Applications that require strict durability boundaries use explicit synchronization calls to force data along this path.
     - **`fsync()` (File Integrity)**: Forces the file's dirty data and associated metadata required by the filesystem's synchronization semantics toward persistent storage and waits for the storage stack to report completion.
     - **`fdatasync()` (Data Integrity)**: Provides a narrower synchronization guarantee centered on file data and metadata necessary to retrieve it, such as file-size changes.
