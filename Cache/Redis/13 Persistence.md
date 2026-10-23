@@ -8,7 +8,23 @@ Redis Open Source supports **RDB snapshots**, **append-only files (AOF)**, both 
 
 An **RDB snapshot** serializes the dataset at a point in time into a compact binary file. Recovery loads that saved state rather than replaying every historical write.
 
-Background snapshotting uses `BGSAVE`, either requested explicitly or triggered by configured save conditions:
+### Save-Point Configuration
+
+A **save point** is a configured trigger for automatic RDB snapshotting: a minimum elapsed interval and a minimum number of dataset changes. Both thresholds must be met within one save point; if several save points are configured, satisfying any one of them triggers a snapshot attempt.
+
+Configure a save point in `redis.conf` with the `save` directive:
+
+```conf
+save 60 1000
+```
+
+This rule requests a snapshot after at least 60 seconds and 1,000 changes. It schedules an attempt, not a completed snapshot or a durability guarantee. [Redis persistence documentation](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/persistence.md).
+
+For a running server, `CONFIG SET save "60 1000"` changes the active setting. Runtime changes do not update `redis.conf`; edit that file or use `CONFIG REWRITE` to retain them after restart. [Redis configuration documentation](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/config.md).
+
+### Snapshot Creation
+
+Background snapshotting uses `BGSAVE`, either requested explicitly or triggered by configured save points:
 
 1. Redis forks a child process with a view of the dataset at the fork point.
 2. The child serializes that view into a temporary RDB file while the parent continues serving clients.
@@ -16,19 +32,21 @@ Background snapshotting uses `BGSAVE`, either requested explicitly or triggered 
 
 The parent and child initially share physical pages through [copy-on-write](../../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency). Writes to shared pages create private copies, preserving the child's earlier view without copying the entire dataset at fork time.
 
-This separates request processing from most snapshot I/O, but not from all persistence costs:
+The child handles snapshot I/O, but background saving is not completely non-blocking:
 
-- **Fork latency:** Creating the child and copying process metadata, including page tables, pauses the main execution path. The cost depends on dataset size and the operating environment.
+- **Fork latency:** Redis pauses client processing while it creates the child and copies process metadata, including page tables. The pause depends on dataset size and the operating environment. [Redis fork latency](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/optimization/latency.md).
 - **Memory pressure:** Pages modified while the child is active require additional memory. A write-heavy workload during a long snapshot increases copy-on-write pressure.
 - **Storage load:** Snapshot creation writes the dataset while the parent serves traffic, creating competing I/O demand.
 
-`SAVE`, unlike `BGSAVE`, performs a synchronous save that blocks client processing until it finishes. Background saving should therefore not be described as completely non-blocking. [Redis fork latency](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/optimization/latency.md).
+`SAVE`, unlike `BGSAVE`, performs a synchronous save that blocks Redis from serving every client, not just the caller, until it finishes. [Redis `SAVE` documentation](https://github.com/redis/docs/blob/main/content/commands/save.md).
+
+Shutdown uses that same synchronous RDB save when at least one save point is configured. `SHUTDOWN SAVE` forces an RDB snapshot even without configured save points, while `SHUTDOWN NOSAVE` suppresses it. If AOF is enabled, Redis also flushes the AOF during shutdown; the `SAVE` modifier is not merely an AOF synchronization request. [Redis `SHUTDOWN` documentation](https://github.com/redis/docs/blob/main/content/commands/shutdown.md).
 
 ### Snapshot Recovery Point
 
 With RDB alone, recovery restores the last successfully completed snapshot. Changes after that snapshot's captured state are absent, including writes acknowledged while the snapshot was being produced.
 
-A save schedule determines when Redis attempts snapshots; it does not make each intervening write durable. Failed or delayed saves leave an older recovery point. RDB provides a compact artifact for backup and transfer, but reducing potential write loss requires more frequent successful snapshots or an additional persistence mechanism.
+Scheduling snapshots does not make each intervening write durable. Failed or delayed saves leave an older recovery point. RDB provides a compact artifact for backup and transfer, but reducing potential write loss requires more frequent successful snapshots or an additional persistence mechanism.
 
 ## Append-Only Persistence
 

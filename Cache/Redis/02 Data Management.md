@@ -453,13 +453,33 @@ You can:
   ```
 
 
-## Saving keys information on server - `SHUTDOWN`
+## Saving keys information on server
 
-To turn the redis off saving the info:
+`SAVE` and `BGSAVE` create [RDB snapshots](13%20Persistence.md#RDB%20Snapshots) of the dataset.
 
+### `SAVE`
+
+`SAVE` writes the snapshot synchronously. Until it finishes, Redis stops processing commands from every client, not just the client that issued `SAVE`.
+
+```text
+redis> SAVE
 ```
-SHUTDOWN save
+
+### `BGSAVE`
+
+`BGSAVE` forks a child to write the snapshot while the parent serves clients. Redis pauses client processing while it creates that child; only the snapshot writing runs in the background.
+
+```text
+redis> BGSAVE
 ```
+
+### `SHUTDOWN`
+
+When AOF is enabled, Redis flushes it during shutdown. The command's save option controls the separate RDB snapshot:
+
+- **`SHUTDOWN`:** Performs a synchronous RDB save if at least one [save point](13%20Persistence.md#Save-Point%20Configuration) is configured; otherwise, it does not create an RDB snapshot. 
+- **`SHUTDOWN SAVE`:** Forces a synchronous RDB snapshot even when no save points are configured.
+- **`SHUTDOWN NOSAVE`:** Skips the RDB snapshot even when save points are configured.
 
 ## Rename a key - `RENAME`
 
