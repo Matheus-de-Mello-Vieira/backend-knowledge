@@ -52,7 +52,7 @@ Scheduling snapshots does not make each intervening write durable. Failed or del
 
 With `appendonly yes`, Redis records operations that change the dataset in an **append-only file (AOF)**. Recovery reconstructs state from that persisted representation and its subsequent operations rather than relying only on periodic standalone snapshots.
 
-Appending to a file and making its contents durable are different events. Redis uses an `appendfsync` policy to control [storage synchronization](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization):
+Appending to a file and making its contents durable are different events. A buffered AOF append modifies OS page-cache pages and marks them dirty; a successful file write does not establish that those bytes reached persistent storage. Kernel writeback persists dirty pages later, while explicit synchronization establishes a requested durability boundary. Redis uses an `appendfsync` policy to control [storage synchronization](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization):
 
 | Policy | Synchronization boundary | Durability and cost |
 | --- | --- | --- |
