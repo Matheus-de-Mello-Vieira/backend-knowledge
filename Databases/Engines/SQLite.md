@@ -8,7 +8,7 @@ SQLite is useful when an application needs structured, transactional local persi
 
 This makes SQLite well suited to mobile applications, desktop software, local caches, device software, command-line tools, and application-specific file formats. Instead of inventing a binary or JSON file format and writing custom indexing and transaction logic, an application can use SQLite as its persistent storage layer.
 
-Unlike [PostgreSQL](PostgreSQL.md#Main%20Point), there is no dedicated database server process accepting requests from many remote clients. SQLite executes in the same address space and usually the same thread that called it, so database operations are ordinary library calls rather than network or [IPC](../Operating%20Systems/08%20Inter-Process%20Communication.md) requests.
+Unlike [PostgreSQL](PostgreSQL.md), there is no dedicated database server process accepting requests from many remote clients. SQLite executes in the same address space and usually the same thread that called it, so database operations are ordinary library calls rather than network or [IPC](../../Operating%20Systems/08%20Inter-Process%20Communication.md) requests.
 
 ## Execution Model
 
@@ -57,8 +57,8 @@ sqlite3_open_v2(
 );
 ```
 
-- **Connection to `open()`**: These choices correspond conceptually to the distinctions described by filesystem [`open()` access and creation flags](../Operating%20Systems/06%20Storage%20Management.md#Open%20Flags). SQLite's VFS sits between the database engine and the platform, so the SQLite flags should not be interpreted as requiring a literal one-to-one translation into POSIX flags.
-- **Additional Files**: Depending on configuration and operation, SQLite may also create and open rollback journals, [WAL files](00%20Overview.md#Write-Ahead%20Logging%20(WAL)), temporary files, and other auxiliary filesystem objects. One logical database can therefore correspond to several OS-level files with different purposes and lifetimes.
+- **Connection to `open()`**: These choices correspond conceptually to the distinctions described by filesystem [`open()` access and creation flags](../../Operating%20Systems/06%20Storage%20Management.md#Open%20Flags). SQLite's VFS sits between the database engine and the platform, so the SQLite flags should not be interpreted as requiring a literal one-to-one translation into POSIX flags.
+- **Additional Files**: Depending on configuration and operation, SQLite may also create and open rollback journals, [WAL files](../Fundamentals/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29), temporary files, and other auxiliary filesystem objects. One logical database can therefore correspond to several OS-level files with different purposes and lifetimes.
 
 Tables and indexes are organized using B-trees. A query therefore does not generally scan arbitrary bytes in the file; the database engine navigates these tree structures to find the pages containing the requested rows or index entries.
 
@@ -76,6 +76,6 @@ This is an important distinction from a server database such as PostgreSQL. SQLi
 
 SQLite can choose different synchronization policies depending on the durability/performance trade-off required by the application.
 
-- **Storage Boundary**: The database eventually relies on operating-system synchronization mechanisms described in [Writes, Writeback, and Durability](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability).
+- **Storage Boundary**: The database eventually relies on operating-system synchronization mechanisms described in [Writes, Writeback, and Durability](../../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability).
 - **Application Consequence**: Stronger or more frequent durability boundaries can increase commit latency, while weaker policies may permit more recent work to be lost after a crash.
 - **Real-World Example**: Firefox 3 provides an example of application latency becoming sensitive to how frequently SQLite established those durability boundaries.

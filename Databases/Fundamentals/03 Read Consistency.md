@@ -56,4 +56,4 @@ sequenceDiagram
 - **No fixed deadline:** Eventual consistency alone specifies no maximum staleness interval.
 - **No immediate global freshness:** During propagation, different readers need not observe the same value.
 
-Returning reads before propagation completes avoids making those reads wait for convergence, but exposes applications to older state. Whether that is acceptable depends on the operation's correctness requirements; the same application decision arises when evaluating [cache staleness](../Cache/Caching.md#Factors%20to%20Consider%20When%20Deciding%20Whether%20to%20Cache%20Data).
+Returning reads before propagation completes avoids making those reads wait for convergence, but exposes applications to older state. Whether that is acceptable depends on the operation's correctness requirements; the same application decision arises when evaluating [cache staleness](../../Cache/Caching.md#Factors%20to%20Consider%20When%20Deciding%20Whether%20to%20Cache%20Data).

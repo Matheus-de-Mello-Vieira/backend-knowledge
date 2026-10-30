@@ -8,7 +8,7 @@ The server owns the persistent state and coordinates access to shared structured
 
 A PostgreSQL instance uses a process-oriented architecture. A main server process accepts incoming connections and each client connection is normally handled by its own backend process. PostgreSQL also runs background processes for responsibilities such as writing dirty buffers, checkpointing, autovacuum, and WAL-related work.
 
-The backend processes have separate virtual address spaces, but they still need to cooperate over common database state. PostgreSQL therefore uses [shared memory](../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) for structures that must be visible across the instance.
+The backend processes have separate virtual address spaces, but they still need to cooperate over common database state. PostgreSQL therefore uses [shared memory](../../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) for structures that must be visible across the instance.
 
 ```mermaid
 flowchart TB
@@ -92,15 +92,15 @@ PostgreSQL ultimately stores relations and other persistent structures in ordina
 
 ### Creating Relation Files
 
-Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object. PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname. On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
+Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object. PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname. On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
 
 ## Transactions and Concurrency
 
-PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **[Multi-Version Concurrency Control (MVCC)](02%20Transaction%20Isolation.md#Multi-Version%20Concurrency%20Control)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
+PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **[Multi-Version Concurrency Control (MVCC)](../Fundamentals/02%20Transaction%20Isolation.md#Multi-Version%20Concurrency%20Control)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
 
 **VACUUM** reclaims storage occupied by obsolete row versions that no transaction still needs. Updates and deletes leave old versions behind to preserve snapshot visibility, so cleanup is part of PostgreSQL's MVCC lifecycle rather than an immediate consequence of deleting a row.
 
-Transactions still require coordination. Locks protect operations and structures where concurrent access cannot safely proceed independently, while [transaction isolation](02%20Transaction%20Isolation.md#Isolation%20Levels) determines which changes a transaction is allowed to observe. MVCC reduces contention; it does not eliminate synchronization.
+Transactions still require coordination. Locks protect operations and structures where concurrent access cannot safely proceed independently, while [transaction isolation](../Fundamentals/02%20Transaction%20Isolation.md#Isolation%20Levels) determines which changes a transaction is allowed to observe. MVCC reduces contention; it does not eliminate synchronization.
 
 ### Snapshot Visibility Across Statements
 
@@ -139,7 +139,7 @@ All three levels expose the transaction's own earlier writes. PostgreSQL maps Re
 
 ### Write Skew and Serializable Retries
 
-PostgreSQL Repeatable Read provides a stable snapshot but still permits [write skew](02%20Transaction%20Isolation.md#Write%20Skew); its direct write-conflict protection does not enforce every cross-row rule.
+PostgreSQL Repeatable Read provides a stable snapshot but still permits [write skew](../Fundamentals/02%20Transaction%20Isolation.md#Write%20Skew); its direct write-conflict protection does not enforce every cross-row rule.
 
 Serializable Snapshot Isolation (SSI) detects incompatible read/write dependencies and rejects a transaction rather than allowing a nonserializable outcome. [PostgreSQL Serializable isolation](https://www.postgresql.org/docs/18/transaction-iso.html#XACT-SERIALIZABLE).
 
@@ -173,7 +173,7 @@ Repeatable Read also requires whole-transaction retries when concurrent updates 
 
 ## Durability and WAL
 
-PostgreSQL uses [Write-Ahead Logging (WAL)](00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29) for durability. Before a change to a database page is considered safely committed, the information required to reproduce that change is written to the WAL and persisted according to the configured durability guarantees.
+PostgreSQL uses [Write-Ahead Logging (WAL)](../Fundamentals/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29) for durability. Before a change to a database page is considered safely committed, the information required to reproduce that change is written to the WAL and persisted according to the configured durability guarantees.
 
 This avoids having to synchronously flush every modified table or index page at commit time. Dirty data pages can be written later because, after a crash, PostgreSQL can replay WAL records to reconstruct changes that had been committed but had not yet reached their final data files.
 
@@ -183,11 +183,11 @@ PostgreSQL still needs an operating-system mechanism for forcing WAL records fro
 
 Possible methods include:
 
-- **`open_datasync`:** opens WAL files with [`O_DSYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), so writes complete with data-synchronization semantics.
-- **`fdatasync`:** performs ordinary writes and calls [`fdatasync()`](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
-- **`fsync`:** performs ordinary writes and calls [`fsync()`](../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
+- **`open_datasync`:** opens WAL files with [`O_DSYNC`](../../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), so writes complete with data-synchronization semantics.
+- **`fdatasync`:** performs ordinary writes and calls [`fdatasync()`](../../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
+- **`fsync`:** performs ordinary writes and calls [`fsync()`](../../Operating%20Systems/06%20Storage%20Management.md#Writes,%20Writeback,%20and%20Durability) when WAL must be forced durable.
 - **`fsync_writethrough`:** uses a platform-specific `fsync()` variant that additionally requests write-through of a device write cache when the platform provides such a mechanism.
-- **`open_sync`:** opens WAL files with [`O_SYNC`](../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), making each WAL write use synchronized file-I/O semantics.
+- **`open_sync`:** opens WAL files with [`O_SYNC`](../../Operating%20Systems/06%20Storage%20Management.md#Synchronous%20Completion), making each WAL write use synchronized file-I/O semantics.
 
 Not every method is available on every operating system. If PostgreSQL's `fsync` configuration is disabled, `wal_sync_method` is irrelevant because PostgreSQL is no longer requiring WAL updates to be forced to durable storage through these mechanisms.
 

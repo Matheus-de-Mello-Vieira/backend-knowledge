@@ -14,11 +14,11 @@ Keys and values are byte sequences. Looking up a key returns its corresponding v
 
 Internally, LMDB stores these entries in a **B+ tree**. Branch pages guide searches toward the appropriate part of the key space, while leaf pages contain the stored entries. A lookup therefore follows a small path through the tree rather than scanning the complete database.
 
-LMDB's storage engine is built around memory-mapping its database file into the process's [virtual address space](../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory). Once the required file-backed pages are resident in physical memory, reads can operate directly on the tree pages without maintaining a separate database buffer pool. The operating system therefore participates directly in managing which database pages form the resident working set.
+LMDB's storage engine is built around memory-mapping its database file into the process's [virtual address space](../../Operating%20Systems/03%20Memory%20Management.md#Virtual%20Memory). Once the required file-backed pages are resident in physical memory, reads can operate directly on the tree pages without maintaining a separate database buffer pool. The operating system therefore participates directly in managing which database pages form the resident working set.
 
 ### File Access Through `mmap`
 
-LMDB provides a concrete example of a database architecture built around the operating system's [`mmap`](../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#The%20%60mmap%60%20System%20Call%20(Memory%20Mapping)) mechanism.
+LMDB provides a concrete example of a database architecture built around the operating system's [`mmap`](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#The%20%60mmap%60%20System%20Call%20(Memory%20Mapping)) mechanism.
 
 A simplified read path is:
 
@@ -26,11 +26,11 @@ A simplified read path is:
 2. The file is mapped into the process's virtual address space.
 3. A key lookup follows pointers through B+ tree pages.
 4. If a required mapped page is already resident in RAM, the CPU can access it through the mapping.
-5. If the page is not resident, accessing it can trigger a [page fault](../Operating%20Systems/03%20Memory%20Management.md#Limitations%20of%20Virtual%20Memory).
-6. The operating system brings the required [file-backed page](../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#File-Backed%20Mapping) into physical memory.
+5. If the page is not resident, accessing it can trigger a [page fault](../../Operating%20Systems/03%20Memory%20Management.md#Limitations%20of%20Virtual%20Memory).
+6. The operating system brings the required [file-backed page](../../Operating%20Systems/02%20The%20Anatomy%20of%20a%20Process.md#File-Backed%20Mapping) into physical memory.
 7. LMDB continues traversing the database structure.
 
-- **No Separate [Read Buffer Pool](00%20Overview.md#Buffer%20Pools%20and%20Storage%20Caching)**: LMDB does not need to copy every database page into a separate application-managed read cache.
+- **No Separate [Read Buffer Pool](../Fundamentals/00%20Overview.md#Buffer%20Pools%20and%20Storage%20Caching)**: LMDB does not need to copy every database page into a separate application-managed read cache.
 - **OS Residency Management**: The operating system's virtual-memory and file-caching mechanisms determine which mapped database pages remain physically resident.
 - **Cross-Layer Example**: LMDB therefore connects filesystem storage, process virtual-address mappings, page faults, and database access in one architecture.
 

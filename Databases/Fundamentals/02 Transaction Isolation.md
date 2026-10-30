@@ -4,7 +4,7 @@ A database transaction groups several operations into one logical unit, but **at
 
 **Transaction isolation** defines how much of one transaction's intermediate or concurrent activity can become visible to another transaction. Stronger isolation makes concurrent execution behave more like transactions were executed one at a time, while weaker isolation allows more overlap in exchange for potentially exposing concurrency anomalies.
 
-The underlying problem is the same one described in [Concurrency Fundamentals](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md): multiple actors may observe and modify shared state concurrently. The difference is the abstraction level. Here, the actors are **transactions**, and the database's concurrency-control mechanisms determine which states those transactions are allowed to observe.
+The underlying problem is the same one described in [Concurrency Fundamentals](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md): multiple actors may observe and modify shared state concurrently. The difference is the abstraction level. Here, the actors are **transactions**, and the database's concurrency-control mechanisms determine which states those transactions are allowed to observe.
 
 ## Serial Execution and Serializability
 
@@ -109,9 +109,9 @@ Initially, `balance = 100`. A intends to subtract `30`; B intends to subtract `5
 
 The final value is `50`: A's successful update has disappeared. B overwrote it using a calculation based on the old balance, rather than applying its subtraction to A's committed result.
 
-This is the same fundamental [lost-update race](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions) that occurs in shared memory, now occurring through database transactions.
+This is the same fundamental [lost-update race](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Race%20Conditions) that occurs in shared memory, now occurring through database transactions.
 
-A transaction system can prevent lost updates pessimistically by locking the relevant state, or optimistically by making the final write conditional on the state or version originally observed, as described in [Concurrency Control Strategies](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Concurrency%20Control%20Strategies).
+A transaction system can prevent lost updates pessimistically by locking the relevant state, or optimistically by making the final write conditional on the state or version originally observed, as described in [Concurrency Control Strategies](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Concurrency%20Control%20Strategies).
 
 ### Read Skew / Inconsistent Read
 
@@ -202,7 +202,7 @@ The protected scope determines which operations interfere with one another:
 - **Table locks:** Protect whole tables.
 - **Key-range or index-range locks:** Protect ranges of keys rather than only individual existing rows.
 
-Locks prevent anomalies by restricting conflicting access, but introduce contention and the possibility of [deadlocks](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Deadlock). Broader lock granularity blocks more unrelated work along with the operations that genuinely conflict.
+Locks prevent anomalies by restricting conflicting access, but introduce contention and the possibility of [deadlocks](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Deadlock). Broader lock granularity blocks more unrelated work along with the operations that genuinely conflict.
 
 Preventing phantom reads through locking requires protecting query membership, not just the rows already returned. Locking existing rows alone does not protect against insertion of another matching row; range or predicate protection addresses that gap.
 
@@ -231,5 +231,5 @@ MVCC improves concurrency, but does not by itself guarantee serializability. The
 2. If allowing all of them to commit would produce a history incompatible with every serial ordering, the database aborts a transaction.
 3. The application retries the aborted transaction against newer state.
 
-This is [optimistic concurrency control](../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Concurrency%20Control%20Strategies): concurrent work proceeds, but validation rejects a result when its assumptions cannot safely coexist with other committed work.
+This is [optimistic concurrency control](../../Backend%20Engineering/Concurrency/01%20Concurrency%20Fundamentals.md#Concurrency%20Control%20Strategies): concurrent work proceeds, but validation rejects a result when its assumptions cannot safely coexist with other committed work.
 
