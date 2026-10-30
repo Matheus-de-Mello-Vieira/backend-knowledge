@@ -1,144 +1,59 @@
 # Data Management
 
-## Keys and Values - `GET` and `SET`
+## Keys and Values
 
-- Redis is a Key based data structure
-- Redis is in the family of database called "Key-Value stores"
-- Important: the data can only be retrieved if we know the exact 'key' used to store it
+Redis is a key-value store: a value is retrieved by its exact key. `SET` stores a string value under a key, and `GET` retrieves it. A missing key yields `(nil)`.
 
-- To define a value:
-
-  ```
-  redis> SET key value
-  ```
-
-- To get the value:
-
-  ```
-  redis> GET keys
-  ```
-
-### Example
-
-```
+```sh
 redis> SET name "Matheus"
 OK
 redis> GET name
 "Matheus"
-```
-
-You you try to get a key that doesn't exists, you will receive a `nil`
-
-```
 redis> GET no-existent
 (nil)
 ```
 
-### Setting a Value Only If the Key Does Not Exist (`NX`)
+### Conditional and Expiring Writes
 
-Sometimes you want to store a value **only if the key is not already present**. Redis supports this directly using the `NX` option with the `SET` command.
+`SET key value NX` uses the `NX` (not exists) condition to store the value only when the key does not already exist. It returns `OK` when it writes the value and `(nil)` when it leaves an existing value unchanged.
 
-```
-redis> SET key value NX
-```
-
-- `NX` means *“set if not exists”*
-- If the key **does not exist**, Redis stores the value and returns `OK`
-- If the key **already exists**, Redis does nothing and returns `nil`
-
-#### Example
-
-```
+```sh
 redis> SET name "Matheus" NX
 (nil)
-```
-
-The command returns `nil` because the key `name` already exists.
-
-```
 redis> SET age 23 NX
 OK
 redis> GET age
-"25"
+"23"
 ```
 
-This is commonly used for:
+This condition prevents overwrites and supports idempotent operations and simple locks, often combined with expiration.
 
-- Preventing overwrites
-- Ensuring idempotent operations
-- Implementing simple locks (often combined with expiration)
+> [!note] Earlier conditional command
+> `SETNX` provides the existence condition. `SET ... NX` also accepts options such as expiration in one atomic operation.
 
-> Note: Redis also has an older command `SETNX`, but `SET ... NX` is preferred because it supports additional options like expiration in a single atomic operation.
+`SET` also accepts an expiration in the same atomic operation as the write:
 
-### Setting an expiration time when storing a value (`EX`)
+- **`EX`:** Specifies seconds; `SET session:user:1 "active" EX 60` stores the key immediately with a 60-second lifetime.
+- **`PX`:** Specifies milliseconds; `SET session:user:1 "active" PX 60000` expresses the same lifetime at millisecond precision.
 
-Redis allows you to define an expiration time **at the same moment you set a value**, using options on the `SET` command. This is the preferred approach because it is **atomic**: the value and its expiration are applied in a single operation.
+> [!note] Earlier expiration command
+> `SETEX` also sets a value and a timeout in seconds. `SET` with `EX` is more flexible because it can combine expiration with options such as `NX`, `XX`, `PX`, and `GET` in one atomic operation.
 
-> **Note:** Redis also provides the older command `SETEX`, which sets a value and an expiration time in seconds. While still supported, `SET EX` is generally preferred because it is more flexible and expressive, allowing additional options such as `NX`, `XX`, `PX`, and `GET` to be combined in a single atomic operation.
+## Removing Keys
 
-#### Using `EX` (seconds)
+`DEL key` removes a key and synchronously reclaims its memory. It accepts multiple keys and returns the number actually removed; nonexistent keys do not contribute to the count.
 
-```
-redis> SET session:user:1 "active" EX 60
-```
-
-- The key is stored immediately
-- It will expire automatically after **60 seconds**
-
-#### Using `PX` (milliseconds)
-
-```
-redis> SET session:user:1 "active" PX 60000
-```
-
-- Same behavior as `EX`, but with millisecond precision
-
-## Deleting Keys - `DEL`
-
-- To delete a key:
-
-  ```
-  redis> DEL key
-  ```
-
-  - You can deleted many keys at once:
-
-    ```
-    redis> DEL key1 key2 key3
-    ```
-
-  - You will receive the number of deleted entitiies.
-
-### Example
-
-To delete:
-
-```
+```sh
 redis> DEL name
 (integer) 1
-```
-
-If you try to delete a a key that doesn't exists, you will receive a `0`:
-
-```
 redis> DEL name
-(integer) 1
+(integer) 0
+redis> DEL key1 key2 key3
 ```
 
-## Deleting Keys Asynchronously - `UNLINK`
+`UNLINK` removes keys from the keyspace immediately but reclaims their memory asynchronously in a separate thread. Its name reflects the first step: keys are unlinked before their data is freed. It also accepts multiple keys, ignores missing keys, and returns the number removed from the keyspace.
 
-- Removes the specified keys (similar to `DEL`)
-  - Keys that do not exist are ignored
-- Non-blocking behavior
-  - Actual memory reclamation is handled in a separate thread
-  - The command returns immediately
-- Keyspace handling
-  - Keys are unlinked from the keyspace right away
-  - Data is physically removed later, asynchronously
-- Command naming
-  - The name reflects that keys are unlinked first, not immediately deleted
-
-```
+```sh
 redis> SET key1 "hello"
 redis> SET key2 "world"
 redis> SET key3 "!"
@@ -154,150 +69,53 @@ redis> DEL key3
 (integer) 1
 ```
 
-### `UNLINK` vs `DEL`
+The difference matters when values are large:
 
-Both commands remove keys from Redis, but they differ in *how* the memory is reclaimed.
+- **`UNLINK`:** Avoids synchronous memory-reclamation work on the command path, making it preferable for large keys or latency-sensitive workloads. Memory can remain allocated briefly after the keys disappear, temporarily increasing peak usage.
+- **`DEL`:** Releases memory synchronously, which suits small keys or cases requiring immediate reclamation but can cause latency spikes for large values.
 
-- **`UNLINK`**
-  - Non-blocking
-  - Immediately removes keys from the keyspace
-  - Frees memory asynchronously in a background thread
-  - Preferred for large keys and latency-sensitive production systems
-  - May delay actual memory reclamation briefly
-    - Peak memory usage may remain slightly higher for a short time.
-- **`DEL`**
-  - Blocking
-  - Removes keys and frees memory synchronously
-  - Suitable for small keys
-  - Useful when immediate memory release is required
-  - Can cause latency spikes when deleting large values
+## Checking Key Existence
 
+`EXISTS key` returns `1` when a key exists and `0` otherwise. With multiple keys, it returns the number found.
 
-
-## Check if exists - `EXISTS`
-
-To check if a key exists:
-
-```
-redis> EXISTS name
-```
-
-- You will receive `1` if it exists, `0` otherwise.
-
-- You can test multiples keys
-
-  ```
-  redis> EXISTS key1 key2
-  ```
-
-  - You will receive the number of found entitiies.
-
-### Example
-If you check the key:
-
-```
+```sh
 redis> EXISTS name
 (integer) 1
+redis> EXISTS key1 key2
 ```
 
-## Expirations - `TTL`
+## Key Expiration
 
-A key can be:
+A **volatile key** has an expiration, while a **persistent key** has no timeout and therefore does not expire through the expiration mechanism. `SET ... EX` or `SET ... PX` establishes the timeout with the value. `EXPIRE` and `PEXPIRE` set or replace a timeout on an existing key, measured from the command's execution.
 
-- **volatile**: a key with an expire set
-- **persistent**: a key that will never expire as no timeout is associated.
-
-To define a key with 120 seconds of TTL:
-
-```
-redis> SET name "Matheus" ex 120
-```
-
-You can check the remaning time with:
-
-```
+```sh
+redis> SET name "Matheus" EX 120
 redis> TTL name
-```
-
-- If the key is persistent (no timeout associated), you will receive a `-1`.
-- If the key is already expired, you will receive a `-2`.
-
-You can overide the expiration time with:
-
-```
 redis> EXPIRE name 10
-```
-
-- This means that the key `name` will be set to expire 10 seconds from the moment the `EXPIRE` command is executed.
-
-You can remove the expiration form a key
-
-```
 redis> PERSIST name
-```
-
-- It will return `1` if the key had it's timeout removed, and `0` if it is already persistent or it don't exists.
-
-You can also do it using millisecond:
-
-```
-SET name "Matheus" px 120000
-```
-
-To check the ttl in milliseconds:
-
-```
+redis> SET name "Matheus" PX 120000
 redis> PTTL name
-```
-
-You can overide the expiration time in milliseconds:
-
-```
 redis> PEXPIRE name 10000
 ```
 
-### How Redis handle keys expirations
+- **`TTL`:** Reports remaining lifetime in seconds; it returns `-1` for a persistent key and `-2` for a missing or expired key.
+- **`PTTL`:** Reports remaining lifetime in milliseconds.
+- **`PERSIST`:** Removes an existing timeout. It returns `1` when it removes a timeout and `0` when the key is already persistent or does not exist.
 
-Two ways
+Redis removes expired keys through two complementary mechanisms:
 
-- **passive way**: A key is passively expired simply when some client tries to access it, and the key is found to be timed out.
-- **active way** Test 20 random keys from the set of volatile keys, and delete all the keys found expired. If more than 25% of keys are expired, start again from step 1.
-  - Redis does it 10 times per second by default, but it is configurable.
+- **Passive expiration:** Access to a timed-out key discovers that it has expired and removes it.
+- **Active expiration:** Redis samples volatile keys and deletes expired ones independently of client access. The described sampling cycle tests 20 random keys and repeats when more than 25% have expired; its default frequency is ten times per second and is configurable.
 
-## Key Spaces - `SELECT`, `KEYS` and `FLUSHDB`
+## Logical Keyspaces
 
-Key Spaces in Redis is similar to database namespaces schemas.
+Redis logical keyspaces act like separate namespaces: the same key name can hold different values in different keyspaces, and key operations apply to the currently selected one. Keyspace `0` is the default. Keys in different keyspaces cannot be linked to one another.
 
-- this allow you to have same key name in multiple key spaces
+- **`SELECT 1`:** Switches the connection to keyspace `1`.
+- **`KEYS *`:** Lists keys in the selected keyspace.
+- **`FLUSHDB`:** Removes all keys from the selected keyspace.
 
-- you can manage keys per each key spaces
-
-- The first and default key space is `0`.
-
-- You can change the key space with
-
-  ```
-  redis> SELECT 1
-  ```
-
-
-- You can see all keys set on the current space using
-
-  ```
-  redis> KEYS *
-  ```
-
-- You can delete all keys in the space using
-
-  ```
-  redis> FLUSHDB
-  ```
-
-- You cannot link keys with one key spcae to another key spaces.
-
-Example
-
-```
+```sh
 redis> SET key1 value1
 OK
 redis> GET key1
@@ -325,227 +143,134 @@ redis> KEYS *
 (empty array)
 ```
 
-## Key iteration – `SCAN`
+## Key Iteration with `SCAN`
 
-`SCAN` is used to iterate over keys in the current key space in a **non-blocking** way.
-It is the recommended alternative to `KEYS` when working with large datasets or production systems.
+`SCAN` iterates over keys in the current keyspace without the single blocking traversal of `KEYS`, making it the preferred alternative for large datasets and production workloads. It returns keys, not their values; it does not inspect string encodings.
 
-`SCAN` operates only on **keys**. It does not read values and is not related to data types or string encodings.
+An iteration starts with cursor `0`. Each reply contains a next cursor and a batch of keys. Pass the returned cursor to the next call until Redis returns `0`.
 
-**Usage**
-
-```
+```sh
 redis> SCAN 0
 1) "14"
 2) 1) "user:1"
    2) "user:2"
    3) "session:9"
-```
-
-- `0` is the initial cursor
-- The first element of the reply is the next cursor
-- The second element is the list of keys returned
-
-To continue iterating, pass the returned cursor back to `SCAN`:
-
-```
 redis> SCAN 14
 ```
 
-The iteration is complete when the returned cursor is `"0"`.
+- **`MATCH`:** Filters by key-name pattern, as in `SCAN 0 MATCH user:*`.
+- **`TYPE`:** Filters by logical value type, as in `SCAN 0 TYPE string`.
+- **`COUNT`:** Hints at the amount of work per call, as in `SCAN 0 COUNT 100`. Its default is `10`, but the requested count does not guarantee a batch size.
 
-**Filtering and tuning**
+These options can be combined in one `SCAN` call.
 
-You can filter keys by **key name** using `MATCH`:
+## Key Naming
 
+Redis keys are binary-safe: any binary sequence, including an empty string, is a valid key. The stated maximum key size is 512 MB. Within those limits, choose a simple, informative naming scheme that reflects the data model; very short keys often obscure their meaning. A common convention is `object:<id>`.
+
+For a `User` with `id`, `name`, `group`, and `friends`, keys such as `user:100`, `user:100:group`, and `user:100:friends` group related data under a stable identifier. A name-based key such as `userJohn` is less reliable:
+
+- Two users named John collide under the same key.
+- Names can contain non-English characters such as `陽翔` or `عالي`. Redis accepts them, but they can make keys harder to read.
+- Colon-separated prefixes make grouping and filtering more predictable. `user:*` targets that namespace, whereas `user*` also matches names such as `userSettings` and `userProfileBackup`.
+
+## Key-Name Patterns
+
+`KEYS <pattern>` matches keys by name. The same pattern syntax is useful with `SCAN MATCH` when a cursor-based traversal is preferable.
+
+- **`?`:** Matches one character; `h?llo` matches `hello`, `hallo`, and `hxllo`.
+- **`*`:** Matches any sequence, including an empty one; `h*llo` matches `hllo` and `heeeelo`.
+- **Character set:** `h[ae]llo` matches `hello` and `hallo`, but not `hillo` or `haello`. Repeating a character in the set, as in `h[ee]llo`, still matches one `e`, not `ee`.
+- **Negated set:** `h[^e]llo` matches a single character other than `e`, such as `hallo` or `hbllo`, but not `hello`.
+- **Range:** `h[a-c]llo` matches `hallo`, `hbllo`, and `hcllo`.
+
+`KEYS` performs a database-wide lookup and requires extreme care in production: a large keyspace can make it harm latency. Use `SCAN` for incremental traversal. One example measurement of 40 milliseconds for one million keys on an entry-level laptop is workload- and environment-specific, not a performance guarantee.
+
+```sh
+redis> KEYS user:*
+1) "user:101"
+2) "user:100"
+3) "user:100:group"
+4) "user:101:group"
+redis> KEYS user:*:group
+1) "user:100:group"
+2) "user:101:group"
 ```
-redis> SCAN 0 MATCH user:*
-```
 
-You can filter keys by **logical value type** using `TYPE`:
+The second pattern selects the `group` keys within the `user:` prefix.
 
-```
-redis> SCAN 0 TYPE string
-```
+## Saving the Dataset
 
-You can control the amount of work per call using `COUNT`. The default is `10`
-`COUNT` is a **hint**, not a guarantee:
+`SAVE` and `BGSAVE` create [RDB snapshots](13%20Persistence.md#RDB%20Snapshots). The distinction is where snapshot work occurs:
 
-```
-redis> SCAN 0 COUNT 100
-```
+- **`SAVE`:** Writes the snapshot synchronously and stops processing commands from all clients until it finishes.
+- **`BGSAVE`:** Forks a child to write the snapshot while the parent serves clients. Client processing still pauses while the child is created; the snapshot writing itself runs in the background.
 
-`MATCH`, `TYPE`, and `COUNT` can be combined in the same `SCAN` call.
-
-## Key naming conventions
-
-- Keep it simpel but robuts
-- Very short keys are often not a good idea - there are not very informative.
-- Try best schema based on your database design
-  - `object:<id>`
-- The max allowed key size is 512 MB
-- Redis keys are binary safe - you can use any binary sequence as a key
-- Empty string is also a valid key
-
-For example, given the entity `User` with attributes `id`, `name`, `group`, `friends`.
-
-- You can use:
-
-  - `user:100`
-
-  - `user:100:group`
-
-  - `user:100:friends`
-
-- It is not recommended:
-
-  - `userJohn`
-    - using names is dangerous
-      - it can happen to be written in non-English letters like "陽翔" or "عالي".
-        - The redis will be OK with is on the technical perspective, but it will jeopardize the readability.
-      - if you have multiple users named “John,” you immediately get collisions
-    - Redis key namespaces (using `:`) are a common convention
-      - This lets you easily group and filter keys by prefix — e.g. `SCAN user:*` finds all user-related data.
-        - You can use `SCAN user*`, which internally makes no difference, but it produces less predictable results because it can match things like `userSettings` or `userProfileBackup`.
-
-## Key patterns matching
-
-You can search for the keys that match a pattern with `KEYS <pattern>`
-
-- `h?llo` matches `hello`, `hallo` and `hxllo`
-- `h*llo` matches `hllo` and `heeeelo`.
-- `h[ae]llo` matches `hello`and `hallo`, but not `hillo` nor `haello`
-  - `h[ee]llo` will match `hello`, but not `heelo`
-
-- `h[^e]llo` matches `hallo`, `hbllo`..., but not `hello`
-  - matches the same thing of `h*llo`, except `hello`
-
-- `h[a-c]llo` matches `hallo`, `hbllo` and `hcllo`.
-  - it is a range.
-
-
-### Caveats:
-
-- Redis running on an entry level laptop can scan a 1 million key database in 40 miliseconds.
-- Consider `KEYS` as a command that should only be used in production environments with extreme care. It may ruin performance when it is executed against large databases.
-  - Consider use `SCAN`.
-
-### In pratice
-
-You can:
-
-- look all users with:
-
-  ```
-  redis> KEYS user:*
-  1) "user:101"
-  2) "user:100"
-  3) "user:100:group"
-  4) "user:101:group"
-  ```
-
-- look the group of all users
-
-  ```
-  redis> KEYS user:*:group
-  1) "user:100:group"
-  2) "user:101:group"
-  ```
-
-
-## Saving keys information on server
-
-`SAVE` and `BGSAVE` create [RDB snapshots](13%20Persistence.md#RDB%20Snapshots) of the dataset.
-
-### `SAVE`
-
-`SAVE` writes the snapshot synchronously. Until it finishes, Redis stops processing commands from every client, not just the client that issued `SAVE`.
-
-```text
+```sh
 redis> SAVE
-```
-
-### `BGSAVE`
-
-`BGSAVE` forks a child to write the snapshot while the parent serves clients. Redis pauses client processing while it creates that child; only the snapshot writing runs in the background.
-
-```text
 redis> BGSAVE
 ```
 
-### `SHUTDOWN`
+When AOF is enabled, Redis flushes it during shutdown. The `SHUTDOWN` save option separately controls an RDB snapshot:
 
-When AOF is enabled, Redis flushes it during shutdown. The command's save option controls the separate RDB snapshot:
+- **`SHUTDOWN`:** Saves an RDB synchronously when at least one [save point](13%20Persistence.md#Save-Point%20Configuration) is configured; otherwise, it creates no RDB snapshot.
+- **`SHUTDOWN SAVE`:** Forces a synchronous RDB snapshot even without save points.
+- **`SHUTDOWN NOSAVE`:** Skips the RDB snapshot even with save points.
 
-- **`SHUTDOWN`:** Performs a synchronous RDB save if at least one [save point](13%20Persistence.md#Save-Point%20Configuration) is configured; otherwise, it does not create an RDB snapshot. 
-- **`SHUTDOWN SAVE`:** Forces a synchronous RDB snapshot even when no save points are configured.
-- **`SHUTDOWN NOSAVE`:** Skips the RDB snapshot even when save points are configured.
+## Renaming Keys
 
-## Rename a key - `RENAME`
+`RENAME key newkey` moves the value to the new name. The old name then disappears. If the source key does not exist, Redis returns an error. The following transcripts illustrate independent starting states.
 
-- RENAMES key to newkey
-
-  ```
-  redis> SET mykey hello
-  OK
-  redis> GET mykey
-  "hello"
-  redis> RENAME mykey newkey
-  OK
-  redis> GET mykey
-  (nil)
-  redis> GET newkey
-  "hello"
-  redis> KEYS *
-  1) "newkey"
-  ```
-
-  - Returns an error if key does not exist
-
-    ```
-    redis> EXISTS missingkey
-    (integer) 0
-    redis> RENAME missingkey newkey
-    (error) ERR no such key
-    redis> EXISTS newkey
-    (integer) 0
-    redis> KEYS *
-    (empty array)
-    ```
-
-  - If newkey already exists:
-
-    - It is overwritten
-
-      ```
-      redis> SET mykey value1
-      OK
-      redis> SET newkey value2
-      OK
-      redis> GET mykey
-      "value1"
-      redis> GET newkey
-      "value2"
-      redis> RENAME mykey newkey
-      OK
-      redis> GET mykey
-      (nil)
-      redis> GET newkey
-      "value1"
-      redis> KEYS *
-      1) "newkey"
-      ```
-
-    - An implicit DEL operation is executed
-
-      - If the deleted key contains a very large value, this may cause high latency
-        - This can happen even though RENAME is usually a constant-time operation
-
-### `RENAMENX`
-
-Renames `key` to `newkey` if `newkey` does not yet exist. It returns an error when `key` does not exist.
-
+```sh
+redis> SET mykey hello
+OK
+redis> GET mykey
+"hello"
+redis> RENAME mykey newkey
+OK
+redis> GET mykey
+(nil)
+redis> GET newkey
+"hello"
+redis> KEYS *
+1) "newkey"
 ```
+
+```sh
+redis> EXISTS missingkey
+(integer) 0
+redis> RENAME missingkey newkey
+(error) ERR no such key
+redis> EXISTS newkey
+(integer) 0
+redis> KEYS *
+(empty array)
+```
+
+When the destination already exists, `RENAME` overwrites it through an implicit deletion of its old value. Deleting a very large destination value can cause high latency even though renaming is ordinarily constant-time.
+
+```sh
+redis> SET mykey value1
+OK
+redis> SET newkey value2
+OK
+redis> GET mykey
+"value1"
+redis> GET newkey
+"value2"
+redis> RENAME mykey newkey
+OK
+redis> GET mykey
+(nil)
+redis> GET newkey
+"value1"
+redis> KEYS *
+1) "newkey"
+```
+
+`RENAMENX key newkey` performs the rename only when the destination does not exist. It returns an error when the source does not exist; the following existing destination remains unchanged.
+
+```sh
 redis> SET mykey "Hello"
 "OK"
 redis> SET myotherkey "World"
@@ -556,11 +281,11 @@ redis> GET myotherkey
 "World"
 ```
 
-## Finding data type - `TYPE`
+## Inspecting Value Type
 
-Returns the string representation of the type of the value stored at `key`. The different types that can be returned are: `string`, `list`, `set`, `zset`, `hash`, `stream`, and `vectorset`.
+`TYPE key` returns the logical type of the stored value: `string`, `list`, `set`, `zset`, `hash`, `stream`, or `vectorset`. A missing key returns `none`.
 
-```
+```sh
 redis> SET key1 "hello"
 OK
 redis> LPUSH key2 "a" "b" "c"
@@ -572,4 +297,3 @@ list
 redis> TYPE missing_key
 none
 ```
-

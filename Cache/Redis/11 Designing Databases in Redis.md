@@ -1,25 +1,18 @@
-# **Expressing RDBMS Tables in Redis**
+# Expressing RDBMS Tables in Redis
 
-## **Data Mapping Principles**
+## Mapping rows to keys
 
-When representing relational tables in Redis (e.g., for caching rows or creating high-speed lookup tables), the design shifts from monolithic tables to individual keys.
+Representing relational tables in Redis—for example, to cache rows or build high-speed lookups—shifts the design from tables to individual keys. Redis is designed to handle millions of small keys, so each row can have its own key. A Redis Hash holds the row's columns as fields; `HGETALL` retrieves the hash and `DEL` deletes its key. Name each key by combining the table name and primary-key value with a separator such as `:`. For a composite primary key, include each component, as in `orderline:{order_id}:{product_id}`.
 
-- **Key Granularity:** Do not hesitate to generate a large number of key-value pairs; Redis is designed to handle millions of small keys efficiently.
-- **Row Representation:** Store each table row as a distinct key.
-  - **Data Type:** Use **Redis Hashes** (`Hash Map`) as the standard equivalent for a row. This allows you to retrieve (`HGETALL`) or delete (`DEL`) the entire "row" object at once.
-- **Key Naming Convention:** Construct key names by combining the table name and primary key values with a separator (e.g., `:`).
-  - *Composite Keys:* If the table has a composite primary key, concatenate the values directly in the Redis key string (e.g., `orderline:{order_id}:{product_id}`).
-- **Attribute Storage:** Store the columns of the row as fields within the Hash.
+The available access path depends on what the query already knows:
 
-## Querying & Indexing Patterns
+- **Direct access:** When the primary key is known, construct the Redis key and fetch the row directly.
+- **Pattern matching:** Wildcards such as `*` select keys with a matching name structure during a scan.
+- **Secondary access paths:** Redis does not provide a SQL-style query engine. Sets or Sorted Sets map indexed values back to primary keys for `WHERE`-style queries such as “find employees by role.”
 
-Since Redis does not have a built-in query engine like SQL, you must build "access paths" manually.
+## Simple primary key
 
-- **Direct Access (Single Row):** If you know the Primary Key, construct the Redis key strings directly to fetch data.
-- **Pattern Matching:** Use wildcards (e.g., `*`) to scan for keys that match a specific structure.
-- **Secondary Indexes:** To replicate SQL `WHERE` clauses (e.g., "Find by Role"), create separate data structures—such as **Sets** or **Sorted Sets**—that map values back to the Primary Keys.
-
-## **Example 1: Simple Primary Key**
+Consider an `employees` table:
 
 ```sql
 CREATE TABLE employees (
@@ -30,38 +23,25 @@ CREATE TABLE employees (
 );
 ```
 
-Map the Primary Key `id` directly to the Redis key suffix.
+The primary key `id` becomes the Redis key suffix. Store the other columns in a Hash:
 
-### **Store Row Data (Hash):**
-
-```
+```redis
 HSET employee:42 name "Ana Silva" role "Engineer" hire_date "2024-09-01"
 ```
 
-### **Retrieve Data:**
+`HGETALL employee:42` retrieves that row. `SCAN 0 MATCH employee:*` scans for keys using the `employee:` naming pattern.
 
-- **Get specific entity:**
+Different queries require different index structures:
 
-  ```
-  HGETALL employee:42
-  ```
+- **Role lookup:** A Set maps each role to employee IDs. `SADD employees:role:Engineer 42` indexes the employee; `SMEMBERS employees:role:Engineer` retrieves matching IDs.
+- **Hire-date ordering:** A Sorted Set maps a timestamp score to each ID for range queries. `ZADD employees:by_hire_date 1725148800 42` indexes the employee; `ZRANGE employees:by_hire_date 0 9 REV` retrieves the newest ten entries.
 
-- **Get all entities (Scan):**
+> [!note] Earlier reverse-range command
+> `ZREVRANGE` returns a reverse rank range. Since Redis 6.2.0, `ZRANGE ... REV` provides the same ordering.
 
-  ```
-  SCAN 0 MATCH employee:*
-  ```
+## Composite primary key and relationships
 
-### **Implement Secondary Indexes:**
-
-- **Index by Role (Set):** Maps a role to a list of IDs.
-  - *Add to index:* `SADD employees:role:Engineer 42`
-  - *Query index:* `SMEMBERS employees:role:Engineer`
-- **Index by Hire Date (Sorted Set):** Maps a timestamp to an ID for range queries.
-  - *Add to index:* `ZADD employees:by_hire_date 1725148800 42`
-  - *Query range (Newest 10):* `ZREVRANGE employees:by_hire_date 0 9`
-
-## **Example 2: Composite Primary Key**
+An order-line row is identified by both its order and product IDs:
 
 ```sql
 -- Parent Table
@@ -82,72 +62,19 @@ CREATE TABLE order_lines (
 );
 ```
 
-Flatten the composite key `(order_id, product_id)` into the Redis key string itself.
+Flatten `(order_id, product_id)` into the key `orderline:{order_id}:{product_id}`. The row's attributes remain Hash fields:
 
-### **Store Row Data:**
-
-Key format: `orderline:{order_id}:{product_id}`
-
-```
+```redis
 HSET orderline:1001:77 quantity 2 price 19.90
 ```
 
-### **Manual Indexing for Relationships**
+Redis does not perform relational joins here. Maintain access paths for each relationship query:
 
-Because you cannot join tables in Redis, you maintain Sets to track relationships.
+- **Products in an order:** `SADD order:1001:products 77` adds the product ID to a Set keyed by `order:{id}:products`. `SMEMBERS order:1001:products` yields IDs that the application can use to fetch the corresponding order-line Hashes with `HGETALL`.
+- **Orders containing a product:** `SADD product:77:orders 1001` adds the order ID to a Set keyed by `product:{id}:orders`. `SMEMBERS product:77:orders` retrieves those order IDs.
 
-#### **A. Index: "What products are in this order?"**
+Additional structures support other access needs:
 
-- **Structure:** Set (Key: `order:{id}:products`, Member: `product_id`)
-
-- **Add:**
-
-  ```
-  SADD order:1001:products 77
-  ```
-
-- **Query:**
-
-  ```
-  SMEMBERS order:1001:products
-  ```
-
-  *(Logic: Get the list of product IDs, then loop through them to `HGETALL` the orderline details.)*
-
-#### **B. Index: "Which orders contain this product?"**
-
-- **Structure:** Set (Key: `product:{id}:orders`, Member: `order_id`)
-
-- **Add:**
-
-  ```
-  SADD product:77:orders 1001
-  ```
-
-- **Query:**
-
-  ```
-  SMEMBERS product:77:orders
-  ```
-
-### **Optional Metadata Structures**
-
-- **Global Lookup:** A Set containing all valid Order IDs to perform existence checks.
-
-  ```
-  SADD orders 1001
-  ```
-
-- **Order Header:** A Hash for the parent `orders` table data.
-
-  ```
-  HSET order:1001 status "paid" order_date "2026-01-10" customer_id 555
-  ```
-
-- **Sorted Lookup:** A Sorted Set to retrieve orders by date.
-
-  ```
-  ZADD orders:by_date 1768003200 1001
-  ```
-
-  *(Allows `ZREVRANGE` to fetch the latest orders.)*
+- **Global order lookup:** `SADD orders 1001` adds a valid order ID to a Set for existence checks.
+- **Order header:** `HSET order:1001 status "paid" order_date "2026-01-10" customer_id 555` stores the parent row's fields in a Hash.
+- **Date-ordered lookup:** `ZADD orders:by_date 1768003200 1001` indexes an order by date; `ZRANGE ... REV` retrieves the latest orders.

@@ -1,77 +1,29 @@
 # Lists
 
-* **Definition:** A Redis List is an ordered sequence of strings.
-* **Ordering:** The order of elements is determined by the **sequence of insertion**. Elements added first appear earlier (unless pushed to the front), allowing for both First-In-First-Out (FIFO) and Last-In-First-Out (LIFO) behavior.
-* **Data Type:** While they can structurally represent numbers or serialized objects, every individual element inside a List is technically a **String**.
-* **Capacity:** A single List can hold more than **4 billion elements** ($2^{32} - 1$).
-* **Implementation:** Lists are implemented as **Linked Lists** (not arrays).
-  - **Benefit:** Adding elements to the Head or Tail is extremely fast ($O(1)$), even if the list has millions of items.
-  - **Trade-off:** Accessing an element by index in the middle of a very large list is slower ($O(N)$).
-* **Memory Optimization:** Redis automatically uses memory-efficient encodings (like `listpack`) for small lists to minimize memory footprint without sacrificing performance.
+Redis lists are ordered sequences of string elements, including elements that represent numbers or serialized objects. `LPUSH` adds at the head and `RPUSH` at the tail, so insertion and removal at the chosen ends produce FIFO queues or LIFO stacks.
+
+- **Capacity:** A list holds up to $2^{32}-1$ elements—more than four billion.
+- **End operations:** Adding at the head or tail is $O(1)$, including for large lists.
+- **Indexed access:** Finding an element in the middle requires traversal and is $O(N)$ in the list length.
+- **Representation:** Redis uses a linked-node-oriented representation rather than an array and applies compact encodings such as `listpack` to reduce memory use. The exact encoding is an implementation detail.
 
 ## Use cases
 
-* Job Queues (Message Brokering)
-
-  - **Concept:** Lists act as a buffer between a "Producer" (creating tasks) and a "Consumer" (processing tasks). This decouples application components.
-    - **Mechanism:**
-      - **Producers** add jobs using `LPUSH`.
-      - **Consumers** take jobs using `RPOP`.
-      - **Blocking:** Consumers can use `BRPOP` to block the connection and wait until a new element arrives, avoiding polling loops.
-
-  - **Application:** Background email sending, video encoding, resizing uploaded images.
-
-* Recent Activity Feeds (Capped Lists)
-
-  - **Concept:** Storing a fixed window of the most recent events (e.g., "Last 10 items viewed").
-    - **Mechanism:**
-      - Add a new event with `LPUSH`.
-      - Immediately limit the size with `LTRIM 0 99` (to keep the latest 100).
-
-  - **Benefit:** Extremely fast retrieval of recent history without querying a relational database.
-
-  - **Application:** Social media timelines, "Who visited your profile", server logs.
-
-* Reliable Queue Processing
-
-  - **Concept:** preventing data loss if a consumer crashes while processing a message.
-    - **Mechanism:**
-      - Use `LMOVE` (or `RPOPLPUSH` in older versions).
-      - The item is popped from the **Queue** list and simultaneously pushed into a **Processing** list.
-      - If the worker fails, the job remains in the **Processing** list and can be re-queued or analyzed.
-
-  - **Application:** Financial transactions, critical order processing.
-
-* Circular Lists (Round Robin)
-
-  - **Concept:** Cycling through a list of items repeatedly.
-    - **Mechanism:**
-      - Use `LMOVE source source LEFT RIGHT`.
-      - This takes the head element, processes it, and places it back at the tail of the same list.
-
-  - **Application:** Rotating through proxy servers, distributing requests among workers in a round-robin fashion, cycling through banner ads.
-
-* Stacks (LIFO Navigation)
-
-  - **Concept:** Last-In, First-Out data structure where the most recently added item is the first one retrieved.
-    - **Mechanism:**
-      - Use `LPUSH` to add items.
-      - Use `LPOP` to remove them.
-
-  - **Application:** Implementing "Undo/Redo" functionality, browser "Back" button history.
+- **Job queue:** A producer adds work with `LPUSH`, and a consumer takes it with `RPOP`. This buffers and decouples tasks such as sending email, encoding video, or resizing images. `BRPOP` waits for work on a blocked connection instead of polling.
+- **Capped recent-activity feed:** Push a new event with `LPUSH`, then use `LTRIM key 0 99` to retain the latest 100. This gives fast recent-history reads for timelines, profile visits, or server logs without querying a relational database.
+- **Processing queue:** `LMOVE` atomically transfers a job from the pending queue to a processing list. If a worker fails, the job remains in processing for analysis or re-queuing. This supports critical work such as orders or financial transactions.
+- **Circular list:** `LMOVE source source LEFT RIGHT` rotates the head to the tail, supporting round-robin proxy selection, worker distribution, or banner rotation.
+- **Stack:** `LPUSH` followed by `LPOP` retrieves the most recently pushed element first. Examples include undo/redo navigation and browser back history.
 
 ## Creating a list using `LPUSH` and `RPUSH`
 
-### LPUSH (Left Push)
+### `LPUSH` (left push)
 
-- **Function:** Inserts one or specified values at the head (left side) of the list stored at the key.
-- **Creation:** If the key does not exist, it is created as an empty list before performing the push operations.
-- **Multi-value behavior:** If multiple values are specified, they are inserted one after the other. The last value specified appears first in the list (Stack behavior).
-- **Return value:** The length of the list after the push operations.
+`LPUSH` adds values at the head, creating the list if the key is missing. With multiple arguments, it pushes them one after another, so the last argument appears first. It returns the resulting list length.
 
-**Example: Basic LPUSH usage**
+Pushing at the head places the newest element first:
 
-```
+```sh
 redis> LPUSH mylist "world"
 (integer) 1
 redis> LPUSH mylist "hello"
@@ -81,9 +33,9 @@ redis> LRANGE mylist 0 -1
 2) "world"
 ```
 
-**Example: Pushing multiple values (Stack order)**
+Multiple arguments appear in reverse argument order:
 
-```
+```sh
 redis> LPUSH languages "python" "java" "ruby"
 (integer) 3
 redis> LRANGE languages 0 -1
@@ -92,16 +44,13 @@ redis> LRANGE languages 0 -1
 3) "python"
 ```
 
-### RPUSH (Right Push)
+### `RPUSH` (right push)
 
-- **Function:** Inserts one or specified values at the tail (right side) of the list stored at the key.
-- **Creation:** Like LPUSH, if the key does not exist, it is created as an empty list.
-- **Multi-value behavior:** Values are appended to the end of the list in the exact order they are specified (Queue behavior).
-- **Return value:** The length of the list after the push operations.
+`RPUSH` adds values at the tail, creating the list if needed. Multiple values remain in argument order, and the command returns the resulting length.
 
-**Example: Basic RPUSH usage**
+Pushing at the tail preserves earlier elements first:
 
-```
+```sh
 redis> RPUSH user_log "login"
 (integer) 1
 redis> RPUSH user_log "view_page"
@@ -111,9 +60,9 @@ redis> LRANGE user_log 0 -1
 2) "view_page"
 ```
 
-**Example: Pushing multiple values (Sequential order)**
+Multiple arguments retain their argument order:
 
-```
+```sh
 redis> RPUSH queue "job1" "job2" "job3"
 (integer) 3
 redis> LRANGE queue 0 -1
@@ -124,15 +73,11 @@ redis> LRANGE queue 0 -1
 
 ## Slicing Lists with `LRANGE`
 
-- **Function:** Returns a specified range of elements from the list stored at the key.
-- **Indices:** The command uses zero-based indexing (`0` is the first element, `1` is the second).
-- **Negative Indices:** Supports negative integers to reference the end of the list (`-1` is the last element, `-2` is the penultimate).
-- **Consistency:** Always retrieves elements from Left (Head) to Right (Tail).
-- **Out of Range:** If the range is larger than the list, it returns all available elements. If `start` is larger than the end of the list, it returns an empty list.
+`LRANGE` reads elements from head to tail within a specified range. Indexes are zero-based (`0` is the head); negative indexes count from the tail (`-1` is the last element). A range extending past the tail returns the available elements, while a start beyond the tail returns an empty list.
 
-**Example: Setup and retrieving ranges**
+The same list yields full, middle, and tail ranges:
 
-```
+```sh
 redis> RPUSH frameworks "Flask" "Django" "FastAPI" "Rails"
 (integer) 4
 redis> LRANGE frameworks 0 -1
@@ -150,15 +95,11 @@ redis> LRANGE frameworks -2 -1
 
 ## Accessing Elements with `LINDEX`
 
-- **Function:** Returns the element at the specified `index` within the list stored at the key.
-- **Indexing:** Uses zero-based indexing (`0` is the first element, `1` is the second).
-- **Negative Indices:** Can be used to designate elements starting at the tail of the list (`-1` is the last element, `-2` is the penultimate).
-- **Out of Range:** If the index is out of range (larger than the list size), the command returns `(nil)`.
-- **Non-Destructive:** Unlike `LPOP` or `RPOP`, this command does not remove the element from the list.
+`LINDEX` reads one element without removing it. It uses zero-based indexes from the head and negative indexes from the tail (`-1` is the last element). An out-of-range index returns `(nil)`.
 
-**Example: Retrieving head and tail elements**
+Indexes `0` and `-1` select the head and tail:
 
-```
+```sh
 redis> RPUSH playlist "Song A" "Song B" "Song C"
 (integer) 3
 redis> LINDEX playlist 0
@@ -167,9 +108,9 @@ redis> LINDEX playlist -1
 "Song C"
 ```
 
-**Example: Accessing an arbitrary index**
+An out-of-range index returns `(nil)`:
 
-```
+```sh
 redis> LPUSH games "Chess" "Checkers" "Go"
 (integer) 3
 redis> LINDEX games 1
@@ -180,17 +121,11 @@ redis> LINDEX games 99
 
 ## Injecting Elements with `LINSERT`
 
-- **Function:** Inserts a new value into the list positioned either `BEFORE` or `AFTER` a specific reference value (the pivot).
-- **Traversal:** The list is searched from the Head (Left) to the Tail. The operation is performed only on the **first** occurrence of the pivot value found.
-- **Requirement:** Unlike `PUSH` commands, the key must already exist. If the key does not exist, no operation is performed.
-- **Return Values:**
-  - Returns the new length of the list upon success.
-  - Returns `-1` if the `pivot` value was not found.
-  - Returns `0` if the key does not exist.
+`LINSERT` inserts a value `BEFORE` or `AFTER` a pivot. Redis searches from head to tail and acts on the **first** matching pivot. Unlike a push, it does not create a missing list. It returns the new length on success, `-1` if the pivot is absent, or `0` if the key is absent.
 
-**Example: Inserting before and after a value**
+A pivot positions each inserted value:
 
-```
+```sh
 redis> RPUSH todo_list "clean" "sleep"
 (integer) 2
 redis> LINSERT todo_list BEFORE "sleep" "eat"
@@ -204,27 +139,22 @@ redis> LRANGE todo_list 0 -1
 4) "sleep"
 ```
 
-**Example: Handling missing pivots**
+An absent pivot returns `-1`:
 
-```
+```sh
 redis> LINSERT todo_list BEFORE "gym" "run"
 (integer) -1
 ```
 
-Here is an overview of `LPOP` and `RPOP` for removing elements.
-
 ## Remove elements via `LPOP` and `RPOP`
 
-### LPOP (Left Pop)
+`LPOP` removes and returns the head; `RPOP` does the same at the tail. A missing or empty list returns `(nil)`. Since Redis 6.2, either command accepts an optional `count` to remove and return multiple elements as a list instead of one value.
 
-- **Function:** Removes and returns the **first** element (the Head) of the list stored at the key.
-- **Empty Lists:** If the list is empty or the key does not exist, it returns `(nil)`.
-- **Count Argument:** (Redis 6.2+) You can specify an optional `count` argument to remove and return multiple elements from the left side at once.
-- **Return Value:** The value of the removed element, or a list of values if `count` was specified.
+### `LPOP` (left pop)
 
-**Example: Basic LPOP usage**
+Popping the head leaves the remaining elements in order:
 
-```
+```sh
 redis> RPUSH queue "customer1" "customer2" "customer3"
 (integer) 3
 redis> LPOP queue
@@ -234,9 +164,9 @@ redis> LRANGE queue 0 -1
 2) "customer3"
 ```
 
-**Example: LPOP with count (Removing multiple items)**
+A count removes several head elements at once:
 
-```
+```sh
 redis> RPUSH letters "A" "B" "C" "D"
 (integer) 4
 redis> LPOP letters 2
@@ -247,16 +177,11 @@ redis> LRANGE letters 0 -1
 2) "D"
 ```
 
-### RPOP (Right Pop)
+### `RPOP` (right pop)
 
-- **Function:** Removes and returns the **last** element (the Tail) of the list stored at the key.
-- **Empty Lists:** Returns `(nil)` if the list is empty or the key does not exist.
-- **Count Argument:** (Redis 6.2+) Can accept a `count` argument to remove and return multiple elements from the right side.
-- **Return Value:** The value of the removed element, or a list of values if `count` was specified.
+Popping the tail removes the last element:
 
-**Example: Basic RPOP usage**
-
-```
+```sh
 redis> RPUSH stack "plate1" "plate2" "plate3"
 (integer) 3
 redis> RPOP stack
@@ -266,9 +191,9 @@ redis> LRANGE stack 0 -1
 2) "plate2"
 ```
 
-**Example: Pop from empty list**
+After the list is deleted, a pop returns `(nil)`:
 
-```
+```sh
 redis> DEL empty_list
 (integer) 1
 redis> RPOP empty_list
@@ -277,17 +202,11 @@ redis> RPOP empty_list
 
 ## Trimming Lists with `LTRIM`
 
-- **Function:** Trims an existing list so that it will contain *only* the specified range of elements.
-- **Destructive:** Unlike `LRANGE`, which just reads data, `LTRIM` permanently **removes** all elements outside the specified `start` and `stop` indices.
-- **Indexing:** Supports zero-based indexing (`0` is the head) and negative indexing (`-1` is the tail).
-- **Use Case:** ideal for maintaining fixed-length lists (e.g., "Keep only the latest 100 log entries") by pushing new elements and immediately trimming the old ones.
-- **Out of Range:**
-  - If `start` is larger than the end of the list, the list is emptied (left with 0 elements).
-  - If `stop` is larger than the actual end of the list, Redis treats it as the last element of the list.
+`LTRIM` keeps only an indexed range and **removes** everything else; unlike `LRANGE`, it changes the list. Indexes are zero-based from the head, with negative values counting from the tail. A start beyond the end empties the list, while a stop beyond the end acts like the last element. Pushing new entries and then trimming maintains a fixed-length recent-history window.
 
-**Example: Keeping the first 3 elements**
+Trimming to indexes `0` through `2` retains the first three elements:
 
-```
+```sh
 redis> RPUSH numbers 1 2 3 4 5
 (integer) 5
 redis> LTRIM numbers 0 2
@@ -298,9 +217,9 @@ redis> LRANGE numbers 0 -1
 3) "3"
 ```
 
-**Example: Keeping the last 2 elements (Rolling window)**
+Negative indexes retain the last two entries in a rolling window:
 
-```
+```sh
 redis> RPUSH recent_views "home" "about" "contact" "products"
 (integer) 4
 redis> LTRIM recent_views -2 -1
@@ -310,9 +229,9 @@ redis> LRANGE recent_views 0 -1
 2) "products"
 ```
 
-**Example: Emptying a list (Start index > Stop index)**
+A start index after the stop index empties the list:
 
-```
+```sh
 redis> RPUSH data "A" "B" "C"
 (integer) 3
 redis> LTRIM data 1 0
@@ -323,15 +242,11 @@ redis> LLEN data
 
 ## Updating Elements with `LSET`
 
-- **Function:** Sets the list element at the specified `index` to a new value.
-- **Replacement:** This operation overwrites the existing value at that index; it does not add a new element or shift others.
-- **Requirements:** The key must already exist and hold a list. Unlike `LPUSH`/`RPUSH`, `LSET` cannot create a list.
-- **Indexing:** Supports zero-based indexing (`0` is the head) and negative indexing (`-1` is the tail).
-- **Errors:** Returns an error if the index is out of range (i.e., greater than the list length) or if the key does not exist.
+`LSET` replaces an element without inserting or shifting other elements. It requires an existing list and an in-range index; otherwise it returns an error. Indexes are zero-based from the head or negative from the tail.
 
-**Example: Overwriting specific indices**
+The head and tail elements are replaced without changing list length:
 
-```
+```sh
 redis> RPUSH status "pending" "loading" "complete"
 (integer) 3
 redis> LSET status 0 "starting"
@@ -344,9 +259,9 @@ redis> LRANGE status 0 -1
 3) "done"
 ```
 
-**Example: Handling out of range errors**
+An out-of-range replacement returns an error:
 
-```
+```sh
 redis> RPUSH small_list "A" "B"
 (integer) 2
 redis> LSET small_list 5 "C"
@@ -355,23 +270,20 @@ redis> LSET small_list 5 "C"
 
 ## Counting Elements with `LLEN`
 
-- **Function:** Returns the length (number of elements) of the list stored at the specified key.
-- **Performance:** This is an **O(1)** operation. Redis stores the current length in the list's metadata, so it does not need to traverse the list to count elements.
-- **Missing Keys:** If the key does not exist, it is interpreted as an empty list, and the command returns `0`.
-- **Wrong Type:** If the value stored at the key is not a list (e.g., a String or Set), an error is returned.
+`LLEN` returns the number of elements in $O(1)$ time because Redis keeps the length in list metadata rather than traversing the list. A missing key returns `0`; a key holding another type, such as a string or set, produces an error.
 
-**Example: Getting the size of a populated list**
+The list length reflects its pushed elements:
 
-```
+```sh
 redis> RPUSH messages "Hello" "World" "Again"
 (integer) 3
 redis> LLEN messages
 (integer) 3
 ```
 
-**Example: Checking a non-existent key**
+A missing key has length zero:
 
-```
+```sh
 redis> DEL unknown_key
 (integer) 1
 redis> LLEN unknown_key
@@ -380,34 +292,31 @@ redis> LLEN unknown_key
 
 ## Searching Indices with `LPOS`
 
-- **Function:** Returns the index of matching elements within a list.
-- **Availability:** Available since Redis 6.0.6.
-- **Direction:** By default, scans the list from Head (Left) to Tail.
-- **Options:**
-  - `RANK`: Specifies which occurrence to return. Positive ranks scan left-to-right (`1` is the first match). Negative ranks scan right-to-left (`-1` is the last match).
-  - `COUNT`: Returns an array of indices for the first *N* matches found. If set to `0`, it returns *all* matches.
-  - `MAXLEN`: Limits the number of list elements to compare, useful for performance on very large lists.
-- **Return Value:** Returns the integer index (or array of indices) if found, or `(nil)` if the element is not in the list.
+`LPOS` (available since Redis 6.0.6) searches for an element and returns its index, or `(nil)` if it is absent. By default it scans from head to tail. Its options change the search:
 
-**Example: Finding the first occurrence**
+- **`RANK`:** Selects an occurrence; positive ranks scan from the head (`1` is the first match), while negative ranks scan from the tail (`-1` is the last).
+- **`COUNT`:** Returns an array of indexes for the first *N* matches; `0` returns all matches.
+- **`MAXLEN`:** Limits how many elements are compared, bounding work on a large list.
 
-```
+The default search returns the first matching index:
+
+```sh
 redis> RPUSH playlist "songA" "songB" "songC" "songB"
 (integer) 4
 redis> LPOS playlist "songB"
 (integer) 1
 ```
 
-**Example: Finding the last occurrence (Reverse scan)**
+Negative rank selects the last occurrence:
 
-```
+```sh
 redis> LPOS playlist "songB" RANK -1
 (integer) 3
 ```
 
-**Example: Finding multiple matches**
+`COUNT` returns multiple matching indexes:
 
-```
+```sh
 redis> RPUSH nums 1 2 1 2 1 2
 (integer) 6
 redis> LPOS nums 1 COUNT 2
@@ -417,17 +326,15 @@ redis> LPOS nums 1 COUNT 2
 
 ## Removing Specific Values with `LREM`
 
-- **Function:** Removes the first `count` occurrences of elements equal to `value` from the list stored at the key.
-- **The `count` Argument:** The sign and magnitude of the `count` parameter determine how the removal is performed:
-  - **count > 0:** Removes elements moving from **Head to Tail** (Left to Right).
-  - **count < 0:** Removes elements moving from **Tail to Head** (Right to Left).
-  - **count = 0:** Removes **all** elements equal to `value`.
-- **Return Value:** Returns the number of elements that were actually removed.
-- **Non-existent Elements:** If the value is not found in the list, it returns `0`.
+`LREM` removes occurrences equal to `value` and returns the number removed (`0` if none match). The sign and magnitude of `count` choose which matches:
 
-**Example: Removing the first N occurrences (Head to Tail)**
+- **Positive count:** Remove up to that many matches from head to tail.
+- **Negative count:** Remove up to that many matches from tail to head.
+- **Zero count:** Remove all matches.
 
-```
+A positive count removes matches from the head:
+
+```sh
 redis> RPUSH meeting "bob" "alice" "bob" "dave" "bob"
 (integer) 5
 redis> LREM meeting 2 "bob"
@@ -438,9 +345,9 @@ redis> LRANGE meeting 0 -1
 3) "bob"
 ```
 
-**Example: Removing the last N occurrences (Tail to Head)**
+A negative count removes matches from the tail:
 
-```
+```sh
 redis> RPUSH logs "error" "info" "error" "warning"
 (integer) 4
 redis> LREM logs -1 "error"
@@ -451,9 +358,9 @@ redis> LRANGE logs 0 -1
 3) "warning"
 ```
 
-**Example: Removing all occurrences**
+A zero count removes every matching value:
 
-```
+```sh
 redis> RPUSH nums 1 2 1 3 1
 (integer) 5
 redis> LREM nums 0 1
@@ -465,20 +372,14 @@ redis> LRANGE nums 0 -1
 
 ## Moving Elements with `LMOVE`
 
-- **Function:** Atomically removes an element from one list (source) and pushes it into another (destination).
-- **Atomicity:** The operation is atomic; no other client can see the state between the pop and the push.
-- **Self-reference:** The `source` and `destination` keys can be the same, effectively rotating the list.
-- **Arguments:**
-  - `source` key
-  - `destination` key
-  - `LEFT` or `RIGHT` (where to pop from source)
-  - `LEFT` or `RIGHT` (where to push to destination)
-- **Availability:** Available since Redis 6.2.0 (replaces the older `RPOPLPUSH`).
-- **Return Value:** The element that was moved.
+`LMOVE source destination LEFT|RIGHT LEFT|RIGHT` atomically pops one end of the source and pushes it to the chosen end of the destination. No client sees an intermediate state. It returns the moved element, and the source and destination may be the same key to rotate a list.
 
-**Example: Moving from Tail of one list to Head of another**
+> [!note] Earlier list transfer command
+> Redis 6.2.0 introduced `LMOVE` as a replacement for `RPOPLPUSH`. Its right-to-left transfer corresponds to `LMOVE source destination RIGHT LEFT`.
 
-```
+The source tail moves to the destination head atomically:
+
+```sh
 redis> RPUSH processing "job1"
 (integer) 1
 redis> RPUSH pending "job2" "job3"
@@ -492,9 +393,9 @@ redis> LRANGE pending 0 -1
 1) "job2"
 ```
 
-**Example: Rotating a list (Circular Buffer)**
+Moving an element within the same list rotates it:
 
-```
+```sh
 redis> RPUSH carousel "A" "B" "C"
 (integer) 3
 redis> LMOVE carousel carousel RIGHT LEFT

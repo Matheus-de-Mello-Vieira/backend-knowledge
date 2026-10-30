@@ -1,59 +1,32 @@
 # Bloom Filters
 
-- **Definition:** A Bloom Filter is a **probabilistic data structure** used to verify **membership** in a set (checking if an element is present).
-- **Purpose:** It answers the question "Have I seen this item before?" extremely fast and with very little memory.
-- **Efficiency:** Like HyperLogLog, it is space-efficient. It can represent a set of millions of items using a small, fixed-size bit array, regardless of the size of the elements themselves.
-- **The Trade-off:**
-  - **No False Negatives:** If the filter says "No", the element is **definitely not** in the set. (100% confidence).
-  - **Possible False Positives:** If the filter says "Yes", the element is **likely** in the set, but there is a small probability it is not.
-- **Implementation:** In Redis, this is typically available via the **RedisBloom** module (commands starting with `BF.`) or can be manually implemented using Bitmaps.
-- **Behavior:** You can add elements and check for existence, but you generally **cannot delete** elements (in standard implementations) because removing one item might disturb the bits representing other items.
+A **Bloom filter** is a probabilistic set-membership structure: it answers whether an element has been seen before without storing the elements themselves. Like HyperLogLog, it trades exactness for space efficiency, but it answers a different question—membership rather than cardinality. A small, fixed-size bit array can represent millions of items regardless of each item's size, enabling fast checks with little memory.
 
-## Use Cases
+Its answers are asymmetric:
 
-* Preventing Cache Penetration
-  - **Concept:** Preventing requests for non-existent keys from hitting your database.
+- **Negative:** The element is definitely not in the filter; standard Bloom filters have no false negatives.
+- **Positive:** The element is likely in the filter, but the result has a small chance of being a false positive.
 
-  - **Problem:** Malicious users might query for millions of random IDs that don't exist. Your application checks the cache (miss) $\to$ checks the DB (miss). This crashes the DB.
+Adding elements sets bits that other elements may share. Standard Bloom filters therefore support insertion and membership checks but generally do not support deletion: clearing an element's bits could also affect other elements. In Redis, Bloom filters are typically provided by the **RedisBloom** module through `BF.` commands; they can also be implemented manually with Bitmaps.
 
-  - **Solution:** Store all valid IDs in a Bloom Filter. When a request comes in, check the filter first.
-    - If Filter says "No": Return 404 immediately. Don't touch the DB.
-      - If Filter says "Yes": Check Cache/DB.
-* Username Availability
+## Use cases
 
-  - **Concept:** Checking if a username is already taken during registration.
+- **Cache penetration:** Requests for nonexistent IDs miss both the cache and database. Large numbers of random IDs can overload the database. If a filter contains all valid IDs, a negative check lets the application return 404 without querying the database; a positive check proceeds to the cache or database because it may be a false positive.
+- **Username availability:** A filter containing registered usernames can avoid a database query for every keystroke during registration. A negative check means the username is absent from the filter; a positive check requires a final database check before treating it as taken.
+- **Ad frequency capping:** Add `User_ID:Ad_ID` pairs for ads already shown. Check the pair before serving the same ad to that user again.
 
-  - **Efficiency:** Instead of querying the `users` table for every keystroke, check a Bloom Filter containing all registered usernames.
-    - "No" means the username is definitely available.
-      - "Yes" means it's likely taken (do a final DB check to confirm).
-* Ad Serving (Frequency Capping)
-  - **Concept:** Avoiding showing the same ad to a user who has already seen it.
-  - **Mechanism:** Store `User_ID:Ad_ID` pairs in a filter. Before serving an ad, check if it exists in the filter.
+## RedisBloom commands
 
-## Adding Elements with `BF.ADD`
+`BF.ADD` inserts an item into a filter. It returns `1` when the item's bits changed, suggesting it was not already present, and `0` when those bits were already set, suggesting it was already present:
 
-- **Function:** Adds an item to the Bloom Filter.
-- **Return:**
-  - `1`: If the item was likely not present (bits were modified).
-  - `0`: If the item was arguably already present (bits were already set).
-
-**Example: Marking a user as "processed"**
-
-```
+```sh
 redis> BF.ADD processed_users "user_123"
 (integer) 1
 ```
 
-## Checking Existence with `BF.EXISTS`
+`BF.EXISTS` checks membership. It returns `1` for a possible member (including false positives) and `0` for a definite nonmember:
 
-- **Function:** Checks if an item exists in the filter.
-- **Return:**
-  - `1`: **Likely** exists (False positive possible).
-  - `0`: **Definitely** does not exist (100% certain).
-
-**Example: Checking if a URL has been crawled**
-
-```
+```sh
 redis> BF.ADD crawled_urls "https://google.com"
 (integer) 1
 redis> BF.EXISTS crawled_urls "https://google.com"
@@ -62,17 +35,9 @@ redis> BF.EXISTS crawled_urls "https://unknown.com"
 (integer) 0
 ```
 
-## `BF.RESERVE` (Custom Configuration)
+`BF.RESERVE` creates a filter with a chosen error rate and capacity. If the default error rate of approximately 1% is too high, specify a lower rate when creating the filter; this requires more memory. This example reserves capacity for 100,000 items with a 0.1% false-positive rate:
 
-- **Function:** Creates a filter with a specific error rate and capacity.
-- **Why use it?** The default error rate is usually 1% (0.01). If you need higher precision (e.g., 0.1%), you must reserve it upfront.
-- **Trade-off:** Lower error rates require more memory.
-
-**Example: Creating a high-precision filter**
-
-```
+```sh
 redis> BF.RESERVE specific_filter 0.001 100000
 OK
 ```
-
-*(Creates a filter for 100k items with a 0.1% false positive rate).*

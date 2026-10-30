@@ -1,84 +1,39 @@
 # Publish/Subscribe
 
-Redis functions as a lightweight **Message Broker** that decouples message senders from receivers. It implements the Publish/Subscribe messaging paradigm.
+Redis Pub/Sub uses Redis as a lightweight message broker between publishers and subscribers. Publishers send messages to named channels, and Redis pushes each message to clients subscribed to the channel. Neither side needs to know the other clients.
+
+- **Channels:** Named topics that route messages; no channel declaration is required before a client publishes or subscribes.
+- **Publishers:** Clients use `PUBLISH` to send a payload to a channel.
+- **Subscribers:** Clients use `SUBSCRIBE` to receive messages pushed to them while their subscription remains active.
+
+## Delivery model
+
+Pub/Sub is *fire and forget*: Redis does not persist or queue published messages for disconnected clients. A client that is offline when a message is published cannot retrieve that message from Pub/Sub later. Unlike Redis Streams or RabbitMQ, this model provides no message history or acknowledgement mechanism by default.
 
 ```mermaid
 flowchart LR
-    %% =========================
-    %% Declare ALL Actors First
-    %% =========================
-    Pub[Publisher Client]
-    Redis[Redis Server<br>The Broker]
-
-    Sub1[Client A<br>Listening to news]
-    Sub2[Client B<br>Listening to news]
-    Sub3[Client C<br>OFFLINE - Disconnected]
-
-    %% =========================
-    %% Grouping
-    %% =========================
-    subgraph Subscribers [Subscribers - Listeners]
-        Sub1
-        Sub2
-        Sub3
-    end
-
-    %% =========================
-    %% Message Flow
-    %% =========================
-    Pub -- PUBLISH news payload --> Redis
-
-    Redis == Instant Forward ==> Sub1
-    Redis == Instant Forward ==> Sub2
-
-    Redis -.->|Message Lost<br>Fire and Forget| Sub3
-
-    %% =========================
-    %% Dark Theme Styling
-    %% =========================
-    style Pub fill:#1e293b,color:#e5e7eb,stroke:#94a3b8,stroke-width:1.5px
-    style Redis fill:#7c2d12,color:#fff7ed,stroke:#fb923c,stroke-width:2px
-
-    style Sub1 fill:#0f766e,color:#ecfeff,stroke:#5eead4,stroke-width:1.5px
-    style Sub2 fill:#0f766e,color:#ecfeff,stroke:#5eead4,stroke-width:1.5px
-    style Sub3 fill:#1f2933,color:#9ca3af,stroke:#6b7280,stroke-dasharray:5 5
-
+    P[Publisher] -->|PUBLISH news| R[Redis broker]
+    R -->|Message| A[Connected subscriber A]
+    R -->|Message| B[Connected subscriber B]
+    R -.->|No delivery; message lost| C[Disconnected subscriber C]
 ```
 
-**Mechanism**
+Typical uses include:
 
-- **Channels:** Messages are routed via named channels (topics).
-- **PUBLISH:** Clients push messages to a specific channel.
-- **SUBSCRIBE:** Clients listen to a channel to receive messages instantly.
+- Real-time notifications, such as chat messages or sports scores.
+- Inter-service communication.
+- Live configuration updates.
 
-**Delivery Model: "Fire and Forget"**
+## Publishing and subscribing
 
-- This is the defining characteristic of Redis Pub/Sub.
-- Messages are **not persisted**.
-- If a subscriber is not connected at the exact moment a message is published, that message is **lost forever** to that client.
-- *Contrast:* Unlike `Redis Streams` or `RabbitMQ`, there is no history or acknowledgement mechanism by default.
+### `PUBLISH`
 
-## **Use Cases**
+`PUBLISH` sends a message to a channel for immediate delivery to its connected subscribers. If no client is subscribed, the message is discarded; publishing does not require the channel to exist beforehand.
 
-- Real-time notifications (chat, sports scores).
-- Inter-service communication (microservices).
-- Live config updates.
+- **Cost:** O(N + M), where N is the number of direct subscribers to the channel and M is the number of subscribed patterns matching that channel.
+- **Reply:** An integer reporting the number of clients that received the message.
 
-## Commands
-
-### Broadcasting Messages with `PUBLISH`
-
-- **Function:** specific channel, triggering an immediate broadcast to all listening clients.
-- **Behavior:**
-  - Operates on a **Fire-and-Forget** model: messages are delivered to connected subscribers but are not persisted or queued.
-  - If no clients are currently subscribed to the channel, the message is discarded.
-  - Channels are **implicit**; they are created automatically when a message is published or a client subscribes.
-- **Performance:** **O(N+M)**, where *N* is the number of direct subscribers to the channel and *M* is the number of patterns (via `PSUBSCRIBE`) matching the channel.
-- **Return Value:** (Integer) The number of clients that received the message.
-
-Plaintext
-
-```
+```sh
 redis> PUBLISH internal_logs "backup_started"
 (integer) 0
 
@@ -89,26 +44,19 @@ redis> PUBLISH chat_room_general "hello everyone"
 (integer) 42
 ```
 
-### Subscribing to Channels with `SUBSCRIBE`
+### `SUBSCRIBE`
 
-- **Function:** Subscribes the client to one or more specific channels to receive messages.
-- **Behavior:**
-  - Switches the client into **Subscriber Mode**. Once subscribed, the client can generally only issue Pub/Sub related commands (e.g., `SUBSCRIBE`, `UNSUBSCRIBE`, `PING`, `QUIT`).
-  - The connection becomes "push" based; Redis actively sends messages to the client as they arrive on the channel.
-  - Channels are **implicit**; subscribing to a non-existent channel creates a listening state for it immediately.
-- **Performance:** **O(N)**, where *N* is the number of channels to subscribe to.
-- **Return Value:**
-  - **Immediate:** A confirmation array containing the string `"subscribe"`, the channel name, and the current number of channels the client is subscribed to.
-  - **Async:** A three-element array for every published message containing `"message"`, the channel name, and the message payload.
+`SUBSCRIBE` registers a client for one or more specific channels. The connection then receives pushed messages as they arrive and enters subscriber mode, in which it generally accepts only Pub/Sub-related commands such as `SUBSCRIBE`, `UNSUBSCRIBE`, `PING`, and `QUIT`. Subscribing to a channel requires no prior declaration of that channel.
 
-Plaintext
+- **Cost:** O(N), where N is the number of channels being subscribed to.
+- **Confirmation:** A three-element reply containing `"subscribe"`, the channel name, and the current number of channels the client is subscribed to.
+- **Message:** An asynchronous three-element reply containing `"message"`, the channel name, and the payload.
 
-```
+```sh
 redis> SUBSCRIBE system_alerts
 1) "subscribe"
 2) "system_alerts"
 3) (integer) 1
-
 1) "message"
 2) "system_alerts"
 3) "disk_space_low"
@@ -122,19 +70,14 @@ redis> SUBSCRIBE news sports
 3) (integer) 3
 ```
 
-### Stopping Subscriptions with `UNSUBSCRIBE`
+### `UNSUBSCRIBE`
 
-* **Function:** Unsubscribes the client from specific channels or all channels if no argument is provided.
-* **Behavior:**
-* If specific channels are provided, the client stops listening to those channels.
-* If **no arguments** are provided, the client unsubscribes from **all** currently subscribed channels.
-* If the number of subscriptions drops to zero, the client exits **Subscriber Mode** and returns to standard command mode.
+`UNSUBSCRIBE` removes the specified channel subscriptions, or all of the client's channel subscriptions when called without arguments. When the client's subscription count reaches zero, it leaves subscriber mode and returns to standard command mode.
 
+- **Cost:** O(N), where N is the number of channels being unsubscribed from.
+- **Reply:** A three-element reply containing `"unsubscribe"`, the channel name, and the remaining subscription count.
 
-* **Performance:** **O(N)**, where *N* is the number of channels to unsubscribe from.
-* **Return Value:** An array containing the string `"unsubscribe"`, the channel name, and the remaining number of subscriptions.
-
-```text
+```sh
 redis> SUBSCRIBE news sports weather
 1) "subscribe"
 2) "news"
@@ -158,126 +101,48 @@ redis> UNSUBSCRIBE
 1) "unsubscribe"
 2) "weather"
 3) (integer) 0
-
 ```
 
-### Pattern-Matching Subscriptions with `PSUBSCRIBE`
+## Pattern subscriptions
 
-* **Function:** Subscribes the client to all channels that match a specific glob-style pattern.
-* **Behavior:**
-* Allows clients to listen to multiple channels without knowing their exact names in advance.
-* Supports standard glob patterns:
-* `*` matches any sequence of characters.
-* `?` matches exactly one character.
-* `[abc]` matches any character inside the brackets.
+### `PSUBSCRIBE`
 
+`PSUBSCRIBE` registers a glob-style pattern instead of a specific channel name, allowing a client to receive messages from channels whose names match the pattern without listing them individually. Supported forms include `*` for any character sequence, `?` for one character, and `[abc]` for one character from the bracketed set.
 
-* Messages received via pattern subscription are distinct from standard messages; they include the pattern that matched.
+Pattern deliveries are distinct from direct-channel deliveries: they include the matching pattern as well as the channel and payload.
 
+- **Cost:** O(N), where N is the number of patterns being subscribed to.
+- **Confirmation:** A three-element reply containing `"psubscribe"`, the pattern, and the client's current pattern-subscription count.
+- **Message:** An asynchronous four-element reply containing `"pmessage"`, the matching pattern, the specific channel name, and the payload.
 
-* **Performance:** **O(N)**, where *N* is the number of patterns to subscribe to.
-* **Return Value:**
-* **Immediate:** An array containing the string `"psubscribe"`, the pattern name, and the current number of pattern subscriptions.
-* **Async:** A four-element array for every matched message containing `"pmessage"`, the original pattern, the specific channel name, and the message payload.
-
-```text
+```sh
 redis> PSUBSCRIBE news.*
 1) "psubscribe"
 2) "news.*"
 3) (integer) 1
-
 1) "pmessage"
 2) "news.*"
 3) "news.tech"
 4) "redis_version_7_released"
 
-redis> PSUBSCRIBE logs.[error|warn]
+redis> PSUBSCRIBE logs.[ew]*
 1) "psubscribe"
-2) "logs.[error|warn]"
+2) "logs.[ew]*"
 3) (integer) 2
-
 1) "pmessage"
-2) "logs.[error|warn]"
+2) "logs.[ew]*"
 3) "logs.error"
 4) "connection_timeout"
 ```
 
-### Introspecting Pub/Sub State with `PUBSUB`
+### `PUNSUBSCRIBE`
 
-#### Listing Active Channels with `PUBSUB CHANNELS`
+`PUNSUBSCRIBE` removes specific subscribed patterns, or all of the client's pattern subscriptions when called without arguments. If no channel or pattern subscriptions remain, the client leaves subscriber mode.
 
-- **Function:** Lists the currently active channels (channels with one or more subscribers).
-- **Behavior:**
-  - "Active" is defined as having at least one connected subscriber.
-  - Does not include clients subscribed via patterns (`PSUBSCRIBE`).
-  - Does not include the client sending the command in the calculation.
-- **Options/Arguments:**
-  - `[pattern]` (Optional): A glob-style pattern to filter the channel names (e.g., `sys.*`). If omitted, lists all active channels.
-- **Performance:** **O(N)**, where *N* is the number of active channels.
-- **Return Value:** An array list of active channel names.
+- **Cost:** O(N + M), where N is the number of patterns being unsubscribed from and M is the total number of patterns subscribed by the client.
+- **Reply:** A three-element reply containing `"punsubscribe"`, the pattern, and the remaining subscription count.
 
-Plaintext
-
-```
-redis> PUBSUB CHANNELS
-1) "notifications"
-2) "events:login"
-
-redis> PUBSUB CHANNELS events:*
-1) "events:login"
-```
-
-#### Counting Subscribers with `PUBSUB NUMSUB`
-
-- **Function:** Returns the number of subscribers for the specified channels.
-- **Behavior:**
-  - Counts only direct subscribers (via `SUBSCRIBE`).
-  - Does not include pattern subscriptions.
-  - Returns `0` for channels with no listeners.
-- **Options/Arguments:**
-  - `[channel ...]` (Required): One or more specific channel names to query.
-- **Performance:** **O(N)**, where *N* is the number of requested channels.
-- **Return Value:** An array containing alternating channel names and their subscriber counts.
-
-Plaintext
-
-```
-redis> PUBSUB NUMSUB notifications nonexistent_channel
-1) "notifications"
-2) (integer) 5
-3) "nonexistent_channel"
-4) (integer) 0
-```
-
-#### Counting Pattern Subscriptions with `PUBSUB NUMPAT`
-
-- **Function:** Returns the total number of unique patterns currently subscribed to on the server.
-- **Behavior:**
-  - This provides a global count of all active `PSUBSCRIBE` patterns across all clients.
-  - It does not list the actual patterns, only the count.
-- **Performance:** **O(1)**.
-- **Return Value:** An integer representing the total count of pattern subscriptions.
-
-Plaintext
-
-```
-redis> PUBSUB NUMPAT
-(integer) 2
-```
-
-### Unsubscribing from Patterns with `PUNSUBSCRIBE`
-
-- **Function:** Unsubscribes the client from specific glob-style patterns previously subscribed to via `PSUBSCRIBE`.
-- **Behavior:**
-  - If specific patterns are provided, the client stops listening to those matches.
-  - If **no arguments** are provided, the client unsubscribes from **all** currently subscribed patterns.
-  - If the client has no remaining channel or pattern subscriptions, it exits **Subscriber Mode**.
-- **Performance:** **O(N+M)**, where *N* is the number of patterns to unsubscribe from and *M* is the number of total patterns subscribed by the client.
-- **Return Value:** An array containing the string `"punsubscribe"`, the pattern name, and the remaining number of subscriptions.
-
-Plaintext
-
-```
+```sh
 redis> PSUBSCRIBE news.* logs.?
 1) "psubscribe"
 2) "news.*"
@@ -292,36 +157,74 @@ redis> PUNSUBSCRIBE news.*
 3) (integer) 1
 ```
 
-## Demostration
+## Inspecting Pub/Sub state
 
-**Console 1: The Subscriber**
+### `PUBSUB CHANNELS`
 
-First, the client subscribes to the channel. Note that once the `SUBSCRIBE` command is issued, this client enters a listening state. The subsequent outputs appear asynchronously as they are sent by the publisher.
+`PUBSUB CHANNELS [pattern]` lists active channel names, optionally filtered by a glob-style pattern such as `sys.*`. An active channel has at least one connected direct subscriber; pattern subscriptions do not make a channel appear in this list. The client issuing the command is not included in the calculation.
 
+- **Cost:** O(N), where N is the number of active channels.
+- **Reply:** An array of active channel names.
+
+```sh
+redis> PUBSUB CHANNELS
+1) "notifications"
+2) "events:login"
+
+redis> PUBSUB CHANNELS events:*
+1) "events:login"
 ```
+
+### `PUBSUB NUMSUB`
+
+`PUBSUB NUMSUB [channel ...]` reports the number of direct `SUBSCRIBE` clients for each requested channel. Pattern subscriptions are excluded, and a channel without listeners has a count of `0`. The command requires one or more channel names.
+
+- **Cost:** O(N), where N is the number of requested channels.
+- **Reply:** Alternating channel names and subscriber counts.
+
+```sh
+redis> PUBSUB NUMSUB notifications nonexistent_channel
+1) "notifications"
+2) (integer) 5
+3) "nonexistent_channel"
+4) (integer) 0
+```
+
+### `PUBSUB NUMPAT`
+
+`PUBSUB NUMPAT` reports the server-wide number of unique active subscribed patterns without listing their names.
+
+- **Cost:** O(1).
+- **Reply:** An integer pattern-subscription count.
+
+```sh
+redis> PUBSUB NUMPAT
+(integer) 2
+```
+
+## Publisher and subscriber interaction
+
+A subscriber first registers for `events`. Its connection remains in listening mode, so subsequent message replies arrive asynchronously:
+
+```sh
 redis[1]> SUBSCRIBE events
 1) "subscribe"
 2) "events"
 3) (integer) 1
-
 1) "message"
 2) "events"
 3) "system_start"
-
 1) "message"
 2) "events"
 3) "user_login"
 ```
 
-**Console 2: The Publisher**
+A second client publishes the two messages. Each integer reply reports one recipient, corresponding to the connected subscriber:
 
-In a separate terminal, the publisher sends messages to the `events` channel. The integer output `(integer) 1` confirms that one client (Console 1) successfully received the message.
-
-```
+```sh
 redis[2]> PUBLISH events "system_start"
 (integer) 1
 
 redis[2]> PUBLISH events "user_login"
 (integer) 1
 ```
-

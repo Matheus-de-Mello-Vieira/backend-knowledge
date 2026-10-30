@@ -1,135 +1,66 @@
 # Strings
 
-* Strings is a basic but powerful data strucutre in Redis
-* Strings are binary save, so we can story any data type
-  * Strings can be used as generic data storage
-  * If our data not fit in any of other Redis data type, we can store the data into string data type.
-  * we can serialize any type of data into a string
-  * Large amount of data cna be encoded into small spaces in strings
-  * In Redis, a *string* is not a “text string” in the language sense. It can hold:
-    * Text (`"hello"`)
-    * Serialized objects
-    * JSON
-    * Numbers encoded as characters, e.g. `"123"`, `"-45"`
-* String can behave as random access vector too
-* Maximum size of the string is 512 MB
+Redis strings are binary-safe byte sequences, not just text in a programming-language sense. They hold text, serialized objects, JSON, or numeric text such as `"123"` and `"-45"`. This makes a string a general-purpose value when another Redis data type does not fit; serialization can also pack application data into a compact string. Byte offsets provide random-access vector-like operations. A string value has a maximum size of 512 MB.
 
 ## Use cases
 
-Here are the primary use cases for Redis Strings.
+Strings support several application patterns through different commands:
 
-* Caching (HTML Fragments, API Responses)
+**Caching.** Store an expensive query result, API response, HTML fragment, user profile, or product detail with `SET`, often after serialization. `SET ... EX` gives the cached value a time to live (TTL), reducing repeated backend work.
 
-  - **Concept:** Storing the result of expensive database queries or API calls to reduce latency and load on backend systems.
-    - **Mechanism:**
-      - Use `SET` to store the data (often serialized as JSON).
-      - Use `SETEX` (or `SET ... EX`) to automatically expire the cache after a set time (TTL).
+```sh
+redis> SET user:42 "{\"name\": \"John\", \"role\": \"admin\"}" EX 3600
+OK
+redis> GET user:42
+"{\"name\": \"John\", \"role\": \"admin\"}"
+```
 
-  - **Application:** Caching user profiles, product catalog details, or full HTML pages.
-  
-  - **Example:** Caching a user profile with 1-hour expiration
-  
-    ```
-    redis> SET user:42 "{\"name\": \"John\", \"role\": \"admin\"}" EX 3600
-    OK
-    redis> GET user:42
-    "{\"name\": \"John\", \"role\": \"admin\"}"
-    ```
+> [!note] Earlier expiration command
+> `SETEX` also sets a value and timeout in seconds. `SET ... EX` supports other write options in the same operation.
 
-* Atomic Counters
+**Atomic counters.** `INCR`, `DECR`, `INCRBY`, and `INCRBYFLOAT` update numeric values without a separate read-modify-write race. Examples include page views, likes, video plays, active connections, and simple gaming leaderboards.
 
-  - **Concept:** tracking numeric values like page views, "likes," or video plays in real-time.
+```sh
+redis> SET page:home:views 0
+OK
+redis> INCR page:home:views
+(integer) 1
+redis> INCRBY page:home:views 10
+(integer) 11
+```
 
-  - **Atomicity:** Redis operations like `INCR` and `DECR` are atomic, meaning multiple clients can update the same counter simultaneously without race conditions (no "lost updates").
-    - **Mechanism:**
-      - `INCR` increments a value by 1.
-      - `INCRBY` increments by a specific amount.
-      - `INCRBYFLOAT` handles floating-point numbers.
+**Distributed locks.** `SET ... NX EX` admits one holder while the key is absent and gives the lock an expiration if the holder crashes before release. The pattern supports coordination of jobs such as report generation or payment processing; lock-based prevention of double-spending requires more than acquisition alone.
 
+```sh
+redis> SET lock:report_job "server_1" NX EX 10
+OK
+redis> SET lock:report_job "server_2" NX EX 10
+(nil)
+```
 
-  - **Application:** Website hit counters, active connection counts, gaming leaderboards (simple).
+**Session storage.** A session ID used in a cookie identifies a key whose value holds serialized session state. This shares login status, shopping-cart data, or temporary workflow state across web servers rather than binding it to one server's process. Redis can be faster than a relational database for this access pattern.
 
-  - **Example:** Incrementing page views
+```sh
+redis> SET session:xyz123 "uid=99;ip=192.168.1.1;cart_items=3"
+OK
+```
 
-    ````
-    redis> SET page:home:views 0
-    OK
-    redis> INCR page:home:views
-    (integer) 1
-    redis> INCRBY page:home:views 10
-    (integer) 11
-    ````
+**Rate limiting.** A key for each user or IP and time window, such as `rate:ip:127.0.0.1:minute`, counts requests. Increment on each request, set `EXPIRE` when the count first becomes `1`, and reject counts above the limit. Applications include API quotas and defenses against abusive traffic or brute-force login attempts.
 
-
-* Distributed Locks
-
-  - **Concept:** Ensuring that only one process or server can perform a critical action at a time (e.g., generating a daily report, processing a payment).
-    - **Mechanism:**
-      - Use `SET` with the `NX` (Only set if Not Exists) option.
-      - Include an expiration (`EX`) to prevent "deadlocks" if the process crashes before releasing the lock.
-
-
-  - **Application:** Cron job coordination, preventing double-spending.
-
-  - **Example**: Acquiring a lock
-
-    ````
-    redis> SET lock:report_job "server_1" NX EX 10
-    OK
-    redis> SET lock:report_job "server_2" NX EX 10
-    (nil)
-    ````
-
-
-* Session Store
-
-  - **Concept:** Storing user session state for web applications.
-
-  - **Benefit:** Redis is faster than relational databases for this purpose and allows session data to be shared across a cluster of web servers (stateless architecture).
-
-  - **Mechanism:** Keys are Session IDs (cookies); Values are serialized objects.
-
-  - **Application:** Shopping carts, user login status, temporary workflows.
-
-  - **Example**: Storing session data
-
-    ````
-    redis> SET session:xyz123 "uid=99;ip=192.168.1.1;cart_items=3"
-    OK
-    ````
-
-* Rate Limiting
-
-  - **Concept:** Limiting the number of requests a user or IP can make within a specific time window.
-    - **Mechanism:**
-      - Create a key specific to the user and the time window (e.g., `rate:ip:127.0.0.1:minute`).
-      - Use `INCR` on every request.
-      - If the result is `1`, set an expiration (`EXPIRE`).
-      - If the result > Limit, reject the request.
-
-
-  - **Application:** API quotas, preventing DDoS attacks, brute-force login protection.
-
-  - **Example**: Simple rate limiter
-
-    ```
-    redis> INCR rate:10.0.0.1
-    (integer) 1
-    redis> EXPIRE rate:10.0.0.1 60
-    (integer) 1
-    redis> INCR rate:10.0.0.1
-    (integer) 2
-    ```
-
+```sh
+redis> INCR rate:10.0.0.1
+(integer) 1
+redis> EXPIRE rate:10.0.0.1 60
+(integer) 1
+redis> INCR rate:10.0.0.1
+(integer) 2
+```
 
 ## Counting numbers using `INCR` and `DECR`
 
-- `INCR` and `DECR` operate only on strings that represent valid integers
-- If a key does not exist, Redis initializes it to `0` before applying the operation
-- All increment and decrement operations are atomic
-- The updated value is stored back as a string
+`INCR` and `DECR` atomically change a string that represents an integer. For a missing key, Redis starts from `0`; the updated value is stored as a string. Unlike `GET` followed by `SET`, these commands do not lose concurrent updates.
 
-```text
+```sh
 redis> INCR page:111:views
 (integer) 1
 redis> INCR page:111:views
@@ -138,19 +69,15 @@ redis> DECR page:111:views
 (integer) 1
 ```
 
-- Values must fit within the signed 64-bit integer range
-- Applying these commands to non-integer strings results in an error
-- Use `INCR` / `DECR` instead of `GET` + `SET` to avoid race conditions
+Values must fit within the signed 64-bit integer range. A non-integer string causes an error.
 
 ### `INCRBY` / `DECRBY`
 
-- `INCRBY` increments an integer value by a specified amount
-- `DECRBY` decrements an integer value by a specified amount
-- The stored value must be a valid integer
-- If the key does not exist, Redis initializes it to `0` before applying the operation
-- Both operations are atomic
+`INCRBY` and `DECRBY` atomically change an integer string by a specified amount. As with `INCR`, the key must hold a valid integer or be missing, in which case Redis starts from `0`.
 
-```
+```sh
+redis> SET page:views 1
+OK
 redis> INCRBY page:views 10
 (integer) 11
 
@@ -158,20 +85,15 @@ redis> DECRBY page:views 3
 (integer) 8
 ```
 
-- Internally, `DECRBY key x` is equivalent to `INCRBY key -x`
-- Values must remain within the signed 64-bit integer range
-- Applying these commands to non-integer strings results in an error 03 Strings
+`DECRBY key x` is equivalent to `INCRBY key -x`. The result must remain within the signed 64-bit integer range; a non-integer string causes an error.
 
 ### `INCRBYFLOAT`
 
-- `INCRBYFLOAT` increments a numeric string by a floating-point value
-- Floating-point values are stored and returned as strings
-- The operation is atomic
-- To decrease a floating-point value, pass a negative increment
-  - Redis does not provide a separate `DECRBYFLOAT` command
-  - Decrementing floating-point values is achieved by using `INCRBYFLOAT` with a negative number
+`INCRBYFLOAT` atomically changes a numeric string by a floating-point amount. Redis stores and returns the result as a string. A negative increment decreases the value; there is no separate `DECRBYFLOAT` command.
 
-```
+```sh
+redis> SET page:111:views 11
+OK
 redis> INCRBYFLOAT page:111:views 1.5
 "12.5"
 
@@ -179,13 +101,13 @@ redis> INCRBYFLOAT page:111:views -0.75
 "11.75"
 ```
 
-- Applying this command to a non-numeric string results in an error
+A non-numeric string causes an error.
 
 ## Appending to strings using `APPEND`
 
-The `APPEND` command appends the given value to the end of an existing string. The existing value is preserved and extended rather than replaced.
+`APPEND` extends the existing string with the supplied bytes rather than replacing it. Redis adds no separator; the caller must supply one if needed.
 
-```
+```sh
 redis> SET greeting "Hello"
 OK
 
@@ -202,120 +124,68 @@ redis> GET greeting
 "Hello, Redis!"
 ```
 
-No separator is added automatically; the appended content is concatenated exactly as provided.
-
 ### Using `APPEND` for logs or accumulative data
 
-`APPEND` is well suited for cases where data grows over time and overwriting previous values is undesirable.
+`APPEND` suits lightweight logs, sequential records, and other accumulating data when overwriting previous values is undesirable and structured access is unnecessary.
 
-```
+```sh
 redis> SET website:stats:daily_visitors_log " 200"
 OK
 
 redis> APPEND website:stats:daily_visitors_log " 3000"
-(integer) 10
+(integer) 9
 
 redis> GET website:stats:daily_visitors_log
 " 200 3000"
 ```
 
-This pattern is commonly used for lightweight logs, sequential records, or append-only data where simplicity is preferred over structured access.
+## Working with multiple keys
 
-## Setting and getting multiple keys via `MSET`, `MGET`, `MSETNX`
-
-Redis provides commands that allow working with multiple keys in a single operation. These commands help reduce network overhead and ensure consistent behavior when setting or retrieving related data.
+Multi-key commands reduce network round trips when related values are written or retrieved together. `MSET` writes unconditionally, `MGET` reads, and `MSETNX` writes only when every specified key is absent.
 
 ### `MSET`
 
-`MSET` sets multiple key–value pairs at once. The operation is atomic: either all keys are written or none of them are.
+`MSET key1 value1 key2 value2 ...` atomically creates or overwrites multiple key–value pairs: either all pairs are written or none are.
 
-**Syntax:**
-
-```
-MSET key1 value1 key2 value2 ...
-```
-
-**Example:**
-
-```
+```sh
 redis> MSET user:1:name "Alice" user:1:age "25" user:1:country "US"
 OK
 ```
 
-All keys are created or overwritten, regardless of whether they already exist.
-
 ### `MGET`
 
-`MGET` retrieves the values of multiple keys in a single command. The returned values follow the same order as the requested keys.
+`MGET key1 key2 ...` retrieves values in the same order as the requested keys. A missing key produces `nil` at its position.
 
-**Syntax:**
-
-```
-MGET key1 key2 ...
-```
-
-**Example:**
-
-```
+```sh
 redis> MGET user:1:name user:1:age user:1:country
 1) "Alice"
 2) "25"
 3) "US"
 ```
 
-If a key does not exist, Redis returns `nil` for that position.
-
 ### `MSETNX`
 
-`MSETNX` (Multi Set if Not eXists) sets multiple keys **only if none of the specified keys already exist**. The command is atomic: if at least one key exists, no keys are set.
+`MSETNX key1 value1 key2 value2 ...` (Multi Set if Not eXists) atomically sets all pairs only if none of their keys exist. If any key exists, it writes none. This supports safe multi-key initialization and simple coordination or locking scenarios.
 
-**Syntax:**
-
-```
-MSETNX key1 value1 key2 value2 ...
-```
-
-**Example:**
-
-```
+```sh
 redis> MSETNX lock:job1 "running" lock:job2 "running"
 (integer) 1
 ```
 
 If any key already exists:
 
-```
+```sh
 redis> MSETNX lock:job1 "running" lock:job2 "running"
 (integer) 0
 ```
 
-- `1` means all keys were successfully set
-- `0` means no keys were set because at least one key already existed
-
-`MSETNX` is useful for safe initialization of multiple keys and simple coordination or locking scenarios.
+The return value is `1` when all keys were set and `0` when an existing key prevented every write.
 
 ## Atomic read and update with `SET … GET`
 
-### `SET` with `GET`
+`SET key value GET` atomically replaces a value and returns its previous value, or `nil` if the key did not exist. No other client can change the value between this read and write.
 
-`SET` supports the `GET` option, which returns the previous value stored at the key while updating it in a single atomic operation.
-
-**Syntax:**
-
-```
-SET key value GET
-```
-
-**Behavior:**
-
-- Sets `key` to the new `value`
-- Returns the old value
-- Returns `nil` if the key did not previously exist
-- Operation is atomic
-
-**Example:**
-
-```
+```sh
 redis> SET counter 10
 OK
 
@@ -326,55 +196,34 @@ redis> GET counter
 "20"
 ```
 
-> Starting with Redis 6.2.0, the recommended way to atomically set a new value and retrieve the old one is to use `SET` with the `GET` option. This approach replaces the older `GETSET` command and should be preferred when writing new code.
+> [!NOTE]
+> Redis 6.2.0 introduced `SET ... GET` as the preferred replacement for the older `GETSET` command in new code.
 
-### Common use cases
+### Read-and-reset counters
 
-#### Read-and-reset counters
-
-```
+```sh
 redis> SET page:views 0 GET
 "125"
 ```
 
-This pattern is commonly used for:
+This read-and-reset pattern supports periodic metrics, rolling counters, and snapshot-and-reset workflows.
 
-- Periodic metrics
-- Rolling counters
-- Snapshot-and-reset workflows
+### State transitions
 
-#### State transitions
-
-```
+```sh
 redis> SET job:status "processing" GET
 "pending"
 ```
 
-The atomic nature of the operation guarantees that no other client can modify the value between reading the old state and writing the new one.
+The returned status identifies the previous state while the key becomes `"processing"`.
 
 ## Reading substrings with `GETRANGE`
 
-`GETRANGE` is a string command that allows reading a specific portion of a string value stored in Redis. It is useful when working with large strings and you only need a subset of the data.
+`GETRANGE key start end` reads a byte range without transferring the entire string. It uses zero-based, inclusive `start` and `end` indexes; negative indexes count backward from the end.
 
-### `GETRANGE`
+Redis trims out-of-bounds ranges and returns an empty string for a missing key.
 
-**Syntax:**
-
-```
-GETRANGE key start end
-```
-
-**Behavior:**
-
-- Returns the substring from index `start` to index `end` (both inclusive)
-- Indexes are **zero-based**
-- Negative indexes are supported and count from the end of the string
-- If the key does not exist, Redis returns an empty string
-- If the range is out of bounds, Redis safely trims it
-
-**Example:**
-
-```
+```sh
 redis> SET greeting "Hello, Redis!"
 OK
 
@@ -391,54 +240,23 @@ redis> GETRANGE greeting -6 -2
 "Redis"
 ```
 
-### Working with large strings
+### Partial reads
 
-`GETRANGE` is especially useful when storing large blobs of data (logs, serialized objects, files, or buffers) and retrieving only a small segment.
+For a large blob such as a log, serialized object, file, or buffer, a range read transfers only the requested segment:
 
-```
+```sh
 redis> GETRANGE logfile 0 99
 ```
 
-This retrieves the first 100 bytes of the string without transferring the entire value over the network.
-
-### Common use cases
-
-- Partial reads of large strings
-- Inspecting prefixes or suffixes
-- Implementing simple pagination-like access over string data
-- Reading headers or metadata from binary payloads
-
-### Notes
-
-- `GETRANGE` operates on **bytes**, not characters
-- For UTF-8 or multi-byte encodings, ranges may cut through characters
-- The maximum string size in Redis is 512 MB, and `GETRANGE` works safely within this limit
-
-`GETRANGE` provides efficient, low-level access to string data without requiring full-value retrieval.
+This retrieves the first 100 bytes. Other uses include inspecting prefixes or suffixes, pagination-like access over string data, and reading headers or metadata from binary payloads. Ranges operate on **bytes**, not characters, so a UTF-8 range may cut through a multibyte character. `GETRANGE` works within the 512 MB string limit.
 
 ## Modifying substrings with `SETRANGE`
 
-`SETRANGE` is a string command that overwrites part of an existing string starting at a specified offset. It allows in-place updates without replacing the entire value.
+`SETRANGE key offset value` overwrites bytes from a specified zero-based offset without replacing the entire value. The operation is atomic and returns the length of the resulting string. The offset must be non-negative.
 
-### `SETRANGE`
+If the key is missing, Redis starts with an empty string and creates it. If the offset exceeds the current length, Redis pads the gap with zero (`\x00`) bytes before writing the supplied value.
 
-**Syntax:**
-
-```
-SETRANGE key offset value
-```
-
-**Behavior:**
-
-- Overwrites the string stored at `key` starting at byte `offset`
-- If the key does not exist, Redis treats it as an empty string
-- If `offset` is greater than the current string length, Redis pads the gap with zero (`\x00`) bytes
-- The command returns the **length of the resulting string**
-- The operation is atomic
-
-**Example:**
-
-```
+```sh
 redis> SET greeting "Hello, Redis!"
 OK
 
@@ -451,9 +269,9 @@ redis> GET greeting
 
 ### Overwriting part of a string
 
-`SETRANGE` replaces existing bytes starting at the given offset.
+The existing bytes at and after the offset are replaced:
 
-```
+```sh
 redis> SET key "abcdef"
 OK
 
@@ -466,9 +284,9 @@ redis> GET key
 
 ### Expanding strings with zero padding
 
-If the offset exceeds the current string length, Redis fills the gap with zero bytes.
+An offset beyond the end expands the string with zero padding:
 
-```
+```sh
 redis> SET key "abc"
 OK
 
@@ -478,27 +296,17 @@ redis> SETRANGE key 5 "Z"
 
 Internally, the string becomes:
 
-```
+```text
 "a b c \x00 \x00 Z"
 ```
 
-When retrieved with `GET`, zero bytes may not be visible but still count toward the string length.
+Zero bytes may not be visible in `GET` output but count toward the string length.
 
 ### `SETRANGE` on a non-existent key
 
-When `SETRANGE` is executed on a key that does not exist, Redis treats the key as an **empty string** and applies the operation as if the string had length `0`.
+On a missing key, the same padding rule applies from an initial length of `0`:
 
-**Behavior:**
-
-- Redis creates the key automatically
-- The string is expanded up to the specified offset
-- Any gap between the start of the string and the offset is filled with zero (`\x00`) bytes
-- The provided value is written starting at the given offset
-- The command returns the length of the resulting string
-
-**Example:**
-
-```
+```sh
 redis> EXISTS buffer
 (integer) 0
 
@@ -508,81 +316,64 @@ redis> SETRANGE buffer 3 "A"
 
 The internal representation becomes:
 
-```
+```text
 "\x00\x00\x00A"
 ```
 
 Retrieving the value:
 
-```
+```sh
 redis> GET buffer
 "\u0000\u0000\u0000A"
 ```
 
-### Common use cases
+Uses include fixed-position binary fields, partial edits of large strings, incremental buffer construction, and sparse-array-like layouts. Since offsets address **bytes**, not characters, partial updates to UTF-8 text can split a character.
 
-- Updating fixed-position fields in binary data
-- In-place edits of large strings
-- Building buffers incrementally
-- Emulating sparse arrays using strings
+## String encodings
 
-### Notes
+Redis chooses an internal encoding according to the value and may change it as the value changes. These encodings are implementation details, not different Redis data types:
 
-- Offsets are **zero-based**
-- Offsets must be non-negative (negative offsets are not allowed)
-- `SETRANGE` operates on **bytes**, not characters
-- Use carefully with text data, especially with UTF-8 strings
+- **`int`:** Stores a valid integer string as a native signed 64-bit integer inside the object. It is memory-efficient and fast for arithmetic, but a non-numeric modification changes the encoding.
+- **`embstr`:** Packs an object header and a small string (up to 44 bytes in the implementation described here) into one allocation for locality. The encoded value is immutable, so modification converts it to `raw`.
+- **`raw`:** Uses a separate, mutable SDS allocation. Its greater memory overhead supports resizing and amortized growth for large or frequently modified strings.
 
-`SETRANGE` is a low-level but powerful command for partial, atomic string updates in Redis.
+`OBJECT ENCODING <key>` shows the representation in use at inspection time. The following `redis-cli` sessions show encodings and transitions:
 
-## String Encoding types
+**Small `embstr` value converted to `raw` by modification.**
 
-Redis decide the encoding automatically as per string values
+```sh
+redis> SET small "12345678901123456789011234567890112345678901"
+OK
+redis> OBJECT ENCODING small
+"embstr"
+redis> APPEND small "!"
+(integer) 45
+redis> OBJECT ENCODING small
+"raw"
+```
 
-- **`int`** — Stores numeric strings as a native 64-bit signed integer inside the object; most memory-efficient and fastest for arithmetic, but only applies to values that are valid integers and stops being used once the value becomes non-numeric.
-- **`embstr`** — Optimized for small (≤ 44 bytes), read-mostly strings; object header and string data live in one allocation for better cache locality, but the string is immutable and any modification forces a conversion to `raw`.
-- **`raw`** — General-purpose string encoding using a separate, mutable SDS allocation; slightly higher memory overhead, but supports efficient resizing and amortized growth, making it ideal for large or frequently modified strings.
+**Large string stored as `raw`.**
 
-`OBJECT ENCODING <key>` shows the internal representation Redis is using for that value *right now* (an implementation detail). Redis may change the encoding automatically as the value changes (size/content).
+```sh
+redis> SET big "123456789123456789123456789123456789123456789"
+OK
+redis> OBJECT ENCODING big
+"raw"
+```
 
-Below is a `redis-cli` style session showing each encoding and the common transitions.
+**Integer stays `int` through arithmetic, then becomes `raw` after a non-numeric change.**
 
-* Small Immutable String (`embstr`) → Converted to `raw` After Modification
-
-  ```
-  redis> SET small "12345678901123456789011234567890112345678901"
-  OK
-  redis> OBJECT ENCODING small
-  "embstr"
-  redis> APPEND small "!"
-  (integer) 45
-  redis> OBJECT ENCODING small
-  "raw"
-  ```
-
-* Large String Stored Directly as `raw`
-
-  ```
-  redis> SET big "123456789123456789123456789123456789123456789"
-  OK
-  redis> OBJECT ENCODING big
-  "raw"
-  ```
-
-* Integer String (`int`) → Remains `int` for Numeric Ops → Converted to `raw` After Non-Numeric Change
-
-  ```
-  redis> SET counter 123
-  OK
-  redis> OBJECT ENCODING counter
-  "int"
-  redis> INCR counter
-  (integer) 124
-  redis> OBJECT ENCODING counter
-  "int"
-  redis> APPEND counter "x"
-  (integer) 4
-  redis> OBJECT ENCODING counter
-  "raw"
-  ```
-
+```sh
+redis> SET counter 123
+OK
+redis> OBJECT ENCODING counter
+"int"
+redis> INCR counter
+(integer) 124
+redis> OBJECT ENCODING counter
+"int"
+redis> APPEND counter "x"
+(integer) 4
+redis> OBJECT ENCODING counter
+"raw"
+```

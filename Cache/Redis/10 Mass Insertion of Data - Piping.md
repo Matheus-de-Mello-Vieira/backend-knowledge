@@ -1,48 +1,40 @@
 # Mass Insertion of Data into Redis
 
-## The problem
+## Interactive insertion and its limits
 
-When working with large datasets—such as thousands of rows from a CSV file—manually inserting data into Redis using `redis-cli` does not scale.
+Inserting a large dataset one command at a time through `redis-cli` requires an interactive operation for every row. For example, a CSV file might contain:
 
-Example CSV input:
-
-```
+```csv
 LB,Lebanon
 FR,France
 DE,Germany
 ... (hundreds or thousands of rows)
 ```
 
-Inserting entries one at a time:
+Inserting the first row manually requires a command such as:
 
-```
+```sh
 SET country:LB Lebanon
 ```
 
-has several drawbacks:
+This approach has several limitations:
 
-- **High latency**
-  Each command is sent individually, incurring network round trips and parsing overhead.
-- **Poor scalability**
-  Interactive insertion becomes impractical as data volume grows.
-- **Manual and error-prone**
-  Repetitive commands are easy to mistype and hard to reproduce.
-- **Not automation-friendly**
-  This approach does not fit well into scripts or deployment pipelines.
+- Each separately sent command incurs a network round trip and parsing overhead.
+- Interactive insertion becomes impractical as the dataset grows.
+- Repetitive commands are easy to mistype and difficult to reproduce.
+- Manual interaction does not fit scripts or deployment pipelines.
 
-## Solution: Pipelining plain commands with `redis-cli --pipe`
+## Pipelining generated commands
 
-The simplest and most maintainable solution is to generate standard Redis commands and pipe them into `redis-cli --pipe`.
+Instead of issuing commands interactively, generate one `SET` command per CSV row and send the stream to `redis-cli --pipe`. Given `countries.csv` containing:
 
-Given a CSV file:
-
-```
+```csv
 LB,Lebanon
 FR,France
 DE,Germany
 ```
 
-You can transform each row into a Redis command using `awk`:
+`awk` transforms each row into a command:
 
 ```bash
 awk -F',' '
@@ -52,29 +44,11 @@ awk -F',' '
 ' countries.csv | redis-cli --pipe
 ```
 
-### How this works
+The generated commands reach `redis-cli` through standard input. The CLI parses them into [RESP](12%20Redis%20Serialization%20Protocol.md) and sends them to Redis in a continuous pipeline rather than waiting for each command's round trip before sending the next. This removes interactive work and reduces network round trips while keeping the import readable, reproducible, and easy to automate. For most bulk imports, it provides high throughput without the complexity of constructing protocol frames directly.
 
-- `awk` converts each CSV row into a valid Redis `SET` command.
-- `redis-cli --pipe` reads commands from standard input.
-- Commands are sent to Redis in a continuous stream using pipelining.
-- `redis-cli` parses each command and converts it to RESP internally.
+## Generating RESP directly
 
-### Why this is usually enough
-
-This approach:
-
-- Eliminates interactive usage
-- Dramatically reduces network round trips
-- Scales well for large datasets
-- Is easy to read, debug, and automate
-
-For most bulk imports, this method provides excellent performance with minimal complexity.
-
-## Solution: Generating RESP directly for maximum performance
-
-Although `redis-cli --pipe` accepts plain commands, it can also accept [raw RESP](12%20Redis%20Serialization%20Protocol.md). In this case, `redis-cli` forwards the data directly to Redis without parsing.
-
-Example using `awk`:
+`redis-cli --pipe` also accepts raw RESP. When the input is already encoded, the CLI forwards it without parsing plain commands. For the same CSV input, `awk` can emit an array frame for each `SET` command:
 
 ```bash
 awk -F',' '
@@ -88,11 +62,9 @@ awk -F',' '
 ' countries.csv | redis-cli --pipe
 ```
 
-### Why generating RESP can be faster
+Direct RESP generation has distinct advantages when importing millions of keys or building high-performance ingestion pipelines:
 
-- No client-side command parsing
-- Higher throughput for very large imports
-- Binary-safe values
-- Explicit lengths eliminate quoting and escaping issues
+- It avoids client-side parsing of plain commands and can increase throughput.
+- Explicit lengths support binary-safe values without command quoting or escaping.
 
-This approach is especially useful when importing millions of keys or building high-performance ingestion pipelines.
+Constructing the frames adds complexity, so the plain-command pipeline remains the simpler default when its performance is sufficient.

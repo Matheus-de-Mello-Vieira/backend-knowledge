@@ -1,6 +1,6 @@
 # Redis Persistence
 
-Redis serves data from memory; **persistence** supplies a local representation from which that data can be reconstructed after restart. Receiving a successful write reply is not, by itself, proof that the write crossed a [durability](../../Databases/00%20Overview.md#Durability%20and%20Crash%20Recovery) boundary. The persistence mode and synchronization policy determine which acknowledged changes survive a failure.
+Redis serves data from memory; **persistence** supplies a local representation from which that data can be reconstructed after restart. Receiving a successful write reply is not, by itself, proof that the write crossed a [durability](../../Databases/Fundamentals/00%20Overview.md#Durability%20and%20Crash%20Recovery) boundary. The persistence mode and synchronization policy determine which acknowledged changes survive a failure.
 
 Redis Open Source supports **RDB snapshots**, **append-only files (AOF)**, both together, or neither. Without either persistence mechanism, Redis has no local persistence source for restoring its in-memory writes. The multipart AOF layout described below applies to Redis 7.0 and later. [Redis persistence documentation](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/persistence.md).
 

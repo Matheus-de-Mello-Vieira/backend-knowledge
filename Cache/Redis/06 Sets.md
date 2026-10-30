@@ -1,146 +1,96 @@
 # Sets
 
-- **Definition:** A Redis Set is an **unordered collection** of unique strings. Unlike a List, it does not maintain insertion order, and unlike a Hash, it has no keys or values—just distinct members.
+A Redis set is an unordered collection of unique strings. It does not preserve insertion order like a list, and its members have no associated fields or values like a hash. Adding a member already present leaves the set unchanged.
 
-  ```
-  redis> SADD colors "red" "green" "blue" "yellow"
-  (integer) 4
-  redis> SMEMBERS colors
-  1) "yellow"
-  2) "blue"
-  3) "red"
-  4) "green"
-  ```
+```sh
+redis> SADD colors "red" "green" "blue" "yellow"
+(integer) 4
+redis> SMEMBERS colors
+1) "yellow"
+2) "blue"
+3) "red"
+4) "green"
+redis> SADD tags "news" "tech"
+(integer) 2
+redis> SADD tags "tech"
+(integer) 0
+redis> SADD tags "news" "sports"
+(integer) 1
+redis> SMEMBERS tags
+1) "news"
+2) "sports"
+3) "tech"
+```
 
-- **Uniqueness:** Sets automatically enforce uniqueness. Adding the same element multiple times has no effect (duplicates are ignored).
+The set abstraction supports server-side membership checks and set algebra:
 
-  ```
-  redis> SADD tags "news" "tech"
-  (integer) 2
-  redis> SADD tags "tech"
-  (integer) 0
-  redis> SADD tags "news" "sports"
-  (integer) 1
-  redis> SMEMBERS tags
-  1) "news"
-  2) "sports"
-  3) "tech"
-  ```
+- **Membership:** `SISMEMBER` checks whether a member exists in $O(1)$ time, regardless of set size.
+- **Intersection:** Members common to sets, such as users who liked both Post A and Post B.
+- **Union:** Members in any set, such as users who liked Post A or Post B.
+- **Difference:** Members in one set but not another, such as users who liked Post A but not Post B.
 
-- **Set Algebra:** Redis Sets support server-side mathematical set operations, making them incredibly powerful for analytics:
-
-  - **Intersection:** Find common members between sets (e.g., "users who liked Post A AND Post B").
-  - **Union:** Combine members from multiple sets (e.g., "all users who liked Post A OR Post B").
-  - **Difference:** Find members in one set but not another (e.g., "users who liked Post A BUT NOT Post B").
-
-- **Membership Checks:** Testing if a specific element exists in a Set (`SISMEMBER`) is extremely fast (**O(1)**), regardless of the set's size.
-
-- **Capacity:** A single Set can hold more than **4 billion members** ($2^{32} - 1$).
+A set holds up to $2^{32} - 1$ members—more than four billion.
 
 ## Use cases
 
-* Social Graph (Common Friends/Followers)
+**Social graphs.** Unique members prevent duplicate follow relationships. Store each user's friends in a separate set, such as `user:1:friends`, then use `SINTER` to find mutual friends or shared interests. The same pattern supports friends-in-common, people-you-may-know, and mutual-follower features.
 
-  - **Concept:** managing relationships between users where uniqueness is required (you can't follow the same person twice).
+```sh
+redis> SADD alice:friends "bob" "charlie" "dave"
+(integer) 3
+redis> SADD eve:friends "bob" "dave" "frank"
+(integer) 3
+redis> SINTER alice:friends eve:friends
+1) "dave"
+2) "bob"
+```
 
-  - **Power Feature:** The **Intersection** (`SINTER`) operation allows you to instantly calculate "mutual friends" or "shared interests" between two users.
-    - **Mechanism:**
-      - Store each user's friends in a separate Set (`user:1:friends`).
-      - Use `SINTER` to find the overlap.
+**Unique analytics.** For unique daily visitors or IP addresses, `SADD` adds an ID to a set for the time window, such as `visitors:2023-10-27`. If the same visitor arrives 100 times, the next 99 adds have no effect. `SCARD` returns the distinct-member count, so insertion does not require a database lookup to check whether the visitor was already seen.
 
-  - **Application:** "Friends in common," "People you may know," mutual followers.
+```sh
+redis> SADD visits:today "192.168.1.1"
+(integer) 1
+redis> SADD visits:today "192.168.1.2"
+(integer) 1
+redis> SADD visits:today "192.168.1.1"
+(integer) 0
+redis> SCARD visits:today
+(integer) 2
+```
 
-  * **Example:** Finding mutual friends
-    ```
-    redis> SADD alice:friends "bob" "charlie" "dave"
-    (integer) 3
-    redis> SADD eve:friends "bob" "dave" "frank"
-    (integer) 3
-    redis> SINTER alice:friends eve:friends
-    1) "dave"
-    2) "bob"
-    ```
+**Access control.** A whitelist or blacklist stores tokens, IP addresses, or usernames and checks each candidate with `SISMEMBER`. The $O(1)$ membership operation applies to both small and very large sets. Applications include revoked JWT tokens, banned IPs, and beta-tester allowlists.
 
-* Unique Analytics (Real-time Visitors)
+```sh
+redis> SADD banned_ips "10.0.0.5" "10.0.0.9"
+(integer) 2
+redis> SISMEMBER banned_ips "10.0.0.5"
+(integer) 1
+redis> SISMEMBER banned_ips "192.168.0.1"
+(integer) 0
+```
 
-  - **Concept:** Tracking metrics where duplicates must be ignored, such as "Unique Daily Visitors" or "Unique IPs."
-      - **Mechanism:**
-        - Simply `SADD` the User ID or IP address to a key representing the time window (e.g., `visitors:2023-10-27`).
-        - If the user visits 100 times, `SADD` ignores the subsequent 99 adds.
-        - Use `SCARD` (Set Cardinality) to get the total count.
+**Tagging and categorization.** A set assigns non-repeating labels to an object. Reversing the relationship forms an inverted index: create a set per tag (`tag:news`, `tag:tech`) and add matching article IDs. `SUNION` retrieves articles tagged news *or* tech; `SINTER` retrieves those tagged news *and* tech.
 
-
-  - **Benefit:** No need to query the database to check "has this user visited today?" before inserting.
-
-  - **Example:** Tracking unique IPs
-    
-      ```
-      redis> SADD visits:today "192.168.1.1"
-      (integer) 1
-      redis> SADD visits:today "192.168.1.2"
-      (integer) 1
-      redis> SADD visits:today "192.168.1.1"
-      (integer) 0
-      redis> SCARD visits:today
-      (integer) 2
-      ```
-
-
-* Access Control (Blacklists/Whitelists)
-
-  - **Concept:** High-speed security checks to determine if a token, IP, or username is allowed or banned.
-
-  - **Performance:** `SISMEMBER` is **O(1)**. Checking a set with 10 million banned IPs takes the same amount of time as checking a set with 10.
-
-  - **Application:** Revoked JWT tokens, banned IP addresses, beta-tester whitelists.
-
-  - **Example:**Checking a blacklist
-      ```
-      redis> SADD banned_ips "10.0.0.5" "10.0.0.9"
-      (integer) 2
-      redis> SISMEMBER banned_ips "10.0.0.5"
-      (integer) 1
-      redis> SISMEMBER banned_ips "192.168.0.1"
-      (integer) 0
-      ```
-
-
-* Tagging and Categorization
-
-  - **Concept:** assigning multiple non-repeating labels to an object.
-
-  - **Inverted Index:** You can reverse the relationship to find "All objects with Tag X."
-      - **Mechanism:**
-        - Create a Set for every tag (e.g., `tag:news`, `tag:tech`).
-        - Add article IDs to these sets.
-        - Use `SUNION` to find articles that are in "News" OR "Tech".
-        - Use `SINTER` to find articles that are in "News" AND "Tech".
-
-  - **Example:** Filtering by tags
-    
-      ```
-      redis> SADD tag:action "movie:1" "movie:2"
-      (integer) 2
-      redis> SADD tag:comedy "movie:2" "movie:3"
-      (integer) 2
-      redis> SINTER tag:action tag:comedy
-      1) "movie:2"
-      redis> SUNION tag:action tag:comedy
-      1) "movie:1"
-      2) "movie:2"
-      3) "movie:3"
-      ```
+```sh
+redis> SADD tag:action "movie:1" "movie:2"
+(integer) 2
+redis> SADD tag:comedy "movie:2" "movie:3"
+(integer) 2
+redis> SINTER tag:action tag:comedy
+1) "movie:2"
+redis> SUNION tag:action tag:comedy
+1) "movie:1"
+2) "movie:2"
+3) "movie:3"
+```
 
 ## Adding Members with `SADD`
 
-- **Function:** Adds the specified member(s) to the set stored at the key.
-- **Creation:** If the key does not exist, a new set is created.
-- **Uniqueness:** If a specified member is already a member of the set, it is ignored.
-- **Return Value:** Returns the number of elements that were added to the set (excluding members that were already present).
+`SADD` adds one or more members, creating the set if its key is absent. Existing members are ignored, and the return value counts only newly added members.
 
-**Example: Adding new and existing members**
+Only new members increase the `SADD` result:
 
-```
+```sh
 redis> SADD emails "john@example.com" "jane@example.com"
 (integer) 2
 redis> SADD emails "john@example.com"
@@ -152,14 +102,11 @@ redis> SMEMBERS emails
 
 ## Removing Members with `SREM`
 
-- **Function:** Removes the specified members from the set stored at the key.
-- **Validation:** If a specified member is not a member of the set, it is ignored.
-- **Cleanup:** If the set becomes empty after the removal, the key is deleted.
-- **Return Value:** Returns the number of members that were actually removed from the set.
+`SREM` removes specified members and returns the number actually removed. It ignores absent members and deletes the key when the last member is removed.
 
-**Example: removing specific items**
+Only `db` exists, so one member is removed:
 
-```
+```sh
 redis> SADD tags "redis" "db" "nosql"
 (integer) 3
 redis> SREM tags "db" "unknown_tag"
@@ -171,16 +118,11 @@ redis> SMEMBERS tags
 
 ## Popping Random Members with `SPOP`
 
-- **Function:** Removes and returns one or more **random** members from the set.
-- **Use Case:** Ideal for implementing lotteries, raffles, or picking a random task from a pool.
-- **Count Argument:** (Redis 3.2+) You can specify an optional `count` argument.
-  - If `count` is provided, it removes and returns an array of distinct elements.
-  - If `count` exceeds the set size, it returns the entire set and empties the key.
-- **Return Value:** The removed member(s), or `(nil)` if the key does not exist.
+`SPOP` removes and returns random members, fitting lotteries, raffles, or random task selection. Since Redis 3.2, an optional `count` removes and returns an array of distinct members. If the count exceeds the set size, the command returns the whole set and removes its key. A missing key returns `(nil)`.
 
-**Example: Picking a winner (Single Pop)**
+A single pop removes one randomly selected winner:
 
-```
+```sh
 redis> SADD lottery "User A" "User B" "User C"
 (integer) 3
 redis> SPOP lottery
@@ -189,9 +131,9 @@ redis> SCARD lottery
 (integer) 2
 ```
 
-**Example: Picking a group (Multi Pop)**
+A count of two pops two distinct members:
 
-```
+```sh
 redis> SADD deck "Ace" "King" "Queen" "Jack"
 (integer) 4
 redis> SPOP deck 2
@@ -201,22 +143,20 @@ redis> SPOP deck 2
 
 ## Counting Members with `SCARD`
 
-- **Function:** Returns the set cardinality (number of elements) of the set stored at the key.
-- **Performance:** This is an **O(1)** operation. Redis tracks the count in the set's metadata, so it does not need to iterate through the members.
-- **Missing Keys:** If the key does not exist, it is interpreted as an empty set and returns `0`.
+`SCARD` returns the set's cardinality (member count) in $O(1)$ time because Redis tracks the count in metadata rather than iterating over members. A missing key counts as an empty set and returns `0`.
 
-**Example: getting the size of a populated set**
+The populated set contains three members:
 
-```
+```sh
 redis> SADD users "alice" "bob" "charlie"
 (integer) 3
 redis> SCARD users
 (integer) 3
 ```
 
-**Example: checking a non-existent key**
+After the key is deleted, its cardinality is `0`:
 
-```
+```sh
 redis> DEL unknown_set
 (integer) 1
 redis> SCARD unknown_set
@@ -225,15 +165,11 @@ redis> SCARD unknown_set
 
 ## Verifying Membership with `SISMEMBER`
 
-- **Function:** Checks if a specific `member` exists within the set stored at the key.
-- **Performance:** extremely fast **O(1)** check.
-- **Return Value:** Returns a boolean integer:
-  - `1` if the element is a member of the set.
-  - `0` if the element is not a member, or if the key does not exist.
+`SISMEMBER` checks one member in $O(1)$ time. It returns the integer `1` for a member and `0` for a nonmember or a missing key.
 
-**Example: checking single status**
+The check distinguishes a member from a nonmember:
 
-```
+```sh
 redis> SADD admins "alice" "bob"
 (integer) 2
 redis> SISMEMBER admins "alice"
@@ -244,14 +180,11 @@ redis> SISMEMBER admins "charlie"
 
 ## Batch Verification with `SMISMEMBER`
 
-- **Function:** Checks for the existence of multiple members in the set at once.
-- **Availability:** Available since Redis 6.2.0.
-- **Efficiency:** More efficient than running multiple `SISMEMBER` commands because it reduces network round-trips.
-- **Return Value:** Returns a list of integers (0 or 1) corresponding to the membership status of each requested element, in the same order as the arguments.
+`SMISMEMBER`, available since Redis 6.2.0, checks several members in one request instead of making several `SISMEMBER` round trips. It returns `0` or `1` for each requested member in argument order.
 
-**Example: checking multiple candidates**
+The result has one status for each candidate in request order:
 
-```
+```sh
 redis> SADD vip_list "john" "jane"
 (integer) 2
 redis> SMISMEMBER vip_list "john" "mike" "jane"
@@ -262,13 +195,11 @@ redis> SMISMEMBER vip_list "john" "mike" "jane"
 
 ## Listing All Members with `SMEMBERS`
 
-- **Function:** Returns all the members of the set value stored at the key.
-- **Performance Warning:** This is an **O(N)** command. Running this on sets with millions of members can block the server. For large sets, use `SSCAN` instead.
-- **Order:** The members are returned in no specific order.
+`SMEMBERS` returns every member without a specified order. Its $O(N)$ work, where $N$ is the member count, can block the server on sets with millions of members. For large sets, use `SSCAN` to iterate instead.
 
-**Example: retrieving the full collection**
+All members are returned without a promised order:
 
-```
+```sh
 redis> SADD fruits "apple" "banana" "orange"
 (integer) 3
 redis> SMEMBERS fruits
@@ -279,21 +210,17 @@ redis> SMEMBERS fruits
 
 ## Iterating Sets with `SSCAN`
 
-- **Function:** Incrementally iterates through the members of a Set.
-- **Purpose:** A non-blocking alternative to `SMEMBERS`. While `SMEMBERS` returns all elements at once (which can freeze the server if the set is huge), `SSCAN` returns a small batch of elements at a time.
-- **Cursor:** It uses a cursor-based approach. You start with cursor `0`, and Redis returns a new cursor to use in the next call. The iteration is complete when the returned cursor is `0` again.
-- **Guarantees:**
-  - It may return duplicate elements (application logic must handle this).
-  - It guarantees to return all elements present in the collection from the start to the end of a full iteration.
-- **Arguments:**
-  - `key`: The set to scan.
-  - `cursor`: The integer cursor (start with 0).
-  - `MATCH pattern` (optional): Filter elements using a glob-style pattern (e.g., `user:*`).
-  - `COUNT count` (optional): A hint for how many elements to return per batch (default is usually 10).
+`SSCAN` returns small batches from a set instead of returning every member at once like `SMEMBERS`, avoiding one large blocking response. A full cursor iteration proceeds in order:
 
-**Example: Scanning a set in batches**
+1. Pass the set `key` and cursor `0`.
+2. Use the returned cursor in the next call.
+3. Stop when Redis returns cursor `0` again.
 
-```
+The iteration may return duplicates, which the application must handle; a full iteration returns every member present throughout it. Optional `MATCH pattern` filters members with a glob-style pattern such as `user:*`. Optional `COUNT count` hints at the batch size; its default is usually 10.
+
+The first response gives a new cursor and a batch of members:
+
+```sh
 redis> SADD user_ids 1 2 3 4 5 6 7 8 9 10 11 12
 (integer) 12
 redis> SSCAN user_ids 0 COUNT 5
@@ -306,11 +233,11 @@ redis> SSCAN user_ids 0 COUNT 5
    6) "6"
 ```
 
-*(Note: The first line of the output `"3"` is the next cursor. You would use `SSCAN user_ids 3` next.)*
+The first output entry, `"3"`, is the next cursor, so the next call uses `SSCAN user_ids 3`.
 
-**Example: Scanning with a pattern match**
+A pattern restricts the returned members:
 
-```
+```sh
 redis> SADD configs "sys:a" "sys:b" "app:c" "app:d"
 (integer) 4
 redis> SSCAN configs 0 MATCH "sys:*"
@@ -321,16 +248,14 @@ redis> SSCAN configs 0 MATCH "sys:*"
 
 ## Sampling Members with `SRANDMEMBER`
 
-- **Function:** Returns one or more random members from the set *without* removing them.
-- **Comparison:** Unlike `SPOP`, the set remains unchanged.
-- **Count Argument:**
-  - **Positive Count (`> 0`):** Returns an array of `count` **distinct** elements. If `count` is larger than the set size, it returns the entire set.
-  - **Negative Count (`< 0`):** Returns an array of `count` elements, allowing **duplicates** (sampling with replacement). This is useful if you need to pick a random winner multiple times where the same person *could* win twice.
-- **Return Value:** The randomly selected string(s), or `(nil)` if the key does not exist.
+Unlike `SPOP`, `SRANDMEMBER` returns random string members without changing the set. A missing key returns `(nil)`. The optional count changes sampling behavior:
 
-**Example: getting a single random preview**
+- **Positive count:** Returns distinct members, or the entire set if the count exceeds its size.
+- **Negative count:** Allows duplicates (sampling with replacement), for example when one person could win multiple draws.
 
-```
+The selected member remains in the set:
+
+```sh
 redis> SADD gallery "img1.jpg" "img2.jpg" "img3.jpg"
 (integer) 3
 redis> SRANDMEMBER gallery
@@ -339,17 +264,17 @@ redis> SCARD gallery
 (integer) 3
 ```
 
-**Example: getting distinct samples (no repeats)**
+A positive count samples without repeats:
 
-```
+```sh
 redis> SRANDMEMBER gallery 2
 1) "img1.jpg"
 2) "img3.jpg"
 ```
 
-**Example: getting samples with replacement (repeats allowed)**
+A negative count permits repeats:
 
-```
+```sh
 redis> SRANDMEMBER gallery -3
 1) "img1.jpg"
 2) "img1.jpg"
@@ -358,19 +283,14 @@ redis> SRANDMEMBER gallery -3
 
 ## Moving Members with `SMOVE`
 
-- **Function:** Atomically moves a member from a `source` set to a `destination` set.
-- **Atomicity:** The operation is atomic. If the member is removed from the source, it is guaranteed to be added to the destination; no intermediate state is visible to other clients.
-- **Conditions:**
-  - If the element exists in `source`, it is removed and added to `destination`.
-  - If the element does *not* exist in `source`, no operation is performed, and `0` is returned.
-  - If the element already exists in `destination`, it is just removed from `source` (no error).
-- **Return Value:**
-  - `1` if the element was moved.
-  - `0` if the element was not found in the source set.
+`SMOVE` atomically removes a member from `source` and adds it to `destination`; other clients cannot observe an intermediate state. Its result depends on the member's initial state:
 
-**Example: Promoting a user**
+- **Present in source:** Remove it from the source and add it to the destination, returning `1`. If it was already in the destination, only the source changes; this is not an error.
+- **Absent from source:** Leave both sets unchanged and return `0`.
 
-```
+The move removes `user1` from `candidates` and adds it to `hired`:
+
+```sh
 redis> SADD candidates "user1" "user2"
 (integer) 2
 redis> SADD hired "user3"
@@ -384,16 +304,16 @@ redis> SMEMBERS hired
 2) "user1"
 ```
 
-**Example: Moving a non-existent member**
+An absent source member returns `0`:
 
-```
+```sh
 redis> SMOVE candidates hired "unknown_user"
 (integer) 0
 ```
 
-**Example: Moving to a set where the member already exists**
+An existing destination member does not prevent removal from the source:
 
-```
+```sh
 redis> SADD candidates "alice" "bob"
 (integer) 2
 redis> SADD hired "alice" "charlie"
@@ -409,19 +329,15 @@ redis> SMEMBERS hired
 
 ## Mathematical Set Operations
 
-Redis Sets natively implement fundamental set algebra, enabling high-performance server-side logic to filter, combine, and analyze relationships between different collections of unique data without transferring the datasets to the client.
+Redis performs set algebra on the server, so clients can filter, combine, and analyze unique-member collections without transferring the input sets. In the expressions below, $A$, $B$, and $C$ denote input sets.
 
 ### Combining Sets with `SUNION`
 
-- **Function:** Returns the members of the set resulting from the **union** of all the given sets.
-- **Math Logic:** Effectively performs $A \cup B \cup C \dots$ (elements present in at least one of the sets).
-- **Duplicates:** Since sets enforce uniqueness, the resulting list will contain each distinct member exactly once, even if it appeared in multiple source sets.
-- **Missing Keys:** Non-existent keys are treated as empty sets.
-- **Return Value:** A list of all unique members from the combined sets.
+`SUNION` returns a list of members present in at least one input set: $A \cup B \cup C \dots$. Each member appears only once even if several sources contain it. A missing key acts as an empty set.
 
-**Example: Merging user interests**
+The union contains each interest once:
 
-```
+```sh
 redis> SADD interests:music "jazz" "rock"
 (integer) 2
 redis> SADD interests:dance "jazz" "ballet"
@@ -432,9 +348,9 @@ redis> SUNION interests:music interests:dance
 3) "jazz"
 ```
 
-**Example: Union with an empty set**
+An absent input key contributes no members:
 
-```
+```sh
 redis> SADD set_a "1" "2"
 (integer) 2
 redis> SUNION set_a non_existent_set
@@ -444,14 +360,11 @@ redis> SUNION set_a non_existent_set
 
 #### Storing Unions with `SUNIONSTORE`
 
-- **Function:** Computes the union of the given sets (like `SUNION`) but **stores** the result in a `destination` key instead of returning it to the client.
-- **Overwrite:** If the `destination` key already exists, it is overwritten.
-- **Performance:** ideal for caching complex calculations. Instead of transferring a large result set over the network, you save it directly in Redis for later use.
-- **Return Value:** The number of elements in the newly stored set.
+`SUNIONSTORE` stores the union at `destination` instead of returning it to the client, overwriting an existing destination. The command returns the stored set's member count. Keeping a complex union in Redis avoids transferring a large result over the network and supports later reuse.
 
-**Example: Creating a 'master' category**
+The stored union collects both product categories:
 
-```
+```sh
 redis> SADD products:electronics "laptop" "phone"
 (integer) 2
 redis> SADD products:books "novel" "biography"
@@ -467,14 +380,11 @@ redis> SMEMBERS products:all
 
 ### Finding Commonality with `SINTER`
 
-- **Function:** Returns the members of the set resulting from the **intersection** of all the given sets.
-- **Math Logic:** Effectively performs $A \cap B \cap C \dots$ (elements present in **all** specified sets).
-- **Missing Keys:** If any of the keys do not exist (empty set), the result is an empty set (since the intersection with an empty set is empty).
-- **Return Value:** A list of members common to all sets.
+`SINTER` returns a list of members present in every input set: $A \cap B \cap C \dots$. If any key is missing, its set is empty and so is the intersection.
 
-**Example: Finding mutual followers**
+The intersection contains only followers shared by both sets:
 
-```
+```sh
 redis> SADD user:1:follows "user:2" "user:3" "user:4"
 (integer) 3
 redis> SADD user:5:follows "user:1" "user:3" "user:4"
@@ -486,13 +396,11 @@ redis> SINTER user:1:follows user:5:follows
 
 #### Storing Intersections with `SINTERSTORE`
 
-- **Function:** Computes the intersection (like `SINTER`) but **stores** the result in a `destination` key.
-- **Overwrite:** Overwrites the destination key if it exists.
-- **Return Value:** The number of elements in the resulting set.
+`SINTERSTORE` stores the intersection at `destination`, overwriting an existing destination, and returns the resulting member count.
 
-**Example: Saving the target audience**
+The stored intersection keeps only developers who are also gamers:
 
-```
+```sh
 redis> SADD group:gamers "alice" "bob" "dave"
 (integer) 3
 redis> SADD group:developers "bob" "dave" "frank"
@@ -506,15 +414,11 @@ redis> SMEMBERS target:dev_gamers
 
 ### Finding Differences with `SDIFF`
 
-- **Function:** Returns the members of the set resulting from the **difference** between the first set and all successive sets.
-- **Math Logic:** Effectively performs $A - B - C \dots$ (elements present in the **first** set but **not** in any of the others).
-- **Order Matters:** Unlike Union and Intersection, the order of keys is critical. `SDIFF key1 key2` produces a different result than `SDIFF key2 key1`.
-- **Missing Keys:** Non-existent keys are treated as empty sets.
-- **Return Value:** A list of members remaining after the subtraction.
+`SDIFF` returns a list of members in the first input set but not in any subsequent set: $A - B - C \dots$. Unlike union and intersection, key order matters: `SDIFF key1 key2` can differ from `SDIFF key2 key1`. Missing keys act as empty sets.
 
-**Example: Finding unique skills (Alice minus Bob)**
+Subtracting Bob’s skills leaves Alice’s unique skills:
 
-```
+```sh
 redis> SADD skills:alice "coding" "design" "marketing"
 (integer) 3
 redis> SADD skills:bob "coding" "sales"
@@ -524,23 +428,20 @@ redis> SDIFF skills:alice skills:bob
 2) "marketing"
 ```
 
-**Example: Reversing the order (Bob minus Alice)**
+Reversing the input order leaves Bob’s unique skills:
 
-```
+```sh
 redis> SDIFF skills:bob skills:alice
 1) "sales"
 ```
 
 #### Storing Differences with `SDIFFSTORE`
 
-- **Function:** Computes the difference (like `SDIFF`) but **stores** the result in a `destination` key.
-- **Overwrite:** If the `destination` key already exists, it is overwritten.
-- **Use Case:** Ideal for filtering lists, such as finding "Users who have registered but not yet paid."
-- **Return Value:** The number of elements in the resulting set.
+`SDIFFSTORE` stores the difference at `destination`, overwriting an existing destination, and returns the resulting member count. It supports filtering a population, such as users who registered but have not paid.
 
-**Example: Filtering unpaid users**
+Subtracting paid users stores the remaining unpaid IDs:
 
-```
+```sh
 redis> SADD all_users "u1" "u2" "u3" "u4"
 (integer) 4
 redis> SADD paid_users "u1" "u3"

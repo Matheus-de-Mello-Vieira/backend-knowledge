@@ -1,41 +1,26 @@
-
-
 # RESP (Redis Serialization Protocol)
 
-* Redis clients communicate with Redis server using a protocol called **RESP** (**RE**dis **S**erialization **P**rotocol).
-* Simple to implement: https://redis.io/docs/latest/develop/reference/protocol-spec/
-* Fast to parse
-* Human readable
-* RESP can serialize different data type like intergers, strings and arrays.
-* RESP is binnary safe.
+Redis clients and servers communicate using **RESP** (**RE**dis **S**erialization **P**rotocol). Its format is simple to implement, fast to parse, human-readable, and binary-safe. RESP serializes values such as integers, strings, and arrays. The [RESP specification](https://redis.io/docs/latest/develop/reference/protocol-spec/) describes the complete protocol.
 
-## RESP basics
+## Type prefixes and lengths
 
-The type is indicated by the first bytes. Some of them are:
+The first byte identifies a value's type. Common prefixes include:
 
-| Prefix | Meaning       |
-| ------ | ------------- |
-| `*`    | Array         |
-| `$`    | Bulk string   |
-| `+`    | Simple string |
-| `-`    | Error         |
-| `:`    | Integer       |
+| Prefix | Type |
+| --- | --- |
+| `*` | Array |
+| `$` | Bulk string |
+| `+` | Simple string |
+| `-` | Error |
+| `:` | Integer |
 
-Each element is terminated with `\r\n`.
+RESP terminates each element with `\r\n`. A Redis command is encoded as an array of bulk strings, with an explicit byte length for each argument.
 
-A Redis command is encoded as an **array of bulk strings**, where each argument includes its explicit byte length.
+## Encoding a `SET` command
 
-## Example: RESP encoding of a `SET` command
+The command `SET country:LB Lebanon` has three arguments: the command name, key, and value. Its readable RESP representation is:
 
-Command:
-
-```
-SET country:LB Lebanon
-```
-
-RESP representation:
-
-```
+```text
 *3
 $3
 SET
@@ -45,35 +30,10 @@ $7
 Lebanon
 ```
 
-Where:
+`*3` denotes an array of three elements. Each `$` prefix introduces a bulk string followed by its length in bytes: `SET` is 3 bytes, `country:LB` is 10 bytes, and `Lebanon` is 7 bytes. Those bulk strings represent the command name, key, and value, respectively.
 
-- `*3`
-  - `*` indicates an **array** in RESP
-  - `3` specifies that the array contains **three elements**
+On the wire, the line endings are `\r\n`:
 
-- `$3`
-  - `$` indicates a **bulk string**
-  - `3` specifies the string length is **3 bytes**
-  - `SET`
-    - The bulk string content
-    - Represents the **Redis command**
-
-- `$10`
-  - `$` indicates a **bulk string**
-  - `10` specifies the string length is **10 bytes**
-  - `country:LB`
-    - The bulk string content
-    - Represents the **key**
-
-- `$7`
-  - `$` indicates a **bulk string**
-  - `7` specifies the string length is **7 bytes**
-  - `Lebanon`
-    - The bulk string content
-    - Represents the **value**
-
-Wire format:
-
-```
+```text
 *3\r\n$3\r\nSET\r\n$10\r\ncountry:LB\r\n$7\r\nLebanon\r\n
 ```
