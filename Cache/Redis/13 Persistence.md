@@ -52,6 +52,9 @@ Scheduling snapshots does not make each intervening write durable. Failed or del
 
 With `appendonly yes`, Redis records operations that change the dataset in an **append-only file (AOF)**. Recovery reconstructs state from that persisted representation and its subsequent operations rather than relying only on periodic standalone snapshots.
 
+> [!note] AOF and write-ahead logging
+> Redis's incremental AOF is a logical redo log that shares the replay-based recovery principle of [write-ahead logging (WAL)](../../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29). Unlike page-oriented WAL, which must make recovery records durable before dependent data-page writes, Redis changes its in-memory dataset before appending write commands and has no separately persisted data pages to order behind the log. AOF crash durability depends on the `appendfsync` policy, not merely on recording operations.
+
 Appending to a file and making its contents durable are different events. A buffered AOF append modifies OS page-cache pages and marks them dirty; a successful file write does not establish that those bytes reached persistent storage. Kernel writeback persists dirty pages later, while explicit synchronization establishes a requested durability boundary. Redis uses an `appendfsync` policy to control [storage synchronization](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization):
 
 | Policy | Synchronization boundary | Durability and cost |
