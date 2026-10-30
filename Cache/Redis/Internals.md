@@ -1,8 +1,30 @@
 # Redis Internals: Connection Management
 
-Redis Open Source 8.10.2 manages many client connections through event loops rather than dedicating a thread to each connection. The main thread owns listener acceptance and ordinary command execution. With `io-threads=1`, it also handles client network I/O. With more than one configured I/O thread, additional threads run their own event loops and handle eligible clients' reads, protocol parsing, and writes; a parsed command crosses back to the main thread for execution. Each client retains its connection, input, output, and command state across these callbacks and handoffs. This separates **connection concurrency** (many live clients), **I/O parallelism** (multiple threads advancing network work), and **command execution** (predominantly serialized on the main thread). These are distinct [application-server concurrency](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md) decisions. [Worker initialization and configuration](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L975-L1057) · [`io-threads` configuration](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/config.c#L3507)
+Redis Open Source 8.10.2 manages many client connections through event loops rather than dedicating a thread to each connection.
+
+Connection handling separates three distinct [application-server concurrency](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md) dimensions:
+
+- **Connection concurrency:** Many live clients retain independent connection, input, output, and command state across callbacks and handoffs.
+- **I/O parallelism:** Multiple threads advance network work when I/O workers are configured.
+- **Command execution:** Ordinary commands execute predominantly on the main thread.
 
 The implementation uses a `connection` object for transport operations and a `client` object for Redis-specific state. Each processing thread has an `aeEventLoop`; the connection's event-loop binding determines where its readiness callbacks run, rather than the client owning a separate loop. Client state survives those callbacks because reading, parsing, execution, and writing need not finish together. The logical request-to-reply path is **not** one uninterrupted call stack. The underlying [socket management](../../Operating%20Systems/07%20Socket%20Management.md) supplies listening and connected descriptors and readiness; Redis supplies the client state and callback transitions described below. [Client state](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.h#L1500-L1525) · [Event-loop binding](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L776-L817)
+
+## Main event loop
+
+An **event loop** repeatedly waits for events and invokes their registered handlers (**callbacks**). Redis's **main event loop** is this control flow running on the main thread, not a separate thread. Its `ae` event library dispatches two kinds of events:
+
+- **File events:** Socket readiness triggers handlers for listener acceptance or client reads and writes. Polling waits for activity across connections rather than waiting separately on each idle client.
+- **Time events:** Due timers trigger scheduled callbacks.
+
+The main loop repeats the following cycle:
+
+1. **Perform pending work.** `beforeSleep()` handles pending work, including client writes and I/O-thread coordination, before polling.
+2. **Poll for readiness.** The poll waits when there is no immediate work, with the next due timer constraining the wait.
+3. **Run the post-poll hook.** `afterSleep()` runs after polling and before dispatching the resulting file events.
+4. **Dispatch events.** Invoke handlers for ready file events, then process due time events.
+
+Ordinary command execution takes place on the main thread as part of this processing and its handoffs; it is not a separate stage that runs exactly once per iteration. [Main-loop setup](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L3214-L3217) · [Event processing](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/ae.c#L365-L503) · [Before-sleep work](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L1947-L2162)
 
 ## From listener to client
 
@@ -11,7 +33,7 @@ The implementation uses a `connection` object for transport operations and a `cl
 3. **Apply admission and create client state.** `acceptCommonHandler()` checks the number of Redis clients plus cluster connections against `maxclients` *before* client creation and transport-level acceptance. A rejected connection is closed; an error reply is best effort, and a TLS connection rejected before its handshake receives no such reply. On admission, `createClient()` initializes the client, associates it with the connection, and installs `readQueryFromClient` as its read handler. For TCP clients it enables `TCP_NODELAY` and, when configured, keepalive. Failure to register the read event also rejects the connection. [Admission](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L1666-L1738) · [Client initialization](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L122-L251)
 4. **Finish connection acceptance.** `connAccept()` invokes `clientAcceptHandler()` either immediately or later, depending on the connection type. That callback handles failed acceptance, protected-mode rejection of non-local peers under its password condition, and successful-connection bookkeeping. If I/O workers are configured, it also queues the client for assignment. Code after `connAccept()` therefore cannot assume that the client still exists. [Accept callback and contract](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L1593-L1738)
 
-The listener remains available for subsequent arrivals while accepted clients maintain independent state. Redis's main `ae` loop dispatches file events and due time events; `beforeSleep()` performs pending work, including client writes and I/O-thread coordination, before the loop waits for more readiness. `afterSleep()` runs after polling and before dispatching the resulting file events. [Main-loop setup](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L3214-L3217) · [Event processing](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/ae.c#L365-L503) · [Before-sleep work](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L1947-L2162)
+The listener remains available for subsequent arrivals while accepted clients maintain independent state.
 
 The configured `maxclients` cap is not a promise of descriptor capacity: the operating system's available file descriptors can constrain the effective limit. [Descriptor-limit adjustment](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/config.c#L2780-L2805)
 
@@ -28,6 +50,15 @@ Parsing a complete command does not always make it immediately executable:
 - **Worker ownership:** Worker parsing stops at a ready executable command and queues the client for main-thread execution. [Worker parse handoff](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L3834-L3855)
 - **Client state:** Blocking, an already pending command, or a close-after-reply/close-as-soon-as-possible state stops further input processing. Buffered bytes remain associated with a client that later resumes where appropriate. [Processing guards](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L3704-L3740)
 - **Command semantics:** On the main thread, `processCommandAndResetClient()` reaches `processCommand()`; normal execution reaches `call()`. A transaction can instead queue a command and return `QUEUED`, while blocking commands change when the client resumes. [Command path](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L3555-L3603) · [Execution path](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L4835-L4848)
+
+## Thread topology
+
+Connection acceptance and ordinary command execution share **the same main thread**. Redis does not place a separate acceptor thread in front of a pool of ordinary command-execution workers; its network I/O workers offload socket work instead.
+
+- **Main thread:** Runs the main event loop, accepts new connections, and executes ordinary commands, including reads and changes to the in-memory dataset. A `SET` parsed by a worker, for example, returns to this thread to change the stored value. Main also handles network I/O for clients that are not eligible for worker handling. [Listener setup](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.c#L3250-L3318) · [Command execution](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L603-L685)
+- **Network I/O workers:** Each runs its own event loop for assigned, already-accepted clients. Workers read socket bytes, parse requests, and write replies to sockets; executable commands are handed to main rather than executed against the dataset by the worker. [Worker event loops](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L975-L1057) · [Command handoff](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L3834-L3855)
+
+With `io-threads=1`, main performs client network I/O as well as command execution. Increasing `io-threads` adds network I/O workers, not parallel ordinary command executors. **Writing a reply to a socket is distinct from modifying the dataset**; neither operation means persisting data to disk.
 
 ## I/O-thread ownership and handoffs
 

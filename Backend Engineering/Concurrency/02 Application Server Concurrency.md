@@ -131,6 +131,11 @@ Features:
 > [!example] Go `net/http` Goroutines
 > A Go [`net/http` server](../../Technologies/Golang/99%20Misc/Go%20Internals.md#net%2Fhttp%20Connection%20Handling) accepts connections in one goroutine and starts a separate goroutine to handle each accepted connection. The acceptor remains available for later arrivals while the Go runtime schedules the connection-handling goroutines as application workers.
 
+<!-- -->
+
+> [!example] Redis Network I/O Workers
+> With `io-threads` greater than one, [Redis](../../Cache/Redis/Internals.md#Thread%20topology) accepts connections on its main thread and assigns eligible clients to network I/O workers for reads, parsing, and reply writes. The same main thread executes ordinary commands against the dataset: distributing connection I/O does not imply parallel command execution. With `io-threads=1`, main performs both roles.
+
 ### Multiple Workers, Single Shared Listening Socket
 
 Instead of using one dedicated acceptor, several workers [share a listening socket](../../Operating%20Systems/07%20Socket%20Management.md#Shared%20Listening%20Socket) and call `accept()` themselves.

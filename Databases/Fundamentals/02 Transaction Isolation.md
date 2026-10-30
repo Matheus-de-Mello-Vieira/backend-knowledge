@@ -139,12 +139,12 @@ A **write skew** occurs when two transactions read overlapping state, make indiv
 
 A hospital requires **at least one doctor to remain on call**. Initially, both `Alice.on_call = true` and `Bob.on_call = true`.
 
-| Time | Transaction A (Alice leaves) | Transaction B (Bob leaves) |
-| --- | --- | --- |
-| t1 | Begin transaction. | Begin transaction. |
-| t2 | Read `Bob.on_call` → `true`; decide Alice can leave. | Read `Alice.on_call` → `true`; decide Bob can leave. |
-| t3 | Write `Alice.on_call = false`. | Write `Bob.on_call = false`. |
-| t4 | Commit. | Commit. |
+| Time | Transaction A (Alice leaves)                         | Transaction B (Bob leaves)                           |
+| ---- | ---------------------------------------------------- | ---------------------------------------------------- |
+| t1   | Begin transaction.                                   | Begin transaction.                                   |
+| t2   | Read `Bob.on_call` → `true`; decide Alice can leave. | Read `Alice.on_call` → `true`; decide Bob can leave. |
+| t3   | Write `Alice.on_call = false`.                       | Write `Bob.on_call = false`.                         |
+| t4   | Commit.                                              | Commit.                                              |
 
 Both doctors are now off call. Each decision was valid against the state read, but their combined effect violated the invariant.
 
