@@ -74,7 +74,34 @@ Three separate fields describe a client's thread relationship:
 
 These states change at different points in the transfer. The client's `io_flags` also survive callbacks: `CLIENT_IO_READ_ENABLED` and `CLIENT_IO_WRITE_ENABLED` gate socket work, while `CLIENT_IO_PENDING_COMMAND` records a parsed command that needs main-thread execution. [Client thread fields](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.h#L1500-L1508) · [Return handoff](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L676-L712) · [I/O flags](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/server.h#L466-L473)
 
-An eligible client passes through these ownership transitions; each step can occur in a different event-loop callback rather than one call stack:
+For an eligible client, queued transfers separate worker socket I/O from main-thread command execution. The kernel lane marks socket readiness and transport operations; thread-to-thread arrows represent queued handoffs across callbacks, not synchronous calls:
+
+```mermaid
+sequenceDiagram
+    participant K as Kernel sockets
+    participant M as Main thread
+    participant W as I/O worker
+    K-->>M: Listening socket is readable
+    M->>K: Accept connection
+    K-->>M: Connected socket
+    M->>W: Queue accepted client for assignment
+    W->>W: Bind connection to worker loop and enable I/O
+    K-->>W: Client socket is readable
+    W->>K: Receive request bytes
+    K-->>W: Request bytes
+    W->>W: Parse and disable I/O when command is ready
+    W->>M: Publish client with pending command
+    M->>M: Execute command and prepare reply
+    alt Client remains worker-eligible
+        M->>W: Queue client for return
+        W->>W: Re-enable I/O
+        W->>K: Send pending reply bytes
+    else Client becomes main-thread-only
+        M->>M: Bind connection to main loop
+    end
+```
+
+The ownership transitions are:
 
 1. **Main-thread assignment.** `createClient()` starts with `tid` and `running_tid` set to main. After successful acceptance, the main thread selects a least-loaded worker, changes `tid`, unbinds the connection from the main event loop, clears its read/write-enable flags, and queues it for transfer. The worker is assigned but is not yet executing the client or monitoring its connection. [Client initialization](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/networking.c#L122-L191) · [Assignment](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L332-L363)
 2. **Main-to-worker delivery.** The main thread publishes queued clients to the worker's pending list under its mutex. An early transfer can omit a notifier write if the worker is running or already has pending work; the before-sleep flush path signals the worker. The worker consumes that list, links the client into its managed clients, enables read/write activity, binds `conn->el` to its event loop, and installs `readQueryFromClient`. [Before-sleep delivery](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L503-L519) · [Conditional early notification](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L565-L590) · [Worker receipt](https://github.com/redis/redis/blob/498ecd0d6d007db11ddb3aea9428552598a78622/src/iothread.c#L757-L845)
