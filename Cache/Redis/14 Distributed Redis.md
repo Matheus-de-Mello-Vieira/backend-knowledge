@@ -36,6 +36,19 @@ A cluster-aware client maintains a slot-to-node map and sends commands directly 
 
 Clients must handle redirection and, for affected operations, retryable errors; online migration does not mean every request proceeds without interruption. [Redis Cluster scaling](https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/).
 
+### Inter-node coordination
+
+Cluster nodes coordinate through the **[cluster bus](Internals.md#Inter-instance%20communication)**, a binary protocol over persistent TCP links connecting every node to every other node. Each node exposes a bus port separate from its client/data port. The bus carries cluster coordination, not the primary-to-replica dataset stream; replication uses a separate connection to the primary's data port.
+
+Heartbeat messages check reachability and carry **gossip**: a node shares its observations of other nodes so membership and failure information spread beyond direct observations. Configuration updates propagate slot ownership and primary-role changes, allowing nodes to converge on routing information.
+
+Failure detection distinguishes two states:
+
+- **`PFAIL` (possible failure):** A node's local suspicion after another node fails to respond within the configured timeout. This alone does not authorize promotion.
+- **`FAIL`:** A failure declaration based on recent reports from a majority of primaries, propagated to other nodes.
+
+For automatic failover, an eligible replica of a failed primary requests authorization over the bus and needs votes from a majority of primaries before promoting itself. The new primary then advertises its slot ownership. [Redis Cluster specification](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/).
+
 ### Replication, failover, and write loss
 
 When replicas are configured, each follows a primary's partition through these replication phases:
