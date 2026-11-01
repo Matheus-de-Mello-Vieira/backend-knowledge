@@ -72,7 +72,7 @@ Its **cluster of infrastructure nodes** and an individual **sharded database** a
 
 The components form two related hierarchies: a database consists of shard processes, while a cluster consists of nodes that host those processes.
 
-- **Redis instance or shard:** A Redis process serving a partition of a database, in either a primary or replica role. Calling an instance “single-threaded” describes predominantly main-threaded ordinary command execution, not a process with no other threads. A shard resides on one node; a node hosts multiple shards.
+- **Redis instance and shard:** An instance is a Redis process. A shard is a portion of a database's data served by an instance; Redis Software also calls the serving process a shard, whether it has a primary or replica role. Calling an instance “single-threaded” describes predominantly main-threaded ordinary command execution, not a process with no other threads. Each shard process resides on one node; a node hosts multiple shards.
 - **Database:** The managed dataset exposed to an application. An unsharded database has one primary shard; a sharded database distributes its keyspace among several primaries. Replication adds replica shards rather than additional keyspace partitions.
 - **Node:** A physical machine, virtual machine, container, or cloud instance participating in the Redis Software cluster. It hosts shards and supporting services, rather than representing exactly one database.
 - **Cluster:** The cooperating set of nodes and management services that place and manage database shards across the resource pool. [Redis Software terminology](https://redis.io/docs/latest/operate/rs/references/terminology/).
@@ -80,13 +80,47 @@ The components form two related hierarchies: a database consists of shard proces
 > [!important] Product-specific database meaning
 > A Redis Software database is a managed database with its own endpoint and shard configuration. Do not equate it with a numbered logical database selected inside a standalone Redis process, or assume that Redis Open Source Cluster hosts multiple such managed databases.
 
+### Shard independence and resource pooling
+
+Redis Software's **shared-nothing** architecture separates shard command execution from cluster management: each shard processes its database partition without coordinating cluster placement or failover, while the cluster manager handles those tasks. The architecture is **symmetric** in that nodes contain the same kinds of components, including shards, proxies, and cluster-management processes; it does not require identical data or shard roles on every node. [Redis Enterprise cluster architecture](https://redis.io/glossary/redis-enterprise-cluster-architecture/) · [Redis Software terminology](https://redis.io/docs/latest/operate/rs/references/terminology/).
+
+This separation lets the cluster place shards from multiple managed databases across its nodes:
+
+- **Workload separation:** An application, tenant, or microservice can have a distinct database and endpoint without requiring a dedicated infrastructure cluster.
+- **Resource pooling:** A node hosts multiple shards, potentially from different databases, so workloads share infrastructure capacity. Utilization depends on their demand and the chosen shard placement; sharing a node does not give each workload exclusive CPU or memory.
+- **Rebalancing:** The cluster can move individual shards between nodes to change resource placement without moving a whole database as one unit. Changing the number of partitions is a separate resharding operation. [Redis Software memory and performance](https://redis.io/docs/latest/operate/rs/databases/memory-performance/) · [Redis Software shard migration](https://redis.io/docs/latest/operate/rs/databases/migrate-shards/).
+
+Separate shard processes and databases do not by themselves guarantee isolation from resource contention. Failure protection instead depends on replication and placement of a primary and its replica on separate nodes.
+
 ### Routing and availability
 
-An application connects to a database endpoint; proxies route operations to the appropriate shards. This hides shard placement from the client instead of requiring the direct slot-to-node routing used by Open Source Cluster. A stable endpoint does not remove the underlying partitioning or make every cross-shard operation valid. [Redis Software database clustering](https://redis.io/docs/latest/operate/rs/databases/durability-ha/clustering/).
+An application connects to a database's **endpoint**, the client-facing address and port exposed by a proxy. The endpoint is not a separate service or network hop: the proxy receives the connection and routes each operation to the primary shard instance responsible for its key:
 
-Unlike Open Source Cluster, Redis Software does not serve application reads from a database's replica shards; the endpoint routes reads to primary shards. Its separate **Replica Of** feature creates a replica database that applications can read, including across locations. A replica database is not the same thing as a replica shard of the original database. [Replica-shard read behavior](https://redis.io/faq/doc/1oc8qbinn7/do-replicas-apply-eviction-policies-if-maxmemory-is-set) · [Replica Of](https://redis.io/docs/latest/operate/rs/databases/import-export/replica-of/).
+```mermaid
+flowchart LR
+    C[Clients] --> P[Proxy exposing database endpoint]
+    P --> S1[Primary shard instance A]
+    P --> S2[Primary shard instance B]
+```
 
-With replication enabled, primary and replica shards reside on separate nodes. When a primary fails, Redis Software promotes its replica and updates routing. Placement across distinct racks or zones additionally protects against a shared rack or zone failure when rack-zone awareness is configured. These mechanisms address availability; persistence remains a separate mechanism for recovering stored data. [Redis Software durability and high availability](https://redis.io/docs/latest/operate/rs/databases/durability-ha/).
+Resharding changes the proxy's routing to shard instances, not the endpoint clients use. Clients therefore do not need to change their connection target or implement direct shard routing as in Open Source Cluster. The stable endpoint does not remove the underlying partitioning or make every cross-shard operation valid. [Redis Software database clustering](https://redis.io/docs/latest/operate/rs/databases/durability-ha/clustering/).
+
+**Intra-database replication** provides high availability (HA) by maintaining replica shards within a database:
+
+- **Node placement:** Primary and replica shards reside on separate nodes.
+- **Failover:** When a primary fails, Redis Software promotes its replica and updates routing.
+- **Rack-zone protection:** With rack-zone awareness configured, placement across distinct racks or zones additionally protects against a shared rack or zone failure.
+- **Application reads:** Unlike Open Source Cluster, Redis Software does not serve application reads from replica shards; the proxy routes reads to primary shards. [Replica-shard read behavior](https://redis.io/faq/doc/1oc8qbinn7/do-replicas-apply-eviction-policies-if-maxmemory-is-set).
+
+These mechanisms address availability; persistence remains a separate mechanism for recovering stored data. [Redis Software durability and high availability](https://redis.io/docs/latest/operate/rs/databases/durability-ha/).
+
+Redis Software also provides **Replica Of**, a separate replication feature from the HA replication between shards within a database. Replica Of provides **active-passive replication between separate databases**. In a single-source setup, an administrator designates a destination database to copy a source database, either in the same cluster or across clusters and locations. After an initial dataset copy, subsequent writes propagate from source to destination in the background. [Replica Of](https://redis.io/docs/latest/operate/rs/databases/import-export/replica-of/).
+
+- **Active source:** Applications read and write through the source database's endpoint. The source accepts application writes whose changes replicate to the destination.
+- **Passive destination:** The destination receives replicated changes rather than originating application writes. Applications read through its own endpoint, which routes reads to its own primary shards—not to the source database's HA replica shards. “Passive” does not mean unavailable for reads. Background synchronization introduces replication lag, so destination reads can return stale data.
+
+> [!warning] Writes to a Replica Of destination
+> Do not write directly to the destination database: doing so can cause replication errors, data inconsistencies, or data loss. Application writes belong at the source.
 
 ### Resharding and shard migration
 
