@@ -202,6 +202,48 @@ redis> XACK events workers 1000-1
 
 A process can complete an external effect and crash before `XACK`, causing recovery to repeat the effect. Use idempotent effects or application-level deduplication where duplicates matter. Consumer groups track delivery, not exactly-once effects or a transaction spanning Redis and the external system. At-least-once processing depends on an active retry path, entries remaining available, and appropriate Redis durability; it is not an unconditional guarantee of the group. [XPENDING](https://redis.io/docs/latest/commands/xpending/) · [XAUTOCLAIM](https://redis.io/docs/latest/commands/xautoclaim/)
 
+> [!example] Thumbnail generation as a worker job
+> Suppose original images are stored durably and each upload needs an independently generated thumbnail. The application enqueues an image ID and object key, **not the image bytes**. A Redis Streams consumer group fits this worker queue under these conditions:
+>
+> - **Independent jobs:** Each thumbnail is a separate job; the group delivers its entry to a worker and keeps it pending until acknowledged or claimed after failure.
+> - **Regenerable outputs:** A missing thumbnail can be rebuilt from its durable original.
+> - **Bounded history:** The application needs only a short, bounded job history.
+> - **Existing Redis operation:** The application already has a reliably operated Redis deployment.
+>
+> Run the following commands in **one shell session** against a Redis instance where `thumbnail_jobs_demo` does not yet exist. The shell variable `job_id` keeps the ID returned by `XADD`; the consumer names represent workers, not separate CLI sessions. Create the group at `0` so it includes the job appended next:
+>
+> ```sh
+> redis-cli XGROUP CREATE thumbnail_jobs_demo thumbnail_workers 0 MKSTREAM
+> job_id=$(redis-cli --raw XADD thumbnail_jobs_demo '*' image_id img-42 object_key originals/img-42.jpg)
+> ```
+>
+> `worker-a` receives the job and becomes its pending owner. The application would read the original object and write a thumbnail; this command demonstrates only the Redis delivery:
+>
+> ```sh
+> redis-cli XREADGROUP GROUP thumbnail_workers worker-a COUNT 1 BLOCK 1000 STREAMS thumbnail_jobs_demo '>'
+> ```
+>
+> Treat `worker-a` as having stopped immediately after the read: **do not acknowledge** the job. `XPENDING` shows the group's pending summary and then the entry's owner, idle time, and delivery count:
+>
+> ```sh
+> redis-cli XPENDING thumbnail_jobs_demo thumbnail_workers
+> redis-cli XPENDING thumbnail_jobs_demo thumbnail_workers - + 10
+> ```
+>
+> Only after the failed worker has stopped, `worker-b` claims the entry. The `0`-millisecond minimum idle time is **for this controlled demonstration only**; a production threshold must allow for legitimate processing time, and an active slow worker could otherwise be raced. `XAUTOCLAIM` returns a next-scan cursor as well as claimed entries. A recovery loop must continue from a nonzero returned cursor until it reaches `0-0`, rather than treating one scan as exhaustive:
+>
+> ```sh
+> redis-cli XAUTOCLAIM thumbnail_jobs_demo thumbnail_workers worker-b 0 0-0 COUNT 10
+> ```
+>
+> After `worker-b` successfully generates the thumbnail, it acknowledges the captured entry ID. If the application uses a deterministic output identity derived from `image_id`, a retry can replace or upsert the same thumbnail instead of creating a second logical result. This matters if a worker writes the thumbnail and crashes before `XACK`: recovery repeats the job, not an exactly-once transaction across Redis and object storage.
+>
+> ```sh
+> redis-cli XACK thumbnail_jobs_demo thumbnail_workers "$job_id"
+> ```
+>
+> The application still needs a retry loop that inspects and claims stale pending work. Redis persistence and failover settings determine which recent writes survive failures; avoid eviction of unprocessed jobs, size capacity and retention for the recovery window, and reconcile missing thumbnails against the durable originals. `XACK` does not delete the payload, and trimming does not protect pending payloads, so retain entries until recovery no longer needs them.
+
 ## Trimming retained entries with `XTRIM`
 
 `XTRIM MAXLEN` limits the stream by **entry count**. With both entries now acknowledged, an exact limit of one removes the oldest entry and returns the number removed; it does not undo acknowledgements or change the surviving entry's ID:
