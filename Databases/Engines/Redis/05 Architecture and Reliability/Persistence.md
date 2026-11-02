@@ -1,6 +1,6 @@
 # Redis Persistence
 
-Redis serves data from memory; **persistence** supplies a local representation from which that data can be reconstructed after restart. Receiving a successful write reply is not, by itself, proof that the write crossed a [durability](../../Databases/00%20Overview.md#Durability%20and%20Crash%20Recovery) boundary. The persistence mode and synchronization policy determine which acknowledged changes survive a failure.
+Redis serves data from memory; **persistence** supplies a local representation from which that data can be reconstructed after restart. Receiving a successful write reply is not, by itself, proof that the write crossed a [durability](../../../Fundamentals/00%20Overview.md#Durability%20and%20Crash%20Recovery) boundary. The persistence mode and synchronization policy determine which acknowledged changes survive a failure.
 
 Redis Open Source supports **RDB snapshots**, **append-only files (AOF)**, both together, or neither. Without either persistence mechanism, Redis has no local persistence source for restoring its in-memory writes. The multipart AOF layout described below applies to Redis 7.0 and later. [Redis persistence documentation](https://github.com/redis/docs/blob/main/content/operate/oss_and_stack/management/persistence.md).
 
@@ -30,7 +30,7 @@ Background snapshotting uses `BGSAVE`, either requested explicitly or triggered 
 2. The child serializes that view into a temporary RDB file while the parent continues serving clients.
 3. After the new snapshot is complete, it atomically replaces the previous snapshot file.
 
-The parent and child initially share physical pages through [copy-on-write](../../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency). Writes to shared pages create private copies, preserving the child's earlier view without copying the entire dataset at fork time.
+The parent and child initially share physical pages through [copy-on-write](../../../../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency). Writes to shared pages create private copies, preserving the child's earlier view without copying the entire dataset at fork time.
 
 The child handles snapshot I/O, but background saving is not completely non-blocking:
 
@@ -52,16 +52,13 @@ Scheduling snapshots does not make each intervening write durable. Failed or del
 
 With `appendonly yes`, Redis records operations that change the dataset in an **append-only file (AOF)**. Recovery reconstructs state from that persisted representation and its subsequent operations rather than relying only on periodic standalone snapshots.
 
-> [!note] AOF and write-ahead logging
-> Redis's incremental AOF is a logical redo log that shares the replay-based recovery principle of [write-ahead logging (WAL)](../../Databases/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29). Unlike page-oriented WAL, which must make recovery records durable before dependent data-page writes, Redis changes its in-memory dataset before appending write commands and has no separately persisted data pages to order behind the log. AOF crash durability depends on the `appendfsync` policy, not merely on recording operations.
+Appending to a file and making its contents durable are different events. A buffered AOF append modifies OS page-cache pages and marks them dirty; a successful file write does not establish that those bytes reached persistent storage. Kernel writeback persists dirty pages later, while explicit synchronization establishes a requested durability boundary. Redis uses an `appendfsync` policy to control [storage synchronization](../../../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization):
 
-Appending to a file and making its contents durable are different events. A buffered AOF append modifies OS page-cache pages and marks them dirty; a successful file write does not establish that those bytes reached persistent storage. Kernel writeback persists dirty pages later, while explicit synchronization establishes a requested durability boundary. Redis uses an `appendfsync` policy to control [storage synchronization](../../Operating%20Systems/06%20Storage%20Management.md#Write%20Durability%20and%20Synchronization):
-
-| Policy | Synchronization boundary | Durability and cost |
-| --- | --- | --- |
-| `always` | Synchronizes each appended batch before sending its replies. | Puts synchronization latency on the reply path; several commands can share a batch and synchronization. |
-| `everysec` | Requests synchronization about once per second in a background thread. | Avoids waiting for each batch to become durable, but permits loss of recent acknowledged writes. This is the default AOF synchronization policy. |
-| `no` | Redis does not explicitly synchronize the AOF; writeback is delegated to the OS. | Provides no Redis-controlled synchronization interval; failure exposure depends on OS writeback and the storage stack. |
+| Policy     | Synchronization boundary                                                         | Durability and cost                                                                                                                              |
+| ---------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `always`   | Synchronizes each appended batch before sending its replies.                     | Puts synchronization latency on the reply path; several commands can share a batch and synchronization.                                          |
+| `everysec` | Requests synchronization about once per second in a background thread.           | Avoids waiting for each batch to become durable, but permits loss of recent acknowledged writes. This is the default AOF synchronization policy. |
+| `no`       | Redis does not explicitly synchronize the AOF; writeback is delegated to the OS. | Provides no Redis-controlled synchronization interval; failure exposure depends on OS writeback and the storage stack.                           |
 
 The policy's intended synchronization interval is subject to these limits:
 
@@ -71,6 +68,12 @@ The policy's intended synchronization interval is subject to these limits:
 
 > [!example] Acknowledgment before synchronization
 > With `everysec`, a client receives success for a write before the next background synchronization finishes. A power failure in that interval can erase the acknowledged write. Replaying the surviving AOF cannot reconstruct operations that never became durable.
+<!-- Separate callouts. -->
+> [!note] AOF and write-ahead logging
+> Redis's incremental AOF is a **logical redo log**, sharing the recovery-by-replay model of [Write-Ahead Logging (WAL)](../../../Fundamentals/00%20Overview.md#Write-Ahead%20Logging%20%28WAL%29). The comparison has two dimensions:
+>
+> - **Acknowledgment boundary:** With `appendfsync always`, AOF follows the durable-commit principle of making the recovery log durable before acknowledging success, subject to the synchronization limits above.
+> - **Persistence ordering:** Page-oriented WAL additionally requires durable log records before dependent data-page writes; Redis has no separate persistent data pages requiring that ordering. Redis updates its in-memory dataset before appending commands to AOF, but changing memory first does not itself conflict with WAL's write-ahead rule.
 
 ## AOF Rewriting and Multipart Files
 

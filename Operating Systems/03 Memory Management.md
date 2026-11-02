@@ -925,7 +925,7 @@ Because the OS controls the map, it can intentionally point multiple virtual pag
 > An interesting case related to it is how Python’s reference-counting singletons (`None`, `True`, `False`) silently defeated Copy-on-Write in multi-process deployments: every assignment to `None` incremented its refcount, triggering CoW faults that forced the OS to duplicate memory pages across worker processes. Python fixed this with [immortal objects](../Technologies/Python/Python%20Internals.md#Interning%20and%20immortality).
 <!-- -->
 > [!example] Redis snapshots: copying eagerly versus copying on write
-> Redis needs a stable dataset view for [background snapshotting](../Cache/Redis/13%20Persistence.md#RDB%20Snapshots) while continuing to process updates.
+> Redis needs a stable dataset view for [background snapshotting](../Databases/Engines/Redis/05%20Architecture%20and%20Reliability/Persistence.md#RDB%20Snapshots) while continuing to process updates.
 >
 > - **Naive approach—pause processing:** Serialize the live dataset while preventing changes. This preserves a stable view, but requests wait for the save to finish.
 > - **Eager-copy approach:** Copy the entire dataset for a background worker first. Saving then proceeds independently, but creating the copy requires upfront time and memory proportional to the dataset.
