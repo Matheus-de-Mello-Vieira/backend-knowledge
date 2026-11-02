@@ -21,6 +21,7 @@ Redis Open Source Cluster divides the keyspace into **16,384 hash slots**. CRC16
     - Redis uses the text between the first `{` and the first `}` after it only when that text is nonempty.
     - Thus `order:{42}:items` and `order:{42}:status` both hash `42` and share a slot. With `order:{}:items`, the braces are empty, so Redis hashes the whole key; it does not search for a later pair of braces. [Redis Cluster hash-tag rules](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/#hash-tags).
 - **Multi-key locality:** Multi-key commands, transactions, and scripts that access multiple keys require those keys to share a slot. Co-locating related keys supports these operations, but concentrates their load on the same partition.
+    - Hash tags guarantee that related keys share a slot, but are not required: keys without matching tags can also hash to the same slot.
 - **Database namespace:** Cluster supports only database `0`; `SELECT` is not allowed. Numbered logical databases are not independent distributed databases. [Redis Cluster specification](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/).
 
 ### Slot migration and client routing
