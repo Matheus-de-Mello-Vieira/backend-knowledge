@@ -44,7 +44,7 @@ awk -F',' '
 ' countries.csv | redis-cli --pipe
 ```
 
-The generated commands reach `redis-cli` through standard input. The CLI parses them into [RESP](12%20Redis%20Serialization%20Protocol.md) and sends them to Redis in a continuous pipeline rather than waiting for each command's round trip before sending the next. This removes interactive work and reduces network round trips while keeping the import readable, reproducible, and easy to automate. For most bulk imports, it provides high throughput without the complexity of constructing protocol frames directly.
+The generated commands reach `redis-cli` through standard input. The CLI parses them into [RESP](Redis%20Serialization%20Protocol.md) and sends them to Redis in a continuous pipeline rather than waiting for each command's round trip before sending the next. This removes interactive work and reduces network round trips while keeping the import readable, reproducible, and easy to automate. For most bulk imports, it provides high throughput without the complexity of constructing protocol frames directly.
 
 ## Generating RESP directly
 

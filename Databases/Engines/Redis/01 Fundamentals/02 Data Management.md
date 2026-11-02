@@ -201,7 +201,7 @@ The second pattern selects the `group` keys within the `user:` prefix.
 
 ## Saving the Dataset
 
-`SAVE` and `BGSAVE` create [RDB snapshots](13%20Persistence.md#RDB%20Snapshots). The distinction is where snapshot work occurs:
+`SAVE` and `BGSAVE` create [RDB snapshots](../05%20Architecture%20and%20Reliability/Persistence.md#RDB%20Snapshots). The distinction is where snapshot work occurs:
 
 - **`SAVE`:** Writes the snapshot synchronously and stops processing commands from all clients until it finishes.
 - **`BGSAVE`:** Forks a child to write the snapshot while the parent serves clients. Client processing still pauses while the child is created; the snapshot writing itself runs in the background.
@@ -213,7 +213,7 @@ redis> BGSAVE
 
 When AOF is enabled, Redis flushes it during shutdown. The `SHUTDOWN` save option separately controls an RDB snapshot:
 
-- **`SHUTDOWN`:** Saves an RDB synchronously when at least one [save point](13%20Persistence.md#Save-Point%20Configuration) is configured; otherwise, it creates no RDB snapshot.
+- **`SHUTDOWN`:** Saves an RDB synchronously when at least one [save point](../05%20Architecture%20and%20Reliability/Persistence.md#Save-Point%20Configuration) is configured; otherwise, it creates no RDB snapshot.
 - **`SHUTDOWN SAVE`:** Forces a synchronous RDB snapshot even without save points.
 - **`SHUTDOWN NOSAVE`:** Skips the RDB snapshot even with save points.
 

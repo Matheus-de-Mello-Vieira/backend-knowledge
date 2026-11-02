@@ -1,6 +1,6 @@
 # Redis JSON
 
-Redis JSON stores JSON documents as a native Redis data type. Unlike a [JSON string](05%20Hashes.md#Hashes%2C%20Redis%20JSON%2C%20one%20JSON%20string%2C%20or%20separate%20string%20keys), which Redis treats as opaque bytes, a JSON value exposes its nested structure to server-side commands. Applications read or modify selected elements without retrieving and replacing the entire document. [Redis JSON](https://redis.io/docs/latest/develop/data-types/json/)
+Redis JSON stores JSON documents as a native Redis data type. Unlike a [JSON string](Hashes.md#Hashes%2C%20Redis%20JSON%2C%20one%20JSON%20string%2C%20or%20separate%20string%20keys), which Redis treats as opaque bytes, a JSON value exposes its nested structure to server-side commands. Applications read or modify selected elements without retrieving and replacing the entire document. [Redis JSON](https://redis.io/docs/latest/develop/data-types/json/)
 
 ## Document representation and operations
 

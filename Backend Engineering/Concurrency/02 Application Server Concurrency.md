@@ -134,7 +134,7 @@ Features:
 <!-- -->
 
 > [!example] Redis Network I/O Workers
-> With `io-threads` greater than one, [Redis](../../Cache/Redis/Internals.md#Thread%20topology) accepts connections on its main thread and assigns eligible clients to network I/O workers for reads, parsing, and reply writes. The same main thread executes ordinary commands against the dataset: distributing connection I/O does not imply parallel command execution. With `io-threads=1`, main performs both roles.
+> With `io-threads` greater than one, [Redis](../../Databases/Engines/Redis/05%20Architecture%20and%20Reliability/Internals.md#Thread%20topology) accepts connections on its main thread and assigns eligible clients to network I/O workers for reads, parsing, and reply writes. The same main thread executes ordinary commands against the dataset: distributing connection I/O does not imply parallel command execution. With `io-threads=1`, main performs both roles.
 
 ### Multiple Workers, Single Shared Listening Socket
 
