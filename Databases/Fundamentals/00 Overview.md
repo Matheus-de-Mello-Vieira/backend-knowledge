@@ -56,7 +56,7 @@ The durability contract has explicit limits:
 
 ### Torn Pages
 
-A database page can be larger than the storage system's guaranteed crash-atomic write unit. Suppose an engine uses an 8 KiB database page while the underlying storage can guarantee atomic persistence only for smaller units. Persisting the database page may then require multiple lower-level writes.
+A [database page](../Internals/01%20Tables%2C%20Pages%2C%20and%20Indexes.md#Pages) can be larger than the storage system's guaranteed crash-atomic write unit. Suppose an engine uses an 8 KiB database page while the underlying storage can guarantee atomic persistence only for smaller units. Persisting the database page may then require multiple lower-level writes.
 
 If power is lost after some of those writes reach persistent storage but before the rest do, the page can contain a mixture of the old and new versions. This is called a **torn page** or **torn write**.
 

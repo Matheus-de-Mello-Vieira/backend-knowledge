@@ -92,6 +92,15 @@ Initially, 10 orders satisfy `status = 'pending'`.
 
 The newly returned row is a **phantom**. A non-repeatable read concerns a previously selected row changing value; a phantom read concerns the **membership of a result set** changing.
 
+> [!example] A phantom does not require a range predicate
+> Suppose a transaction runs one of these queries, another transaction commits a matching insert, and the first transaction repeats the query under isolation that permits phantoms:
+>
+> - `SELECT * FROM employees WHERE id = 1000`: If the first result is empty, inserting employee `1000` makes the second result contain a row.
+> - `SELECT * FROM employees WHERE date_joined < '2021-01-01'`: Inserting an employee whose joining date satisfies the predicate adds a row to the result.
+> - `SELECT * FROM employees`: Inserting any employee adds a row to the result.
+>
+> All three queries can exhibit a phantom read. The defining change is result-set membership, not whether the query uses equality, a range, or no `WHERE` clause.
+
 ### Lost Update
 
 A **lost update** occurs when two transactions read the same old state, independently compute updates, and one write overwrites the effect of the other.
@@ -165,6 +174,12 @@ An **isolation level** defines which kinds of concurrent observations a transact
 
 - **Implementation differences:** These are conceptual guarantees; a database's documentation determines its exact semantics. Repeatable Read differs particularly in phantom protection and write-conflict handling: some engines use snapshot-based semantics, while others combine locks and range protection. The name `REPEATABLE READ` alone does not establish identical behavior across engines.
 - **Serializable execution:** Serializability does not require locking every transaction from beginning to end or executing transactions one at a time. An optimistic implementation allows overlap and aborts a transaction when conflict detection determines that the history cannot be serialized safely. Applications must be prepared to **retry transactions that fail because of serialization conflicts**.
+
+> [!note] Repeatable Read in PostgreSQL and MySQL InnoDB
+> Both implementations prevent the [phantom-read example](#Phantom%20Read) when a transaction repeats an ordinary `SELECT`: concurrent committed inserts do not refresh its read view. This exceeds the SQL standard's minimum Repeatable Read guarantee, which permits phantoms.
+>
+> - **PostgreSQL:** [The first query or data-modification statement establishes a transaction-wide snapshot](../Engines/PostgreSQL.md#Snapshot%20Visibility%20Across%20Statements). Repeatable Read still permits serialization anomalies such as write skew; an attempt to modify or lock a row changed by a concurrent committed transaction can instead fail, requiring a retry of the whole transaction. [PostgreSQL isolation documentation](https://www.postgresql.org/docs/18/transaction-iso.html).
+> - **MySQL InnoDB:** The first consistent, nonlocking read establishes the snapshot reused by later ordinary `SELECT`s. Locking reads (`SELECT ... FOR UPDATE` or `FOR SHARE`), `UPDATE`, and `DELETE` use more current state rather than that snapshot; applicable range searches use gap or next-key locks to block matching inserts. Mixing locking statements with ordinary reads can therefore expose different views within one transaction, even though repeated ordinary reads remain stable. [MySQL InnoDB isolation documentation](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html).
 
 ## Snapshot Isolation
 
