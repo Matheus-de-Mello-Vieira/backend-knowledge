@@ -21,12 +21,14 @@ A **primary key** identifies a logical row through values defined in the table s
 
 ## Pages
 
-A **page** is a fixed-size unit of database storage and buffer management. In a row store, a data page holds row records; a column store groups values by column, so its pages need not contain complete rows.
+A **page** is a fixed-size unit of storage and buffer management in a page-oriented database engine. Row-store data pages hold row records; index pages hold index entries. The page is an engine-level unit, not the same thing as a storage device's logical block, and one page request does not necessarily correspond to one physical I/O.
+
+Not every database format uses pages as its universal read unit. Column-oriented formats group values by column in pages, compressed blocks, or larger segments, depending on the implementation. Even when a format defines pages, a scan may read several together. The amount transferred depends on the format and access path rather than on the word *page* alone.
 
 Page size depends on the engine and its configuration. PostgreSQL commonly uses 8 KiB pages, while InnoDB defaults to 16 KiB pages.
 
 > [!example]
-> If each page held exactly three rows, 1,001 rows would require at least $\lceil 1001 / 3 \rceil = 334$ pages. Actual capacity also depends on row sizes and page overhead.
+> In a page-oriented row store, if each data page held exactly three rows, 1,001 rows would require at least $\lceil 1001 / 3 \rceil = 334$ data pages. Actual capacity also depends on row sizes and page overhead.
 
 ## Heap-organized tables
 
@@ -52,3 +54,60 @@ A **clustered index** stores the table rows in its leaf pages according to the i
 For page-oriented row storage, fetching a row not already in memory requires its containing page rather than an isolated row. Other rows on that page arrive with the same read, and a request may span multiple pages. The number of rows returned therefore does not directly determine the number of page reads.
 
 A request for a database page is not necessarily a physical storage read: the page may already be in a database buffer pool, or a file read may be satisfied by the operating system's [page cache](../../Operating%20Systems/06%20Storage%20Management.md#Caching). Avoiding physical reads depends on cache hits as well as on how many pages the query needs.
+
+## Row-based vs column based databases
+
+**Row-oriented** and **column-oriented** storage group the same logical table values differently. A row layout groups a record's attributes; a column layout groups one attribute's values across rows. This determines which values a read brings together and which values must be gathered separately.
+
+### Physical layout and row reconstruction
+
+- **Row-oriented storage:** A [data page](#Pages) holds records from multiple rows. Reading it brings those records' stored attributes together, including attributes the query does not use. Large values may be stored separately, depending on the engine.
+- **Column-oriented storage:** A page or compressed block holds values of one column across many rows. Accessing another column means accessing its own storage rather than finding it beside the first value.
+
+Column storage preserves the association between a row's separated values through corresponding positions or identifiers. Gathering the requested values for a row is **row reconstruction**.
+
+### Query shape and the layout trade-off
+
+A **projection** is the set of columns a query returns. Filters, joins, and aggregates can require additional columns that do not appear in that result.
+
+- **Few columns across many rows:** Column storage reads the relevant columns without carrying unrelated attributes through the scan. A row-store table scan reads pages containing those attributes too, though it need not interpret or return them. This makes column layout favorable for narrow scans because more relevant values fit in each page or block and fewer bytes need to be read under comparable storage and cache conditions.
+- **Many columns from a few rows:** Once a row is located, row storage has its stored attributes together. Column storage accesses the requested values across multiple column structures and reconstructs the row. The amount of work varies with the requested columns and rows, physical organization, and caching.
+
+### Scans and search access paths
+
+Layout controls grouping; an **access path** controls how matching values are found. Without a usable index, ordering, or pruning mechanism, either layout scans candidate data to evaluate a predicate.
+
+- **Row-store scan:** Examines row-storage pages. Each matching record already carries its stored attributes, while the pages also bring along attributes the query does not need.
+- **Column-store scan:** Examines predicate columns to identify matching row positions or identifiers, then accesses other requested columns for those matches. It avoids unrelated columns even when it must scan the predicate column.
+
+Indexes and pruning structures reduce the data examined in either layout. A row-store query satisfied entirely from an index avoids table-record reads; a column store may likewise use a search or pruning structure instead of scanning all column data. The chosen access path, storage organization, and cache contents determine actual reads.
+
+### Compression
+
+Values grouped by column share a type and may repeat or resemble one another, giving column-specific encodings useful input. Compression reduces stored and transferred bytes but adds encoding or decoding work; supported operations in some column engines run on encoded values. Its benefit depends on the values, their order, and the encoding. Row storage also supports compression, but grouping by column creates different encoding opportunities.
+
+### Inserts, updates, and deletes
+
+A logical row change must remain consistent across its stored values. Row layout groups those values in a record; column layout represents them across the affected column structures. The engine's versioning, compression, and write path determine when physical maintenance occurs.
+
+- **Inserts:** Row storage adds a record. Column storage represents the new values in the affected columns. Batching spreads that work across rows, and a write-optimized area can defer integration into compressed column structures.
+- **Updates:** Maintenance depends on the changed attributes and their storage representation. Compressed or sorted column data may need additional work; an engine can instead manage versions or defer reorganization. Row storage does not require updating the old record in place either.
+- **Deletes:** The row's values become invisible together. A column store can mark a row deleted and reclaim its column values during later cleanup, separating immediate delete work from reclamation work.
+
+### Workload tendencies and mixed layouts
+
+The grouping trade-off explains common workload fits:
+
+- **Online transaction processing (OLTP):** Short transactions that locate a few rows and read or change several attributes benefit from row layout.
+- **Online analytical processing (OLAP):** Scans, filters, and aggregations over many rows but a subset of columns benefit from selective column access and compression.
+
+These are workload tendencies, not restrictions: row stores execute analytics, and column stores support transactions. Mixed workloads motivate hybrid designs that combine layouts or separate write-optimized from read-optimized storage. Access paths, columns touched, selectivity, and change patterns matter alongside layout.
+
+> [!example] Query shape and storage layout
+> For `SELECT first_name FROM emp WHERE ssn = 666`, a row-store table scan reads row pages. A column-store scan reads `ssn` and gathers `first_name` for matching row positions, leaving unrelated columns aside.
+>
+> `SELECT * FROM emp WHERE id = 1` requires both layouts to find a match. The row store then has its stored attributes together; the column store gathers them from separate representations.
+>
+> `SELECT SUM(salary) FROM emp` processes the applicable salary values. Column storage reads the salary representation alone, while a row-store table scan reads pages containing other attributes as well.
+>
+> A suitable index changes the access path, including by supplying required values without fetching table records when an index-only plan is available.
