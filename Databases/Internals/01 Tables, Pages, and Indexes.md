@@ -94,14 +94,14 @@ A logical row change must remain consistent across its stored values. Row layout
 - **Updates:** Maintenance depends on the changed attributes and their storage representation. Compressed or sorted column data may need additional work; an engine can instead manage versions or defer reorganization. Row storage does not require updating the old record in place either.
 - **Deletes:** The row's values become invisible together. A column store can mark a row deleted and reclaim its column values during later cleanup, separating immediate delete work from reclamation work.
 
-### Workload tendencies and mixed layouts
+### Workload tendencies
 
 The grouping trade-off explains common workload fits:
 
 - **Online transaction processing (OLTP):** Short transactions that locate a few rows and read or change several attributes benefit from row layout.
 - **Online analytical processing (OLAP):** Scans, filters, and aggregations over many rows but a subset of columns benefit from selective column access and compression.
 
-These are workload tendencies, not restrictions: row stores execute analytics, and column stores support transactions. Mixed workloads motivate hybrid designs that combine layouts or separate write-optimized from read-optimized storage. Access paths, columns touched, selectivity, and change patterns matter alongside layout.
+These are workload tendencies, not restrictions: row stores execute analytics, and column stores support transactions. Access paths, columns touched, selectivity, and change patterns matter alongside layout.
 
 > [!example] Query shape and storage layout
 > For `SELECT first_name FROM emp WHERE ssn = 666`, a row-store table scan reads row pages. A column-store scan reads `ssn` and gathers `first_name` for matching row positions, leaving unrelated columns aside.
@@ -111,3 +111,17 @@ These are workload tendencies, not restrictions: row stores execute analytics, a
 > `SELECT SUM(salary) FROM emp` processes the applicable salary values. Column storage reads the salary representation alone, while a row-store table scan reads pages containing other attributes as well.
 >
 > A suitable index changes the access path, including by supplying required values without fetching table records when an index-only plan is available.
+
+### Mixed row and column storage
+
+Storage layout is a physical choice, not a property that every table in a database must share. Mixed workloads motivate several designs. If an engine supports choosing a layout per table, the same database can contain row-oriented and column-oriented tables. Other mixed designs combine layouts without making that per-table choice:
+
+- **Different layouts for different tables:** Each table has one primary layout, chosen for the queries and changes expected on that table.
+- **Multiple representations of the same data:** A system maintains row- and column-oriented representations so different queries can use different read paths. Keeping them synchronized adds storage and write-maintenance work; the visibility of recent changes depends on the engine's design.
+- **Hybrid storage within a table:** An engine combines layouts or separates write-optimized storage from read-optimized column storage. Its write path determines when and how data moves between representations.
+
+These designs preserve the logical meaning of a row but change how the engine retrieves and maintains its values. Their consequences differ:
+
+- **Per-table access costs:** A query may scan a narrow column representation in one table and fetch complete records from a row representation in another. Filters, indexes, pruning, and cache state still determine the work performed.
+- **Cross-table operations:** Where the engine supports joins across differently stored tables, their cost depends on the chosen plan and on how each input is read. The presence of both layouts alone does not make a mixed query fast.
+- **Write and consistency costs:** Updating a table stored once follows that table's write path. Maintaining two representations of the same data adds coordination; transaction and freshness guarantees depend on the engine rather than following from the layouts alone.
