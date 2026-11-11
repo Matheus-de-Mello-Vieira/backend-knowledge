@@ -1,16 +1,6 @@
 # Tables, Pages, and Indexes
 
-## Relational terminology
-
-In the relational model, a **relation** is a set of **tuples** described by a **relation schema**. The schema defines the attributes; each tuple assigns a value to every attribute.
-
-- **Attribute:** A named component of the schema, corresponds to a table column. Its **domain** specifies the values it can take.
-- **Tuple:** One combination of attribute values in the relation, corresponds to a table row.
-- **Relation value:** The set of tuples that belong to the relation at a particular time. As a set, it has no duplicate tuples or inherent row order.
-
-## Relation and table
-
-A **table** is the SQL database object that organizes data into columns and rows. It resembles a relation, but the terms are not interchangeable: a relation is a mathematical set of tuples, whereas a SQL table permits duplicate rows unless constraints prevent them. SQL also supports `NULL` in nullable columns, while a tuple in the classical relational model assigns a value from each attribute's domain. Neither a relation nor a SQL table guarantees an order for its tuples or rows; a query needs `ORDER BY` to specify result order.
+A [SQL table](../Fundamentals/04%20Relational%20Model.md#Relations%20and%20SQL%20Tables) organizes logical data into columns and rows. Its storage layout determines how those values are arranged in pages and reached through indexes; the logical table does not prescribe that layout.
 
 ## Logical keys and internal row identifiers
 
@@ -30,6 +20,24 @@ Page size depends on the engine and its configuration. PostgreSQL commonly uses 
 > [!example]
 > In a page-oriented row store, if each data page held exactly three rows, 1,001 rows would require at least $\lceil 1001 / 3 \rceil = 334$ data pages. Actual capacity also depends on row sizes and page overhead.
 
+### Page-size trade-offs
+
+Page size determines how much data travels and occupies cache space together. Its benefit depends on how much of that data the workload uses:
+
+- **Smaller pages:** Bring fewer unrelated bytes into memory for scattered, small accesses, but repeat fixed per-page metadata across more pages for the same amount of data.
+- **Larger pages:** Amortize fixed page-header overhead across more data and bring more nearby records together. When those records are not needed, the extra bytes consume transfer bandwidth and cache capacity without helping the request.
+
+Neither size is universally faster: access locality, cache contents, storage behavior, and the engine's supported page sizes constrain the trade-off. Larger pages offer more capacity, but do not prevent index-page splits; whether an insertion fits still depends on entry sizes and the space remaining in its target page.
+
+### Page addresses within files
+
+One storage model lays out fixed-size pages consecutively from the start of a file. In that model, the byte offset of a page is $p \times S$, where $p$ is its zero-based page index within that file and $S$ is the page size in bytes. Reading one page requests $S$ bytes at that offset.
+
+> [!example]
+> With $S = 8192$ bytes, page $p = 2$ starts at byte offset $2 \times 8192 = 16384$. Pages 2 through 9 span eight pages, or $8 \times 8192 = 65536$ bytes.
+
+The page index alone does not identify the containing file or segment. The engine must resolve that identity before applying the file-local offset; a table need not correspond to one file. A file-relative address is also distinct from the physical storage location: consecutive byte offsets do not guarantee adjacent physical disk blocks. Other storage layouts require their own mapping rather than this simple multiplication.
+
 ## Heap-organized tables
 
 A **heap-organized table** stores rows in available space across its data pages rather than maintaining them in an index's key order. Inserts use available locations; updates and deletes can make locations reusable, subject to the engine's cleanup rules. Rows with nearby key values can therefore occupy different pages. Because indexes are separate structures that locate rows in those pages, following nearby index entries can require scattered heap-page reads rather than sequential reads.
@@ -42,9 +50,24 @@ An **index** organizes selected values from one or more table columns into a sea
 
 An index lookup reads index pages to find matching entries, then fetches table data when the index does not contain everything the query needs. Some queries can be answered from the index without a table-data fetch. Index pages can themselves require I/O when absent from memory; a smaller index is more likely to fit in cache and avoid those reads. B-tree-family structures are a common way to organize index entries.
 
+### Index search keys and primary keys
+
+An **index search key** is the column or combination of columns used to search an index. A **secondary index key** provides a search path by values other than the primary key. It need not be unique; a unique secondary index enforces uniqueness separately. Here, *secondary key* describes an index's search values, not a second primary-key constraint.
+
+These key roles do not determine storage layout. A primary-key index is not necessarily clustered, and a clustered index does not necessarily use the declared primary key. The physical distinction is whether the index's leaf pages contain the table rows or entries that locate rows stored elsewhere.
+
 ### Clustered and secondary indexes
 
-A **clustered index** stores the table rows in its leaf pages according to the index key, instead of keeping the table in a separate heap. Some systems call a table stored this way an **index-organized table**. A **secondary index** is separate from the table data and uses a locator to reach a matching row. A primary key defines logical identity; whether its index is clustered depends on the database engine.
+A **clustered index** stores table rows in its leaf pages in index-key order instead of keeping them in a separate heap. Some systems call a table stored this way an **index-organized table**. A **secondary index** is separate from the table data: its entries pair search-key values with a way to locate matching rows. The same table therefore has only one clustered row order but can have indexes on other search keys.
+
+For a B-tree-based clustered index, keeping rows in key order does not require every page to be full. When a row is inserted, the engine finds the leaf page for its key and places the row among that page's entries if space remains. If it does not fit, the engine splits or otherwise reorganizes pages and updates the index structure so the key ranges remain ordered.
+
+Free space arises in different ways:
+
+- **Page splits:** A split can leave the resulting pages partly filled.
+- **Reserved space:** Some engines leave room in pages in advance to accommodate later inserts.
+
+Neither means that pages are always half-empty. Free space reduces some immediate splits but uses more pages for the same rows, increasing storage and potentially the pages a range scan must read. Key order describes the index's traversal order, not a guarantee that neighboring leaf pages occupy adjacent physical disk blocks.
 
 - **InnoDB:** Every table has a clustered index. It uses a declared primary key when one exists, otherwise the first suitable `UNIQUE` index with only `NOT NULL` columns, and otherwise a hidden generated row ID. Each secondary-index entry carries the clustered key value—normally the primary-key value—which InnoDB uses to find the row in the clustered index.
 - **PostgreSQL:** Table rows reside in a heap, and all indexes are secondary, including the primary-key index. Row-locating indexes use tuple identifiers (`tid`) to identify heap locations; the system column `ctid` exposes the location of a row version. Not every index stores a locator for each row: a BRIN index, for example, summarizes ranges of heap pages.

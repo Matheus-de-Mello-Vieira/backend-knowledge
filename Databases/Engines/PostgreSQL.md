@@ -94,6 +94,29 @@ PostgreSQL ultimately stores relations and other persistent structures in ordina
 
 Creating a new database object can eventually require PostgreSQL to create a corresponding filesystem object. PostgreSQL must distinguish between successfully creating the intended new file and accidentally opening an unrelated file that already occupies the pathname. On POSIX-like systems, creation paths can therefore use the same [`O_CREAT | O_EXCL`](../../Operating%20Systems/06%20Storage%20Management.md#File%20Creation) pattern described by `open()`.
 
+## Heap Page Layout and HOT Updates
+
+PostgreSQL's heap table access method stores physical row versions (tuples) in pages with these regions:
+
+- **Page header:** A 24-byte `PageHeaderData` structure holds page metadata, including free-space boundaries.
+- **Line pointers:** Each 4-byte `ItemIdData` entry records a tuple's byte offset, length, and state bits.
+- **Free space:** The gap between the line-pointer array and tuple data. New pointers grow into it from the front; tuple storage grows backward from the other end.
+- **Tuple items:** The physical row versions, whose lengths vary with their contents.
+- **Special space:** Access-method-specific data; empty on ordinary heap pages. Index methods use it differently—for example, B-tree pages store sibling links here. It is not restricted to B-tree leaf pages.
+
+A [tuple identifier](../Internals/01%20Tables%2C%20Pages%2C%20and%20Indexes.md#Logical%20keys%20and%20internal%20row%20identifiers), or **CTID**, combines the page number with a line-pointer index, not a tuple byte offset. Compaction moves tuple bytes and adjusts their line pointers without changing those indexes. This stability lasts until the pointer is freed; it does not make CTID a permanent logical row identity. [PostgreSQL page layout](https://www.postgresql.org/docs/current/storage-page-layout.html).
+
+An update creates another heap tuple version with a new tuple identifier. Ordinarily, PostgreSQL adds entries to the table's indexes that locate this new version—even where the indexed values did not change—because an index entry identifies a physical tuple version, not a logical row. Entries for old versions remain until those versions can be reclaimed. **Heap-only tuples (HOT)** avoid this index maintenance.
+
+The optimization applies when both conditions hold:
+
+- The new version fits on the old version's page.
+- The update leaves columns referenced by non-summarizing indexes unchanged. Summarizing indexes, such as BRIN, are exempt, but their summaries may still require updates.
+
+HOT links versions into a same-page chain while index entries retain the original version's line-pointer reference. It does **not** simply overwrite that pointer to address the new tuple at update time: older versions remain available to transactions that still need them.
+
+During pruning, PostgreSQL removes versions no transaction needs. After removing the original tuple's data, its line pointer becomes a redirect to the oldest version that might still be visible. Obsolete intermediate versions and their pointers are reclaimed. This preserves index access while shortening the chain, without requiring a separate VACUUM for every such cleanup. [PostgreSQL HOT documentation](https://www.postgresql.org/docs/current/storage-hot.html).
+
 ## Transactions and Concurrency
 
 PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **[Multi-Version Concurrency Control (MVCC)](../Fundamentals/02%20Transaction%20Isolation.md#Multi-Version%20Concurrency%20Control)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.

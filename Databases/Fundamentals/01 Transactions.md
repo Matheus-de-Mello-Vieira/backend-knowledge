@@ -32,14 +32,14 @@ An **invariant** is a rule that defines a valid database state and must remain t
 
 Validity rules differ in how they are enforced:
 
-- **Database-enforced constraints:** The database rejects changes that violate declared constraints, such as duplicate primary keys or invalid foreign-key references.
+- **Database-enforced constraints:** The database rejects changes that violate [declared constraints](04%20Relational%20Model.md#Keys%20and%20Referential%20Integrity), such as duplicate primary keys or invalid foreign-key references.
 - **Application-maintained rules:** Transaction logic must preserve rules that are not enforced by database constraints, such as agreement between a stored total and the detail records it summarizes.
 
 For pictures and their likes, keys express identity and valid references:
 
-- **Primary key:** A column or set of columns that uniquely identifies each row; primary-key values are not null. A picture's `id` identifies that picture.
-- **Composite primary key:** A primary key made of multiple columns whose combined values are unique. In the likes records, `(user, picture_id)` identifies a unique like, allowing at most one like from a given user for a given picture.
-- **Foreign key:** A constraint requiring a reference to match an existing referenced key. A like's `picture_id` references the picture's `id`, so the referenced picture must exist. This relationship enforces **referential integrity**.
+- **Picture identity:** The primary key `id` identifies each picture.
+- **Like uniqueness:** The composite primary key `(user, picture_id)` allows at most one like from a given user for a given picture.
+- **Referential integrity:** The foreign key from a like's `picture_id` to the picture's `id` requires the referenced picture to exist.
 
 If the application requires a picture's stored likes count to equal the number of its like records, that agreement is another invariant. A foreign key checks whether a referenced picture exists, not whether its stored count matches those records.
 
