@@ -9,7 +9,7 @@ Consider an order workflow that must:
 3. charge the customer;
 4. arrange delivery.
 
-Each step may be individually transactional inside its own service, but the complete workflow cannot usually be protected by one local [transaction isolation](../../Databases/02%20Transaction%20Isolation.md) boundary. Between those local commits, other actors can observe and modify the same business state.
+Each step may be individually transactional inside its own service, but the complete workflow cannot usually be protected by one local [transaction isolation](../../Databases/Fundamentals/02%20Transaction%20Isolation.md) boundary. Between those local commits, other actors can observe and modify the same business state.
 
 Distributed concurrency is therefore concerned with preserving **business invariants across independently executing and independently failing components**.
 
@@ -44,7 +44,7 @@ Two order workflows try to reserve the last unit.
 
 The inventory service can protect its own invariant atomically, for example through [pessimistic or optimistic concurrency control](01%20Concurrency%20Fundamentals.md#Concurrency%20Control%20Strategies). The order service does not need direct access to the inventory database to obtain that protection.
 
-However, that local atomicity does not make the entire order workflow atomic. Workflow A may successfully reserve inventory and then fail before payment succeeds. The system now contains an intentionally intermediate state that must eventually be completed or reversed.
+However, that local atomicity does not create an atomic [distributed transaction](../../Databases/Fundamentals/06%20Distributed%20Transactions.md). Workflow A may successfully reserve inventory and then fail before payment succeeds. The system now contains an intentionally intermediate state that must eventually be completed or reversed.
 
 This is the central distinction:
 
@@ -75,6 +75,27 @@ cancel delivery
 ```
 
 A compensation is not a database rollback. The original transaction already committed and may already have been observed by other actors. Compensation is a **new business operation** that attempts to counteract the earlier effect.
+
+### Orchestration and Choreography
+
+Saga coordination determines who chooses the next action and remembers progress. Neither coordination style makes the independently committed steps atomic or isolated.
+
+- **Orchestration:** A controller tracks the workflow state and sends commands to participants. Explicit transitions simplify complex branching and recovery, but the controller requires durable state and recovery infrastructure; keeping it only in one process makes a crash lose progress.
+- **Choreography:** Participants react to events and publish events that trigger subsequent work. This avoids a central controller, but the end-to-end flow is implicit across handlers, making dependencies, cycles, and failure tracking harder as the workflow grows.
+
+Both approaches require correlation identifiers, reliable message publication, and duplicate-safe handlers. [Saga coordination approaches](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga) change where coordination runs, not whether recovery is necessary.
+
+### Durable Progress and Crash Recovery
+
+An in-memory sequence of remote calls is not sufficient: the process can disappear after a participant commits but before the workflow records success. Recovery must retain enough evidence to distinguish completed, pending, and unresolved steps.
+
+- **Workflow identity:** A stable Saga identifier correlates commands, responses, and compensation with the same business operation.
+- **Step history:** Durable records retain completed steps, their results, and the information needed to compensate them.
+- **Recovery progress:** The current forward or compensation position survives crashes, so recovery resumes unfinished work instead of restarting every side effect.
+
+Recording an outgoing command alongside a workflow transition through an outbox closes the local state/publication gap. It does not close the remote execution/response gap: after restart, an unanswered command still requires a duplicate-safe retry or an outcome query. A partition leaves that step unresolved until communication recovers or an explicit business recovery policy applies.
+
+Progress is conditional on recovery: repeated retries do not guarantee completion when a participant remains unavailable or an operation cannot succeed. Failed compensation needs durable tracking and escalation rather than a false terminal success. [Compensation recovery](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction) therefore preserves progress and supports retries or manual intervention.
 
 ### Intermediate State Is Real State
 
@@ -117,9 +138,23 @@ Some effects may not be perfectly reversible at all. An email cannot be "unsent"
 
 For that reason, Saga design should distinguish:
 
-- **reversible operations**, where a meaningful compensating action exists;
-- **retriable operations**, where failure can be resolved by trying again;
-- **irreversible operations**, which should often be delayed until the workflow has reached a point where executing them is acceptable.
+- **Compensable operations:** A meaningful business correction exists, even if it does not restore the exact original state.
+- **Retriable operations:** Repeating the same logical operation safely makes progress when the underlying failure is transient.
+- **Irreversible operations:** No adequate correction exists; delay them until the required validations and reservations have succeeded.
+
+### Forward Recovery, Backward Recovery, and the Pivot
+
+Recovery has two directions:
+
+- **Backward recovery:** Compensate completed steps when the business operation should be abandoned. The original sequential Saga model compensates in reverse order; a business workflow with independent corrections can use another order when its dependencies permit it.
+- **Forward recovery:** Retry or otherwise complete the remaining work when fulfilling the operation remains the valid business outcome.
+
+The **pivot** is the point of no return in a workflow designed around this distinction. Before it, failure leads to compensation of the completed prefix; after it succeeds, remaining steps must be completed through forward recovery. An irreversible action therefore requires a credible completion path, not merely a retry loop. [Saga pivot and retryable steps](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga) make this boundary explicit.
+
+> [!warning] Compensation races with ordinary work
+> Compensation must target its own effect, not restore an old snapshot over concurrent changes. Release reservation `R` rather than reset available inventory to the quantity observed before `R`. A delayed successful reservation can also arrive after cancellation began: participants need state transitions that reject or reconcile that late completion. Neither a timeout nor sending a compensation proves that the original action stopped.
+
+The original [Sagas model](https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf) permits interleaving and uses semantic compensation rather than restoring a pre-Saga database image. Applications must choose a Saga only when intermediate visibility and the remaining consequences of irreversible effects are acceptable; strict all-or-nothing visibility requires a different transactional boundary.
 
 ## Concurrent Sagas
 
@@ -155,13 +190,15 @@ WHERE id = 123
 
 Only one workflow can change the expected state from `available` to `reserved`. The other observes that zero rows were modified and must react to the conflict.
 
+Protecting a single reservation does not isolate the complete Saga. Another Saga can act on a committed intermediate value, or change a value between two steps. Compensation does not automatically undo decisions made by those other workflows. Immediate invariants must therefore be protected where the authoritative state changes, rather than checked once at the start of the Saga.
+
 Distributed architecture therefore does not remove local concurrency control. Instead, **each service protects the invariants it owns locally, while the workflow coordinates the consequences across services**.
 
 ## Semantic Locks
 
 Sometimes an intermediate business state can act as a **semantic lock**.
 
-A database mutex says that another transaction cannot access some protected state. A semantic lock expresses the restriction through domain state that other workflows understand.
+A database lock restricts conflicting access according to its lock mode. A semantic lock expresses the restriction through domain state that other workflows understand.
 
 For example:
 
@@ -175,7 +212,26 @@ The state is visible rather than hidden behind a long-lived database lock. Other
 
 Semantic locks are useful for workflows that may take seconds, minutes, or longer because holding a database lock across network calls would create tight coupling and potentially severe contention.
 
+A semantic lock protects an invariant only when every conflicting operation checks the state and changes it atomically with its own update. Merely reading `PAYMENT_PENDING` before a later write leaves a race. The lock also needs a workflow or reservation identity so a delayed command cannot release another workflow's protection.
+
 However, semantic locks must have explicit recovery rules. If the workflow crashes while an entity remains `PAYMENT_PENDING`, the system needs a timeout, reconciliation process, or other recovery mechanism that can determine what should happen next.
+
+## Try-Confirm/Cancel
+
+**Try-Confirm/Cancel (TCC)** makes reservation an explicit participant contract rather than applying the final business effect immediately and compensating it later.
+
+1. **Try:** Validate the request and reserve the resources needed for completion, for example by changing a seat from `AVAILABLE` to `RESERVED`.
+2. **Resolve:** Choose one terminal outcome for the reservation:
+    - **Confirm:** Consume the reservation and finalize the effect, such as changing that seat to `SOLD`.
+    - **Cancel:** Release the reservation if the operation is abandoned, making the seat available again.
+
+Confirm and Cancel are alternative outcomes for the same reservation. The participant must serialize competing terminal transitions and recognize repeated commands using the reservation identity. [TCC reservation semantics](https://docs.oracle.com/en/database/oracle/transaction-manager-for-microservices/26.1/tmmdv/tcc-transaction-model.html) depend on application-defined resources and participant behavior.
+
+Compared with a Saga's general business compensation, TCC constrains participants to reserve first and then finalize or release. This reduces the need to reverse completed effects, but holds business capacity while the decision is pending and requires every participant to implement the reservation protocol. It suits resources with meaningful reservation semantics, such as inventory, seats, or authorized funds; it does not make arbitrary external effects reservable.
+
+- **Expiry:** A reservation timeout bounds how long abandoned work consumes capacity. Expiry and Confirm must compete through an atomic state transition; a late Confirm cannot assume an expired reservation still exists. Expiry policy must agree with the workflow's decision and recovery rules rather than silently release resources needed by an already chosen completion path.
+- **Outcome ambiguity:** A lost Confirm response does not prove confirmation failed. Query or retry the same reservation before deciding recovery; sending Cancel is not evidence that a concurrent Confirm was undone.
+- **Partial completion:** During a partition, some participants can remain reserved while others have finalized. Durable decision tracking and retries are still required. Reservation APIs alone provide neither universal atomic commit nor isolation across every participant.
 
 ## Failure Ambiguity
 
@@ -598,14 +654,14 @@ transaction:
 commit
 ```
 
-A separate publisher reads committed outbox records and sends them to the broker.
+A separate publisher reads committed outbox records and sends them to the broker. This [transactional outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html) couples publication intent to the local commit, not broker acceptance to that commit.
 
 The publisher may send an outbox message more than once if it crashes around acknowledgment, so downstream consumers must still tolerate duplicate delivery.
 
 The outbox does not create exactly-once execution across the whole distributed system. It transforms a difficult cross-system atomicity problem into:
 
 1. one local atomic database transaction;
-2. reliable eventual publication;
+2. eventual publication while the publisher keeps retrying and the broker becomes reachable;
 3. idempotent or deduplicated consumption.
 
 ## Inbox / Processed-Message Pattern
@@ -623,7 +679,7 @@ commit
 
 If the broker later redelivers the same message, insertion of the duplicate message ID fails or the existing record is found, and the business update is not repeated.
 
-This is application-level exactly-once **effect** for the protected local state even when the transport itself delivers at least once.
+This prevents duplicate application of the **effect** to the protected local state even when the transport delivers at least once. Eventual successful processing is still necessary for the effect to occur at all, and deduplication lasts only while the message identity remains recorded.
 
 The guarantee is only as broad as the atomic boundary. If one consumer action also calls an external service, that external side effect still needs its own idempotency or coordination mechanism.
 
@@ -700,4 +756,4 @@ The central design question is therefore:
 
 > **Which business invariants must hold immediately, which may be temporarily violated, and what mechanism eventually restores or confirms them?**
 
-Local [transaction isolation](../../Databases/02%20Transaction%20Isolation.md) remains essential inside each transactional boundary, but distributed correctness comes from deliberately coordinating the boundaries rather than pretending they form one transaction.
+Local [transaction isolation](../../Databases/Fundamentals/02%20Transaction%20Isolation.md) remains essential inside each transactional boundary, but distributed correctness comes from deliberately coordinating the boundaries rather than pretending they form one transaction.
