@@ -2,6 +2,15 @@
 
 Ethernet is the dominant Layer 2 technology used in wired LANs. It defines how devices format frames, identify local interfaces, and deliver traffic across the same local network segment.
 
+> [!info] Historical Curiosity — Origin of the Name Ethernet
+> The name **Ethernet** was coined by **Robert Metcalfe in 1973**, during its development at Xerox PARC. It refers to the *luminiferous ether*, a hypothetical medium that nineteenth-century physicists believed permeated space and carried electromagnetic waves, including light.
+>
+> The term *ether* (Greek *aithḗr*) has much older roots. In **Aristotle's cosmology**, aether was the fifth element, constituting the immutable celestial realm above the Moon. Unlike the later luminiferous ether, however, Aristotle's aether was not a universal medium permeating the terrestrial world.
+>
+> Metcalfe borrowed the nineteenth-century concept as an analogy for Ethernet's **shared communication medium**. In the original implementation, a coaxial cable carried electrical signals between connected computers, just as the hypothetical luminiferous ether was supposed to carry electromagnetic waves through space. The name deliberately avoided tying the networking architecture to a particular physical medium.
+>
+> Ironically, Ethernet takes its name from a physical hypothesis that had already been abandoned when the technology was invented.
+
 Ethernet cable categories ("Cat") classify the performance of twisted-pair cabling, not the internet connection itself. The supported link speed also depends on the Ethernet ports at both ends, cable length, and installation quality; these common capabilities assume a properly installed channel within its standard distance limits.
 
 | Category | Typical Ethernet capability | Distance context |
