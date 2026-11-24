@@ -215,7 +215,41 @@ postgres=# EXPLAIN SELECT * FROM grades ORDER BY name;
 (5 rows)
 ```
 
-Here, `Parallel Seq Scan` divides table blocks among cooperating processes, each `Sort` orders its portion by `name`, and `Gather Merge` combines the sorted streams without losing that order. The child nodes estimate rows for a partial output; the top node estimates the combined output. `Workers Planned: 2` is a plan to request two background workers, not proof that both ran: plain `EXPLAIN` does not execute the query. Differences in table statistics and parallel-query settings can lead PostgreSQL to choose this plan instead of the serial scan and sort above. [PostgreSQL parallel plans](https://www.postgresql.org/docs/current/parallel-plans.html) and [parallel-query execution](https://www.postgresql.org/docs/current/how-parallel-query-works.html).
+Here, the client backend leads the parallel portion of the plan and may also execute it. Participating processes claim ranges of table blocks dynamically in `Parallel Seq Scan`, process their tuples, and sort their portions by `name`. The leader uses `Gather Merge` to combine the already-sorted streams in order rather than sorting the whole result itself. Even when reads limit the scan, distributing the sort across CPU cores can still speed up the full query.
+
+The child nodes estimate rows for a partial output; the top node estimates the combined output. `Workers Planned: 2` means the executor will request two background workers in addition to the leader, not proof that both ran: plain `EXPLAIN` does not execute the query. Differences in table statistics and parallel-query settings can lead PostgreSQL to choose this plan instead of the serial scan and sort above. [PostgreSQL parallel plans](https://www.postgresql.org/docs/18/parallel-plans.html) and [parallel-query execution](https://www.postgresql.org/docs/18/how-parallel-query-works.html).
+
+#### Tuple Processing and Result Consolidation
+
+Reading pages is only one part of a sequential scan. Query executors also check row-version visibility (MVCC), access tuple attributes, evaluate predicates, and compute expressions. Pages already in shared buffers require no file reads, so CPU and memory bandwidth can dominate a cached scan. Parallel execution distributes tuple processing across cores; its benefit depends in part on what each process must send back to the leader:
+
+- **Full result (`SELECT * FROM grades`):** Workers send every output tuple to the leader, which delivers the rows to the client. Interprocess transfer and the leader's work can limit scaling.
+- **Partial aggregation (`SELECT AVG(g) FROM grades`):** If the plan uses partial aggregation, each participant scans its portion and computes an intermediate aggregate state. The leader gathers the partial states and finalizes the result. Both examples can scan the whole table, but transferring partial states instead of rows makes the aggregate a better candidate for parallel execution when gathering would otherwise be expensive.
+
+#### Cost of a Parallel Scan
+
+In PostgreSQL 18, [`cost_seqscan()`](https://github.com/postgres/postgres/blob/REL_18_STABLE/src/backend/optimizer/path/costsize.c) divides the estimated CPU running cost by a parallelism factor but leaves the estimated disk cost unchanged. The implementation cites OS prefetching as a reason not to assume further disk savings. This is a planner assumption, not a prediction that parallel readers never improve actual I/O throughput.
+
+The planner weighs the estimated CPU savings against setup and result transfer. Relevant [cost constants](https://www.postgresql.org/docs/18/runtime-config-query.html#RUNTIME-CONFIG-QUERY-CONSTANTS) are:
+
+- **`seq_page_cost`:** Cost to fetch a page as part of sequential access.
+- **`cpu_tuple_cost`:** Cost to process a tuple.
+- **`cpu_operator_cost`:** Cost to execute an operator or function.
+- **`parallel_setup_cost`:** Cost to launch parallel workers.
+- **`parallel_tuple_cost`:** Cost to transfer a tuple between parallel processes.
+
+#### Latency and Resource Contention
+
+Parallel execution can lower one query's latency while leaving fewer resources for concurrent queries:
+
+- **CPU:** Extra runnable processes and coordination compete for CPU time. The latency gain for one query does not imply higher system throughput under load.
+- **Memory:** Each parallel worker can allocate its own `work_mem` for operations such as sorts.
+- **Storage:** More concurrent reads improve utilization if the device has spare capacity, but contend for bandwidth once it is saturated.
+
+> [!example] Eight CPU cores
+> With one runnable executor per CPU-bound query, eight queries could each occupy a core. With four executors per query and enough workers, two queries could instead occupy those same cores. This illustrates competition for CPU time, not fixed core assignments or a throughput prediction; the OS can schedule more runnable processes than there are cores.
+
+Under load, this trade-off matters for transaction-heavy OLTP workloads that prioritize concurrent transactions and for analytical OLAP workloads where reducing the latency of a few expensive queries can justify assigning each more resources.
 
 ## Process Architecture
 
@@ -247,6 +281,20 @@ flowchart TB
 Each backend has its own private address space as well as access to shared memory. Dashed arrows show process creation; solid arrows show client communication or access to shared state, not queries passing through the main server process.
 
 This process model has an important operational consequence: opening thousands of database connections means creating thousands of backend processes and associated per-connection state. Application-side connection pools are therefore commonly used to limit the number of active PostgreSQL sessions.
+
+### Client Backends and Parallel Workers
+
+A client backend receives SQL and returns results over its connection. For a parallel plan it becomes the **parallel group leader**, requesting additional background workers to execute the parallel part of the query. These workers do not borrow other clients' backends or occupy client connection slots. Dedicated I/O workers are another group: they perform file operations, not SQL execution.
+
+| Setting | PostgreSQL 18 default | Limit |
+| --- | ---: | --- |
+| `max_connections` | 100 | Concurrent client connections |
+| `max_worker_processes` | 8 | Background worker capacity |
+| `max_parallel_workers` | 8 | Workers available for parallel operations, within `max_worker_processes` |
+| `max_parallel_workers_per_gather` | 2 | Maximum workers requested per `Gather` or `Gather Merge`, excluding the leader |
+| `io_workers` | 3 | Size of the dedicated I/O worker pool in `worker` mode |
+
+For example, if one of three connected clients runs a parallel scan that launches two workers, there are three client connections and five processes across those sessions, excluding unrelated server processes. Likewise, 100 connections and eight parallel workers can coexist if both budgets permit it. When worker capacity is unavailable, a parallel plan launches fewer workers or runs without them; worker exhaustion does not by itself exhaust client connection slots. The sessions nevertheless compete for physical resources. [PostgreSQL connection settings](https://www.postgresql.org/docs/18/runtime-config-connection.html) and [resource limits](https://www.postgresql.org/docs/18/runtime-config-resource.html).
 
 ## Shared Buffers
 
@@ -298,6 +346,29 @@ The benefit of either method depends on cache hits, storage latency, available d
 
 > [!example] Scan performance in PostgreSQL 18
 > Tomas Vondra's benchmarks found `worker` faster than `io_uring` for sequential scans and, with enough workers, bitmap scans. He identifies distributing read-related CPU costs as a likely explanation, not a universal performance guarantee. [Benchmark and trade-off analysis](https://vondra.me/posts/tuning-aio-in-postgresql-18/)
+
+### Interaction with Parallel Scans
+
+Query parallelism determines how many processes execute the SQL plan; `io_method` determines how each issuing process reads eligible pages. Before PostgreSQL 18, multiple query processes issuing blocking reads could add I/O concurrency beyond kernel read-ahead. With asynchronous reads, a single query executor can keep multiple requests in flight without distributing tuple processing. For eligible sequential scans on supported PostgreSQL 18 installations, the two choices combine as follows:
+
+| Scan | `sync` | `worker` | `io_uring` |
+| --- | --- | --- | --- |
+| Serial | One executor issues blocking reads; OS read-ahead can overlap retrieval | One executor delegates multiple reads | One executor submits multiple reads through its rings |
+| Parallel | Multiple executors can issue blocking reads concurrently | Multiple executors delegate reads to the same I/O worker pool | Multiple executors submit reads through their respective rings |
+
+A serial scan can benefit from overlapping reads but still has one tuple-processing executor. In a parallel scan, participating query processes distribute tuple work regardless of I/O method. In `worker` mode they compete for the same I/O workers; with `io_uring` they distribute completion-side CPU work across themselves, which can narrow the advantage of dedicated I/O workers without guaranteeing lower latency.
+
+If one executor already saturates available I/O throughput and tuple processing is not limiting, adding query workers does not remove the bottleneck. It adds coordination over block allocation and, for worker output, interprocess transfer and gathering through `Gather` or `Gather Merge`. When AIO supplies enough read concurrency without parallel query workers, the remaining case for parallelism rests on sharing CPU work. AIO overlaps page retrieval; parallel query execution distributes tuple processing and expensive operators; partial aggregation reduces the volume to gather, while local sorts produce ordered streams that the leader can merge.
+
+> [!example] CPU savings under a fixed I/O ceiling
+> Assume I/O and CPU work fully overlap, storage throughput stays fixed, and CPU work scales ideally across $N$ query executors. Let $T_{IO}$ be the time to read the data, $T_{CPU}$ the CPU time with one executor, and $T_{overhead}$ the added parallel coordination time. The elapsed times for serial and parallel scans using AIO are:
+>
+> $$
+> T_{serial} = \max(T_{IO}, T_{CPU}), \qquad
+> T_{parallel} = \max(T_{IO}, T_{CPU}/N) + T_{overhead}
+> $$
+>
+> If reads take 8 s, one executor needs 12 s of CPU time, and four executors add 1 s of overhead, the modeled elapsed time falls from 12 s to 9 s: a speedup of about 1.33× ($T_{serial}/T_{parallel}$). More executors help in this model only while CPU time dominates and the savings exceed the overhead. Once I/O dominates, dividing CPU time further cannot reduce the fixed read time. This is an illustrative timing model, not PostgreSQL's cost formula.
 
 ## Storage Files and OS I/O
 
@@ -367,11 +438,12 @@ All three levels expose the transaction's own earlier writes. PostgreSQL maps Re
 > | 2 | `SELECT on_call FROM isolation_on_call WHERE doctor = 'Bob';` → `true` | — |
 > | 3 | — | `BEGIN;` |
 > | 4 | — | `UPDATE isolation_on_call SET on_call = false WHERE doctor = 'Bob';` |
-> | 5 | — | `COMMIT;` |
-> | 6 | Repeat A's `SELECT` → `false` | — |
-> | 7 | `COMMIT;` | — |
+> | 5 | Repeat A's `SELECT` → `true` | — |
+> | 6 | — | `COMMIT;` |
+> | 7 | Repeat A's `SELECT` → `false` | — |
+> | 8 | `COMMIT;` | — |
 >
-> A's ordinary `SELECT` does not hold a row lock that blocks B's update. At Read Committed, A's second statement sees B's committed version. Reset both rows with `UPDATE isolation_on_call SET on_call = true;` after both transactions end, then repeat with A using `BEGIN ISOLATION LEVEL REPEATABLE READ;`: both reads return `true` because A retains its first snapshot.
+> A's ordinary `SELECT` does not hold a row lock that blocks B's update. At Read Committed, A's read before B commits still returns the committed `true` version, not B's uncommitted change. Its next read starts after B commits and sees `false` in a new statement snapshot. Reset both rows with `UPDATE isolation_on_call SET on_call = true;` after both transactions end, then repeat with A using `BEGIN ISOLATION LEVEL REPEATABLE READ;`: all three reads return `true` because A retains its first snapshot.
 
 ### Write Skew and Serializable Retries
 
