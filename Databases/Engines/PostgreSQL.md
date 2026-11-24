@@ -4,9 +4,222 @@ PostgreSQL is a general-purpose relational database management system designed t
 
 The server owns the persistent state and coordinates access to shared structured data for independent clients, centrally managing transactions, constraints, concurrency control, query planning, and durability.
 
+## Commands
+
+### `VACUUM`
+
+`VACUUM` removes row versions left by updates and deletes once no transaction needs them, making their space available for reuse. This cleanup is necessary because PostgreSQL's MVCC retains old versions while they may still be visible to active transactions. Standard `VACUUM` generally does not return that space to the operating system; autovacuum performs routine cleanup automatically when enabled. [PostgreSQL routine vacuuming](https://www.postgresql.org/docs/18/routine-vacuuming.html).
+
+```text
+postgres=# VACUUM grades;
+postgres=# VACUUM (ANALYZE) grades;
+```
+
+The first command cleans `grades`; the second also updates planner statistics. `VACUUM FULL` rewrites a table to compact it and reclaim more disk space, but requires extra space during the rewrite and an `ACCESS EXCLUSIVE` lock that blocks concurrent use of that table. `VACUUM` cannot run inside a transaction block. [PostgreSQL `VACUUM` documentation](https://www.postgresql.org/docs/18/sql-vacuum.html).
+
+### `EXPLAIN`
+
+`EXPLAIN` shows the execution plan PostgreSQL chooses for a statement, including operations such as scans and joins, estimated costs, and estimated row counts. It plans the statement without executing it.
+
+For example, a plan for an unfiltered query against a `grades` table shows a sequential scan:
+
+```txt
+postgres=# EXPLAIN SELECT * FROM grades;
+                         QUERY PLAN
+-------------------------------------------------------------
+Seq Scan on grades  (cost=0.00..219935.18 rows=13141718 width=22)
+(1 row)
+```
+
+- **`Seq Scan on grades`:** Read the `grades` table sequentially to produce the result.
+- **`cost=0.00..219935.18`:** Estimated startup cost before producing rows, followed by the total cost to produce all rows. These are planner cost units, not elapsed time.
+- **`rows=13141718`:** Estimated number of rows this plan node outputs, not a measured row count.
+    - For this unfiltered query, use it as a cheap approximation of the table's row count when an exact value is unnecessary. The estimate depends on table statistics and may be stale; `SELECT count(*) FROM grades` must scan the table or an index to return an exact count. [PostgreSQL row estimation](https://www.postgresql.org/docs/current/row-estimation-examples.html) and [`count(*)` behavior](https://www.postgresql.org/docs/current/functions-aggregate.html).
+- **`width=22`:** Estimated average size of each output row, in bytes.
+
+The displayed `cost`, `rows`, and `width` values are planner estimates, not measurements. `QUERY PLAN` is the output column heading; `(1 row)` here and the row counts after later plan outputs count lines of plan output, not rows returned by the queries. [PostgreSQL `EXPLAIN` basics](https://www.postgresql.org/docs/current/using-explain.html).
+
+`EXPLAIN ANALYZE` executes the statement and adds actual row counts and timing for each plan node, making it useful for comparing estimates with observed work. Because it executes the statement, data-changing commands have their normal effects. [PostgreSQL `EXPLAIN` documentation](https://www.postgresql.org/docs/current/sql-explain.html).
+
+## Query Planning and Execution
+
+PostgreSQL chooses among candidate plans using estimated costs, not a fixed row-count threshold. The chosen plan determines how rows are found, ordered, and, when applicable, processed in parallel. [PostgreSQL `EXPLAIN` scan examples](https://www.postgresql.org/docs/18/using-explain.html).
+
+The examples use a `grades` table with a primary-key index on `id` and another index on `g`. This setup creates the table, populates it with generated values, and creates the index on `g`:
+
+```text
+postgres=# CREATE TABLE grades (
+    id SERIAL PRIMARY KEY,
+    g INT,
+    name TEXT
+);
+
+postgres=# INSERT INTO grades (g, name)
+SELECT
+    random() * 100,
+    substring(md5(random()::TEXT), 0, floor(random() * 31)::INT)
+FROM generate_series(0, 1000000);
+
+postgres=# CREATE INDEX grades_g ON grades(g);
+```
+
+The insert generates 1,000,001 rows because both endpoints of `generate_series` are included. The captured plans use different table statistics: their estimated row counts and costs will not match a fresh table populated by this insert alone. [PostgreSQL `generate_series`](https://www.postgresql.org/docs/current/functions-srf.html) and [`EXPLAIN` examples](https://www.postgresql.org/docs/current/sql-explain.html).
+
+### Access Paths and Selectivity
+
+For this equality condition on the primary key, PostgreSQL chose an index scan instead of reading the whole table:
+
+```txt
+postgres=# EXPLAIN SELECT * FROM grades WHERE id = 10;
+                                QUERY PLAN
+---------------------------------------------------------------------------
+ Index Scan using grades_pkey on grades  (cost=0.43..8.45 rows=1 width=22)
+   Index Cond: (id = 10)
+(2 rows)
+```
+
+`grades_pkey` is the index created by `id SERIAL PRIMARY KEY`. `Index Cond: (id = 10)` shows that PostgreSQL uses the condition to find matching index entries, then fetches the corresponding table row. The primary key permits at most one match; `rows=1` is the planner's estimate, not confirmation that row `10` exists. [PostgreSQL primary keys](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-PRIMARY-KEYS) and [`EXPLAIN` basics](https://www.postgresql.org/docs/current/using-explain.html).
+
+These scans differ in how they locate heap rows (the table's stored row versions) and in the cost of visiting their pages:
+
+- **Table scan (`Seq Scan`):** Reads the table's heap pages sequentially and tests rows against any filter. It avoids index lookups and is attractive when a large share of the table must be read, even if an index exists.
+- **Index scan (`Index Scan`):** Finds matching entries in an index and follows their row locations into the heap as it goes. This avoids scanning unrelated table pages when few rows match, but many matches scattered across heap pages make the repeated heap visits expensive. A suitable B-tree index scan can also deliver rows in index order.
+- **Bitmap scan (`Bitmap Index Scan` + `Bitmap Heap Scan`):** Collects matching row locations from an index before visiting the relevant heap pages in physical order. Bitmap-building work trades off against fewer scattered heap-page visits when more rows match than a simple index scan handles cheaply; bitmap heap access loses index order, so an `ORDER BY` may still require a sort.
+
+The following plans all project only `name` and show how estimated selectivity changes the access path. For `id < 100`, PostgreSQL estimates 98 matching rows and uses the primary-key index to find their heap rows:
+
+```text
+postgres=# EXPLAIN SELECT name FROM grades WHERE id < 100;
+Index Scan using grades_pkey on grades  (cost=0.43..391.13 rows=98 width=4)
+  Index Cond: (id < 100)
+```
+
+For `id > 100`, it estimates 5,000,248 output rows and chooses to scan the table, applying the condition as a `Filter` rather than visiting the index and then fetching many heap rows:
+
+```text
+postgres=# EXPLAIN SELECT name FROM grades WHERE id > 100;
+Seq Scan on grades  (cost=0.00..134265.34 rows=5000248 width=4)
+  Filter: (id > 100)
+```
+
+For `g > 95`, the plan instead uses the `g` index to build a bitmap of candidate heap locations, then fetches the rows through `Bitmap Heap Scan`:
+
+```text
+postgres=# EXPLAIN SELECT name FROM grades WHERE g > 95;
+Bitmap Heap Scan on grades  (cost=3859.77..110758.53 rows=205850 width=4)
+  Recheck Cond: (g > 95)
+  ->  Bitmap Index Scan on g  (cost=0.00..3808.31 rows=205850 width=0)
+        Index Cond: (g > 95)
+```
+
+The captured index is named `g`, whereas the setup above names it `grades_g`. These are plan estimates from the captured instance, not measured row counts or universal thresholds for choosing a scan.
+
+#### Bitmap Scan Mechanics
+
+`Bitmap Index Scan` is the index-reading child, not a separate kind of index or a complete table-row scan. Its parent `Bitmap Heap Scan` fetches the rows and checks visibility. [PostgreSQL index/heap access](https://www.postgresql.org/docs/18/indexes-index-only-scans.html).
+
+The bitmap represents candidates on each heap page in one of two ways:
+
+- **Exact entry:** Records candidate tuple locations within the page, so the heap scan examines those tuples rather than every row on the page.
+- **Lossy entry:** Records that the page contains candidates but not their tuple locations. The heap scan examines tuples on that page and rechecks the condition to discard nonmatches.
+
+One bitmap can contain both kinds of entry. When the bitmap grows beyond its memory allowance, which depends on `work_mem`, PostgreSQL can convert exact entries to lossy ones. This saves bitmap memory at the cost of examining and rechecking more heap tuples. An index access method can also mark candidate matches for rechecking even when their bitmap entries are exact. [PostgreSQL tuple-ID bitmap implementation](https://doxygen.postgresql.org/tidbitmap_8c_source.html) and [index access methods](https://www.postgresql.org/docs/current/index-functions.html).
+
+The index phase gathers candidates before the heap phase reads pages. The diagram collapses exact tuple locations and lossy page entries into the same page-level mark: `1` means the page contains candidates, not that the bitmap stores only its page number. Here, index matches mark pages 0, 1, and 3; page 2 stays unmarked. The heap scan then visits the marked pages in physical order rather than following each index match immediately:
+
+```mermaid
+block-beta
+  columns 5
+  page["Heap page"] p0["0"] p1["1"] p2["2"] p3["3"]
+  before["Before index scan"] b0["0"] b1["0"] b2["0"] b3["0"]
+  after["After index scan"] a0["1"] a1["1"] a2["0"] a3["1"]
+  style a0 fill:#c8e6c9,stroke:#388e3c
+  style a1 fill:#c8e6c9,stroke:#388e3c
+  style a3 fill:#c8e6c9,stroke:#388e3c
+```
+
+Separate indexes produce separate bitmaps that PostgreSQL combines before visiting the heap. For exact entries, `BitmapAnd` intersects candidate tuple locations and `BitmapOr` takes their union. The next diagram again shows only pages: index A marks pages 0 and 3, index B marks pages 0 and 1, and page 2 remains unmarked by either. Its `BitmapAnd` result assumes that both indexes identify at least one of the same rows on page 0; sharing a page alone is insufficient for an exact row match. With a lossy entry, a shared page can remain a candidate even without a matching row, so the heap scan must recheck its tuples:
+
+```mermaid
+block-beta
+  columns 5
+  page["Heap page"] p0["0"] p1["1"] p2["2"] p3["3"]
+  indexA["Index A"] a0["1"] a1["0"] a2["0"] a3["1"]
+  indexB["Index B"] b0["1"] b1["1"] b2["0"] b3["0"]
+  both["BitmapAnd"] c0["1"] c1["0"] c2["0"] c3["0"]
+  style a0 fill:#c8e6c9,stroke:#388e3c
+  style a3 fill:#c8e6c9,stroke:#388e3c
+  style b0 fill:#c8e6c9,stroke:#388e3c
+  style b1 fill:#c8e6c9,stroke:#388e3c
+  style c0 fill:#c8e6c9,stroke:#388e3c
+```
+
+`BitmapAnd` and `BitmapOr` combine candidate locations, not table rows. `Recheck Cond` names the condition available for testing fetched rows when a bitmap entry or index match is lossy; its presence in a plan does not establish that any recheck occurred. [PostgreSQL bitmap index combination](https://www.postgresql.org/docs/18/indexes-bitmap-scans.html) and [index scanning](https://www.postgresql.org/docs/18/index-scanning.html).
+
+A captured plan for `g > 95 AND id < 10000` uses `BitmapAnd` to intersect candidate row locations from **two different indexes**: `grades_pkey` for `id < 10000` and `g` for `g > 95`. The parent `Bitmap Heap Scan` then fetches rows from the combined candidates:
+
+```text
+postgres=# EXPLAIN SELECT name FROM grades WHERE g > 95 AND id < 10000;
+Bitmap Heap Scan on grades  (cost=3988.96..5479.62 rows=394 width=4)
+  Recheck Cond: ((id < 10000) AND (g > 95))
+  ->  BitmapAnd  (cost=3988.96..3988.96 rows=394 width=0)
+        ->  Bitmap Index Scan on grades_pkey  (cost=0.00..180.21 rows=9570 width=0)
+              Index Cond: (id < 10000)
+        ->  Bitmap Index Scan on g  (cost=0.00..3808.31 rows=205850 width=0)
+              Index Cond: (g > 95)
+```
+
+Plain `EXPLAIN` shows the planned combination, not whether execution uses exact or lossy bitmap entries.
+
+### Ordering and Sorts
+
+With an existing `grades_g` index on `grades(g)`, the plan for `ORDER BY g` uses that index:
+
+```txt
+postgres=# EXPLAIN SELECT * FROM grades ORDER BY g;
+
+------------------------------------------------------------------------------------
+ Index Scan using grades_g on grades  (cost=0.43..595687.21 rows=13141718 width=22)
+(1 row)
+```
+
+`Index Scan using grades_g on grades` reads index entries in `g` order and fetches the corresponding table rows, so this plan needs no separate `Sort` node. Its `0.43` startup cost reflects estimated work to descend the B-tree before the first index entry is available; the sequential scan above has a modeled startup cost of `0.00`. [PostgreSQL B-tree cost estimator](https://doxygen.postgresql.org/selfuncs_8c.html).
+
+For `ORDER BY name`, this plan uses a sequential scan followed by an explicit sort:
+
+```txt
+postgres=# EXPLAIN SELECT * FROM grades ORDER BY name;
+                               QUERY PLAN
+-------------------------------------------------------------------------
+ Sort  (cost=2312809.95..2345664.25 rows=13141718 width=22)
+   Sort Key: name
+   ->  Seq Scan on grades  (cost=0.00..219935.18 rows=13141718 width=22)
+(3 rows)
+```
+
+Read the plan from the child node upward: `Seq Scan on grades` reads the table rows, then `Sort` orders them by `name`, as shown by `Sort Key: name`. The index on `g` does not provide `name` order, so it cannot replace this sort. Both nodes estimate the same number of output rows because sorting changes their order, not their count. Unlike the index scan above, the sort must process its input before producing the first ordered row, which contributes to its higher startup cost. [PostgreSQL `EXPLAIN` basics](https://www.postgresql.org/docs/current/using-explain.html).
+
+### Parallel Execution
+
+The same query produced a parallel plan on another instance:
+
+```txt
+postgres=# EXPLAIN SELECT * FROM grades ORDER BY name;
+                              QUERY PLAN
+----------------------------------------------------------------------
+ Gather Merge  (cost=1024586.74..2205065.16 rows=10117680 width=31)
+   Workers Planned: 2
+   ->  Sort  (cost=1023586.72..1036233.82 rows=5058840 width=31)
+         Sort Key: name
+         ->  Parallel Seq Scan on grades  (cost=0.00..218201.40 rows=5058840 width=31)
+(5 rows)
+```
+
+Here, `Parallel Seq Scan` divides table blocks among cooperating processes, each `Sort` orders its portion by `name`, and `Gather Merge` combines the sorted streams without losing that order. The child nodes estimate rows for a partial output; the top node estimates the combined output. `Workers Planned: 2` is a plan to request two background workers, not proof that both ran: plain `EXPLAIN` does not execute the query. Differences in table statistics and parallel-query settings can lead PostgreSQL to choose this plan instead of the serial scan and sort above. [PostgreSQL parallel plans](https://www.postgresql.org/docs/current/parallel-plans.html) and [parallel-query execution](https://www.postgresql.org/docs/current/how-parallel-query-works.html).
+
 ## Process Architecture
 
-A PostgreSQL instance uses a process-oriented architecture. A main server process accepts incoming connections and each client connection is normally handled by its own backend process. PostgreSQL also runs background processes for responsibilities such as writing dirty buffers, checkpointing, autovacuum, and WAL-related work.
+A PostgreSQL instance uses a process-oriented architecture. A main server process accepts incoming connections and each client connection is normally handled by its own backend process. PostgreSQL also runs background processes for responsibilities such as writing dirty buffers, checkpointing, [autovacuum](#VACUUM), and WAL-related work.
 
 The backend processes have separate virtual address spaces, but they still need to cooperate over common database state. PostgreSQL therefore uses [shared memory](../../Operating%20Systems/03%20Memory%20Management.md#Controlled%20Sharing%20%26%20Concurrency) for structures that must be visible across the instance.
 
@@ -52,7 +265,7 @@ Shared buffers are therefore part of PostgreSQL's own buffer-management layer. T
 
 When PostgreSQL needs a page absent from shared buffers, it reads the relevant relation file. Before PostgreSQL 18, a backend could have to wait for one uncached read before initiating later reads. Kernel read-ahead mitigates sequential access, but it does not know the query plan or every page the database will need.
 
-PostgreSQL 18 introduced an asynchronous I/O (AIO) subsystem that lets backends issue multiple eligible page reads before consuming their results. Sequential scans, bitmap heap scans, and VACUUM can use knowledge of upcoming pages to keep reads in flight instead of serializing the latency of each read. A backend still waits when execution needs a page whose read has not completed; AIO enables overlap rather than eliminating storage waits.
+PostgreSQL 18 introduced an asynchronous I/O (AIO) subsystem that lets backends issue multiple eligible page reads before consuming their results. Sequential scans, bitmap heap scans, and [VACUUM](#VACUUM) can use knowledge of upcoming pages to keep reads in flight instead of serializing the latency of each read. A backend still waits when execution needs a page whose read has not completed; AIO enables overlap rather than eliminating storage waits.
 
 ### I/O Execution Methods
 
@@ -115,13 +328,13 @@ The optimization applies when both conditions hold:
 
 HOT links versions into a same-page chain while index entries retain the original version's line-pointer reference. It does **not** simply overwrite that pointer to address the new tuple at update time: older versions remain available to transactions that still need them.
 
-During pruning, PostgreSQL removes versions no transaction needs. After removing the original tuple's data, its line pointer becomes a redirect to the oldest version that might still be visible. Obsolete intermediate versions and their pointers are reclaimed. This preserves index access while shortening the chain, without requiring a separate VACUUM for every such cleanup. [PostgreSQL HOT documentation](https://www.postgresql.org/docs/current/storage-hot.html).
+During pruning, PostgreSQL removes versions no transaction needs. After removing the original tuple's data, its line pointer becomes a redirect to the oldest version that might still be visible. Obsolete intermediate versions and their pointers are reclaimed. This preserves index access while shortening the chain, without requiring a separate [VACUUM](#VACUUM) for every such cleanup. [PostgreSQL HOT documentation](https://www.postgresql.org/docs/current/storage-hot.html).
 
 ## Transactions and Concurrency
 
 PostgreSQL is designed for many clients to read and modify the same logical data concurrently. It uses **[Multi-Version Concurrency Control (MVCC)](../Fundamentals/02%20Transaction%20Isolation.md#Multi-Version%20Concurrency%20Control)** so readers can often observe a consistent snapshot without blocking writers that are creating newer row versions.
 
-**VACUUM** reclaims storage occupied by obsolete row versions that no transaction still needs. Updates and deletes leave old versions behind to preserve snapshot visibility, so cleanup is part of PostgreSQL's MVCC lifecycle rather than an immediate consequence of deleting a row.
+Updates and deletes leave old row versions behind to preserve snapshot visibility; [VACUUM](#VACUUM) reclaims their storage once no transaction needs them.
 
 Transactions still require coordination. Locks protect operations and structures where concurrent access cannot safely proceed independently, while [transaction isolation](../Fundamentals/02%20Transaction%20Isolation.md#Isolation%20Levels) determines which changes a transaction is allowed to observe. MVCC reduces contention; it does not eliminate synchronization.
 
