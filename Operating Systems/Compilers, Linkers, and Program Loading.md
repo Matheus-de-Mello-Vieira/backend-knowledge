@@ -31,18 +31,38 @@ Concrete implementations expose different parts of this machinery: the [Go runti
 
 ## Compilation and Assembly
 
-A compiler translates source into a representation for a chosen instruction-set architecture. Its output must obey the target architecture's instruction set and the platform's binary conventions; source compatibility alone does not make the resulting native artifact executable on another platform.
+A **compiler** translates a program into another representation, such as native machine code or virtual-machine bytecode. The target determines the available instructions and the rules for encoding code and metadata. A bytecode target defines those rules for a software-defined machine rather than a physical CPU. A native artifact must also obey its platform's binary conventions: source compatibility alone does not make a compiled artifact runnable on another platform.
 
-Assembly language expresses target instructions as readable mnemonics. An assembler translates those mnemonics into machine-code encodings. The generated instructions operate on architectural resources such as registers and memory addresses rather than source-level variable names.
+### Front End: Text, Syntax, and Bindings
 
-Memory diagrams use a drawing convention: the lowest address can appear at the top or bottom of a diagram, but address ordering itself does not change. Byte order is also target-dependent. On a little-endian target, the least-significant byte of a multi-byte instruction encoding is stored at the lowest address; for example, `0xE3A00001` occupies memory as `01 00 A0 E3` in increasing-address order.
+The front end establishes what the source means before the compiler selects instructions. These tasks depend on one another, but implementations need not perform each as a separate pass or retain every intermediate representation:
+
+1. **Decode and tokenize:** If the source arrives as bytes, decode it to text. Tokenization (lexical analysis) groups text into units such as identifiers, literals, and operators. Which characters form tokens depends on the language.
+2. **Parse:** Use the grammar to determine how those units form expressions, statements, and declarations. A parser that builds an **abstract syntax tree (AST)** records the meaningful nesting of constructs, not their evaluated values or active calls. If the language gives multiplication higher precedence than addition, the tree for `a + b * c` makes multiplication a child of addition.
+3. **Analyze semantics:** Check rules beyond grammatical structure and determine what the language allows the compiler to resolve in advance. Binding analysis relates uses of names to declarations or scopes; a **symbol table** records information about those names. For an implementation that stores locals in frame slots, knowing the binding lets generated code address the slot directly. The compiler need not know the value in that slot, and names resolved against dynamic environments still require runtime lookup.
+
+### Intermediate Representations and Control Flow
+
+Source structure is convenient for checking language rules but does not directly expose every possible transfer of control. An **intermediate representation (IR)** describes the program between source analysis and final emission. A compiler may use several IRs: a higher-level one preserves source concepts, while a lower-level one makes operations, storage, and transfers explicit.
+
+In a block-level **control-flow graph (CFG)**, the nodes are **basic blocks**: straight-line instruction sequences entered at the start. Edges represent possible transfers between blocks. A conditional branch has edges to its possible successors, and a loop forms a cycle. Making those paths explicit lets an analysis ask which blocks are reachable and which values can reach a use along different paths.
+
+### Lowering and Target Emission
+
+**Lowering** replaces an operation with simpler operations closer to the target. For example, a structured loop can become a test, a conditional branch, and a jump back to the test. Lowering and optimization can alternate as progressively more concrete representations expose different constraints and opportunities.
+
+- **Native emission:** Select and encode instructions for the processor. Assembly language expresses these instructions as readable mnemonics; an assembler converts them to machine-code encodings. A compiler can also emit object code without writing assembly text. The processor operates on architectural resources such as registers and memory addresses, not source-level names.
+- **Bytecode emission:** Select operations defined by a virtual machine. If code generation uses symbolic labels or temporary operations, assembly resolves labels to instruction offsets and turns temporary operations into real instructions or metadata. The bytecode format determines what accompanies the instruction stream, such as constant pools, source locations, stack requirements, or exception-handler information.
+
+> [!example] Native Instruction Byte Order
+> Memory diagrams use a drawing convention: the lowest address can appear at the top or bottom of a diagram, but address ordering itself does not change. Byte order is also target-dependent. On a little-endian target, the least-significant byte of a multi-byte instruction encoding is stored at the lowest address; for example, `0xE3A00001` occupies memory as `01 00 A0 E3` in increasing-address order.
 
 ## Compiler-Generated Code
 
 The compiler is free to transform the program while preserving the language's required observable behavior. The emitted instruction sequence therefore need not mirror the source structure.
 
-- **Constant folding:** The compiler evaluates constant expressions during compilation instead of emitting runtime work for them.
-- **Dead-code elimination:** Computation whose result cannot affect the program is removed.
+- **Constant folding:** Evaluate an expression at compile time when its value is known and doing so preserves the language's required behavior.
+- **Dead-code elimination:** Remove unreachable code or unused computations whose removal does not change observable behavior.
 - **Register allocation:** Temporary values are placed in registers when possible; generated code loads from or stores to memory when it must access values outside those registers.
 - **Auto-vectorization:** When a loop's dependencies and memory access permit it, the compiler can replace scalar operations with [SIMD](04%20Inside%20The%20CPU.md#Single%20Instruction%2C%20Multiple%20Data%20%28SIMD%29) instructions that operate on several packed lanes at once.
 
@@ -105,7 +125,43 @@ A runtime-hosted program need not be ahead-of-time compiled into a native execut
 **Bytecode** is an instruction representation for a language-specific or runtime-specific virtual machine, rather than for the CPU's instruction-set architecture. A bytecode compiler translates source into bytecode instructions; the runtime then loads that representation and supplies the virtual-machine operations that give those instructions meaning.
 
 - **Interpretation:** The runtime reads bytecode instructions and performs their operations, typically by executing native instructions in an interpreter loop.
-- **JIT compilation:** The runtime translates selected bytecode regions into native instructions for the current CPU, then executes that generated code.
+- **JIT compilation:** The runtime compiles selected portions of the program to native instructions for the current CPU, then executes those instructions. It may first translate the relevant bytecode operations into an intermediate representation.
 - **Portability boundary:** The same bytecode can run on systems that provide compatible virtual-machine implementations. It is not itself a native executable: compatibility still depends on the bytecode format and semantics accepted by the runtime, and the runtime must be available for the target platform.
+
+### Code, Callables, and Activations
+
+Compilation produces instructions and metadata, not the live state of future calls. In runtimes that represent function values separately from their compiled code, that separation appears in three layers:
+
+- **Compiled code:** Instructions and static information used to execute or inspect them, such as constants, binding information, and source locations.
+- **Function value:** A reference to compiled code, together with any captured environment the function needs. Multiple function values can share the same compiled code while retaining different environments. Where closures capture a shared binding rather than a value, rebinding is visible through that shared environment.
+- **Activation:** The live state of one invocation (represented by a frame in many runtimes), including where execution is, its arguments and locals, and any temporary state required by the execution model. Recursive calls use distinct activations even when they invoke the same callable. An implementation that supports suspension retains enough activation state to resume without necessarily preserving a dedicated native thread or stack.
+
+### Operand Stacks and Call Stacks
+
+In a **stack-based virtual machine**, instructions take temporary operands from an operand stack and put results back on it. A binary addition, for example, consumes two operands and pushes one result. A **call stack**, by contrast, tracks active calls and the state needed to resume their callers; a returning callee hands its result back to the caller. These are distinct roles even if their storage is combined. The VM's call stack also need not correspond one-to-one to the native call stack: an interpreter loop can switch between VM frames without making a native call for every VM call.
+
+### Exception Metadata and Unwinding
+
+An exception transfers control away from the ordinary path. In **table-driven exception handling**, the compiler emits metadata mapping protected instruction ranges to handler entries, with any restoration information the implementation needs. Raising an exception triggers a search from the failing instruction or call site. If a handler applies, execution transfers to it with the required state; otherwise propagation unwinds the activation and proceeds outward, carrying out required cleanup along the way.
+
+Moving handler registration into static metadata avoids maintaining a handler stack on ordinary entry to and exit from protected regions. The trade-off is metadata storage and work when an exception is raised, including handler search, state restoration, and cleanup. “Zero-cost” refers to avoiding that normal-path bookkeeping, not to exceptions being free to raise.
+
+### Feedback, Specialization, and Guards
+
+A dynamic operation must handle all operand types or layouts the language permits, but repeated executions at one instruction site may use only a small subset. An adaptive runtime uses **feedback** from execution to select a faster path for the observed case. This is **specialization**: for example, a generic operation can be replaced by a type-specific operation, or a lookup can reuse a cached storage position rather than searching again. Caching a position need not freeze the value stored there.
+
+The fast path is valid only while its assumptions hold. A **guard** tests an assumption at execution time, and some runtimes also invalidate specialized code when a dependency changes. If a guard fails, execution falls back to a path that implements the operation without that assumption; the runtime may later specialize for a different case. Specialization does not require generation of native code. Its benefits depend on whether avoided work outweighs profiling, warm-up, guards, cache storage, and repeated fallback at sites with varied inputs.
+
+### Tracing JIT Compilation
+
+A **tracing JIT** takes a path recorded during execution as its compilation unit. A method-based JIT instead starts from a static unit such as a function body, though it can still use execution feedback. Unlike per-site specialization, trace optimization sees the operations on the recorded path together:
+
+1. Once execution reaches a hot region (one that runs frequently enough to justify more compilation work), the runtime records an actual path through it.
+2. The optimizer transforms the recorded sequence and emits native code for it. Seeing several operations together exposes work that cannot be removed safely by optimizing each operation in isolation.
+3. On later entries, guards ensure execution still fits that path's assumptions. A failed guard or a branch away from the recorded path takes a **side exit** to another execution path. If optimized state differs from the state expected there, **deoptimization** reconstructs the state needed to resume at the corresponding program point.
+
+A runtime can support JIT compilation without enabling it, or enable it without reaching a region that qualifies. Any speedup depends on reuse of the compiled paths offsetting recording, compilation, and exit costs.
+
+### Execution of Generated Native Code
 
 A JIT that produces native instructions must make those instructions executable before the CPU runs them. This is a security-sensitive boundary: a defect in the runtime's compilation or validation logic can turn attacker-controlled input into unsafe native instructions. Under W^X, the JIT writes generated code through a writable non-executable mapping or phase, then changes permissions before executing it. This prevents a writable code page from being directly executed, but it does not establish that generated code is safe or eliminate flaws in the JIT itself; exact mechanisms are platform-dependent.

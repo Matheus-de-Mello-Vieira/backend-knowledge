@@ -39,10 +39,10 @@ Startup imports, extension initialization, and configured startup hooks can perf
 
 ### Source to code object
 
-CPython compiles a source unit before evaluating it. Compilation transforms representations because syntax, bindings, control flow, and final instruction layout require different information:
+CPython compiles a source unit before evaluating it. [Compilation transforms representations](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Compilation%20and%20Assembly) because syntax, bindings, control flow, and final instruction layout require different information:
 
 1. **Decode and tokenize:** Source bytes become text and tokens representing names, literals, operators, indentation, and other syntax.
-2. **Parse:** The generated PEG parser consumes tokens according to the grammar and builds an abstract syntax tree, or **AST**. The AST represents program structure, not live values or calls.
+2. **Parse:** The generated PEG parser consumes tokens according to the grammar and builds an abstract syntax tree, or **AST**.
 3. **Preprocess:** AST preprocessing performs syntax-related checks and transformations, including supported constant folding, under compiler/future flags and optimization settings.
 4. **Analyze symbols:** Whole-scope analysis classifies local, global, nonlocal, cell, and free bindings. An enclosing function's captured binding becomes a cell; nested code refers to that cell as a free variable. Ordinary module globals and class-namespace entries do not all become closure cells.
 5. **Generate an instruction sequence:** Code-generation visitors emit bytecode-like operations, labels, locations, and pseudo-instructions. Nested executable units produce separate code objects.
@@ -53,7 +53,7 @@ Symbol analysis explains why an ordinary function-local access uses an indexed s
 
 ### Code, function, and activation
 
-Compilation does not create the complete state of every future call. Three entities separate reusable instructions from environment and execution:
+The [separation of compiled code, callable, and activation](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Code%2C%20Callables%2C%20and%20Activations) appears in CPython as three distinct entities:
 
 - **Code object:** Compiled instructions and metadata: constants, names, argument/slot information, stack requirements, source locations, and exception tables. Its Python-facing attributes are immutable, while private adaptive instructions, caches, and optimizer executors change during execution.
 - **Function object:** Code bound to globals, builtins, defaults, closure cells, names, annotation machinery, and a calling entry point. Executing `def` creates the function; it does not execute its body.
@@ -94,27 +94,27 @@ Ordinary local access therefore does not require a locals dictionary lookup. Con
 
 Bytecode uses 16-bit code units containing opcode and argument bytes. Extended arguments and inline caches occupy additional units; cache words are not independent ordinary instructions. Generated evaluator code implements the operations defined in `Python/bytecodes.c`. Dispatch uses computed gotos, a switch fallback, or an optional tail-calling interpreter according to build/compiler support. Tail calls between native opcode handlers do not remove Python frames or change Python recursion semantics.
 
-An operation that raises records exception state and enters evaluator error handling. The code object's **exception table** maps protected instruction ranges to handler targets and required stack depths:
+An operation that raises records exception state and enters evaluator error handling. The code object's [**exception table**](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Exception%20Metadata%20and%20Unwinding) maps protected instruction ranges to handler targets and required stack depths:
 
 1. Find a handler covering the failing instruction.
 2. Release temporary operands down to the recorded depth and preserve the original instruction position when required.
 3. Transfer exception state to handler bytecode and continue there.
 4. Without a local handler, clear/unwind this activation and inspect the caller's call site. Traceback state records the unwound frames.
 
-This metadata avoids maintaining the old per-`try` runtime block stack on successful execution. “Zero-cost exceptions” describes that fast-path strategy, not free raising, traceback construction, or cleanup. `finally` and context-manager cleanup follow compiled control flow. Exception cause/context links are separate from traceback links, and all can retain object graphs. Native C APIs instead use documented error sentinels such as `NULL` with the thread-state exception set; a Python exception does not generally unwind C as a C++ throw. [Evaluator](https://github.com/python/cpython/blob/v3.15.0/Python/ceval.c), [exception-table mechanism](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/exception_handling.md).
+“Zero-cost exceptions” refers to avoiding the old per-`try` runtime block stack on successful execution, not to free raising, traceback construction, or cleanup. `finally` and context-manager cleanup follow compiled control flow. Exception cause/context links are separate from traceback links, and all can retain object graphs. Native C APIs instead use documented error sentinels such as `NULL` with the thread-state exception set; a Python exception does not generally unwind C as a C++ throw. [Evaluator](https://github.com/python/cpython/blob/v3.15.0/Python/ceval.c), [exception-table mechanism](https://github.com/python/cpython/blob/v3.15.0/InternalDocs/exception_handling.md).
 
 Evaluator checkpoints also service an **eval breaker** indicating pending runtime work: signals, GIL-drop requests, pending calls, GC, and build-specific coordination. They are not an asyncio ready queue or a guaranteed interruption after every opcode. Long native work without appropriate checks or detachment delays this servicing.
 
 ### Specialization and optional native compilation
 
-Repeated dynamic operations often see stable operand types or namespace layouts. CPython exploits that feedback without changing their semantics:
+CPython uses execution [feedback](../../Operating%20Systems/Compilers%2C%20Linkers%2C%20and%20Program%20Loading.md#Feedback%2C%20Specialization%2C%20and%20Guards) to specialize dynamic operations without changing their semantics:
 
 1. A specializable instruction maintains counters and family-specific inline-cache entries.
 2. Feedback selects a narrower opcode, such as a type-specific binary operation or a module-global lookup using a cached entry index.
 3. Guards check relevant operand types, dictionary-key versions, type layouts, function versions, or other assumptions.
 4. Compatible executions avoid portions of generic dispatch/lookup. Failed assumptions cause fallback, backoff, or respecialization.
 
-Caches are not universally cached values: a location/version guard can accelerate access while preserving a namespace's changing contents. Different instruction families use different invalidation mechanisms. Warm-up, guard work, cache storage, and polymorphic workloads affect the benefit. `dis` exposes supported adaptive/cache views; its default bytecode view need not be the warmed stream currently executed. [Specialization implementation](https://github.com/python/cpython/blob/v3.15.0/Python/specialize.c), [instruction families](https://github.com/python/cpython/blob/v3.15.0/Python/bytecodes.c).
+A cached module-global entry index does not freeze its value; location/version guards preserve the namespace's changing contents. Different instruction families use different invalidation mechanisms. `dis` exposes supported adaptive/cache views; its default bytecode view need not be the warmed stream currently executed. [Specialization implementation](https://github.com/python/cpython/blob/v3.15.0/Python/specialize.c), [instruction families](https://github.com/python/cpython/blob/v3.15.0/Python/bytecodes.c).
 
 The **experimental JIT** adds optimization across sequences of operations rather than only individual sites. On a JIT-capable, enabled build:
 
@@ -445,28 +445,6 @@ Consider `await loop.sock_recv(sock, n)` on a nonblocking **stream** socket with
 
 In this callback path, completion occurs during the ready snapshot, so newly queued wakeup runs in a later iteration. This is not a universal number-of-turns guarantee for every backend. A receive returns **up to** `n` bytes; `b''` is stream EOF, not “try again.” A complete HTTP/message body requires higher-level framing across receives. [Socket receive implementation](https://github.com/python/cpython/blob/v3.15.0/Lib/asyncio/selector_events.py).
 
-```mermaid
-sequenceDiagram
-    participant T as Application Task
-    participant F as Pending Future
-    participant L as Event loop
-    participant K as OS socket backend
-    T->>K: Nonblocking recv
-    K-->>T: Would block
-    T->>L: Register reader callback
-    T->>F: Await and install wakeup
-    T-->>L: Suspend execution
-    L->>L: Run unrelated ready work
-    L->>K: Poll readiness
-    K-->>L: Descriptor readable
-    L->>K: Reader callback retries recv
-    K-->>L: Bytes, EOF, or error
-    L->>F: Set result or exception
-    F->>L: Queue Task wakeup
-    L->>T: Execute wakeup later
-    T->>F: Retrieve awaited outcome
-```
-
 The syscall, readiness registration, Future, and coroutine are different state holders. The Future connects them; it does not itself read from the kernel.
 
 ### Windows completion and proactor operation
@@ -610,16 +588,9 @@ Python TLS encryption cannot simply bypass its plaintext/encrypted-buffer proces
 
 ### Responsibilities and application interfaces
 
-An HTTP request crosses components that do different work:
+The operating system owns listening and connected sockets, pending connections, transport buffers, and readiness/completion reporting. An application server creates or adopts listeners, accepts connections through its workers, parses and frames HTTP, invokes application code, and manages flow control and connection lifetime. Its [execution model](../../Backend%20Engineering/Concurrency/02%20Application%20Server%20Concurrency.md#Application%20Execution%20Models) determines how processes, threads, event loops, or cooperative greenlets advance requests; WSGI and ASGI instead define the server–application interface, not listener ownership or process topology.
 
-- **Operating system:** Owns listening/connected socket state, pending connections, transport buffers, and readiness/completion reporting.
-- **Application server:** Creates or adopts listeners, accepts connections through its worker/backend, parses HTTP, invokes application code, frames response bytes, and manages flow control/connection lifecycle.
-- **Worker execution:** Processes provide isolation/parallelism; threads, event loops, or cooperative greenlets determine how requests progress within each process.
-- **Application interface:** WSGI or ASGI defines calls/messages between server and application, not listener ownership or process topology.
-- **Framework:** Routes requests, executes middleware/dependencies/endpoints, and constructs responses. Its dispatch can deliberately bridge synchronous/asynchronous execution without becoming the listener manager.
-- **CPython:** Executes those callbacks/calls, maintains frames/objects, and coordinates native threads. The selected event loop supplies scheduling above it.
-
-Flask is a WSGI framework, not its production application server; its bundled development server is a separate development facility. FastAPI/Starlette likewise do not need to accept raw sockets to implement their request behavior. An optional forwarding proxy does not replace the hosting server's Python execution model.
+The framework routes requests, runs middleware/dependencies/endpoints, and constructs responses, sometimes bridging synchronous and asynchronous execution. CPython executes these calls, maintains frames and objects, and coordinates native threads; an event loop schedules callbacks and Tasks above that runtime. Flask's bundled development server is separate from the WSGI framework, while FastAPI/Starlette need not accept raw sockets to implement request behavior. A forwarding proxy does not replace the hosting server's Python execution model.
 
 **WSGI** is a synchronous call contract: the server calls `application(environ, start_response)`. The environment describes the request and exposes an input stream; `start_response` supplies status/headers, and the returned iterable produces body bytes. The server serializes HTTP and drives iteration, calling the iterable's `close()` when supplied, including on early failure.
 
@@ -765,11 +736,7 @@ These representative deployments differ through mechanisms, not a universal spee
 | Worker crash | Loses its active request/connection | Loses worker threads/connections | Loses worker Tasks/connections |
 | Typical capacity pressure | Process slots and slow input/output | Threads, connection queues, shared resources | Loop CPU, retained Tasks/buffers, downstream limits |
 
-Suppose several clients mostly wait for database/network responses:
-
-- **Sync workers:** Each enters one request and remains occupied during its blocking wait. Requests beyond available workers wait outside those slots; GIL release does not supply another request scheduler within that worker.
-- **Threaded workers:** Other request threads execute while one waits, provided the blocking implementation releases the GIL appropriately. Thread/connection limits and downstream pools bound useful concurrency.
-- **Async endpoints:** Waiting Tasks suspend, leaving the loop to run others without one native thread per pending request. Each wait still retains frames, Python objects, buffers, sockets, and external capacity. Offloaded sync endpoints also consume worker-limiter capacity.
+For mostly waiting clients, GIL release does not create another request slot in a sync worker. Threaded progress depends on the blocking implementation releasing the GIL and on thread, connection, and downstream-pool capacity. Suspended async requests do not occupy a dedicated native thread, but retain frames, objects, buffers, sockets, and external capacity; offloaded sync callables also consume worker-limiter capacity.
 
 CPU-heavy Python changes the result: sync workers occupy cores, request threads contend for one interpreter GIL, and a long async Task step blocks its loop. More awaits do not divide computation automatically. Separate processes, suitable detached native kernels, own-GIL interpreters, or compatible free-threaded execution supply different parallelism mechanisms. Increasing request concurrency without bounding work can increase latency/memory rather than useful throughput.
 
@@ -806,18 +773,10 @@ For allocation questions, distinguish shallow sizes, shared referents, traced bl
 
 Reproduce on the relevant version/build/workload, choose the least perturbing observation, correlate Python evidence with OS/client/backend evidence, then change one mechanism and test its predicted effect. Overlapping async sleeps demonstrates cooperative waiting, not native file-AIO correctness or CPU parallelism. `faulthandler` can diagnose a fatal native fault; it does not turn that fault into a recoverable Python exception.
 
-## One request across runtime, I/O, and cleanup
+## Request execution and memory lifetimes
 
-Consider a Uvicorn h11/asyncio worker whose async endpoint reads a downstream response and creates temporary Python objects:
+In the [Uvicorn h11/asyncio request path](#Uvicorn%20and%20FastAPI%20through%20an%20incomplete%20network%20await), CPython executes endpoint code in frames bound to its globals, closure, and defaults; specialized bytecodes preserve the same object semantics. The request's dictionaries, parsed values, temporary lists, and response data acquire references and storage through their type and allocator paths. Coroutine locals and framework/protocol state retain distinct ownership edges while a downstream operation is pending and after it resumes.
 
-1. **Connection state:** The loop accepts a connected socket; transport/protocol state joins worker tracking. Incoming bytes advance h11 until headers define a request scope/cycle.
-2. **Execution state:** A Task enters framework routing and the endpoint. CPython executes its code object in frames bound to globals/closure/default environments; specialized bytecodes still preserve the same object semantics.
-3. **Allocation state:** Request dictionaries, parsed values, temporary lists, and response data acquire references and storage through their type/allocator paths. Coroutine locals and framework/protocol state retain their own edges to these objects.
-4. **Pending operation:** A downstream receive cannot progress. Its adapter registers readiness or submits completion state and exposes a Future; the Task suspends without a dedicated waiting thread.
-5. **Other work:** The loop processes other connections and callbacks. Other processes can execute Python simultaneously; native threads in this GIL-enabled interpreter still obey its lock. A stray synchronous file call here would instead occupy the loop thread.
-6. **Resumption:** Backend notification advances the operation, Future completion queues wakeup, and the Task retrieves bytes or an exception. Parsing/serialization resumes as CPU execution rather than as kernel I/O.
-7. **Output state:** Framework ASGI messages pass through Uvicorn's HTTP serializer into the transport. Flow control slows production when output pressure requires it; response completion and client consumption remain different events.
-8. **Ownership release:** Framework cleanup and Task completion drop their references. The protocol can retain the current cycle until next request/closure; callbacks, tracebacks, caches, and application pools can retain further graphs. Only when the last relevant owners disappear do ordinary acyclic mortal objects deallocate; isolated cycles require collection.
-9. **Storage aftermath:** Dead headers/backing arrays enter reuse paths. A surviving object can keep an allocator unit occupied, and released allocator space can remain resident. The connection can meanwhile serve a later HTTP request with new scope/activation state.
+Framework cleanup and Task completion release their references, but the protocol can retain the request cycle until reuse or closure; callbacks, tracebacks, caches, and application pools can retain further graphs. Ordinary acyclic mortal objects deallocate only after their last relevant owners disappear, while isolated cycles require collection. Dead headers and backing arrays enter reuse paths; a survivor can keep an allocator unit occupied, and released allocator space can remain resident. The connection can serve a later request with a new scope and activation state.
 
-The retained object graph, pending operation, runnable continuation, HTTP request, and TCP connection have related but different lifetimes. Diagnosing a slow or memory-growing worker requires locating which of those states has stopped advancing—not assuming that returning a response ended them all.
+The retained object graph, pending operation, runnable continuation, HTTP request, and TCP connection have related but different lifetimes. Diagnosing a slow or memory-growing worker requires locating which state has stopped advancing—not assuming that returning a response ended them all.
